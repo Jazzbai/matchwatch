@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1772039860863,
+      "tag": "0000_clear_star_brand",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773601200000,
+      "tag": "0001_venue_custom_events",
+      "breakpoints": true
+    }
+  ]
+}

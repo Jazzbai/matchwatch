@@ -1,0 +1,763 @@
+"use client";
+
+import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import {
+    AMENITY_LABELS,
+    PRICE_LABELS,
+    type Match,
+    type Venue,
+    type League,
+    type Team,
+    type VenueEvent,
+    type Review,
+    type Post,
+    type Booking,
+    type User,
+    type MatchStatus,
+    type PriceRange,
+} from "./data";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+const MATCH_FETCH_LIMIT = 50;
+const VENUE_FETCH_LIMIT = 50;
+const VENUE_CHILD_LIMIT = 50;
+const VENUE_MAX_PAGES = 4;
+const MATCH_MAX_PAGES = 8;
+const BOOKING_FETCH_LIMIT = 50;
+
+type ApiMeta = {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+};
+
+type ApiEnvelope<T> = {
+    data: T | null;
+    meta?: ApiMeta;
+};
+
+interface DataContextType {
+    matches: Match[];
+    venues: Venue[];
+    leagues: League[];
+    teams: Team[];
+    venueEvents: VenueEvent[];
+    reviews: Review[];
+    posts: Post[];
+    bookings: Booking[];
+    users: User[];
+    adminStats: {
+        totalUsers: number;
+        totalVenues: number;
+        totalBookings: number;
+        totalMatches: number;
+        bookingsToday: number;
+        bookingsThisWeek: number;
+        activeEvents: number;
+        revenue: number;
+        growthUsers: number;
+        growthBookings: number;
+        growthVenues: number;
+        topLeagues: Array<{ name: string; bookings: number }>;
+        recentActivity: Array<{ type: string; message: string; time: string }>;
+    };
+    isApiConnected: boolean;
+    isLoading: boolean;
+    getTeam: (id: string) => Team | undefined;
+    getLeague: (id: string) => League | undefined;
+    getVenue: (idOrSlug: string) => Venue | undefined;
+    getMatch: (id: string) => Match | undefined;
+    getVenueEvents: (matchId: string) => (VenueEvent & { venue: Venue })[];
+    getVenueReviews: (venueId: string) => Review[];
+    getVenuePosts: (venueId: string) => Post[];
+    getVenueMatchEvents: (venueId: string) => (VenueEvent & { match: Match })[];
+    refetch: () => Promise<void>;
+}
+
+const EMPTY_ADMIN_STATS: DataContextType["adminStats"] = {
+    totalUsers: 0,
+    totalVenues: 0,
+    totalBookings: 0,
+    totalMatches: 0,
+    bookingsToday: 0,
+    bookingsThisWeek: 0,
+    activeEvents: 0,
+    revenue: 0,
+    growthUsers: 0,
+    growthBookings: 0,
+    growthVenues: 0,
+    topLeagues: [],
+    recentActivity: [],
+};
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+type ApiMatch = {
+    id: string;
+    leagueId?: string | null;
+    homeTeamId?: string | null;
+    awayTeamId?: string | null;
+    homeTeamName?: string | null;
+    awayTeamName?: string | null;
+    homeTeamCrestUrl?: string | null;
+    awayTeamCrestUrl?: string | null;
+    homeScore?: number | null;
+    awayScore?: number | null;
+    matchDateUtc?: string;
+    status?: MatchStatus;
+    matchDay?: number | string | null;
+    stage?: string | null;
+    venueName?: string | null;
+    venueCount?: number;
+    league?: {
+        id: string;
+        name: string;
+        shortName?: string | null;
+        logoUrl?: string | null;
+    } | null;
+};
+
+function normalizeImageUrl(value?: string | null) {
+    const raw = (value || "").trim();
+    if (!raw) return "";
+    if (raw.startsWith("/") || raw.startsWith("http://") || raw.startsWith("https://")) {
+        return raw;
+    }
+    return `https://${raw}`;
+}
+
+function sanitizeLegalText(value: string) {
+    return value
+        .replace(/\bFIFA\b/gi, "")
+        .replace(/\bWorld Cup\b/gi, "Global Finals")
+        .replace(/\bNWSL Women\b/gi, "NWSL")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+}
+
+function inferLeagueCountry(name: string) {
+    const key = name.toLowerCase();
+    if (key.includes("premier league")) return "England";
+    if (key.includes("la liga")) return "Spain";
+    if (key.includes("bundesliga")) return "Germany";
+    if (key.includes("serie a")) return "Italy";
+    if (key.includes("ligue 1")) return "France";
+    if (key.includes("champions league")) return "Europe";
+    if (key.includes("mls") || key.includes("major league soccer")) return "USA/Canada";
+    if (key.includes("liga mx") || key.includes("mexican primera")) return "Mexico";
+    if (key.includes("nwsl")) return "USA";
+    if (key.includes("global finals") || key.includes("world cup")) return "International";
+    return "International";
+}
+
+function resolveLeagueBranding(name: string, logoUrl?: string | null) {
+    const safeName = sanitizeLegalText(name);
+    const image = normalizeImageUrl(logoUrl);
+    if (image) {
+        const short = safeName
+            .split(/\s+/)
+            .map((chunk) => chunk[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 4) || "LG";
+        return { logo: short, image };
+    }
+
+    const key = safeName.toLowerCase();
+    if (key.includes("premier league")) return { logo: "EPL", image: "/epl-logo.webp" };
+    if (key.includes("la liga")) return { logo: "LL", image: "/laliga-logo.webp" };
+    if (key.includes("bundesliga")) return { logo: "BL", image: "/bundesliga-logo.svg" };
+    if (key.includes("serie a")) return { logo: "SA", image: "/seriea-logo.png" };
+    if (key.includes("ligue 1")) return { logo: "L1" };
+    if (key.includes("champions league")) return { logo: "UCL" };
+    if (key.includes("world cup") || key.includes("global finals")) return { logo: "WC" };
+    if (key === "mls" || key.includes("major league soccer")) return { logo: "MLS" };
+    return { logo: "LG" };
+}
+
+function slugify(input: string) {
+    return input
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+}
+
+function hashColor(input: string) {
+    let hash = 0;
+    for (let i = 0; i < input.length; i += 1) {
+        hash = input.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const palette = ["#1D3557", "#E63946", "#2A9D8F", "#264653", "#F4A261", "#8D99AE", "#457B9D", "#6A4C93"];
+    return palette[Math.abs(hash) % palette.length];
+}
+
+function toShortName(name: string) {
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
+    if (words.length === 2) return words.map((w) => w[0]).join("").toUpperCase();
+    return words.slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+
+function toFlagOrBall(name: string) {
+    const map: Record<string, string> = {
+        "united states": "US",
+        mexico: "MX",
+        canada: "CA",
+        brazil: "BR",
+        argentina: "AR",
+        germany: "DE",
+        england: "GB",
+        france: "FR",
+        spain: "ES",
+        portugal: "PT",
+        netherlands: "NL",
+        belgium: "BE",
+        japan: "JP",
+        "south korea": "KR",
+        morocco: "MA",
+        senegal: "SN",
+        uruguay: "UY",
+        croatia: "HR",
+        switzerland: "CH",
+    };
+    const key = name.toLowerCase();
+    return map[key] || "TEAM";
+}
+
+function toCountry(name: string) {
+    const map: Record<string, string> = {
+        "united states": "US",
+        mexico: "MX",
+        canada: "CA",
+        brazil: "BR",
+        argentina: "AR",
+        germany: "DE",
+        england: "GB",
+        france: "FR",
+        spain: "ES",
+        portugal: "PT",
+        netherlands: "NL",
+        belgium: "BE",
+        japan: "JP",
+        "south korea": "KR",
+        morocco: "MA",
+        senegal: "SN",
+        uruguay: "UY",
+        croatia: "HR",
+        switzerland: "CH",
+    };
+    return map[name.toLowerCase()] || "INT";
+}
+
+function toEventTimeLabel(isoOrNull: string | null | undefined) {
+    if (!isoOrNull) return "TBD";
+    const d = new Date(isoOrNull);
+    if (Number.isNaN(d.getTime())) return "TBD";
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function shouldSkipBootstrapFetch(pathname: string) {
+    return pathname === "/login"
+        || pathname === "/signup"
+        || pathname === "/register"
+        || pathname === "/register-venue"
+        || pathname.startsWith("/for-venues/register");
+}
+
+function authHeader(): Record<string, string> {
+    if (typeof window === "undefined") return {};
+    const token = localStorage.getItem("accessToken");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function safeFetchEnvelope<T>(endpoint: string): Promise<ApiEnvelope<T> | null> {
+    try {
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+            headers: {
+                "Content-Type": "application/json",
+                ...authHeader(),
+            },
+            credentials: "include",
+            signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        return {
+            data: (json.data ?? null) as T | null,
+            meta: json.meta as ApiMeta | undefined,
+        };
+    } catch {
+        return null;
+    }
+}
+
+async function safeFetch<T>(endpoint: string): Promise<T | null> {
+    const envelope = await safeFetchEnvelope<T>(endpoint);
+    return envelope?.data ?? null;
+}
+
+async function safeFetchPaginated<T>(
+    endpoint: string,
+    limit: number,
+    maxPages: number,
+): Promise<T[] | null> {
+    const rows: T[] = [];
+    let page = 1;
+    let totalPages = 1;
+    let hadSuccessfulPage = false;
+
+    while (page <= totalPages && page <= maxPages) {
+        const pageEndpoint = `${endpoint}${endpoint.includes("?") ? "&" : "?"}page=${page}&limit=${limit}`;
+        const envelope = await safeFetchEnvelope<T[]>(pageEndpoint);
+        if (!envelope) {
+            return hadSuccessfulPage ? rows : null;
+        }
+
+        hadSuccessfulPage = true;
+        const data = Array.isArray(envelope.data) ? envelope.data : [];
+        rows.push(...data);
+
+        totalPages = Number(envelope.meta?.totalPages || page);
+        if (data.length === 0) break;
+        page += 1;
+    }
+
+    return rows;
+}
+
+export function DataProvider({ children }: { children: ReactNode }) {
+    const [matches, setMatches] = useState<Match[]>([]);
+    const [venues, setVenues] = useState<Venue[]>([]);
+    const [leagues, setLeagues] = useState<League[]>([]);
+    const [teams, setTeams] = useState<Team[]>([]);
+    const [venueEvents, setVenueEvents] = useState<VenueEvent[]>([]);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [users] = useState<User[]>([]);
+    const [adminStats] = useState(EMPTY_ADMIN_STATS);
+    const [isApiConnected, setIsApiConnected] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchFromApi = useCallback(async () => {
+        if (typeof window !== "undefined" && shouldSkipBootstrapFetch(window.location.pathname)) {
+            setIsLoading(false);
+            return;
+        }
+
+        if (!isApiConnected) {
+            setIsLoading(true);
+        }
+
+        const hasToken = typeof window !== "undefined" && Boolean(localStorage.getItem("accessToken"));
+        const [apiMatches, apiVenues, apiBookings] = await Promise.all([
+            safeFetchPaginated<ApiMatch>("/matches?sort=date_asc", MATCH_FETCH_LIMIT, MATCH_MAX_PAGES),
+            safeFetchPaginated<any>("/venues?sort=featured", VENUE_FETCH_LIMIT, VENUE_MAX_PAGES),
+            hasToken ? safeFetch<any[]>(`/bookings?page=1&limit=${BOOKING_FETCH_LIMIT}`) : Promise.resolve([] as any[]),
+        ]);
+
+        if (!apiMatches || !apiVenues) {
+            setIsApiConnected(false);
+            setIsLoading(false);
+            return;
+        }
+
+        const teamMap = new Map<string, Team>();
+        const leagueMap = new Map<string, League>();
+
+        const upsertLeague = (leagueInput: {
+            id: string;
+            name: string;
+            shortName?: string | null;
+            logoUrl?: string | null;
+        }) => {
+            const safeName = sanitizeLegalText(leagueInput.name);
+            const safeShortName = sanitizeLegalText(leagueInput.shortName || leagueInput.name);
+            const branding = resolveLeagueBranding(safeName, leagueInput.logoUrl);
+            const existing = leagueMap.get(leagueInput.id);
+            if (existing) {
+                leagueMap.set(leagueInput.id, {
+                    ...existing,
+                    name: existing.name || safeName,
+                    shortName: existing.shortName || safeShortName,
+                    logo: existing.logo || branding.logo,
+                    image: existing.image || branding.image,
+                    country: existing.country && existing.country !== "INT" ? existing.country : inferLeagueCountry(safeName),
+                });
+                return;
+            }
+
+            leagueMap.set(leagueInput.id, {
+                id: leagueInput.id,
+                name: safeName,
+                shortName: safeShortName,
+                logo: branding.logo,
+                image: branding.image,
+                country: inferLeagueCountry(safeName),
+                externalId: leagueInput.id,
+            });
+        };
+
+        const upsertTeam = (
+            teamId: string,
+            teamName: string,
+            leagueId: string,
+            crestUrl?: string | null,
+        ) => {
+            if (!teamId || !teamName) return;
+            const image = normalizeImageUrl(crestUrl);
+            const existing = teamMap.get(teamId);
+            if (existing) {
+                if (!existing.image && image) {
+                    teamMap.set(teamId, { ...existing, image });
+                }
+                return;
+            }
+
+            teamMap.set(teamId, {
+                id: teamId,
+                name: teamName,
+                shortName: toShortName(teamName),
+                crest: toFlagOrBall(teamName),
+                color: hashColor(teamId),
+                leagueId,
+                country: toCountry(teamName),
+                image,
+            });
+        };
+
+        const mappedMatches: Match[] = apiMatches.map((m) => {
+            const homeTeamId = m.homeTeamId || slugify(m.homeTeamName || `home-${m.id}`);
+            const awayTeamId = m.awayTeamId || slugify(m.awayTeamName || `away-${m.id}`);
+            const leagueId = m.leagueId || m.league?.id || "unknown-league";
+
+            if (m.league?.id && m.league.name) {
+                upsertLeague({
+                    id: m.league.id,
+                    name: m.league.name,
+                    shortName: m.league.shortName,
+                    logoUrl: m.league.logoUrl,
+                });
+            }
+            if (m.homeTeamName) upsertTeam(homeTeamId, m.homeTeamName, leagueId, m.homeTeamCrestUrl);
+            if (m.awayTeamName) upsertTeam(awayTeamId, m.awayTeamName, leagueId, m.awayTeamCrestUrl);
+
+            const dateUtc = m.matchDateUtc || new Date().toISOString();
+            return {
+                id: m.id,
+                homeTeamId,
+                awayTeamId,
+                leagueId,
+                matchDateUTC: dateUtc,
+                status: (m.status || "SCHEDULED") as MatchStatus,
+                homeScore: m.homeScore ?? null,
+                awayScore: m.awayScore ?? null,
+                matchDay: m.matchDay ? String(m.matchDay) : "",
+                stage: m.stage || "",
+                stadiumName: m.venueName || "",
+                venueCount: m.venueCount || 0,
+                isHot: (m.venueCount || 0) >= 10,
+            };
+        });
+
+        const baseVenues = apiVenues.map((v) => {
+            const withGallery = v as { galleryImageUrls?: string[] };
+            return ({
+            id: v.id,
+            slug: v.slug,
+            name: v.name,
+            shortDescription: sanitizeLegalText(v.shortDescription || ""),
+            description: "",
+            coverImageUrl: normalizeImageUrl(v.coverImageUrl),
+            galleryImageUrls: Array.isArray(withGallery.galleryImageUrls)
+                ? withGallery.galleryImageUrls.map((url: string) => normalizeImageUrl(url)).filter(Boolean)
+                : [],
+            addressLine1: v.addressLine1 || "",
+            addressLine2: "",
+            city: v.city || "",
+            state: "",
+            postalCode: "",
+            lat: Number(v.lat || 0),
+            lng: Number(v.lng || 0),
+            phone: "",
+            website: "",
+            instagram: "",
+            capacity: v.capacity || 0,
+            rating: Number(v.averageRating || 0),
+            reviewCount: Number(v.totalReviews || 0),
+            amenities: Array.isArray(v.amenities) ? v.amenities : [],
+            cuisineTags: Array.isArray(v.cuisineTags) ? v.cuisineTags : [],
+            priceRange: (v.priceRange || "MID") as PriceRange,
+            isVerified: Boolean(v.isVerified),
+            isFeatured: Boolean(v.isFeatured),
+            isActive: true,
+            coverColor: hashColor(v.slug || v.id),
+            followerCount: 0,
+            upcomingEventsCount: 0,
+            totalBookings: 0,
+            ownerName: "",
+            ownerEmail: "",
+            promotedVenueEventId: null,
+        } satisfies Venue);
+        });
+
+        const venueDetails = await Promise.all(
+            baseVenues.map(async (venue) => {
+                const [detail, events, venuePosts, venueReviews] = await Promise.all([
+                    safeFetch<any>(`/venues/${venue.slug}`),
+                    safeFetchPaginated<any>(`/venues/${venue.slug}/events`, VENUE_CHILD_LIMIT, 6),
+                    safeFetchPaginated<any>(`/venues/${venue.slug}/posts`, VENUE_CHILD_LIMIT, 6),
+                    safeFetchPaginated<any>(`/venues/${venue.slug}/reviews`, VENUE_CHILD_LIMIT, 6),
+                ]);
+
+                return { venue, detail, events: events || [], venuePosts: venuePosts || [], venueReviews: venueReviews || [] };
+            }),
+        );
+
+        const mappedVenueEvents: VenueEvent[] = [];
+        const mappedPosts: Post[] = [];
+        const mappedReviews: Review[] = [];
+        const mergedVenues: Venue[] = [];
+
+        for (const row of venueDetails) {
+            const detail = row.detail;
+            const events = row.events;
+
+            const totalConfirmed = events.reduce((acc, ev) => acc + Number(ev.confirmedBookingsCount || 0), 0);
+            mergedVenues.push({
+                ...row.venue,
+                description: sanitizeLegalText(detail?.description || row.venue.shortDescription),
+                coverImageUrl: normalizeImageUrl(detail?.coverImageUrl || row.venue.coverImageUrl),
+                galleryImageUrls: Array.isArray(detail?.galleryImageUrls)
+                    ? detail.galleryImageUrls.map((url: string) => normalizeImageUrl(url)).filter(Boolean)
+                    : row.venue.galleryImageUrls || [],
+                addressLine2: detail?.addressLine2 || "",
+                state: detail?.stateProvince || "",
+                postalCode: detail?.postalCode || "",
+                lat: Number(detail?.lat ?? row.venue.lat ?? 0),
+                lng: Number(detail?.lng ?? row.venue.lng ?? 0),
+                phone: detail?.phone || "",
+                website: detail?.website || "",
+                instagram: detail?.instagramHandle || "",
+                capacity: Number(detail?.capacity || row.venue.capacity || 0),
+                rating: Number(detail?.averageRating || row.venue.rating || 0),
+                reviewCount: Number(detail?.totalReviews || row.venue.reviewCount || 0),
+                amenities: Array.isArray(detail?.amenities) ? detail.amenities : row.venue.amenities,
+                cuisineTags: Array.isArray(detail?.cuisineTags) ? detail.cuisineTags : row.venue.cuisineTags,
+                isVerified: detail?.isVerified ?? row.venue.isVerified,
+                isFeatured: detail?.isFeatured ?? row.venue.isFeatured,
+                followerCount: Number(detail?.followerCount || 0),
+                upcomingEventsCount: events.length,
+                totalBookings: totalConfirmed,
+                promotedVenueEventId: typeof detail?.promotedVenueEventId === "string"
+                    ? detail.promotedVenueEventId
+                    : null,
+            });
+
+            for (const ev of events) {
+                const match = ev.match as ApiMatch | undefined;
+                const eventMatchIdRaw = ev.matchId || match?.id || "";
+                const eventMatchId = String(eventMatchIdRaw).trim();
+                const leagueId = match?.leagueId || match?.league?.id || "unknown-league";
+                const homeTeamId = match?.homeTeamId || slugify(match?.homeTeamName || `home-${ev.id}`);
+                const awayTeamId = match?.awayTeamId || slugify(match?.awayTeamName || `away-${ev.id}`);
+
+                if (match?.league?.id && match.league.name) {
+                    upsertLeague({
+                        id: match.league.id,
+                        name: match.league.name,
+                        shortName: match.league.shortName,
+                        logoUrl: match.league.logoUrl,
+                    });
+                }
+                if (match?.homeTeamName) upsertTeam(homeTeamId, match.homeTeamName, leagueId, match.homeTeamCrestUrl);
+                if (match?.awayTeamName) upsertTeam(awayTeamId, match.awayTeamName, leagueId, match.awayTeamCrestUrl);
+
+                if (eventMatchId && !mappedMatches.find((m) => String(m.id).trim().toLowerCase() === eventMatchId.toLowerCase())) {
+                    mappedMatches.push({
+                        id: eventMatchId,
+                        homeTeamId,
+                        awayTeamId,
+                        leagueId,
+                        matchDateUTC: match?.matchDateUtc || new Date().toISOString(),
+                        status: (match?.status || "SCHEDULED") as MatchStatus,
+                        homeScore: match?.homeScore ?? null,
+                        awayScore: match?.awayScore ?? null,
+                        matchDay: match?.matchDay ? String(match.matchDay) : "",
+                        stage: match?.stage || "",
+                        stadiumName: match?.venueName || "",
+                        venueCount: 0,
+                        isHot: false,
+                    });
+                }
+
+                if (!eventMatchId) continue;
+
+                mappedVenueEvents.push({
+                    id: ev.id,
+                    venueId: ev.venueId,
+                    matchId: eventMatchId,
+                    isActive: ev.isActive !== false,
+                    bookingLimit: ev.bookingLimit ?? null,
+                    confirmedBookings: Number(ev.confirmedBookingsCount || 0),
+                    specialNotes: ev.specialNotes || "",
+                    entryFee: ev.customPrice != null ? Number(ev.customPrice) : null,
+                    doorsOpenAt: toEventTimeLabel(ev.doorsOpenAt),
+                    requiresApproval: Boolean(ev.requiresApproval),
+                });
+            }
+
+            for (const post of row.venuePosts) {
+                mappedPosts.push({
+                    id: post.id,
+                    venueId: post.venueId,
+                    content: sanitizeLegalText(post.content || ""),
+                    matchId: post.matchId || undefined,
+                    createdAt: post.createdAt || new Date().toISOString(),
+                    viewsCount: Number(post.viewsCount || 0),
+                });
+            }
+
+            for (const review of row.venueReviews) {
+                mappedReviews.push({
+                    id: review.id,
+                    venueId: review.venueId,
+                    userName: review.userName || "Guest",
+                    userAvatar: review.userAvatar || "User",
+                    rating: Number(review.rating || 0),
+                    title: sanitizeLegalText(review.title || ""),
+                    content: sanitizeLegalText(review.content || ""),
+                    date: review.createdAt || new Date().toISOString(),
+                    isVerifiedVisit: Boolean(review.isVerifiedVisit),
+                    ownerReply: review.ownerReply ? sanitizeLegalText(review.ownerReply) : undefined,
+                });
+            }
+        }
+
+        const mappedBookings: Booking[] = Array.isArray(apiBookings)
+            ? apiBookings.map((b) => ({
+                id: b.id,
+                reference: b.bookingReference || b.id,
+                userId: b.userId || "",
+                venueEventId: b.venueEventId,
+                partySize: Number(b.partySize || 1),
+                specialRequests: b.specialRequests || "",
+                status: b.status,
+                createdAt: b.createdAt || new Date().toISOString(),
+            }))
+            : [];
+
+        setMatches(mappedMatches);
+        setVenues(mergedVenues);
+        setLeagues(Array.from(leagueMap.values()));
+        setTeams(Array.from(teamMap.values()));
+        setVenueEvents(mappedVenueEvents);
+        setPosts(mappedPosts);
+        setReviews(mappedReviews);
+        setBookings(mappedBookings);
+        setIsApiConnected(true);
+        setIsLoading(false);
+    }, [isApiConnected]);
+
+    useEffect(() => {
+        void fetchFromApi();
+    }, [fetchFromApi]);
+
+    useEffect(() => {
+        if (isApiConnected) return;
+        if (typeof window !== "undefined" && shouldSkipBootstrapFetch(window.location.pathname)) return;
+        const timer = window.setInterval(() => {
+            void fetchFromApi();
+        }, 5000);
+        return () => window.clearInterval(timer);
+    }, [isApiConnected, fetchFromApi]);
+
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            void fetchFromApi();
+        }, 30000);
+        return () => window.clearInterval(timer);
+    }, [fetchFromApi]);
+
+    useEffect(() => {
+        const onFocus = () => {
+            void fetchFromApi();
+        };
+        const onVisible = () => {
+            if (document.visibilityState === "visible") {
+                void fetchFromApi();
+            }
+        };
+        window.addEventListener("focus", onFocus);
+        document.addEventListener("visibilitychange", onVisible);
+        return () => {
+            window.removeEventListener("focus", onFocus);
+            document.removeEventListener("visibilitychange", onVisible);
+        };
+    }, [fetchFromApi]);
+
+    const getTeam = (id: string) => teams.find((t) => t.id === id);
+    const getLeague = (id: string) => leagues.find((l) => l.id === id);
+    const getVenue = (idOrSlug: string) => venues.find((v) => v.id === idOrSlug || v.slug === idOrSlug);
+    const getMatch = (id: string) => matches.find((m) => m.id === id);
+
+    const getVenueEventsForMatch = (matchId: string) => {
+        const target = String(matchId).trim().toLowerCase();
+        return venueEvents
+            .filter((ve) => String(ve.matchId).trim().toLowerCase() === target)
+            .map((ve) => ({ ...ve, venue: venues.find((v) => v.id === ve.venueId)! }))
+            .filter((ve) => ve.venue);
+    };
+
+    const getVenueReviewsForVenue = (venueId: string) => reviews.filter((r) => r.venueId === venueId);
+    const getVenuePostsForVenue = (venueId: string) => posts.filter((p) => p.venueId === venueId);
+
+    const getVenueMatchEvents = (venueId: string) =>
+        venueEvents
+            .filter((ve) => ve.venueId === venueId)
+            .map((ve) => ({
+                ...ve,
+                match: matches.find((m) => String(m.id).trim().toLowerCase() === String(ve.matchId).trim().toLowerCase())!,
+            }))
+            .filter((ve) => ve.match);
+
+    return (
+        <DataContext.Provider
+            value={{
+                matches,
+                venues,
+                leagues,
+                teams,
+                venueEvents,
+                reviews,
+                posts,
+                bookings,
+                users,
+                adminStats,
+                isApiConnected,
+                isLoading,
+                getTeam,
+                getLeague,
+                getVenue,
+                getMatch,
+                getVenueEvents: getVenueEventsForMatch,
+                getVenueReviews: getVenueReviewsForVenue,
+                getVenuePosts: getVenuePostsForVenue,
+                getVenueMatchEvents,
+                refetch: fetchFromApi,
+            }}
+        >
+            {children}
+        </DataContext.Provider>
+    );
+}
+
+export function useData(): DataContextType {
+    const ctx = useContext(DataContext);
+    if (!ctx) throw new Error("useData must be used within DataProvider");
+    return ctx;
+}
+
+export { AMENITY_LABELS, PRICE_LABELS };
+export type { Match, Venue, League, Team, VenueEvent, Review, Post, Booking, User, MatchStatus, PriceRange };

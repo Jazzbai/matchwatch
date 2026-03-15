@@ -1,0 +1,95 @@
+services:
+  # ── PostgreSQL ───────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: matchwatch
+      POSTGRES_PASSWORD: matchwatch_dev
+      POSTGRES_DB: matchwatch
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matchwatch"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── API Backend ──────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    ports: ["4000:4000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-4000}
+      POSTGRES_PASSWORD: matchwatch_dev
+      DATABASE_URL: ${DATABASE_URL:-postgresql://matchwatch:matchwatch_dev@postgres:5432/matchwatch}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      AUTO_VERIFY_EMAIL: ${AUTO_VERIFY_EMAIL:-true}
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-200}
+      PUBLIC_RATE_LIMIT_MAX: ${PUBLIC_RATE_LIMIT_MAX:-2000}
+      MATCH_SYNC_PROVIDER: ${MATCH_SYNC_PROVIDER:-}
+      FOOTBALL_DATA_API_KEY: ${FOOTBALL_DATA_API_KEY}
+      API_FOOTBALL_API_KEY: ${API_FOOTBALL_API_KEY}
+      API_FOOTBALL_BASE_URL: ${API_FOOTBALL_BASE_URL:-}
+      THE_SPORTS_DB_BASE_URL: ${THE_SPORTS_DB_BASE_URL:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-matchwatch-uploads}
+      CDN_URL: ${CDN_URL:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://44.215.158.165}
+      APP_URL: ${APP_URL:-http://44.215.158.165}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # ── Frontend (Next.js) ──────────────────────
+  frontend:
+    build:
+      context: ./HtownKickoff-main
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api/v1
+        API_PROXY_TARGET: http://api:4000
+    restart: unless-stopped
+    ports: ["3000:3000"]
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://api:4000}
+
+  # ── MailHog (dev only) ──────────────────────
+  mailhog:
+    image: mailhog/mailhog
+    ports: ["1025:1025", "8025:8025"]
+    profiles: [dev]
+
+volumes:
+  pgdata:
