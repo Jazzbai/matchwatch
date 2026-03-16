@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Check,
   CalendarDays,
@@ -260,7 +261,8 @@ function toDatetimeLocal(iso?: string | null) {
 }
 
 export default function AdminPage() {
-  const { isAuthenticated, user } = useAuth();
+  const router = useRouter();
+  const { isAuthenticated, user, logout } = useAuth();
   const { refetch } = useData();
 
   const [loading, setLoading] = React.useState(true);
@@ -289,6 +291,7 @@ export default function AdminPage() {
   const [savingSettings, setSavingSettings] = React.useState(false);
   const [uploadingCover, setUploadingCover] = React.useState(false);
   const [uploadingGallery, setUploadingGallery] = React.useState(false);
+  const [deletingVenue, setDeletingVenue] = React.useState(false);
   const [creatingMenuCategory, setCreatingMenuCategory] = React.useState(false);
   const [creatingMenuItem, setCreatingMenuItem] = React.useState(false);
 
@@ -325,6 +328,7 @@ export default function AdminPage() {
   const [promotedEventId, setPromotedEventId] = React.useState<string | null>(null);
   const coverInputRef = React.useRef<HTMLInputElement | null>(null);
   const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [deleteVenueEmailConfirm, setDeleteVenueEmailConfirm] = React.useState("");
 
   const availableMatches = React.useMemo(() => {
     const existing = new Set(events.map((event) => event.matchId));
@@ -717,6 +721,32 @@ export default function AdminPage() {
     }
   };
 
+  const deleteOwnedVenue = async () => {
+    const accountEmail = (user?.email || "").trim().toLowerCase();
+    const typedEmail = deleteVenueEmailConfirm.trim().toLowerCase();
+    if (!accountEmail || typedEmail !== accountEmail) {
+      setError("To delete this venue, retype your exact account email.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Delete this venue? This will remove it from public pages and disable all active events.",
+    );
+    if (!confirmed) return;
+
+    setDeletingVenue(true);
+    setError(null);
+    try {
+      await api.post<{ message: string }>("/dashboard/venue/delete", { email: typedEmail });
+      await logout();
+      router.replace("/for-venues");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to delete venue");
+    } finally {
+      setDeletingVenue(false);
+    }
+  };
+
   if (loading) {
     return (
         <AppShell>
@@ -743,7 +773,7 @@ export default function AdminPage() {
   }
 
   const isBusy =
-    creatingEvent || updatingBooking || updatingPromotion || savingSettings || uploadingCover || uploadingGallery;
+    creatingEvent || updatingBooking || updatingPromotion || savingSettings || uploadingCover || uploadingGallery || deletingVenue;
 
   /* ── Inline style helpers ── */
   const inputStyle: React.CSSProperties = {
@@ -1212,6 +1242,45 @@ export default function AdminPage() {
                   <button style={btnPrimary(savingSettings)} disabled={savingSettings} onClick={() => void saveVenueSettings()}>
                     {savingSettings ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving</> : <><Save size={14} /> Save Venue Settings</>}
                   </button>
+                </div>
+
+                <div style={{ marginTop: 24, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
+                  <h4 style={{ fontSize: 14, fontWeight: 700, color: "#ef4444", marginBottom: 6 }}>
+                    Danger zone
+                  </h4>
+                  <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12, lineHeight: 1.5 }}>
+                    This action removes your venue from public pages and disables all active events. To confirm, retype your account email.
+                  </p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, alignItems: "end" }}>
+                    <div>
+                      <label style={labelStyle}>Confirm email</label>
+                      <input
+                        value={deleteVenueEmailConfirm}
+                        onChange={(e) => setDeleteVenueEmailConfirm(e.target.value)}
+                        placeholder={user?.email || "you@example.com"}
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                      <button
+                        style={btnDestructive(deletingVenue || !deleteVenueEmailConfirm.trim())}
+                        disabled={deletingVenue || !deleteVenueEmailConfirm.trim()}
+                        onClick={() => void deleteOwnedVenue()}
+                      >
+                        {deletingVenue ? (
+                          <>
+                            <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 size={14} />
+                            Delete Venue
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

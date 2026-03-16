@@ -201,6 +201,10 @@ const setVenuePromotionSchema = z.object({
     venueEventId: z.string().uuid().nullable(),
 });
 
+const deleteOwnedVenueSchema = z.object({
+    email: z.string().email(),
+});
+
 dashboardRoutes.put('/venue/promotion', async (c) => {
     const context = await getVenueOr404(c);
     if ('error' in context) return context.error;
@@ -247,6 +251,66 @@ dashboardRoutes.put('/venue/promotion', async (c) => {
     });
 
     return c.json(apiResponse({ promotedVenueEventId: venueEventId }));
+});
+
+dashboardRoutes.post('/venue/delete', async (c) => {
+    const context = await getVenueOr404(c);
+    if ('error' in context) return context.error;
+    const { user, venue } = context;
+
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = deleteOwnedVenueSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const normalizedEmail = parsed.data.email.trim().toLowerCase();
+    if (normalizedEmail !== user.email.trim().toLowerCase()) {
+        return c.json(apiError('VALIDATION_ERROR', 'Confirmation email does not match your account email'), 400);
+    }
+
+    const updatedMetadata = {
+        ...venueMetadataRecord(venue.metadata),
+        promotedVenueEventId: null,
+    };
+
+    await db.transaction(async (tx) => {
+        await tx.update(venueEvents).set({
+            isActive: false,
+            updatedAt: new Date(),
+        }).where(eq(venueEvents.venueId, venue.id));
+
+        await tx.update(venueCustomEvents).set({
+            isActive: false,
+            updatedAt: new Date(),
+        }).where(eq(venueCustomEvents.venueId, venue.id));
+
+        await tx.update(menuCategories).set({
+            isActive: false,
+        }).where(eq(menuCategories.venueId, venue.id));
+
+        await tx.update(venues).set({
+            isActive: false,
+            deletedAt: new Date(),
+            updatedAt: new Date(),
+            metadata: updatedMetadata,
+        }).where(eq(venues.id, venue.id));
+
+        await tx.update(users).set({
+            role: 'USER',
+            updatedAt: new Date(),
+        }).where(eq(users.id, user.id));
+
+        await tx.insert(auditLogs).values({
+            userId: user.id,
+            action: 'VENUE_DELETED',
+            entityType: 'Venue',
+            entityId: venue.id,
+            metadata: { ownerEmail: normalizedEmail },
+        });
+    });
+
+    return c.json(apiResponse({ message: 'Venue deleted successfully' }));
 });
 
 // ─── Events CRUD ────────────────────────────────

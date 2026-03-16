@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { MatchCard } from "../components/MatchCard";
-import { VenueCard } from "../components/VenueCard";
 import { MapListToggle } from "../components/MapListToggle";
 import { BookingDrawer } from "../components/BookingDrawer";
 import { useData } from "../lib/data-provider";
@@ -134,6 +133,8 @@ export default function HomePage() {
   const mapVenueCards = featuredVenueEvents.length > 0
     ? featuredVenueEvents.map((event) => event.venue).slice(0, 6)
     : venueCards;
+  const getVenueCardImage = (venue: (typeof VENUES)[number]) =>
+    venue.coverImageUrl || venue.galleryImageUrls?.[0] || "/assets/img-3.png";
 
   return (
       <AppShell>
@@ -250,9 +251,9 @@ export default function HomePage() {
             </div>
           </div>
           
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, gridAutoRows: 320 }} className="bento-match-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
             {filteredUpcomingMatches.length === 0 && (
-                <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "span 3", minHeight: 320 }}>
+                <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "1 / -1", minHeight: 300 }}>
                     <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", marginBottom: 16 }}>
                         <Trophy style={{ width: 32, height: 32, opacity: 0.5 }} />
                     </div>
@@ -262,7 +263,7 @@ export default function HomePage() {
                     </p>
                 </div>
             )}
-            {filteredUpcomingMatches.slice(0, 7).map((m, i) => {
+            {filteredUpcomingMatches.slice(0, 8).map((m) => {
               const home = getTeam(m.homeTeamId);
               const away = getTeam(m.awayTeamId);
               const league = getLeague(m.leagueId);
@@ -271,98 +272,39 @@ export default function HomePage() {
               const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
               const isFinished = m.status === "FINISHED";
               const d = new Date(m.matchDateUTC);
-              
-              const isLarge = i === 0 || i === 3;
+              const cardStatus: "SCHEDULED" | "LIVE" | "FINISHED" = isLive
+                ? "LIVE"
+                : isFinished
+                  ? "FINISHED"
+                  : "SCHEDULED";
               
               return (
-                <Link
+                <MatchCard
                   key={m.id}
-                  href={`/matches/${m.id}`}
-                  style={{
-                    position: "relative", borderRadius: 24, overflow: "hidden",
-                    border: "1px solid var(--border)", backgroundColor: "var(--card)",
-                    transition: "all 0.5s", display: "block", textDecoration: "none", color: "inherit",
-                    gridColumn: isLarge ? "span 2" : "span 1",
-                    gridRow: isLarge ? "span 2" : "span 1",
-                  }}
-                >
-                    {/* Background Graphic */}
-                    <div style={{ position: "absolute", inset: 0, opacity: 0.08, background: "linear-gradient(135deg, var(--background), var(--muted), color-mix(in oklch, var(--primary) 20%, transparent))", pointerEvents: "none", transition: "opacity 0.3s" }} />
-                    
-                    {/* Content */}
-                    <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", padding: isLarge ? "24px 32px" : "20px 20px", justifyContent: "space-between", zIndex: 10 }}>
-                        {/* Status Bar */}
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, backgroundColor: "color-mix(in oklch, var(--background) 80%, transparent)", backdropFilter: "blur(8px)", padding: "4px 8px 4px 6px", borderRadius: 999, border: "1px solid var(--border)" }}>
-                                {league.image ? <img src={league.image} style={{ width: 18, height: 18, objectFit: "contain" }} alt="" /> : <span style={{ fontSize: 16 }}>{league.logo}</span>}
-                                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--foreground)" }}>{league.shortName}</span>
-                            </div>
-                            
-                            {isLive ? (
-                                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", padding: "3px 10px", borderRadius: 999, fontSize: 10, fontWeight: 700, animation: "pulse 2s infinite" }}>
-                                    <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#ef4444" }} /> LIVE
-                                </div>
-                            ) : (
-                                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted-foreground)", backgroundColor: "var(--secondary)", padding: "4px 12px", borderRadius: 999, border: "1px solid var(--border)" }}>
-                                    {isFinished ? "FT" : `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Teams */}
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: isLarge ? 24 : 12, margin: "auto 0", flexDirection: isLarge ? "row" : "column" }}>
-                            {/* Home */}
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "33%" }}>
-                                <div style={{
-                                  position: "relative", width: isLarge ? 96 : 56, height: isLarge ? 96 : 56,
-                                  borderRadius: 16, background: "linear-gradient(to bottom, var(--background), var(--secondary))",
-                                  padding: isLarge ? 12 : 8, border: "1px solid var(--border)",
-                                  transition: "transform 0.5s", boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                }}>
-                                    {home.image ? <img src={home.image} alt={home.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", fontSize: isLarge ? 40 : 28 }}>{home.crest}</div>}
-                                </div>
-                                <span style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, textAlign: "center", lineHeight: 1.2, fontSize: isLarge ? 20 : 13, color: "var(--foreground)" }}>{home.shortName}</span>
-                            </div>
-                            
-                            {/* VS */}
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                                {(m.homeScore !== null && m.awayScore !== null) ? (
-                                    <div style={{ fontFamily: "monospace", fontWeight: 900, letterSpacing: "-0.02em", fontSize: isLarge ? 48 : 24, color: "var(--foreground)" }}>
-                                        {m.homeScore}<span style={{ color: "var(--primary)", margin: "0 4px" }}>-</span>{m.awayScore}
-                                    </div>
-                                ) : (
-                                    <div style={{ fontWeight: 900, color: "color-mix(in oklch, var(--muted-foreground) 30%, transparent)", fontStyle: "italic", fontSize: isLarge ? 28 : 18 }}>VS</div>
-                                )}
-                            </div>
-
-                            {/* Away */}
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "33%" }}>
-                                <div style={{
-                                  position: "relative", width: isLarge ? 96 : 56, height: isLarge ? 96 : 56,
-                                  borderRadius: 16, background: "linear-gradient(to bottom, var(--background), var(--secondary))",
-                                  padding: isLarge ? 12 : 8, border: "1px solid var(--border)",
-                                  transition: "transform 0.5s", boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                }}>
-                                    {away.image ? <img src={away.image} alt={away.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", fontSize: isLarge ? 40 : 28 }}>{away.crest}</div>}
-                                </div>
-                                <span style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, textAlign: "center", lineHeight: 1.2, fontSize: isLarge ? 20 : 13, color: "var(--foreground)" }}>{away.shortName}</span>
-                            </div>
-                        </div>
-
-                        {/* Footer info */}
-                        <div style={{ paddingTop: 12, borderTop: "1px solid color-mix(in oklch, var(--border) 50%, transparent)", display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 6 }}><MapPin size={14} style={{ color: "var(--primary)" }} /> {m.venueCount} Venues</span>
-                            {(isLarge || i === 1) && <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, color: "var(--primary)" }}>View Details →</span>}
-                        </div>
-                    </div>
-                </Link>
+                  homeTeam={home.shortName || home.name}
+                  awayTeam={away.shortName || away.name}
+                  homeCrest={home.crest}
+                  awayCrest={away.crest}
+                  homeImage={home.image}
+                  awayImage={away.image}
+                  kickoff={`${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
+                  league={league.shortName || league.name}
+                  leagueLogo={league.logo}
+                  leagueImage={league.image}
+                  venueCount={m.venueCount}
+                  status={cardStatus}
+                  homeScore={m.homeScore ?? undefined}
+                  awayScore={m.awayScore ?? undefined}
+                  matchDay={m.stage || m.matchDay}
+                  isHot={m.isHot}
+                  onClick={() => { window.location.href = `/matches/${m.id}`; }}
+                  style={{ minWidth: "unset", height: "100%" }}
+                />
               );
             })}
 
             {/* View All Tile */}
-            <Link href="/matches" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 24, border: "1px dashed var(--border)", padding: 32, minHeight: 320, textDecoration: "none", transition: "background-color 0.2s", color: "inherit" }}>
+            <Link href="/matches" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 24, border: "1px dashed var(--border)", padding: 32, minHeight: 280, textDecoration: "none", transition: "background-color 0.2s", color: "inherit" }}>
                 <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)", marginBottom: 16 }}>
                     <CalendarDays style={{ width: 32, height: 32 }} />
                 </div>
@@ -373,54 +315,63 @@ export default function HomePage() {
         </section>
 
         {/* ─── Immersive Featured Venues Carousel ───────────────────── */}
-        <section style={{ position: "relative", width: "100%", padding: "96px 0", backgroundColor: "var(--foreground)", borderRadius: 48, overflow: "hidden", marginBottom: -48, zIndex: 20 }}>
-           {/* Dark section background graphic */}
-           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ background: "radial-gradient(ellipse at top, color-mix(in oklch, var(--primary) 30%, transparent), var(--background))" }} />
-           
-          <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px", marginBottom: 48, display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", position: "relative", zIndex: 10 }}>
+        <section style={{ position: "relative", width: "100%", padding: "96px 0 72px", backgroundColor: "var(--background)", overflow: "hidden", zIndex: 20 }}>
+          <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px", marginBottom: 28, display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 12, position: "relative", zIndex: 10 }}>
             <div>
               <div className="text-primary font-bold tracking-widest text-xs mb-2">POPULAR NEAR YOU</div>
-              <h2 className="font-display text-4xl md:text-5xl font-black text-background">FEATURED VENUES</h2>
+              <h2 className="font-display text-4xl md:text-5xl font-black text-foreground">FEATURED VENUES</h2>
             </div>
-            <Link href="/venues" className="mt-4 md:mt-0 text-sm font-bold text-background bg-background/10 hover:bg-background/20 px-6 py-3 rounded-full transition-colors border border-background/20">
+            <Link href="/venues" className="mt-2 md:mt-0 text-sm font-bold text-foreground bg-secondary hover:bg-secondary/80 px-6 py-3 rounded-full transition-colors border border-border">
               Explore Map →
             </Link>
           </div>
-          <div className="flex overflow-x-auto gap-6 px-6 pb-8 snap-x snap-mandatory scrollbar-hide relative z-10 before:content-[''] before:w-4 before:shrink-0 after:content-[''] after:w-4 after:shrink-0">
-            {venueCards.map((v, i) => (
-              <div key={v.id} className="snap-center shrink-0 w-[300px] sm:w-[380px] group cursor-pointer relative" onClick={() => window.location.href = `/venues/${v.slug}`}>
-                 {/* Creative floating Venue Card */}
-                 <div className="h-[420px] rounded-[2rem] overflow-hidden relative border border-white/10 group-hover:border-primary/50 transition-colors">
-                    <Image src="/assets/img-3.png" alt={v.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110 opacity-70" sizes="(max-width: 640px) 300px, 380px" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-                    
-                    {/* Content injected over image */}
-                    <div className="absolute inset-0 p-6 flex flex-col justify-end text-white">
-                        <div className="flex gap-2 mb-3 flex-wrap">
-                            {v.isFeatured && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary text-black">FEATURED</span>}
-                        </div>
-                        <h3 className="font-display text-3xl font-bold mb-1 group-hover:text-primary transition-colors">{v.name}</h3>
-                        <p className="text-sm text-gray-300 mb-4 font-medium flex items-center gap-1.5"><MapPin size={14} className="text-primary" /> {v.addressLine1}</p>
-                        
-                        <div className="w-full h-px bg-white/20 mb-4" />
-                        
-                        <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-gray-300">{v.upcomingEventsCount} Events</span>
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedVenueIdx(i);
-                                    setBookingOpen(true);
-                                }}
-                                className="bg-white text-black text-xs font-bold px-4 py-2 rounded-full hover:bg-primary hover:text-black transition-colors"
-                            >
-                                Book Now
-                            </button>
-                        </div>
+          <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, position: "relative", zIndex: 10 }}>
+            {venueCards.map((v, i) => {
+              const venueImage = getVenueCardImage(v);
+              return (
+                <div key={v.id} style={{ borderRadius: 28, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "0 12px 32px rgba(0,0,0,0.12)" }}>
+                  <Link href={`/venues/${v.slug}`} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
+                    <div style={{ position: "relative", width: "100%", height: 220, overflow: "hidden" }}>
+                      <img
+                        src={venueImage}
+                        alt={v.name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = "/assets/img-3.png";
+                        }}
+                      />
+                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(6, 10, 20, 0.88) 0%, rgba(6, 10, 20, 0.3) 60%, rgba(6, 10, 20, 0.1) 100%)" }} />
+                      <div style={{ position: "absolute", inset: 0, padding: 18, display: "flex", flexDirection: "column", justifyContent: "flex-end", color: "#fff" }}>
+                        {v.isFeatured && (
+                          <span style={{ alignSelf: "flex-start", marginBottom: 8, padding: "4px 10px", borderRadius: 999, fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", backgroundColor: "rgba(34,197,94,0.2)", border: "1px solid rgba(34,197,94,0.35)" }}>
+                            Featured
+                          </span>
+                        )}
+                        <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 26, lineHeight: 1.1, fontWeight: 800, margin: 0 }}>{v.name}</h3>
+                        <p style={{ fontSize: 12, marginTop: 6, color: "rgba(255,255,255,0.88)", display: "flex", alignItems: "center", gap: 6 }}>
+                          <MapPin size={12} />
+                          {v.addressLine1}
+                        </p>
+                      </div>
                     </div>
-                 </div>
-              </div>
-            ))}
+                  </Link>
+
+                  <div style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)" }}>{v.upcomingEventsCount} Events</span>
+                    <button
+                      onClick={() => {
+                        setSelectedVenueIdx(i);
+                        setBookingOpen(true);
+                      }}
+                      className="btn-primary"
+                      style={{ padding: "8px 14px", fontSize: 12, borderRadius: 999 }}
+                    >
+                      Book Now
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -441,7 +392,7 @@ export default function HomePage() {
               <MapListToggle
                 venues={mapVenueCards.map((v) => ({
                   name: v.name,
-                  coverImage: "/assets/img-4.png",
+                  coverImage: getVenueCardImage(v),
                   city: v.city,
                   address: v.addressLine1,
                   rating: v.rating,

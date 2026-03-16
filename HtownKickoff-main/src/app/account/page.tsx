@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ImagePlus, LoaderCircle, MapPin, CalendarClock, Settings, Bookmark, X, Loader2 } from "lucide-react";
+import { ImagePlus, LoaderCircle, MapPin, CalendarClock, Settings, Bookmark, X, Loader2, Search } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { api, uploadApi } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
@@ -80,6 +80,8 @@ export default function AccountPage() {
     const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [interestPickerOpen, setInterestPickerOpen] = useState(false);
+    const [interestSearch, setInterestSearch] = useState("");
 
     const [nameDraft, setNameDraft] = useState("");
     const [avatarDraft, setAvatarDraft] = useState("");
@@ -88,6 +90,20 @@ export default function AccountPage() {
         () => teams.slice(0, 80),
         [teams],
     );
+    const selectedInterestTeams = useMemo(
+        () => interestTeams.filter((team) => interestIds.includes(team.id)),
+        [interestTeams, interestIds],
+    );
+    const filteredInterestTeams = useMemo(() => {
+        const search = interestSearch.trim().toLowerCase();
+        if (!search) return interestTeams;
+        return interestTeams.filter((team) => {
+            return (
+                team.name.toLowerCase().includes(search) ||
+                team.shortName.toLowerCase().includes(search)
+            );
+        });
+    }, [interestTeams, interestSearch]);
 
     const loadData = async () => {
         if (!isAuthenticated) {
@@ -424,32 +440,177 @@ export default function AccountPage() {
                         <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 24 }}>
                             Select teams to personalize reminders and venue updates.
                         </p>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10, marginBottom: 24 }}>
-                            {interestTeams.map((team) => {
-                                const selected = interestIds.includes(team.id);
-                                return (
-                                    <button
-                                        key={team.id}
-                                        style={{
-                                            display: "flex", alignItems: "center", gap: 10, padding: 12, borderRadius: 12,
-                                            border: selected ? "1px solid var(--primary)" : "1px solid var(--border)",
-                                            backgroundColor: selected ? "color-mix(in oklch, var(--primary) 5%, transparent)" : "var(--card)",
-                                            cursor: "pointer", fontFamily: "inherit", textAlign: "left", transition: "all 0.2s",
-                                            outline: selected ? "1px solid var(--primary)" : "none",
-                                        }}
-                                        onClick={() => {
-                                            setInterestIds((prev) => selected ? prev.filter((id) => id !== team.id) : [...prev, team.id]);
-                                        }}
-                                    >
-                                        <span style={{ fontSize: 20 }}>{team.crest}</span>
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: selected ? "var(--primary)" : "var(--foreground)" }}>{team.shortName}</span>
-                                    </button>
-                                );
-                            })}
+                        <div style={{ ...cardBoxStyle, marginBottom: 20 }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+                                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)" }}>
+                                    {selectedInterestTeams.length} team{selectedInterestTeams.length === 1 ? "" : "s"} selected
+                                </p>
+                                <button
+                                    style={{
+                                        padding: "9px 14px",
+                                        borderRadius: 10,
+                                        border: "1px solid var(--border)",
+                                        backgroundColor: "var(--secondary)",
+                                        color: "var(--secondary-foreground)",
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                        fontFamily: "inherit",
+                                    }}
+                                    onClick={() => setInterestPickerOpen(true)}
+                                >
+                                    Choose Teams
+                                </button>
+                            </div>
+
+                            {selectedInterestTeams.length === 0 ? (
+                                <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+                                    No teams selected yet. Use “Choose Teams” to pick your favorites.
+                                </p>
+                            ) : (
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 10 }}>
+                                    {selectedInterestTeams.map((team) => (
+                                        <div
+                                            key={team.id}
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                                gap: 10,
+                                                padding: 10,
+                                                borderRadius: 10,
+                                                border: "1px solid var(--border)",
+                                                backgroundColor: "var(--secondary)",
+                                            }}
+                                        >
+                                            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                                                {team.image ? (
+                                                    <img
+                                                        src={team.image}
+                                                        alt={team.name}
+                                                        style={{ width: 24, height: 24, objectFit: "contain", borderRadius: 6, flexShrink: 0 }}
+                                                    />
+                                                ) : (
+                                                    <span style={{ fontSize: 16 }}>{team.crest}</span>
+                                                )}
+                                                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--foreground)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                    {team.shortName}
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={() => setInterestIds((prev) => prev.filter((id) => id !== team.id))}
+                                                style={{
+                                                    width: 24,
+                                                    height: 24,
+                                                    borderRadius: 8,
+                                                    border: "1px solid var(--border)",
+                                                    backgroundColor: "var(--card)",
+                                                    color: "var(--muted-foreground)",
+                                                    cursor: "pointer",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                }}
+                                                aria-label={`Remove ${team.name}`}
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <button style={primaryBtnStyle(saving)} onClick={() => void handleSaveInterests()} disabled={saving}>
                             {saving ? "Saving..." : "Save Interests"}
                         </button>
+
+                        {interestPickerOpen && (
+                            <div
+                                style={{
+                                    position: "fixed",
+                                    inset: 0,
+                                    zIndex: 70,
+                                    backgroundColor: "rgba(0,0,0,0.65)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: 16,
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        width: "100%",
+                                        maxWidth: 860,
+                                        maxHeight: "85vh",
+                                        overflow: "auto",
+                                        borderRadius: 16,
+                                        border: "1px solid var(--border)",
+                                        backgroundColor: "var(--card)",
+                                        padding: 20,
+                                    }}
+                                >
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                                        <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--foreground)" }}>Choose Teams</h3>
+                                        <button
+                                            onClick={() => setInterestPickerOpen(false)}
+                                            style={{ border: "1px solid var(--border)", backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)", borderRadius: 8, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+
+                                    <div style={{ position: "relative", marginBottom: 16 }}>
+                                        <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: "var(--muted-foreground)" }} />
+                                        <input
+                                            value={interestSearch}
+                                            onChange={(e) => setInterestSearch(e.target.value)}
+                                            placeholder="Search teams"
+                                            style={{ ...inputStyle, paddingLeft: 36 }}
+                                        />
+                                    </div>
+
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+                                        {filteredInterestTeams.map((team) => {
+                                            const selected = interestIds.includes(team.id);
+                                            return (
+                                                <button
+                                                    key={team.id}
+                                                    onClick={() => {
+                                                        setInterestIds((prev) =>
+                                                            selected ? prev.filter((id) => id !== team.id) : [...prev, team.id],
+                                                        );
+                                                    }}
+                                                    style={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: 10,
+                                                        width: "100%",
+                                                        padding: 11,
+                                                        borderRadius: 10,
+                                                        border: selected ? "1px solid var(--primary)" : "1px solid var(--border)",
+                                                        backgroundColor: selected ? "color-mix(in oklch, var(--primary) 8%, transparent)" : "var(--secondary)",
+                                                        cursor: "pointer",
+                                                        fontFamily: "inherit",
+                                                        textAlign: "left",
+                                                        color: selected ? "var(--primary)" : "var(--foreground)",
+                                                        fontWeight: 700,
+                                                    }}
+                                                >
+                                                    {team.image ? (
+                                                        <img src={team.image} alt={team.name} style={{ width: 22, height: 22, objectFit: "contain", borderRadius: 6, flexShrink: 0 }} />
+                                                    ) : (
+                                                        <span style={{ fontSize: 16 }}>{team.crest}</span>
+                                                    )}
+                                                    <span style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                        {team.name}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </section>
                 )}
 

@@ -14,6 +14,7 @@ import userRoutes from './routes/user';
 import dashboardRoutes from './routes/dashboard';
 import adminRoutes from './routes/admin';
 import uploadRoutes from './routes/uploads';
+import superAdminRoutes from './routes/superAdmin';
 import { logger } from './lib/logger';
 import { scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
 
@@ -45,6 +46,7 @@ v1.route('/bookings', bookingRoutes);
 v1.route('/user', userRoutes);
 v1.route('/dashboard', dashboardRoutes);
 v1.route('/admin', adminRoutes);
+v1.route('/super-admin', superAdminRoutes);
 v1.route('/uploads', uploadRoutes);
 v1.route('/upload', uploadRoutes);
 

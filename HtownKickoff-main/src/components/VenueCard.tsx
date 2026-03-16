@@ -88,7 +88,6 @@ export function VenueCard({
             aria-label={`${name} in ${city}`}
             style={{
                 width: "100%",
-                maxWidth: 380,
                 borderRadius: 20,
                 border: "1px solid var(--border)",
                 backgroundColor: "var(--card)",
@@ -198,7 +197,17 @@ export function VenueCard({
                 </div>
 
                 {/* Address */}
-                <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <p style={{
+                    fontSize: 12,
+                    color: "var(--muted-foreground)",
+                    marginBottom: 14,
+                    fontWeight: 500,
+                    lineHeight: 1.45,
+                    overflow: "hidden",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                }}>
                     {address}, {city}
                 </p>
 

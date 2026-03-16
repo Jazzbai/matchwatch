@@ -85,6 +85,7 @@ export default function VenueRegisterPage() {
   const venuePwScore = venuePwChecks.filter((c) => c.pass).length;
   const venuePwColor = venuePwScore <= 1 ? "#ef4444" : venuePwScore <= 2 ? "#f97316" : venuePwScore <= 3 ? "#eab308" : venuePwScore <= 4 ? "#84cc16" : "#22c55e";
   const venuePwLabel = venuePwScore <= 1 ? "Weak" : venuePwScore <= 2 ? "Fair" : venuePwScore <= 3 ? "Moderate" : venuePwScore <= 4 ? "Good" : "Strong";
+  const fieldClassName = "h-11 px-3 text-sm";
 
   const toggleAmenity = (value: string) => {
     setAmenities((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
@@ -174,15 +175,15 @@ export default function VenueRegisterPage() {
 
   return (
       <AppShell>
-        <main className="mx-auto w-full max-w-5xl px-4 py-8">
-          <div className="mb-6 flex items-center justify-between gap-4">
+        <main className="mx-auto w-full max-w-6xl px-4 py-8 md:py-10">
+          <div className="mb-8 flex items-center justify-between gap-4">
             <div>
               <Badge variant="secondary" className="mb-2 gap-1">
                 <Building2 className="h-3.5 w-3.5" />
                 Venue onboarding
               </Badge>
-              <h1 className="font-display text-3xl text-[var(--foreground)]">Register Your Venue</h1>
-              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+              <h1 className="font-display text-3xl md:text-4xl text-[var(--foreground)]">Register Your Venue</h1>
+              <p className="mt-2 max-w-2xl text-sm md:text-base text-[var(--muted-foreground)]">
                 Create your owner account, place your venue on the map, and publish your profile.
               </p>
             </div>
@@ -199,25 +200,26 @@ export default function VenueRegisterPage() {
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Card>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Card className="border-[var(--border)]/70 bg-card shadow-sm">
               <CardHeader>
                 <CardTitle>Owner account</CardTitle>
                 <CardDescription>This account will manage events, bookings, and venue content.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3 md:grid-cols-3">
+              <CardContent className="grid gap-5 md:grid-cols-3">
                 <div className="space-y-2 md:col-span-1">
                   <Label htmlFor="owner-name">Owner name</Label>
-                  <Input id="owner-name" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
+                  <Input id="owner-name" className={fieldClassName} value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
                 </div>
                 <div className="space-y-2 md:col-span-1">
                   <Label htmlFor="owner-email">Email</Label>
-                  <Input id="owner-email" type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} required />
+                  <Input id="owner-email" className={fieldClassName} type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} required />
                 </div>
                 <div className="space-y-2 md:col-span-1">
                   <Label htmlFor="owner-password">Password</Label>
                   <Input
                     id="owner-password"
+                    className={fieldClassName}
                     type="password"
                     placeholder="At least 10 characters"
                     value={ownerPassword}
@@ -249,7 +251,7 @@ export default function VenueRegisterPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-[var(--border)]/70 bg-card shadow-sm">
               <CardHeader>
                 <CardTitle>Venue details</CardTitle>
                 <CardDescription>Set your location and profile details used on the public venue page.</CardDescription>
@@ -258,13 +260,40 @@ export default function VenueRegisterPage() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="venue-name">Venue name</Label>
-                    <Input id="venue-name" value={venueName} onChange={(e) => setVenueName(e.target.value)} required />
+                    <Input id="venue-name" className={fieldClassName} value={venueName} onChange={(e) => setVenueName(e.target.value)} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="venue-phone">Phone</Label>
                     <div className="relative">
                       <Phone className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--muted-foreground)]" />
-                      <Input id="venue-phone" className="pl-9" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                      <Input id="venue-phone" className={`${fieldClassName} pl-9`} value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Input
+                      id="address"
+                      className={fieldClassName}
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Street address (you can type this before selecting map point)"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="capacity">Capacity</Label>
+                    <div className="relative">
+                      <Armchair className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--muted-foreground)]" />
+                      <Input
+                        id="capacity"
+                        type="number"
+                        className={`${fieldClassName} pl-9`}
+                        value={capacity}
+                        onChange={(e) => setCapacity(e.target.value)}
+                      />
                     </div>
                   </div>
                 </div>
@@ -277,6 +306,12 @@ export default function VenueRegisterPage() {
                   <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
                     <MapPin className="h-3.5 w-3.5" />
                     <span>{lat.toFixed(6)}, {lng.toFixed(6)}</span>
+                    {!locationPicked && (
+                      <>
+                        <Separator orientation="vertical" className="h-3" />
+                        <span>Select map point to finalize coordinates.</span>
+                      </>
+                    )}
                     {isResolvingAddress && (
                       <>
                         <Separator orientation="vertical" className="h-3" />
@@ -288,51 +323,24 @@ export default function VenueRegisterPage() {
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-3">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      disabled={!locationPicked}
-                      placeholder={locationPicked ? "Street address" : "Select map location first"}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="capacity">Capacity</Label>
-                    <div className="relative">
-                      <Armchair className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--muted-foreground)]" />
-                      <Input
-                        id="capacity"
-                        type="number"
-                        className="pl-9"
-                        value={capacity}
-                        onChange={(e) => setCapacity(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
-                    <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} disabled={!locationPicked} required />
+                    <Input id="city" className={fieldClassName} value={city} onChange={(e) => setCity(e.target.value)} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="country">Country code</Label>
                     <Input
                       id="country"
+                      className={fieldClassName}
                       value={country}
                       onChange={(e) => setCountry(e.target.value.toUpperCase())}
-                      disabled={!locationPicked}
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="price-range">Price range</Label>
                     <Select value={priceRange} onValueChange={(value) => setPriceRange(value as typeof priceRange)}>
-                      <SelectTrigger id="price-range">
+                      <SelectTrigger id="price-range" className={fieldClassName}>
                         <SelectValue placeholder="Select range" />
                       </SelectTrigger>
                       <SelectContent>
@@ -349,6 +357,7 @@ export default function VenueRegisterPage() {
                   <Label htmlFor="description">Description</Label>
                   <Textarea
                     id="description"
+                    className="min-h-28"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Describe atmosphere, specialties, and watch-party setup."
@@ -357,7 +366,7 @@ export default function VenueRegisterPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-[var(--border)]/70 bg-card shadow-sm">
               <CardHeader>
                 <CardTitle>Amenities and cuisine</CardTitle>
                 <CardDescription>Select tags to improve venue discovery and matching.</CardDescription>
