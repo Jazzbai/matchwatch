@@ -1,0 +1,13 @@
+# Development Changes
+- Setup Shadcn UI init.
+- Added next-themes and updated globals.css.
+- Installed shadcn button, sheet, dropdown-menu, tabs, card, input.
+- Added ThemeToggle component for light/dark mode.
+- Wrapped RootLayout with NextThemesProvider.
+- Refactored AppShell, TopBar, and BottomTabBar to use Tailwind.
+- Redesigned MatchCard with mouse-tracking glare effect, all inline styles, no Tailwind dependency.
+- Rewrote VenueCard with inline styles: img-based cover, inline badges, styled Book Now button, hover elevation.
+- Rewrote BookingDrawer as custom fixed-position drawer with backdrop overlay, removing shadcn Sheet dep.
+- Fixed admin dashboard: header, error alert, Tabs layout, overview stats grid — all inline-styled.
+- Added slideUp and pulse CSS keyframe animations to globals.css.
+- Matched venues filter panel style to matches page (unified card panel with labeled rows).

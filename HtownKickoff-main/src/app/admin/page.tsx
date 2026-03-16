@@ -23,7 +23,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { ThemeProvider, AppShell } from "../../components/AppShell";
+import { AppShell } from "../../components/AppShell";
 import { useAuth } from "../../lib/auth-context";
 import { api, uploadApi } from "../../lib/api";
 import { useData } from "../../lib/data-provider";
@@ -719,901 +719,620 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <ThemeProvider>
         <AppShell>
-          <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-10 text-[var(--text-secondary)]">
-            <Loader2 className="h-5 w-5 animate-spin" />
+          <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "40px 24px", color: "var(--muted-foreground)" }}>
+            <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite" }} />
             <span>Loading venue dashboard...</span>
           </div>
         </AppShell>
-      </ThemeProvider>
     );
   }
 
   if (!isAuthenticated || !user) {
     return (
-      <ThemeProvider>
         <AppShell>
-          <div className="mx-auto max-w-2xl px-4 py-12 text-center">
-            <h1 className="font-display text-h1 text-[var(--text-primary)]">Login Required</h1>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          <div style={{ maxWidth: 540, margin: "0 auto", padding: "64px 24px", textAlign: "center" }}>
+            <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 28, fontWeight: 900, color: "var(--foreground)", marginBottom: 8 }}>Login Required</h1>
+            <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginBottom: 24 }}>
               Sign in with a venue account to access the dashboard.
             </p>
-            <Button asChild className="mt-4">
-              <Link href="/login">Go to Login</Link>
-            </Button>
+            <Link href="/login" style={{ display: "inline-block", padding: "10px 24px", borderRadius: 10, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Go to Login</Link>
           </div>
         </AppShell>
-      </ThemeProvider>
     );
   }
 
   const isBusy =
     creatingEvent || updatingBooking || updatingPromotion || savingSettings || uploadingCover || uploadingGallery;
 
+  /* ── Inline style helpers ── */
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--border)",
+    backgroundColor: "var(--secondary)", color: "var(--foreground)", fontSize: 14,
+    fontFamily: "inherit", outline: "none",
+  };
+  const labelStyle: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 };
+  const cardStyle: React.CSSProperties = { backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" };
+  const cardHeaderStyle: React.CSSProperties = { padding: "20px 24px", borderBottom: "1px solid var(--border)" };
+  const cardContentStyle: React.CSSProperties = { padding: 24 };
+  const btnPrimary = (disabled?: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 10,
+    backgroundColor: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700,
+    fontSize: 13, border: "none", cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit",
+    opacity: disabled ? 0.5 : 1, transition: "all 0.2s",
+  });
+  const btnOutline = (disabled?: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 10,
+    backgroundColor: "transparent", color: "var(--foreground)", fontWeight: 700,
+    fontSize: 13, border: "1px solid var(--border)", cursor: disabled ? "not-allowed" : "pointer",
+    fontFamily: "inherit", opacity: disabled ? 0.5 : 1, transition: "all 0.2s",
+  });
+  const btnDestructive = (disabled?: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 10,
+    backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444", fontWeight: 700,
+    fontSize: 13, border: "1px solid rgba(239,68,68,0.2)", cursor: disabled ? "not-allowed" : "pointer",
+    fontFamily: "inherit", opacity: disabled ? 0.5 : 1, transition: "all 0.2s",
+  });
+  const badgeStyle: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 99,
+    fontSize: 11, fontWeight: 700, backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)",
+    border: "1px solid var(--border)",
+  };
+  const tabBtnStyle = (active: boolean): React.CSSProperties => ({
+    display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 10,
+    fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", border: "none", fontFamily: "inherit",
+    transition: "all 0.2s",
+    backgroundColor: active ? "var(--background)" : "transparent",
+    color: active ? "var(--foreground)" : "var(--muted-foreground)",
+    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+    outline: active ? "1px solid var(--border)" : "none",
+  });
+  const eventRowStyle: React.CSSProperties = {
+    padding: 16, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", marginBottom: 12,
+  };
+
+  const TABS_LIST = [
+    { id: "overview", label: "Overview" },
+    { id: "events", label: "Events" },
+    { id: "bookings", label: "Reservations" },
+    { id: "menu", label: "Menu" },
+    { id: "settings", label: "Venue Settings" },
+  ];
+
   return (
-    <ThemeProvider>
       <AppShell>
-        <main className="mx-auto w-full max-w-6xl px-4 py-8">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <main style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px", width: "100%" }}>
+          {/* Header */}
+          <div style={{ marginBottom: 24, display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
             <div>
-              <Badge variant="secondary" className="mb-2">
+              <div style={{ display: "inline-block", padding: "4px 12px", borderRadius: 8, backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
                 Venue Dashboard
-              </Badge>
-              <h1 className="font-display text-3xl text-[var(--text-primary)]">
+              </div>
+              <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 28, fontWeight: 900, color: "var(--foreground)", margin: 0 }}>
                 {overview?.venue?.name || "Venue"}
               </h1>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                <MapPin className="mr-1 inline h-3.5 w-3.5" />
+              <p style={{ marginTop: 4, fontSize: 13, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 4 }}>
+                <MapPin style={{ width: 14, height: 14 }} />
                 {overview?.venue?.city || "City unavailable"}
               </p>
             </div>
-            <Button variant="outline" onClick={() => void loadDashboard()} disabled={isBusy}>
+            <button onClick={() => void loadDashboard()} disabled={isBusy} style={btnOutline(isBusy)}>
               Refresh
-            </Button>
+            </button>
           </div>
 
+          {/* Error */}
           {error && (
-            <Alert variant="destructive" className="mb-4">
-              <CircleAlert className="mb-2 h-4 w-4" />
-              <AlertTitle>Action blocked</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            <div style={{ marginBottom: 16, padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(239,68,68,0.3)", backgroundColor: "rgba(239,68,68,0.08)", display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <CircleAlert style={{ width: 16, height: 16, color: "#ef4444", marginTop: 2, flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#ef4444", marginBottom: 2 }}>Action blocked</div>
+                <div style={{ fontSize: 13, color: "#ef4444" }}>{error}</div>
+              </div>
+            </div>
           )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 md:grid-cols-5">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="events">Events</TabsTrigger>
-              <TabsTrigger value="bookings">Reservations</TabsTrigger>
-              <TabsTrigger value="menu">Menu</TabsTrigger>
-              <TabsTrigger value="settings">Venue Settings</TabsTrigger>
-            </TabsList>
+          {/* Tab Navigation */}
+          <div style={{ display: "inline-flex", padding: 4, backgroundColor: "var(--secondary)", borderRadius: 12, border: "1px solid var(--border)", maxWidth: "100%", overflowX: "auto", marginBottom: 24 }}>
+            {TABS_LIST.map((t) => (
+              <button key={t.id} style={tabBtnStyle(activeTab === t.id)} onClick={() => setActiveTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-            <TabsContent value="overview" className="pt-4">
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Total bookings</CardDescription>
-                    <CardTitle>{overview?.stats.totalBookings || 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Last 30 days</CardDescription>
-                    <CardTitle>{overview?.stats.recentBookings || 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Followers</CardDescription>
-                    <CardTitle>{overview?.stats.followers || 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Average rating</CardDescription>
-                    <CardTitle>{overview?.stats.averageRating || "0.00"}</CardTitle>
-                  </CardHeader>
-                </Card>
-              </div>
-            </TabsContent>
+          {/* ═══ TAB: Overview ═══ */}
+          {activeTab === "overview" && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
+              {[
+                { label: "Total bookings", value: overview?.stats.totalBookings || 0 },
+                { label: "Last 30 days", value: overview?.stats.recentBookings || 0 },
+                { label: "Followers", value: overview?.stats.followers || 0 },
+                { label: "Average rating", value: overview?.stats.averageRating || "0.00" },
+              ].map((stat) => (
+                <div key={stat.label} style={{ ...cardStyle, padding: 20 }}>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 8 }}>{stat.label}</div>
+                  <div style={{ fontSize: 28, fontWeight: 900, fontFamily: "var(--font-display), sans-serif", color: "var(--foreground)" }}>{stat.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
-            <TabsContent value="events" className="pt-4 space-y-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <CardTitle>Event publishing</CardTitle>
-                      <CardDescription>
-                        Create a match event or a custom watch-party campaign.
-                      </CardDescription>
-                    </div>
-                    <Button onClick={() => setShowCreateModal(true)}>
-                      <Plus className="h-4 w-4" />
-                      Create Event
-                    </Button>
+          {/* ═══ TAB: Events ═══ */}
+          {activeTab === "events" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Create event card */}
+              <div style={cardStyle}>
+                <div style={{ ...cardHeaderStyle, display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Event publishing</h3>
+                    <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Create a match event or a custom watch-party campaign.</p>
                   </div>
-                </CardHeader>
-              </Card>
+                  <button style={btnPrimary()} onClick={() => setShowCreateModal(true)}>
+                    <Plus size={16} /> Create Event
+                  </button>
+                </div>
+              </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Match events</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {events.length ? (
-                    events.map((event) => (
-                      <div
-                        key={event.id}
-                        className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-4"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-[var(--text-primary)]">
-                            {event.match.homeTeamName} vs {event.match.awayTeamName}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">
-                              {event.confirmedBookingsCount}
-                              {event.bookingLimit ? ` / ${event.bookingLimit}` : ""} booked
-                            </Badge>
-                            {promotedEventId === event.id ? (
-                              <Badge>
-                                <Trophy className="h-3.5 w-3.5" />
-                                Promoted
-                              </Badge>
-                            ) : null}
-                          </div>
-                        </div>
-                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                          <CalendarDays className="mr-1 inline h-3.5 w-3.5" />
-                          {formatDateTime(event.match.matchDateUtc)}
-                          {event.match.stage ? ` · ${event.match.stage}` : ""}
-                        </p>
-                        {event.specialNotes ? (
-                          <p className="mt-2 text-xs text-[var(--text-secondary)]">{event.specialNotes}</p>
-                        ) : null}
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <Button
-                            variant={promotedEventId === event.id ? "default" : "outline"}
-                            disabled={updatingPromotion}
-                            onClick={() =>
-                              void updateVenuePromotion(promotedEventId === event.id ? null : event.id)
-                            }
-                          >
-                            <Trophy className="h-4 w-4" />
-                            {promotedEventId === event.id ? "Use Closest Instead" : "Promote on Venue Page"}
-                          </Button>
-                          {promotedEventId === event.id ? (
-                            <span className="text-xs text-[var(--text-secondary)]">
-                              This match is pinned as your venue banner.
+              {/* Match events */}
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)" }}>Match events</h3>
+                </div>
+                <div style={cardContentStyle}>
+                  {events.length ? events.map((event) => (
+                    <div key={event.id} style={eventRowStyle}>
+                      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>
+                          {event.match.homeTeamName} vs {event.match.awayTeamName}
+                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={badgeStyle}>
+                            {event.confirmedBookingsCount}{event.bookingLimit ? ` / ${event.bookingLimit}` : ""} booked
+                          </span>
+                          {promotedEventId === event.id && (
+                            <span style={{ ...badgeStyle, backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)", color: "var(--primary)", border: "1px solid color-mix(in oklch, var(--primary) 20%, transparent)" }}>
+                              <Trophy size={12} /> Promoted
                             </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-[var(--text-secondary)]">No match events created yet.</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Custom events</CardTitle>
-                  <CardDescription>
-                    Visible on your venue page and automatically removed after end time.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {customEvents.length === 0 ? (
-                    <p className="text-sm text-[var(--text-secondary)]">No custom events yet.</p>
-                  ) : (
-                    customEvents.map((event) => (
-                      <div key={event.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-[var(--text-primary)]">{event.title}</p>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => void deleteCustomEvent(event.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Remove
-                          </Button>
-                        </div>
-                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                          {formatDateTime(event.startsAt)} - {formatDateTime(event.endsAt)}
-                        </p>
-                        {event.description ? (
-                          <p className="mt-2 text-xs text-[var(--text-secondary)]">{event.description}</p>
-                        ) : null}
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {event.eventTypeTags.map((tag) => (
-                            <span key={tag} className="rounded-full border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-secondary)]">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="bookings" className="pt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Event reservations</CardTitle>
-                  <CardDescription>
-                    Click an event to view guest reservations and contact email. Capacity progress is shown for each event.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {bookingsByEvent.length ? (
-                    bookingsByEvent.map((event) => {
-                      const expanded = expandedEventId === event.id;
-                      const occupancy = event.occupancyPercent ?? 0;
-                      return (
-                        <div key={event.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-                          <button
-                            type="button"
-                            className="w-full text-left"
-                            onClick={() => setExpandedEventId(expanded ? null : event.id)}
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-sm font-semibold text-[var(--text-primary)]">
-                                {event.match.homeTeamName} vs {event.match.awayTeamName}
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="secondary">{event.bookings.length} reservations</Badge>
-                                {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                              </div>
-                            </div>
-                            <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                              <Clock4 className="mr-1 inline h-3.5 w-3.5" />
-                              {formatDateTime(event.match.matchDateUtc)}
-                            </p>
-
-                            <div className="mt-3">
-                              <div className="mb-1 flex items-center justify-between text-xs text-[var(--text-secondary)]">
-                                <span>
-                                  Capacity {event.confirmedBookingsCount}
-                                  {event.bookingLimit ? ` / ${event.bookingLimit}` : ""}
-                                </span>
-                                <span>
-                                  {event.bookingLimit
-                                    ? `${Math.max(event.spotsRemaining || 0, 0)} spots left`
-                                    : "No limit"}
-                                </span>
-                              </div>
-                              {event.bookingLimit ? (
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--bg-card)]">
-                                  <div
-                                    className="h-full bg-[var(--accent-primary)] transition-all"
-                                    style={{ width: `${Math.min(Math.max(occupancy, 0), 100)}%` }}
-                                  />
-                                </div>
-                              ) : (
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--bg-card)]">
-                                  <div className="h-full w-[35%] bg-[var(--accent-secondary)]" />
-                                </div>
-                              )}
-                            </div>
-                          </button>
-
-                          {expanded && (
-                            <div className="mt-4 space-y-2 border-t border-[var(--border)] pt-3">
-                              {event.bookings.length === 0 ? (
-                                <p className="text-xs text-[var(--text-secondary)]">No reservations yet for this event.</p>
-                              ) : (
-                                event.bookings.map((booking) => (
-                                  (() => {
-                                    const isPending = booking.status === "PENDING";
-                                    const isConfirmed = booking.status === "CONFIRMED";
-                                    const isCancelled =
-                                      booking.status === "CANCELLED_BY_VENUE" ||
-                                      booking.status === "CANCELLED_BY_USER" ||
-                                      booking.status === "NO_SHOW";
-                                    const canConfirm = isPending;
-                                    const canCancel = isPending || isConfirmed;
-                                    const isConfirming =
-                                      updatingBooking &&
-                                      bookingAction?.bookingId === booking.id &&
-                                      bookingAction?.action === "CONFIRMED";
-                                    const isCancelling =
-                                      updatingBooking &&
-                                      bookingAction?.bookingId === booking.id &&
-                                      bookingAction?.action === "CANCELLED_BY_VENUE";
-
-                                    return (
-                                      <div key={booking.id} className="rounded-md border border-[var(--border)] bg-[var(--bg-card)] p-3">
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                          <div>
-                                            <p className="text-sm font-semibold text-[var(--text-primary)]">
-                                              {booking.user.name}
-                                            </p>
-                                            <p className="text-xs text-[var(--text-secondary)]">
-                                              Contact: {booking.user.email}
-                                            </p>
-                                          </div>
-                                          <Badge variant="secondary">{booking.status}</Badge>
-                                        </div>
-                                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                                          Ref {booking.bookingReference} · Party size {booking.partySize} · {formatDateTime(booking.createdAt)}
-                                        </p>
-                                        {booking.specialRequests ? (
-                                          <p className="mt-1 text-xs text-[var(--text-secondary)]">{booking.specialRequests}</p>
-                                        ) : null}
-                                        <div className="mt-2 flex flex-wrap gap-2">
-                                          <Button
-                                            variant="outline"
-                                            disabled={updatingBooking || !canConfirm}
-                                            onClick={() =>
-                                              void updateBookingStatus(booking.id, "CONFIRMED", booking.status)
-                                            }
-                                          >
-                                            {isConfirming ? (
-                                              <>
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                Confirming
-                                              </>
-                                            ) : isConfirmed ? (
-                                              "Confirmed"
-                                            ) : (
-                                              "Confirm"
-                                            )}
-                                          </Button>
-                                          <Button
-                                            variant="destructive"
-                                            disabled={updatingBooking || !canCancel || isCancelled}
-                                            onClick={() =>
-                                              void updateBookingStatus(booking.id, "CANCELLED_BY_VENUE", booking.status)
-                                            }
-                                          >
-                                            {isCancelling ? (
-                                              <>
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                Cancelling
-                                              </>
-                                            ) : isCancelled ? (
-                                              "Cancelled"
-                                            ) : (
-                                              "Cancel"
-                                            )}
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    );
-                                  })()
-                                ))
-                              )}
-                            </div>
                           )}
                         </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-sm text-[var(--text-secondary)]">No events with bookings yet.</p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="menu" className="pt-4 space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Menu categories</CardTitle>
-                  <CardDescription>Create sections like Appetizers, Main Course, Drinks, and Desserts.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="menu-category-name">Category name</Label>
-                      <Input
-                        id="menu-category-name"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        placeholder="e.g. Matchday Platters"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="menu-category-desc">Description (optional)</Label>
-                      <Input
-                        id="menu-category-desc"
-                        value={newCategoryDescription}
-                        onChange={(e) => setNewCategoryDescription(e.target.value)}
-                        placeholder="Shared plates for large groups"
-                      />
-                    </div>
-                  </div>
-                  <Button onClick={() => void createMenuCategory()} disabled={creatingMenuCategory || !newCategoryName.trim()}>
-                    {creatingMenuCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    Add Category
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Menu items</CardTitle>
-                  <CardDescription>Add food and drink items to categories.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-3 md:grid-cols-4">
-                    <div className="space-y-2 md:col-span-1">
-                      <Label htmlFor="menu-item-cat">Category</Label>
-                      <select
-                        id="menu-item-cat"
-                        value={newMenuItemCategoryId}
-                        onChange={(e) => setNewMenuItemCategoryId(e.target.value)}
-                        className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)]"
-                      >
-                        {menu.map((category) => (
-                          <option key={category.id} value={category.id}>{category.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2 md:col-span-1">
-                      <Label htmlFor="menu-item-name">Item name</Label>
-                      <Input
-                        id="menu-item-name"
-                        value={newMenuItemName}
-                        onChange={(e) => setNewMenuItemName(e.target.value)}
-                        placeholder="Loaded Nachos"
-                      />
-                    </div>
-                    <div className="space-y-2 md:col-span-1">
-                      <Label htmlFor="menu-item-price">Price</Label>
-                      <Input
-                        id="menu-item-price"
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={newMenuItemPrice}
-                        onChange={(e) => setNewMenuItemPrice(e.target.value)}
-                        placeholder="14.99"
-                      />
-                    </div>
-                    <div className="space-y-2 md:col-span-1">
-                      <Label htmlFor="menu-item-desc">Description (optional)</Label>
-                      <Input
-                        id="menu-item-desc"
-                        value={newMenuItemDescription}
-                        onChange={(e) => setNewMenuItemDescription(e.target.value)}
-                        placeholder="Feeds 2-3 guests"
-                      />
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={() => void createMenuItem()}
-                    disabled={creatingMenuItem || !newMenuItemName.trim() || !newMenuItemPrice.trim() || !newMenuItemCategoryId}
-                  >
-                    {creatingMenuItem ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    Add Menu Item
-                  </Button>
-
-                  <div className="space-y-3">
-                    {menu.length === 0 ? (
-                      <p className="text-sm text-[var(--text-secondary)]">No menu categories yet.</p>
-                    ) : (
-                      menu.map((category) => (
-                        <div key={category.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-                          <h3 className="text-sm font-semibold text-[var(--text-primary)]">{category.name}</h3>
-                          {category.description ? (
-                            <p className="mt-1 text-xs text-[var(--text-secondary)]">{category.description}</p>
-                          ) : null}
-                          <div className="mt-3 space-y-2">
-                            {category.items.length === 0 ? (
-                              <p className="text-xs text-[var(--text-secondary)]">No items yet.</p>
-                            ) : (
-                              category.items.map((item) => (
-                                <div key={item.id} className="rounded-md border border-[var(--border)] bg-[var(--bg-card)] p-3">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <p className="text-sm font-semibold text-[var(--text-primary)]">{item.name}</p>
-                                    <Badge variant="secondary">${Number(item.price).toFixed(2)}</Badge>
-                                  </div>
-                                  {item.description ? (
-                                    <p className="mt-1 text-xs text-[var(--text-secondary)]">{item.description}</p>
-                                  ) : null}
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="settings" className="pt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Venue profile</CardTitle>
-                  <CardDescription>
-                    Update your public venue info and media shown on listing and venue pages.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="venue-name">Venue name</Label>
-                      <Input
-                        id="venue-name"
-                        value={venueName}
-                        onChange={(e) => setVenueName(e.target.value)}
-                        placeholder="Venue name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="venue-phone">Phone</Label>
-                      <div className="relative">
-                        <Phone className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--text-muted)]" />
-                        <Input
-                          id="venue-phone"
-                          className="pl-9"
-                          value={venuePhone}
-                          onChange={(e) => setVenuePhone(e.target.value)}
-                          placeholder="+1 000 000 0000"
-                        />
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="venue-description">Description</Label>
-                    <Textarea
-                      id="venue-description"
-                      value={venueDescription}
-                      onChange={(e) => setVenueDescription(e.target.value)}
-                      placeholder="Describe your venue atmosphere, food, and watch-party setup."
-                    />
-                  </div>
-
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label>Cover image</Label>
-                        <div className="flex gap-2">
-                          {coverImageUrl ? (
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              onClick={() => {
-                                setCoverImageUrl("");
-                                setCoverImageS3Key("");
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Remove
-                            </Button>
-                          ) : null}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={uploadingCover}
-                            onClick={() => coverInputRef.current?.click()}
-                          >
-                            {uploadingCover ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Uploading
-                              </>
-                            ) : (
-                              <>
-                                <Camera className="h-4 w-4" />
-                                Upload Cover
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                      <input
-                        ref={coverInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) void onUploadCover(file);
-                          e.currentTarget.value = "";
-                        }}
-                      />
-                      <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)]">
-                        {coverImageUrl ? (
-                          <img
-                            src={coverImageUrl}
-                            alt="Venue cover"
-                            className="h-48 w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-48 items-center justify-center text-sm text-[var(--text-muted)]">
-                            No cover image uploaded
-                          </div>
+                      <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 4 }}>
+                        <CalendarDays size={14} />
+                        {formatDateTime(event.match.matchDateUtc)}
+                        {event.match.stage ? ` · ${event.match.stage}` : ""}
+                      </p>
+                      {event.specialNotes && <p style={{ marginTop: 8, fontSize: 12, color: "var(--muted-foreground)" }}>{event.specialNotes}</p>}
+                      <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                        <button
+                          style={promotedEventId === event.id ? btnPrimary(updatingPromotion) : btnOutline(updatingPromotion)}
+                          disabled={updatingPromotion}
+                          onClick={() => void updateVenuePromotion(promotedEventId === event.id ? null : event.id)}
+                        >
+                          <Trophy size={14} />
+                          {promotedEventId === event.id ? "Use Closest Instead" : "Promote on Venue Page"}
+                        </button>
+                        {promotedEventId === event.id && (
+                          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>This match is pinned as your venue banner.</span>
                         )}
                       </div>
                     </div>
+                  )) : (
+                    <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No match events created yet.</p>
+                  )}
+                </div>
+              </div>
 
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label>Gallery images ({galleryItems.length}/{MAX_GALLERY_IMAGES})</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={uploadingGallery || galleryItems.length >= MAX_GALLERY_IMAGES}
-                          onClick={() => galleryInputRef.current?.click()}
-                        >
-                          {uploadingGallery ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Uploading
-                            </>
-                          ) : (
-                            <>
-                              <ImagePlus className="h-4 w-4" />
-                              Add Images
-                            </>
-                          )}
-                        </Button>
+              {/* Custom events */}
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Custom events</h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Visible on your venue page and automatically removed after end time.</p>
+                </div>
+                <div style={cardContentStyle}>
+                  {customEvents.length === 0 ? (
+                    <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No custom events yet.</p>
+                  ) : customEvents.map((event) => (
+                    <div key={event.id} style={eventRowStyle}>
+                      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>{event.title}</span>
+                        <button style={btnDestructive()} onClick={() => void deleteCustomEvent(event.id)}>
+                          <Trash2 size={14} /> Remove
+                        </button>
                       </div>
-                      <input
-                        ref={galleryInputRef}
-                        type="file"
-                        multiple
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        className="hidden"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          if (files.length) void onUploadGallery(files);
-                          e.currentTarget.value = "";
-                        }}
-                      />
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {galleryItems.map((item, idx) => (
-                          <div
-                            key={`${item.url}-${idx}`}
-                            className="group relative overflow-hidden rounded-lg border border-[var(--border)]"
-                          >
-                            <img
-                              src={item.url}
-                              alt={`Gallery ${idx + 1}`}
-                              className="h-24 w-full object-cover"
-                            />
-                            <div className="absolute inset-0 flex items-start justify-end p-1 opacity-0 transition-opacity group-hover:opacity-100">
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => {
-                                  setGalleryItems((prev) =>
-                                    prev.filter((_, imageIndex) => imageIndex !== idx),
-                                  );
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                        {Array.from({
-                          length: Math.max(0, MAX_GALLERY_IMAGES - galleryItems.length),
-                        }).map((_, idx) => (
-                          <div
-                            key={`empty-${idx}`}
-                            className="flex h-24 items-center justify-center rounded-lg border border-dashed border-[var(--border)] text-xs text-[var(--text-muted)]"
-                          >
-                            Empty slot
-                          </div>
+                      <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        {formatDateTime(event.startsAt)} - {formatDateTime(event.endsAt)}
+                      </p>
+                      {event.description && <p style={{ marginTop: 8, fontSize: 12, color: "var(--muted-foreground)" }}>{event.description}</p>}
+                      <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {event.eventTypeTags.map((tag) => (
+                          <span key={tag} style={{ padding: "4px 10px", borderRadius: 99, border: "1px solid var(--border)", fontSize: 11, color: "var(--muted-foreground)" }}>{tag}</span>
                         ))}
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button onClick={() => void saveVenueSettings()} disabled={savingSettings}>
-                      {savingSettings ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Saving
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4" />
-                          Save Venue Settings
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </main>
-
-        {showCreateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="w-full max-w-3xl rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Event Wizard</p>
-                  <h2 className="font-display text-2xl text-[var(--text-primary)]">Create Venue Event</h2>
+                  ))}
                 </div>
-                <Button variant="outline" onClick={() => setShowCreateModal(false)}>Close</Button>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TAB: Reservations ═══ */}
+          {activeTab === "bookings" && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Event reservations</h3>
+                <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Click an event to view guest reservations and contact email. Capacity progress is shown for each event.</p>
+              </div>
+              <div style={cardContentStyle}>
+                {bookingsByEvent.length ? bookingsByEvent.map((event) => {
+                  const expanded = expandedEventId === event.id;
+                  const occupancy = event.occupancyPercent ?? 0;
+                  return (
+                    <div key={event.id} style={eventRowStyle}>
+                      <button type="button" style={{ width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "inherit" }} onClick={() => setExpandedEventId(expanded ? null : event.id)}>
+                        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>
+                            {event.match.homeTeamName} vs {event.match.awayTeamName}
+                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={badgeStyle}>{event.bookings.length} reservations</span>
+                            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </div>
+                        </div>
+                        <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 4 }}>
+                          <Clock4 size={14} /> {formatDateTime(event.match.matchDateUtc)}
+                        </p>
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ marginBottom: 4, display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--muted-foreground)" }}>
+                            <span>Capacity {event.confirmedBookingsCount}{event.bookingLimit ? ` / ${event.bookingLimit}` : ""}</span>
+                            <span>{event.bookingLimit ? `${Math.max(event.spotsRemaining || 0, 0)} spots left` : "No limit"}</span>
+                          </div>
+                          <div style={{ height: 8, width: "100%", borderRadius: 99, backgroundColor: "var(--card)", overflow: "hidden" }}>
+                            <div style={{ height: "100%", borderRadius: 99, backgroundColor: "var(--primary)", transition: "width 0.3s", width: `${event.bookingLimit ? Math.min(Math.max(occupancy, 0), 100) : 35}%` }} />
+                          </div>
+                        </div>
+                      </button>
+
+                      {expanded && (
+                        <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+                          {event.bookings.length === 0 ? (
+                            <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No reservations yet for this event.</p>
+                          ) : event.bookings.map((booking) => {
+                            const isPending = booking.status === "PENDING";
+                            const isConfirmed = booking.status === "CONFIRMED";
+                            const isCancelled = booking.status === "CANCELLED_BY_VENUE" || booking.status === "CANCELLED_BY_USER" || booking.status === "NO_SHOW";
+                            const canConfirm = isPending;
+                            const canCancel = isPending || isConfirmed;
+                            const isConfirming = updatingBooking && bookingAction?.bookingId === booking.id && bookingAction?.action === "CONFIRMED";
+                            const isCancelling = updatingBooking && bookingAction?.bookingId === booking.id && bookingAction?.action === "CANCELLED_BY_VENUE";
+
+                            return (
+                              <div key={booking.id} style={{ padding: 12, borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--card)", marginBottom: 8 }}>
+                                <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                                  <div>
+                                    <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>{booking.user.name}</p>
+                                    <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Contact: {booking.user.email}</p>
+                                  </div>
+                                  <span style={badgeStyle}>{booking.status}</span>
+                                </div>
+                                <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                                  Ref {booking.bookingReference} · Party size {booking.partySize} · {formatDateTime(booking.createdAt)}
+                                </p>
+                                {booking.specialRequests && <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>{booking.specialRequests}</p>}
+                                <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                  <button style={btnOutline(updatingBooking || !canConfirm)} disabled={updatingBooking || !canConfirm} onClick={() => void updateBookingStatus(booking.id, "CONFIRMED", booking.status)}>
+                                    {isConfirming ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Confirming</> : isConfirmed ? "Confirmed" : "Confirm"}
+                                  </button>
+                                  <button style={btnDestructive(updatingBooking || !canCancel || isCancelled)} disabled={updatingBooking || !canCancel || isCancelled} onClick={() => void updateBookingStatus(booking.id, "CANCELLED_BY_VENUE", booking.status)}>
+                                    {isCancelling ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Cancelling</> : isCancelled ? "Cancelled" : "Cancel"}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }) : (
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No events with bookings yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TAB: Menu ═══ */}
+          {activeTab === "menu" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Add category */}
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Menu categories</h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Create sections like Appetizers, Main Course, Drinks, and Desserts.</p>
+                </div>
+                <div style={cardContentStyle}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
+                    <div>
+                      <label style={labelStyle}>Category name</label>
+                      <input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Matchday Platters" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Description (optional)</label>
+                      <input value={newCategoryDescription} onChange={(e) => setNewCategoryDescription(e.target.value)} placeholder="Shared plates for large groups" style={inputStyle} />
+                    </div>
+                  </div>
+                  <button style={btnPrimary(creatingMenuCategory || !newCategoryName.trim())} disabled={creatingMenuCategory || !newCategoryName.trim()} onClick={() => void createMenuCategory()}>
+                    {creatingMenuCategory ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Plus size={14} />} Add Category
+                  </button>
+                </div>
               </div>
 
-              <div className="mb-4 grid grid-cols-2 gap-2">
-                <Button variant={createMode === "match" ? "default" : "outline"} onClick={() => setCreateMode("match")}>
-                  <Ticket className="h-4 w-4" />
-                  Match Event
-                </Button>
-                <Button variant={createMode === "custom" ? "default" : "outline"} onClick={() => setCreateMode("custom")}>
-                  <Sparkles className="h-4 w-4" />
-                  Custom Event
-                </Button>
+              {/* Add item */}
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Menu items</h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Add food and drink items to categories.</p>
+                </div>
+                <div style={cardContentStyle}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 16 }}>
+                    <div>
+                      <label style={labelStyle}>Category</label>
+                      <select value={newMenuItemCategoryId} onChange={(e) => setNewMenuItemCategoryId(e.target.value)} style={inputStyle}>
+                        {menu.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Item name</label>
+                      <input value={newMenuItemName} onChange={(e) => setNewMenuItemName(e.target.value)} placeholder="Loaded Nachos" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Price</label>
+                      <input type="number" min={0} step="0.01" value={newMenuItemPrice} onChange={(e) => setNewMenuItemPrice(e.target.value)} placeholder="14.99" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Description (optional)</label>
+                      <input value={newMenuItemDescription} onChange={(e) => setNewMenuItemDescription(e.target.value)} placeholder="Feeds 2-3 guests" style={inputStyle} />
+                    </div>
+                  </div>
+                  <button style={btnPrimary(creatingMenuItem || !newMenuItemName.trim() || !newMenuItemPrice.trim() || !newMenuItemCategoryId)} disabled={creatingMenuItem || !newMenuItemName.trim() || !newMenuItemPrice.trim() || !newMenuItemCategoryId} onClick={() => void createMenuItem()}>
+                    {creatingMenuItem ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Plus size={14} />} Add Menu Item
+                  </button>
+
+                  <div style={{ marginTop: 24 }}>
+                    {menu.length === 0 ? (
+                      <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No menu categories yet.</p>
+                    ) : menu.map((category) => (
+                      <div key={category.id} style={{ ...eventRowStyle, marginBottom: 12 }}>
+                        <h4 style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>{category.name}</h4>
+                        {category.description && <p style={{ marginTop: 2, fontSize: 12, color: "var(--muted-foreground)" }}>{category.description}</p>}
+                        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                          {category.items.length === 0 ? (
+                            <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No items yet.</p>
+                          ) : category.items.map((item) => (
+                            <div key={item.id} style={{ padding: 10, borderRadius: 8, border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>{item.name}</span>
+                                <span style={badgeStyle}>${Number(item.price).toFixed(2)}</span>
+                              </div>
+                              {item.description && <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>{item.description}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TAB: Settings ═══ */}
+          {activeTab === "settings" && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Venue profile</h3>
+                <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Update your public venue info and media shown on listing and venue pages.</p>
+              </div>
+              <div style={cardContentStyle}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 20 }}>
+                  <div>
+                    <label style={labelStyle}>Venue name</label>
+                    <input value={venueName} onChange={(e) => setVenueName(e.target.value)} placeholder="Venue name" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Phone</label>
+                    <div style={{ position: "relative" }}>
+                      <Phone style={{ position: "absolute", left: 12, top: 12, width: 16, height: 16, color: "var(--muted-foreground)", pointerEvents: "none" }} />
+                      <input value={venuePhone} onChange={(e) => setVenuePhone(e.target.value)} placeholder="+1 000 000 0000" style={{ ...inputStyle, paddingLeft: 36 }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Description</label>
+                  <textarea value={venueDescription} onChange={(e) => setVenueDescription(e.target.value)} placeholder="Describe your venue atmosphere, food, and watch-party setup." style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} />
+                </div>
+
+                {/* Cover + Gallery */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, marginBottom: 20 }}>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <label style={labelStyle}>Cover image</label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        {coverImageUrl && (
+                          <button style={btnDestructive()} onClick={() => { setCoverImageUrl(""); setCoverImageS3Key(""); }}>
+                            <Trash2 size={14} /> Remove
+                          </button>
+                        )}
+                        <button style={btnOutline(uploadingCover)} disabled={uploadingCover} onClick={() => coverInputRef.current?.click()}>
+                          {uploadingCover ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Uploading</> : <><Camera size={14} /> Upload Cover</>}
+                        </button>
+                      </div>
+                    </div>
+                    <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void onUploadCover(file); e.currentTarget.value = ""; }} />
+                    <div style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", overflow: "hidden" }}>
+                      {coverImageUrl ? (
+                        <img src={coverImageUrl} alt="Venue cover" style={{ width: "100%", height: 192, objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 192, fontSize: 13, color: "var(--muted-foreground)" }}>No cover image uploaded</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <label style={labelStyle}>Gallery images ({galleryItems.length}/{MAX_GALLERY_IMAGES})</label>
+                      <button style={btnOutline(uploadingGallery || galleryItems.length >= MAX_GALLERY_IMAGES)} disabled={uploadingGallery || galleryItems.length >= MAX_GALLERY_IMAGES} onClick={() => galleryInputRef.current?.click()}>
+                        {uploadingGallery ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Uploading</> : <><ImagePlus size={14} /> Add Images</>}
+                      </button>
+                    </div>
+                    <input ref={galleryInputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => { const files = Array.from(e.target.files || []); if (files.length) void onUploadGallery(files); e.currentTarget.value = ""; }} />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {galleryItems.map((item, idx) => (
+                        <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden" }}>
+                          <img src={item.url} alt={`Gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
+                          <button
+                            style={{ position: "absolute", top: 4, right: 4, width: 28, height: 28, borderRadius: 6, border: "none", backgroundColor: "rgba(239,68,68,0.9)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            onClick={() => setGalleryItems((prev) => prev.filter((_, i) => i !== idx))}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - galleryItems.length) }).map((_, idx) => (
+                        <div key={`empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 96, borderRadius: 10, border: "1px dashed var(--border)", fontSize: 12, color: "var(--muted-foreground)" }}>
+                          Empty slot
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button style={btnPrimary(savingSettings)} disabled={savingSettings} onClick={() => void saveVenueSettings()}>
+                    {savingSettings ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving</> : <><Save size={14} /> Save Venue Settings</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* ═══ Create Event Modal ═══ */}
+        {showCreateModal && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.7)", padding: 16 }}>
+            <div style={{ width: "100%", maxWidth: 720, borderRadius: 16, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", padding: 24, maxHeight: "85vh", overflowY: "auto" }}>
+              <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <div>
+                  <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", marginBottom: 4 }}>Event Wizard</p>
+                  <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 22, fontWeight: 900, color: "var(--foreground)" }}>Create Venue Event</h2>
+                </div>
+                <button style={btnOutline()} onClick={() => setShowCreateModal(false)}>Close</button>
+              </div>
+
+              {/* Mode toggle */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
+                <button style={createMode === "match" ? btnPrimary() : btnOutline()} onClick={() => setCreateMode("match")}>
+                  <Ticket size={14} /> Match Event
+                </button>
+                <button style={createMode === "custom" ? btnPrimary() : btnOutline()} onClick={() => setCreateMode("custom")}>
+                  <Sparkles size={14} /> Custom Event
+                </button>
               </div>
 
               {createMode === "match" ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="match-picker-trigger">1. Which match are you hosting?</Label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div>
+                    <label style={labelStyle}>1. Which match are you hosting?</label>
                     {selectedNewEventMatch ? (
-                      <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">
-                          {selectedNewEventMatch.homeTeamName} vs {selectedNewEventMatch.awayTeamName}
-                        </p>
-                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                          {formatDateTime(selectedNewEventMatch.matchDateUtc)} · {getLeagueLabel(selectedNewEventMatch)}
-                        </p>
+                      <div style={{ padding: 12, borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>{selectedNewEventMatch.homeTeamName} vs {selectedNewEventMatch.awayTeamName}</p>
+                        <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>{formatDateTime(selectedNewEventMatch.matchDateUtc)} · {getLeagueLabel(selectedNewEventMatch)}</p>
                       </div>
                     ) : (
-                      <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-3 text-sm text-[var(--text-secondary)]">
+                      <div style={{ padding: 12, borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--card)", fontSize: 13, color: "var(--muted-foreground)" }}>
                         No upcoming matches available to publish yet.
                       </div>
                     )}
-                    <Button
-                      id="match-picker-trigger"
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowMatchPicker(true)}
-                      disabled={upcomingMatches.length === 0}
-                    >
-                      <Ticket className="h-4 w-4" />
-                      Browse Upcoming Matches by League
-                    </Button>
-                    {availableMatches.length === 0 && upcomingMatches.length > 0 ? (
-                      <p className="text-xs text-[var(--text-secondary)]">
-                        You already host events for all currently upcoming matches.
-                      </p>
-                    ) : null}
+                    <button style={{ ...btnOutline(upcomingMatches.length === 0), marginTop: 8 }} disabled={upcomingMatches.length === 0} onClick={() => setShowMatchPicker(true)}>
+                      <Ticket size={14} /> Browse Upcoming Matches by League
+                    </button>
+                    {availableMatches.length === 0 && upcomingMatches.length > 0 && (
+                      <p style={{ marginTop: 8, fontSize: 12, color: "var(--muted-foreground)" }}>You already host events for all currently upcoming matches.</p>
+                    )}
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="booking-limit">2. Capacity limit (optional)</Label>
-                      <Input
-                        id="booking-limit"
-                        type="number"
-                        min={1}
-                        value={newEventLimit}
-                        onChange={(e) => setNewEventLimit(e.target.value)}
-                        placeholder="Example: 120"
-                      />
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                    <div>
+                      <label style={labelStyle}>2. Capacity limit (optional)</label>
+                      <input type="number" min={1} value={newEventLimit} onChange={(e) => setNewEventLimit(e.target.value)} placeholder="Example: 120" style={inputStyle} />
                     </div>
-                    <div className="flex items-center gap-3 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2">
-                      <Checkbox
-                        checked={newEventRequiresApproval}
-                        onCheckedChange={(checked) => setNewEventRequiresApproval(checked === true)}
-                      />
-                      <Label className="cursor-pointer">Require booking approval</Label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                      <input type="checkbox" checked={newEventRequiresApproval} onChange={(e) => setNewEventRequiresApproval(e.target.checked)} style={{ width: 16, height: 16, accentColor: "var(--primary)" }} />
+                      <label style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", cursor: "pointer" }}>Require booking approval</label>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="event-notes">3. Special notes for guests</Label>
-                    <Textarea
-                      id="event-notes"
-                      value={newEventNotes}
-                      onChange={(e) => setNewEventNotes(e.target.value)}
-                      placeholder="Doors open early, valet policy, table minimum, etc."
-                    />
+                  <div>
+                    <label style={labelStyle}>3. Special notes for guests</label>
+                    <textarea value={newEventNotes} onChange={(e) => setNewEventNotes(e.target.value)} placeholder="Doors open early, valet policy, table minimum, etc." style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} />
                   </div>
 
-                  <Button onClick={() => void createMatchEvent()} disabled={creatingEvent || !newEventMatchId}>
-                    {creatingEvent ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    Publish Match Event
-                  </Button>
+                  <button style={btnPrimary(creatingEvent || !newEventMatchId)} disabled={creatingEvent || !newEventMatchId} onClick={() => void createMatchEvent()}>
+                    {creatingEvent ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Plus size={14} />} Publish Match Event
+                  </button>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="custom-title">1. Event title</Label>
-                      <Input
-                        id="custom-title"
-                        value={customTitle}
-                        onChange={(e) => setCustomTitle(e.target.value)}
-                        placeholder="Saturday Fight Night"
-                      />
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                    <div>
+                      <label style={labelStyle}>1. Event title</label>
+                      <input value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} placeholder="Saturday Fight Night" style={inputStyle} />
                     </div>
-                    <div className="space-y-2">
-                      <Label>2. Cover image (optional)</Label>
-                      <div className="flex items-center gap-2">
-                        <Button type="button" variant="outline" onClick={() => customImageInputRef.current?.click()}>
-                          <ImagePlus className="h-4 w-4" />
-                          Upload
-                        </Button>
-                        {customImageUrl ? <span className="text-xs text-[var(--text-secondary)]">Image ready</span> : null}
+                    <div>
+                      <label style={labelStyle}>2. Cover image (optional)</label>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button style={btnOutline()} onClick={() => customImageInputRef.current?.click()}>
+                          <ImagePlus size={14} /> Upload
+                        </button>
+                        {customImageUrl && <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Image ready</span>}
                       </div>
-                      <input
-                        ref={customImageInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) void uploadCustomEventImage(file);
-                          e.currentTarget.value = "";
-                        }}
-                      />
+                      <input ref={customImageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadCustomEventImage(file); e.currentTarget.value = ""; }} />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-description">3. What is happening at this event?</Label>
-                    <Textarea
-                      id="custom-description"
-                      value={customDescription}
-                      onChange={(e) => setCustomDescription(e.target.value)}
-                      placeholder="Describe the vibe, offers, music, and what guests should expect."
-                    />
+                  <div>
+                    <label style={labelStyle}>3. What is happening at this event?</label>
+                    <textarea value={customDescription} onChange={(e) => setCustomDescription(e.target.value)} placeholder="Describe the vibe, offers, music, and what guests should expect." style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} />
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="custom-start">4. Start time</Label>
-                      <Input
-                        id="custom-start"
-                        type="datetime-local"
-                        value={customStartsAt}
-                        onChange={(e) => setCustomStartsAt(e.target.value)}
-                      />
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                    <div>
+                      <label style={labelStyle}>4. Start time</label>
+                      <input type="datetime-local" value={customStartsAt} onChange={(e) => setCustomStartsAt(e.target.value)} style={inputStyle} />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="custom-end">5. End time</Label>
-                      <Input
-                        id="custom-end"
-                        type="datetime-local"
-                        value={customEndsAt}
-                        onChange={(e) => setCustomEndsAt(e.target.value)}
-                      />
+                    <div>
+                      <label style={labelStyle}>5. End time</label>
+                      <input type="datetime-local" value={customEndsAt} onChange={(e) => setCustomEndsAt(e.target.value)} style={inputStyle} />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>6. Event type tags</Label>
-                    <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
+                  <div>
+                    <label style={labelStyle}>6. Event type tags</label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxHeight: 192, overflowY: "auto", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", padding: 12 }}>
                       {EVENT_WATCH_PARTY_TYPES.map((tag) => {
                         const selected = customTags.includes(tag);
                         return (
                           <button
-                            key={tag}
-                            type="button"
-                            onClick={() => {
-                              setCustomTags((prev) =>
-                                selected ? prev.filter((value) => value !== tag) : [...prev, tag],
-                              );
+                            key={tag} type="button"
+                            style={{
+                              padding: "4px 12px", borderRadius: 99, fontSize: 12, fontFamily: "inherit",
+                              border: selected ? "1px solid var(--primary)" : "1px solid var(--border)",
+                              backgroundColor: selected ? "color-mix(in oklch, var(--primary) 15%, transparent)" : "transparent",
+                              color: selected ? "var(--primary)" : "var(--muted-foreground)",
+                              cursor: "pointer",
                             }}
-                            className={`rounded-full border px-3 py-1 text-xs ${
-                              selected
-                                ? "border-[var(--accent-primary)] bg-[var(--accent-primary-dim)] text-[var(--accent-primary)]"
-                                : "border-[var(--border)] text-[var(--text-secondary)]"
-                            }`}
+                            onClick={() => setCustomTags((prev) => selected ? prev.filter((v) => v !== tag) : [...prev, tag])}
                           >
                             {tag}
                           </button>
@@ -1622,124 +1341,93 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-booking-notes">7. Booking notes for guests</Label>
-                    <Textarea
-                      id="custom-booking-notes"
-                      value={customBookingNotes}
-                      onChange={(e) => setCustomBookingNotes(e.target.value)}
-                      placeholder="How to reserve, expected arrival window, minimum spend, etc."
-                    />
+                  <div>
+                    <label style={labelStyle}>7. Booking notes for guests</label>
+                    <textarea value={customBookingNotes} onChange={(e) => setCustomBookingNotes(e.target.value)} placeholder="How to reserve, expected arrival window, minimum spend, etc." style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} />
                   </div>
 
-                  <Button onClick={() => void createCustomEvent()} disabled={creatingEvent}>
-                    {creatingEvent ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    Publish Custom Event
-                  </Button>
+                  <button style={btnPrimary(creatingEvent)} disabled={creatingEvent} onClick={() => void createCustomEvent()}>
+                    {creatingEvent ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Plus size={14} />} Publish Custom Event
+                  </button>
                 </div>
               )}
             </div>
           </div>
         )}
 
+        {/* ═══ Match Picker Modal ═══ */}
         {showCreateModal && createMode === "match" && showMatchPicker && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4">
-            <div className="flex max-h-[85vh] w-full max-w-5xl flex-col rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.75)", padding: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", maxHeight: "85vh", width: "100%", maxWidth: 960, borderRadius: 16, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", padding: 24 }}>
+              <div style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Upcoming Matches</p>
-                  <h3 className="font-display text-xl text-[var(--text-primary)]">Choose Match to Publish</h3>
+                  <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", marginBottom: 4 }}>Upcoming Matches</p>
+                  <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 20, fontWeight: 900, color: "var(--foreground)" }}>Choose Match to Publish</h3>
                 </div>
-                <Button variant="outline" onClick={() => setShowMatchPicker(false)}>
-                  Close
-                </Button>
+                <button style={btnOutline()} onClick={() => setShowMatchPicker(false)}>Close</button>
               </div>
 
-              <div className="mb-3 grid gap-3 md:grid-cols-[220px_1fr]">
-                <div className="space-y-2">
-                  <Label htmlFor="picker-league">League</Label>
-                  <select
-                    id="picker-league"
-                    value={matchPickerLeague}
-                    onChange={(e) => setMatchPickerLeague(e.target.value)}
-                    className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)]"
-                  >
+              <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={labelStyle}>League</label>
+                  <select value={matchPickerLeague} onChange={(e) => setMatchPickerLeague(e.target.value)} style={inputStyle}>
                     <option value="all">All leagues</option>
                     {matchPickerLeagueOptions.map((league) => (
-                      <option key={league.id} value={league.id}>
-                        {league.label}
-                      </option>
+                      <option key={league.id} value={league.id}>{league.label}</option>
                     ))}
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="picker-search">Search match</Label>
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--text-muted)]" />
-                    <Input
-                      id="picker-search"
-                      value={matchPickerSearch}
-                      onChange={(e) => setMatchPickerSearch(e.target.value)}
-                      placeholder="Team or league"
-                      className="pl-9"
-                    />
+                <div>
+                  <label style={labelStyle}>Search match</label>
+                  <div style={{ position: "relative" }}>
+                    <Search style={{ position: "absolute", left: 12, top: 12, width: 16, height: 16, color: "var(--muted-foreground)", pointerEvents: "none" }} />
+                    <input value={matchPickerSearch} onChange={(e) => setMatchPickerSearch(e.target.value)} placeholder="Team or league" style={{ ...inputStyle, paddingLeft: 36 }} />
                   </div>
                 </div>
               </div>
 
-              <div className="flex-1 space-y-4 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+              <div style={{ flex: 1, overflowY: "auto", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", padding: 16 }}>
                 {matchPickerGroupedRows.length === 0 ? (
-                  <p className="text-sm text-[var(--text-secondary)]">No matches found for this filter.</p>
-                ) : (
-                  matchPickerGroupedRows.map((group) => (
-                    <section key={group.leagueId} className="space-y-2">
-                      <div className="sticky top-0 z-10 rounded-md bg-[var(--bg-card)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
-                        {group.leagueLabel}
-                      </div>
-                      <div className="space-y-2">
-                        {group.matches.map((match) => {
-                          const alreadyHosted = events.some((event) => event.matchId === match.id);
-                          const isSelected = newEventMatchId === match.id;
-                          return (
-                            <div
-                              key={match.id}
-                              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-3"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
-                                  {match.homeTeamName} vs {match.awayTeamName}
-                                </p>
-                                <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                                  {formatDateTime(match.matchDateUtc)}
-                                </p>
-                              </div>
-                              {alreadyHosted ? (
-                                <Badge variant="secondary">Already hosted</Badge>
-                              ) : (
-                                <Button
-                                  type="button"
-                                  variant={isSelected ? "default" : "outline"}
-                                  onClick={() => {
-                                    setNewEventMatchId(match.id);
-                                    setShowMatchPicker(false);
-                                  }}
-                                >
-                                  {isSelected ? <Check className="h-4 w-4" /> : <Ticket className="h-4 w-4" />}
-                                  {isSelected ? "Selected" : "Select"}
-                                </Button>
-                              )}
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No matches found for this filter.</p>
+                ) : matchPickerGroupedRows.map((group) => (
+                  <section key={group.leagueId} style={{ marginBottom: 20 }}>
+                    <div style={{ position: "sticky", top: 0, zIndex: 10, borderRadius: 8, backgroundColor: "var(--card)", padding: "8px 12px", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", marginBottom: 8 }}>
+                      {group.leagueLabel}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {group.matches.map((match) => {
+                        const alreadyHosted = events.some((event) => event.matchId === match.id);
+                        const isSelected = newEventMatchId === match.id;
+                        return (
+                          <div key={match.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 12, borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {match.homeTeamName} vs {match.awayTeamName}
+                              </p>
+                              <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>{formatDateTime(match.matchDateUtc)}</p>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))
-                )}
+                            {alreadyHosted ? (
+                              <span style={badgeStyle}>Already hosted</span>
+                            ) : (
+                              <button
+                                style={isSelected ? btnPrimary() : btnOutline()}
+                                onClick={() => { setNewEventMatchId(match.id); setShowMatchPicker(false); }}
+                              >
+                                {isSelected ? <Check size={14} /> : <Ticket size={14} />}
+                                {isSelected ? "Selected" : "Select"}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
               </div>
             </div>
           </div>
         )}
       </AppShell>
-    </ThemeProvider>
+    
   );
 }

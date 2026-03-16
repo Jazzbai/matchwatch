@@ -1,12 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useState } from "react";
 import { Flame, MapPin } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════
-   MATCH CARD — Horizontal carousel card for upcoming
-   matches. Shows team crests, kickoff time, league,
-   and number of hosting venues.
+   MATCH CARD — Glass-morphism card with mouse-tracking
+   glare effect. Shows team crests, kickoff, league,
+   and hosting venue count.
    ═══════════════════════════════════════════════════ */
 
 export interface MatchCardProps {
@@ -39,7 +39,6 @@ export function MatchCard({
     awayCrest,
     homeImage,
     awayImage,
-    matchImage,
     kickoff,
     league,
     leagueLogo,
@@ -52,293 +51,230 @@ export function MatchCard({
     isHot,
     onClick,
     style,
-    className = "",
 }: MatchCardProps) {
     const isLive = status === "LIVE";
     const isFinished = status === "FINISHED";
 
+    const cardRef = useRef<HTMLDivElement>(null);
+    const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const rect = cardRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        setGlare({ x, y, opacity: 0.18 });
+    };
+
+    const handleMouseLeave = () => {
+        setGlare({ x: 50, y: 50, opacity: 0 });
+    };
+
     return (
-        <article
-            className={`card ${className}`}
+        <div
+            ref={cardRef}
             onClick={onClick}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
             role="button"
             tabIndex={0}
             aria-label={`${homeTeam} vs ${awayTeam}`}
             style={{
-                width: "100%",
-                padding: "0",
-                cursor: "pointer",
-                overflow: "hidden",
                 position: "relative",
+                overflow: "hidden",
+                borderRadius: 20,
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--card)",
+                cursor: "pointer",
+                transition: "transform 0.3s, box-shadow 0.3s",
+                minWidth: 280,
                 ...style,
             }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-4px)";
+                e.currentTarget.style.boxShadow = "0 12px 40px rgba(0,0,0,0.15), 0 0 0 1px color-mix(in oklch, var(--primary) 30%, transparent)";
+            }}
+            onMouseDown={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseUp={(e) => {
+                e.currentTarget.style.transform = "translateY(-4px)";
+            }}
+            onBlur={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+            }}
+            onFocus={() => {}}
         >
-            {/* Top Accent Line */}
+            {/* Glare overlay */}
             <div
                 style={{
-                    height: "3px",
-                    background: isLive
-                        ? "var(--live-pulse)"
-                        : "var(--gradient-accent)",
-                    transition: "all 0.3s ease",
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: 20,
+                    pointerEvents: "none",
+                    zIndex: 10,
+                    background: `radial-gradient(circle at ${glare.x}% ${glare.y}%, rgba(255,255,255,${glare.opacity}), transparent 60%)`,
+                    transition: "background 0.15s ease",
                 }}
             />
 
-            {/* Header: League + Status Badges */}
+            {/* Top accent bar */}
             <div
                 style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "12px 16px 0",
+                    height: 3,
+                    width: "100%",
+                    background: isLive
+                        ? "#f59e0b"
+                        : "linear-gradient(90deg, var(--primary), oklch(0.75 0.18 145))",
                 }}
-            >
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                    }}
-                >
-                    {leagueImage ? <img src={leagueImage} alt="" style={{ width: "32px", height: "32px", objectFit: "contain" }} /> : <span style={{ fontSize: "1.6rem" }}>{leagueLogo}</span>}
-                    <span
-                        className="text-sm font-body"
-                        style={{ color: "var(--text-muted)", fontWeight: 600 }}
-                    >
+            />
+
+            {/* Header: League + Badges */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {leagueImage ? (
+                        <img src={leagueImage} alt="" style={{ width: 20, height: 20, objectFit: "contain" }} />
+                    ) : (
+                        <span style={{ fontSize: 18 }}>{leagueLogo}</span>
+                    )}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                         {league}
                     </span>
                 </div>
-                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     {isLive && (
-                        <span className="badge badge-live">
-                            <span className="live-dot" />
+                        <span style={{
+                            display: "inline-flex", alignItems: "center", gap: 5,
+                            padding: "3px 8px", borderRadius: 6,
+                            backgroundColor: "rgba(245,158,11,0.12)", color: "#f59e0b",
+                            fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase",
+                        }}>
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#f59e0b", animation: "pulse 2s infinite" }} />
                             LIVE
                         </span>
                     )}
                     {isFinished && (
-                        <span
-                            className="badge"
-                            style={{
-                                background: "var(--bg-elevated)",
-                                color: "var(--text-muted)",
-                                border: "1px solid var(--border)",
-                            }}
-                        >
+                        <span style={{
+                            display: "inline-flex", padding: "3px 8px", borderRadius: 6,
+                            backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)",
+                            border: "1px solid var(--border)",
+                            fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase",
+                        }}>
                             FT
                         </span>
                     )}
                     {isHot && (
-                        <span className="badge badge-hot" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                            <Flame size={11} />
+                        <span style={{
+                            display: "inline-flex", alignItems: "center", gap: 3,
+                            padding: "3px 8px", borderRadius: 6,
+                            backgroundColor: "rgba(239,68,68,0.12)", color: "#ef4444",
+                            fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase",
+                        }}>
+                            <Flame size={11} strokeWidth={2.5} />
                             HOT
                         </span>
                     )}
                 </div>
             </div>
 
+            {/* Match Day label */}
             {matchDay && (
-                <div
-                    className="text-xs font-mono"
-                    style={{
-                        padding: "4px 16px 0",
-                        color: "var(--text-muted)",
-                    }}
-                >
+                <div style={{ padding: "4px 16px 0", fontSize: 11, fontFamily: "monospace", color: "var(--muted-foreground)", fontWeight: 500 }}>
                     {matchDay}
                 </div>
             )}
 
             {/* Teams + Score */}
-            <div
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "16px",
-                    padding: "16px 16px 12px",
-                }}
-            >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, padding: "24px 16px 20px" }}>
                 {/* Home Team */}
-                <div
-                    style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "8px",
-                        flex: 1,
-                    }}
-                >
-                    <div
-                        style={{
-                            width: "52px",
-                            height: "52px",
-                            borderRadius: "14px",
-                            background: "var(--bg-elevated)",
-                            border: "1px solid var(--border)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "1.6rem",
-                            transition: "all 0.2s ease",
-                        }}
-                    >
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, flex: 1 }}>
+                    <div style={{
+                        width: 56, height: 56, borderRadius: 16,
+                        backgroundColor: "color-mix(in oklch, var(--secondary) 50%, transparent)",
+                        border: "1px solid var(--border)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 28,
+                        transition: "transform 0.3s",
+                    }}>
                         {homeImage ? (
-                            <img src={homeImage} alt={homeTeam} style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "contain" }} />
+                            <img src={homeImage} alt={homeTeam} style={{ width: 40, height: 40, borderRadius: 12, objectFit: "contain" }} />
                         ) : (
                             homeCrest
                         )}
                     </div>
-                    <span
-                        className="text-xs font-body"
-                        style={{
-                            fontWeight: 600,
-                            color: "var(--text-primary)",
-                            textAlign: "center",
-                            maxWidth: "80px",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                        }}
-                    >
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--foreground)", textAlign: "center", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {homeTeam}
                     </span>
                 </div>
 
                 {/* Score / VS */}
-                <div
-                    style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "2px",
-                        minWidth: "60px",
-                    }}
-                >
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 70 }}>
                     {isLive || isFinished ? (
-                        <div
-                            className="font-mono"
-                            style={{
-                                fontSize: "1.6rem",
-                                fontWeight: 600,
-                                color: isLive
-                                    ? "var(--live-pulse)"
-                                    : "var(--text-primary)",
-                                letterSpacing: "0.05em",
-                            }}
-                        >
+                        <div style={{
+                            fontFamily: "monospace", fontSize: 28, fontWeight: 800, letterSpacing: "0.05em",
+                            color: isLive ? "#f59e0b" : "var(--foreground)",
+                            textShadow: isLive ? "0 0 12px rgba(245,158,11,0.4)" : "none",
+                        }}>
                             {homeScore} – {awayScore}
                         </div>
                     ) : (
-                        <div
-                            className="font-display"
-                            style={{
-                                fontSize: "1.1rem",
-                                color: "var(--text-muted)",
-                                letterSpacing: "0.1em",
-                            }}
-                        >
+                        <div style={{ fontWeight: 900, fontSize: 16, color: "color-mix(in oklch, var(--muted-foreground) 50%, transparent)", letterSpacing: "0.2em", fontStyle: "italic" }}>
                             VS
                         </div>
                     )}
                     {!isLive && !isFinished && (
-                        <span
-                            className="text-xs font-mono"
-                            style={{
-                                color: "var(--accent-primary)",
-                                fontWeight: 600,
-                            }}
-                        >
+                        <span style={{
+                            fontSize: 11, fontFamily: "monospace", fontWeight: 700,
+                            color: "var(--primary)", backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)",
+                            padding: "4px 10px", borderRadius: 8, marginTop: 2,
+                        }}>
                             {kickoff}
                         </span>
                     )}
                 </div>
 
                 {/* Away Team */}
-                <div
-                    style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "8px",
-                        flex: 1,
-                    }}
-                >
-                    <div
-                        style={{
-                            width: "52px",
-                            height: "52px",
-                            borderRadius: "14px",
-                            background: "var(--bg-elevated)",
-                            border: "1px solid var(--border)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "1.6rem",
-                            transition: "all 0.2s ease",
-                        }}
-                    >
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, flex: 1 }}>
+                    <div style={{
+                        width: 56, height: 56, borderRadius: 16,
+                        backgroundColor: "color-mix(in oklch, var(--secondary) 50%, transparent)",
+                        border: "1px solid var(--border)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 28,
+                        transition: "transform 0.3s",
+                    }}>
                         {awayImage ? (
-                            <img src={awayImage} alt={awayTeam} style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "contain" }} />
+                            <img src={awayImage} alt={awayTeam} style={{ width: 40, height: 40, borderRadius: 12, objectFit: "contain" }} />
                         ) : (
                             awayCrest
                         )}
                     </div>
-                    <span
-                        className="text-xs font-body"
-                        style={{
-                            fontWeight: 600,
-                            color: "var(--text-primary)",
-                            textAlign: "center",
-                            maxWidth: "80px",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                        }}
-                    >
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--foreground)", textAlign: "center", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {awayTeam}
                     </span>
                 </div>
             </div>
 
             {/* Footer: Venue Count */}
-            <div
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "10px 16px",
-                    borderTop: "1px solid var(--border)",
-                    background: "var(--bg-surface)",
-                }}
-            >
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                    }}
-                >
-                    <MapPin size={12} />
-                    <span
-                        className="text-xs font-body"
-                        style={{ color: "var(--text-secondary)", fontWeight: 500 }}
-                    >
-                        <strong style={{ color: "var(--accent-primary)" }}>
-                            {venueCount}
-                        </strong>{" "}
+            <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "12px 16px",
+                borderTop: "1px solid var(--border)",
+                backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)",
+                transition: "background-color 0.2s",
+            }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <MapPin size={13} style={{ color: "var(--muted-foreground)" }} />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        <strong style={{ color: "var(--primary)", fontWeight: 800, fontSize: 12 }}>{venueCount}</strong>{" "}
                         {venueCount === 1 ? "venue" : "venues"} hosting
                     </span>
                 </div>
-                <span
-                    style={{
-                        fontSize: "0.75rem",
-                        color: "var(--accent-primary)",
-                        fontWeight: 600,
-                    }}
-                >
+                <span style={{ fontSize: 11, color: "var(--primary)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                     View →
                 </span>
             </div>
-        </article>
+        </div>
     );
 }

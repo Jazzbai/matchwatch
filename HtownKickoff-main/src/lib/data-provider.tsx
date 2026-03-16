@@ -661,6 +661,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }, [isApiConnected]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
         void fetchFromApi();
     }, [fetchFromApi]);
 

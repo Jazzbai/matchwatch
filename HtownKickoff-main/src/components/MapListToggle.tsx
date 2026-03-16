@@ -23,7 +23,7 @@ function MockMapView({ venues }: { venues: VenueCardProps[] }) {
             className="map-container animate-fade-in"
             style={{
                 height: "400px",
-                background: "var(--bg-elevated)",
+                background: "var(--secondary)",
                 position: "relative",
                 display: "flex",
                 alignItems: "center",
@@ -48,22 +48,22 @@ function MockMapView({ venues }: { venues: VenueCardProps[] }) {
             <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
                 <div style={{
                     position: "absolute", top: "45%", left: 0, right: 0,
-                    height: "3px", background: "var(--text-muted)", opacity: 0.2,
+                    height: "3px", background: "var(--muted-foreground)", opacity: 0.2,
                     transform: "rotate(-5deg)"
                 }} />
                 <div style={{
                     position: "absolute", top: 0, bottom: 0, left: "35%",
-                    width: "3px", background: "var(--text-muted)", opacity: 0.2,
+                    width: "3px", background: "var(--muted-foreground)", opacity: 0.2,
                     transform: "rotate(3deg)"
                 }} />
                 <div style={{
                     position: "absolute", top: "20%", left: "10%", right: "30%",
-                    height: "2px", background: "var(--text-muted)", opacity: 0.15,
+                    height: "2px", background: "var(--muted-foreground)", opacity: 0.15,
                     transform: "rotate(15deg)"
                 }} />
                 <div style={{
                     position: "absolute", top: 0, bottom: 0, left: "65%",
-                    width: "2px", background: "var(--text-muted)", opacity: 0.15,
+                    width: "2px", background: "var(--muted-foreground)", opacity: 0.15,
                     transform: "rotate(-8deg)"
                 }} />
             </div>
@@ -101,7 +101,7 @@ function MockMapView({ venues }: { venues: VenueCardProps[] }) {
                                 transform: "rotate(-45deg)",
                                 background: v.isFeatured
                                     ? "var(--accent-hot)"
-                                    : "var(--accent-primary)",
+                                    : "var(--primary)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -109,7 +109,7 @@ function MockMapView({ venues }: { venues: VenueCardProps[] }) {
                                         ? "rgba(251,191,36,0.3)"
                                         : "rgba(34,197,94,0.3)"
                                     }`,
-                                border: "2px solid var(--bg-card)",
+                                border: "2px solid var(--card)",
                                 transition: "transform 0.2s ease",
                             }}
                         >
@@ -118,7 +118,7 @@ function MockMapView({ venues }: { venues: VenueCardProps[] }) {
                                     transform: "rotate(45deg)",
                                     fontSize: "0.85rem",
                                     fontWeight: 700,
-                                    color: "var(--text-inverse)",
+                                    color: "var(--primary-foreground)",
                                 }}
                             >
                                 {i + 1}
@@ -133,11 +133,11 @@ function MockMapView({ venues }: { venues: VenueCardProps[] }) {
                                 left: "50%",
                                 transform: "translateX(-50%)",
                                 whiteSpace: "nowrap",
-                                background: "var(--bg-card)",
+                                background: "var(--card)",
                                 padding: "2px 6px",
                                 borderRadius: "4px",
                                 border: "1px solid var(--border)",
-                                color: "var(--text-primary)",
+                                color: "var(--foreground)",
                                 fontWeight: 600,
                                 fontSize: "0.6rem",
                             }}
@@ -163,7 +163,7 @@ function MockMapView({ venues }: { venues: VenueCardProps[] }) {
                         height: "14px",
                         borderRadius: "50%",
                         background: "var(--accent-secondary)",
-                        border: "3px solid var(--bg-card)",
+                        border: "3px solid var(--card)",
                         boxShadow: "0 0 0 4px rgba(59,130,246,0.3)",
                     }}
                 />
@@ -225,7 +225,7 @@ function MockMapView({ venues }: { venues: VenueCardProps[] }) {
             >
                 <span
                     className="text-xs"
-                    style={{ color: "var(--text-muted)", opacity: 0.5, display: "inline-flex", alignItems: "center", gap: "4px" }}
+                    style={{ color: "var(--muted-foreground)", opacity: 0.5, display: "inline-flex", alignItems: "center", gap: "4px" }}
                 >
                     <Navigation size={12} />
                     Mapbox GL JS
@@ -260,7 +260,7 @@ export function MapListToggle({
             >
                 <span
                     className="text-sm font-body"
-                    style={{ color: "var(--text-secondary)", fontWeight: 500 }}
+                    style={{ color: "var(--muted-foreground)", fontWeight: 500 }}
                 >
                     {venues.length} venues nearby
                 </span>

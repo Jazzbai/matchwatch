@@ -4,7 +4,7 @@ import React, { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Star } from "lucide-react";
-import { ThemeProvider, AppShell } from "../../../components/AppShell";
+import { AppShell } from "../../../components/AppShell";
 import { BookingDrawer } from "../../../components/BookingDrawer";
 import { AMENITY_LABELS, PRICE_LABELS } from "../../../lib/data";
 import { api } from "../../../lib/api";
@@ -118,6 +118,7 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
     const [actionError, setActionError] = useState<string | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followerCount, setFollowerCount] = useState(0);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
     const reviews = venue ? getVenueReviews(venue.id) : [];
     const posts = venue ? getVenuePosts(venue.id) : [];
@@ -235,19 +236,16 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
 
     if (isLoading && !venue) {
         return (
-            <ThemeProvider>
                 <AppShell>
                     <section className={styles.notFound}>
                         <p className={styles.notFoundText}>Loading venue details...</p>
                     </section>
                 </AppShell>
-            </ThemeProvider>
         );
     }
 
     if (!venue) {
         return (
-            <ThemeProvider>
                 <AppShell>
                     <section className={styles.notFound}>
                         <p className={styles.notFoundIcon}>Venue Not Found</p>
@@ -255,7 +253,6 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                         <Link href="/venues" className="btn-primary">Back to Venues</Link>
                     </section>
                 </AppShell>
-            </ThemeProvider>
         );
     }
 
@@ -265,7 +262,6 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
     const mapUrl = venue.lat && venue.lng ? `https://maps.google.com/?q=${venue.lat},${venue.lng}` : "";
 
     return (
-        <ThemeProvider>
             <AppShell>
                 <article className={styles.page}>
                     <section className={styles.hero}>
@@ -348,11 +344,11 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                                     </div>
                                 </header>
                                 <div className={styles.sideActions}>
-                                    <Link href={`/matches/${bannerEvent.match.id}`} className="btn-ghost">
+                                    <Link href={`/matches/${bannerEvent.match.id}`} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid var(--border)', backgroundColor: 'var(--secondary)', color: 'var(--foreground)', fontSize: 13, fontWeight: 600, textDecoration: 'none', transition: 'all 0.2s' }}>
                                         View Match
                                     </Link>
                                     <button
-                                        className="btn-primary"
+                                        style={{ padding: '8px 16px', borderRadius: 10, border: 'none', backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}
                                         onClick={() => {
                                             const idx = matchEvents.findIndex((event) => event.id === bannerEvent.id);
                                             if (idx !== -1) setBookingEventIdx(idx);
@@ -369,11 +365,31 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                     {galleryImages.length > 0 && (
                         <section className={styles.galleryStrip}>
                             {galleryImages.slice(0, 5).map((img, idx) => (
-                                <div key={`${img}-${idx}`} className={styles.galleryItem}>
+                                <div key={`${img}-${idx}`} className={styles.galleryItem} onClick={() => setLightboxIndex(idx)}>
                                     <img src={img} alt={`${venue.name} photo ${idx + 1}`} className={styles.galleryImage} />
                                 </div>
                             ))}
                         </section>
+                    )}
+
+                    {/* Gallery Lightbox */}
+                    {lightboxIndex !== null && galleryImages.length > 0 && (
+                        <div className={styles.lightbox} onClick={() => setLightboxIndex(null)}>
+                            <button className={styles.lightboxClose} onClick={() => setLightboxIndex(null)} aria-label="Close">✕</button>
+                            {galleryImages.length > 1 && (
+                                <>
+                                    <button className={`${styles.lightboxNav} ${styles.lightboxPrev}`} onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + galleryImages.length) % galleryImages.length); }} aria-label="Previous">‹</button>
+                                    <button className={`${styles.lightboxNav} ${styles.lightboxNext}`} onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % galleryImages.length); }} aria-label="Next">›</button>
+                                </>
+                            )}
+                            <img
+                                src={galleryImages[lightboxIndex]}
+                                alt={`${venue.name} gallery ${lightboxIndex + 1}`}
+                                className={styles.lightboxImage}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                            <span className={styles.lightboxCounter}>{lightboxIndex + 1} / {galleryImages.length}</span>
+                        </div>
                     )}
 
                     {actionError && <div className={styles.alert}>{actionError}</div>}
@@ -778,6 +794,5 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                     )}
                 </article>
             </AppShell>
-        </ThemeProvider>
     );
 }

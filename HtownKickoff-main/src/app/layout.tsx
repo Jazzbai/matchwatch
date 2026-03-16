@@ -4,6 +4,7 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import { AuthProvider } from "../lib/auth-context";
 import { DataProvider } from "../lib/data-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -19,7 +20,7 @@ const mono = JetBrains_Mono({
 
 const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-display",
+  variable: "--font-outfit",
   display: "swap",
 });
 
@@ -57,9 +58,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable} ${outfit.variable}`} suppressHydrationWarning>
-      <body className="noise" suppressHydrationWarning>
-        <AuthProvider><DataProvider>{children}</DataProvider></AuthProvider>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${mono.variable} ${outfit.variable}`}
+    >
+      <body suppressHydrationWarning>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <AuthProvider><DataProvider>{children}</DataProvider></AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

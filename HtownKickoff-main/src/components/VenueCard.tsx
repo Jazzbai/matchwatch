@@ -4,7 +4,7 @@ import React from "react";
 import { BadgeCheck, MapPin, Sparkles, Star } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════
-   VENUE CARD — Reusable card for venue listings.
+   VENUE CARD — Inline-styled card for venue listings.
    Used in: browse venues grid, match detail venue
    list, featured venues carousel, and followed venues.
    ═══════════════════════════════════════════════════ */
@@ -37,27 +37,25 @@ const PRICE_LABELS: Record<string, string> = {
 
 function StarRating({ rating, count }: { rating: number; count: number }) {
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <div style={{ display: "flex", gap: "1px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", gap: 1 }}>
                 {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                         key={star}
-                        size={11}
-                        strokeWidth={2}
+                        size={12}
+                        strokeWidth={2.5}
                         style={{
-                            color: star <= Math.round(rating) ? "var(--accent-primary)" : "var(--text-muted)",
-                            fill: star <= Math.round(rating) ? "var(--accent-primary)" : "transparent",
+                            color: star <= Math.round(rating) ? "#fbbf24" : "var(--muted-foreground)",
+                            fill: star <= Math.round(rating) ? "#fbbf24" : "transparent",
+                            opacity: star <= Math.round(rating) ? 1 : 0.3,
                         }}
                     />
                 ))}
             </div>
-            <span
-                className="font-mono text-xs"
-                style={{ color: "var(--accent-hot)", fontWeight: 600 }}
-            >
+            <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>
                 {rating.toFixed(1)}
             </span>
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            <span style={{ fontSize: 10, color: "var(--muted-foreground)", fontWeight: 500 }}>
                 ({count})
             </span>
         </div>
@@ -83,74 +81,69 @@ export function VenueCard({
     onBookNow,
 }: VenueCardProps) {
     return (
-        <article
-            className="card"
+        <div
             onClick={onClick}
             role="button"
             tabIndex={0}
             aria-label={`${name} in ${city}`}
             style={{
                 width: "100%",
-                maxWidth: "360px",
-                cursor: "pointer",
+                maxWidth: 380,
+                borderRadius: 20,
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--card)",
                 overflow: "hidden",
-                position: "relative",
+                cursor: "pointer",
+                transition: "transform 0.3s, box-shadow 0.3s",
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-4px)";
+                e.currentTarget.style.boxShadow = "0 12px 40px rgba(0,0,0,0.12), 0 0 0 1px color-mix(in oklch, var(--primary) 25%, transparent)";
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
             }}
         >
             {/* Cover Image */}
-            <div
-                style={{
-                    position: "relative",
-                    height: "160px",
-                    background: `url('${coverImage}') center/cover no-repeat`,
-                    backgroundColor: "var(--bg-elevated)",
-                }}
-            >
-                {/* Gradient overlay */}
-                <div
-                    style={{
-                        position: "absolute",
-                        inset: 0,
-                        background:
-                            "linear-gradient(180deg, transparent 40%, var(--bg-card) 100%)",
-                    }}
+            <div style={{ position: "relative", height: 180, width: "100%", overflow: "hidden" }}>
+                <img
+                    src={coverImage}
+                    alt={name}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s" }}
+                    onError={(e) => { (e.target as HTMLImageElement).src = "/venue-hero.webp"; }}
                 />
+                {/* Gradient overlay */}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, var(--card) 0%, rgba(0,0,0,0.05) 50%, transparent 100%)", zIndex: 1 }} />
 
                 {/* Badges overlay */}
-                <div
-                    style={{
-                        position: "absolute",
-                        top: "10px",
-                        left: "10px",
-                        display: "flex",
-                        gap: "6px",
-                    }}
-                >
+                <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6, zIndex: 2 }}>
                     {isFeatured && (
-                        <span
-                            className="badge"
-                            style={{
-                                background: "rgba(251, 191, 36, 0.2)",
-                                backdropFilter: "blur(8px)",
-                                color: "var(--accent-hot)",
-                                border: "1px solid var(--accent-hot)",
-                            }}
-                        >
-                            <Sparkles size={12} style={{ marginRight: "4px", display: "inline" }} />
+                        <span style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "4px 10px", borderRadius: 99,
+                            backgroundColor: "rgba(245,158,11,0.2)", color: "#f59e0b",
+                            border: "1px solid rgba(245,158,11,0.4)",
+                            backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+                            fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
+                        }}>
+                            <Sparkles size={11} />
                             Featured
                         </span>
                     )}
                     {isVerified && (
-                        <span
-                            className="badge"
-                            style={{
-                                background: "rgba(34, 197, 94, 0.2)",
-                                backdropFilter: "blur(8px)",
-                                color: "#22C55E",
-                                border: "1px solid #22C55E",
-                            }}
-                        >
-                            <BadgeCheck size={12} style={{ marginRight: "4px", display: "inline" }} />
+                        <span style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "4px 10px", borderRadius: 99,
+                            backgroundColor: "rgba(16,185,129,0.2)", color: "#10b981",
+                            border: "1px solid rgba(16,185,129,0.4)",
+                            backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+                            fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
+                        }}>
+                            <BadgeCheck size={11} />
                             Verified
                         </span>
                     )}
@@ -158,220 +151,145 @@ export function VenueCard({
 
                 {/* Distance badge */}
                 {distance && (
-                    <div
-                        style={{
-                            position: "absolute",
-                            top: "10px",
-                            right: "10px",
-                        }}
-                    >
-                        <span
-                            className="badge"
-                            style={{
-                                background: "rgba(10, 10, 11, 0.7)",
-                                backdropFilter: "blur(8px)",
-                                color: "#FAFAF9",
-                                border: "1px solid rgba(255,255,255,0.1)",
-                            }}
-                        >
-                            <MapPin size={12} style={{ marginRight: "4px", display: "inline" }} />
+                    <div style={{ position: "absolute", top: 12, right: 12, zIndex: 2 }}>
+                        <span style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "4px 10px", borderRadius: 99,
+                            backgroundColor: "rgba(0,0,0,0.6)", color: "#fff",
+                            backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+                            fontSize: 10, fontWeight: 700,
+                        }}>
+                            <MapPin size={11} />
                             {distance}
                         </span>
                     </div>
                 )}
 
-                {/* Price range in corner */}
-                <div
-                    style={{
-                        position: "absolute",
-                        bottom: "10px",
-                        right: "10px",
-                    }}
-                >
-                    <span
-                        className="font-mono text-xs"
-                        style={{
-                            color: "var(--accent-primary)",
-                            fontWeight: 600,
-                            background: "rgba(10, 10, 11, 0.6)",
-                            padding: "3px 8px",
-                            borderRadius: "6px",
-                            backdropFilter: "blur(4px)",
-                        }}
-                    >
+                {/* Price range */}
+                <div style={{ position: "absolute", bottom: 12, right: 12, zIndex: 2 }}>
+                    <span style={{
+                        fontFamily: "monospace", fontSize: 12, fontWeight: 800,
+                        color: "var(--primary)",
+                        backgroundColor: "color-mix(in oklch, var(--card) 85%, transparent)",
+                        backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+                        padding: "4px 10px", borderRadius: 8,
+                        border: "1px solid var(--border)",
+                    }}>
                         {PRICE_LABELS[priceRange]}
                     </span>
                 </div>
             </div>
 
             {/* Content */}
-            <div style={{ padding: "14px 16px" }}>
+            <div style={{ padding: 16, display: "flex", flexDirection: "column", flex: 1 }}>
                 {/* Title row */}
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        justifyContent: "space-between",
-                        marginBottom: "6px",
-                    }}
-                >
-                    <h3
-                        className="font-body"
-                        style={{
-                            fontSize: "1rem",
-                            fontWeight: 700,
-                            color: "var(--text-primary)",
-                            lineHeight: 1.2,
-                            maxWidth: "200px",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                        }}
-                    >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4, gap: 8 }}>
+                    <h3 style={{
+                        fontSize: 15, fontWeight: 700, color: "var(--foreground)",
+                        lineHeight: 1.3,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        transition: "color 0.2s",
+                    }}>
                         {name}
                     </h3>
-                    <StarRating rating={rating} count={reviewCount} />
+                    <div style={{ flexShrink: 0 }}>
+                        <StarRating rating={rating} count={reviewCount} />
+                    </div>
                 </div>
 
                 {/* Address */}
-                <p
-                    className="text-xs"
-                    style={{
-                        color: "var(--text-muted)",
-                        marginBottom: "10px",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                    }}
-                >
+                <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {address}, {city}
                 </p>
 
                 {/* Amenity chips */}
-                <div
-                    style={{
-                        display: "flex",
-                        gap: "6px",
-                        flexWrap: "wrap",
-                        marginBottom: "10px",
-                    }}
-                >
-                    {amenities.slice(0, 5).map((a) => (
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10, marginTop: "auto" }}>
+                    {amenities.slice(0, 4).map((a) => (
                         <span
                             key={a}
-                            className="text-xs"
                             title={a.replace(/_/g, " ")}
                             style={{
-                                padding: "3px 8px",
-                                borderRadius: "999px",
-                                border: "1px solid var(--border)",
-                                color: "var(--text-secondary)",
-                                background: "var(--bg-elevated)",
+                                fontSize: 10, fontWeight: 600,
+                                color: "var(--secondary-foreground)",
+                                backgroundColor: "var(--secondary)",
+                                padding: "3px 8px", borderRadius: 99,
                                 textTransform: "capitalize",
                             }}
                         >
                             {a.replace(/_/g, " ").toLowerCase()}
                         </span>
                     ))}
-                    {amenities.length > 5 && (
-                        <span
-                            className="text-xs"
-                            style={{
-                                padding: "3px 8px",
-                                borderRadius: "999px",
-                                border: "1px solid var(--border)",
-                                color: "var(--text-muted)",
-                                background: "var(--bg-elevated)",
-                            }}
-                        >
-                            +{amenities.length - 5}
+                    {amenities.length > 4 && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "var(--muted-foreground)", backgroundColor: "color-mix(in oklch, var(--secondary) 50%, transparent)", padding: "3px 8px", borderRadius: 99 }}>
+                            +{amenities.length - 4}
                         </span>
                     )}
                 </div>
 
                 {/* Cuisine tags */}
-                <div
-                    className="no-scrollbar"
-                    style={{
-                        display: "flex",
-                        gap: "5px",
-                        overflowX: "auto",
-                        marginBottom: "12px",
-                    }}
-                >
+                <div style={{ display: "flex", gap: 5, overflow: "hidden", paddingBottom: 2 }}>
                     {cuisineTags.slice(0, 3).map((tag) => (
                         <span
                             key={tag}
-                            className="text-xs"
                             style={{
-                                padding: "3px 8px",
-                                borderRadius: "6px",
-                                background: "var(--bg-elevated)",
-                                color: "var(--text-secondary)",
+                                fontSize: 10, fontWeight: 500,
+                                color: "var(--muted-foreground)",
                                 border: "1px solid var(--border)",
+                                backgroundColor: "var(--background)",
+                                padding: "3px 8px", borderRadius: 6,
                                 whiteSpace: "nowrap",
-                                fontWeight: 500,
                             }}
                         >
                             {tag}
                         </span>
                     ))}
                 </div>
+            </div>
 
-                {/* Footer: Spots + Book buttons */}
-                <div
+            {/* Footer */}
+            <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "12px 16px",
+                borderTop: "1px solid var(--border)",
+                marginTop: "auto",
+            }}>
+                {spotsRemaining != null ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{
+                            width: 8, height: 8, borderRadius: "50%",
+                            backgroundColor: spotsRemaining > 10 ? "var(--primary)" : spotsRemaining > 0 ? "#f59e0b" : "#ef4444",
+                        }} />
+                        <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                            {spotsRemaining > 0 ? (
+                                <><strong style={{ color: "var(--foreground)" }}>{spotsRemaining}</strong> spots left</>
+                            ) : "Full — Join waitlist"}
+                        </span>
+                    </div>
+                ) : nextEvent ? (
+                    <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 600 }}>
+                        Next: {nextEvent}
+                    </span>
+                ) : (
+                    <span />
+                )}
+
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onBookNow?.();
+                    }}
                     style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        paddingTop: "10px",
-                        borderTop: "1px solid var(--border)",
+                        padding: "8px 16px", borderRadius: 10, border: "none",
+                        backgroundColor: "var(--primary)", color: "var(--primary-foreground)",
+                        fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        fontFamily: "inherit",
+                        transition: "all 0.2s",
+                        boxShadow: "0 2px 8px color-mix(in oklch, var(--primary) 30%, transparent)",
                     }}
                 >
-                    {spotsRemaining != null ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <div
-                                style={{
-                                    width: "8px",
-                                    height: "8px",
-                                    borderRadius: "50%",
-                                    background:
-                                        spotsRemaining > 10
-                                            ? "var(--accent-primary)"
-                                            : spotsRemaining > 0
-                                                ? "var(--accent-hot)"
-                                                : "var(--accent-danger)",
-                                }}
-                            />
-                            <span className="text-xs" style={{ color: "var(--text-secondary)", fontWeight: 500 }}>
-                                {spotsRemaining > 0
-                                    ? `${spotsRemaining} spots left`
-                                    : "Full — Join waitlist"}
-                            </span>
-                        </div>
-                    ) : nextEvent ? (
-                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                            Next: {nextEvent}
-                        </span>
-                    ) : (
-                        <span />
-                    )}
-                    <button
-                        className="btn-primary"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onBookNow?.();
-                        }}
-                        style={{
-                            padding: "8px 18px",
-                            fontSize: "0.75rem",
-                            borderRadius: "8px",
-                        }}
-                    >
-                        Book Now
-                    </button>
-                </div>
+                    Book Now
+                </button>
             </div>
-        </article>
+        </div>
     );
 }

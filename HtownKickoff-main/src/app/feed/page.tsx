@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CircleDot, MapPin, Newspaper } from "lucide-react";
-import { ThemeProvider, AppShell } from "../../components/AppShell";
+import { AppShell } from "../../components/AppShell";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { useData } from "../../lib/data-provider";
@@ -79,13 +79,12 @@ export default function FeedPage() {
 
     if (!isAuthenticated) {
         return (
-            <ThemeProvider>
                 <AppShell>
                     <section style={{ maxWidth: "720px", margin: "0 auto", padding: "48px 20px", textAlign: "center" }}>
-                        <h1 className="font-display text-h1" style={{ color: "var(--text-primary)", marginBottom: "8px" }}>
+                        <h1 className="font-display text-h1" style={{ color: "var(--foreground)", marginBottom: "8px" }}>
                             SIGN IN REQUIRED
                         </h1>
-                        <p className="text-body" style={{ color: "var(--text-secondary)", marginBottom: "16px" }}>
+                        <p className="text-body" style={{ color: "var(--muted-foreground)", marginBottom: "16px" }}>
                             Log in to view updates from venues you follow.
                         </p>
                         <Link href="/login" className="btn-primary" style={{ textDecoration: "none" }}>
@@ -93,24 +92,22 @@ export default function FeedPage() {
                         </Link>
                     </section>
                 </AppShell>
-            </ThemeProvider>
         );
     }
 
     return (
-        <ThemeProvider>
             <AppShell>
                 <section style={{ padding: "32px 20px 40px", maxWidth: "920px", margin: "0 auto" }}>
                     <div className="section-label" style={{ marginBottom: "8px" }}>FOLLOWING FEED</div>
-                    <h1 className="font-display text-display" style={{ color: "var(--text-primary)", marginBottom: "8px" }}>
+                    <h1 className="font-display text-display" style={{ color: "var(--foreground)", marginBottom: "8px" }}>
                         LATEST FROM VENUES
                     </h1>
-                    <p className="text-body" style={{ color: "var(--text-secondary)", marginBottom: "20px" }}>
+                    <p className="text-body" style={{ color: "var(--muted-foreground)", marginBottom: "20px" }}>
                         Posts and match reminders from venues you follow.
                     </p>
 
                     {loading && (
-                        <div className="card-flat" style={{ padding: "24px", color: "var(--text-secondary)" }}>
+                        <div className="card-flat" style={{ padding: "24px", color: "var(--muted-foreground)" }}>
                             Loading feed...
                         </div>
                     )}
@@ -135,7 +132,7 @@ export default function FeedPage() {
                                 <div className="section-label" style={{ marginBottom: "8px" }}>UPCOMING AT YOUR VENUES</div>
                                 {upcomingAtFollowing.length === 0 ? (
                                     <div className="card-flat" style={{ padding: "16px" }}>
-                                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                                        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
                                             No upcoming hosted events from followed venues.
                                         </p>
                                     </div>
@@ -153,10 +150,10 @@ export default function FeedPage() {
                                                     className="card-flat"
                                                     style={{ padding: "12px 14px", textDecoration: "none", color: "inherit" }}
                                                 >
-                                                    <div className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 700 }}>
+                                                    <div className="text-sm" style={{ color: "var(--foreground)", fontWeight: 700 }}>
                                                         {home?.shortName || "HOME"} vs {away?.shortName || "AWAY"}
                                                     </div>
-                                                    <div className="text-xs" style={{ color: "var(--text-muted)", marginTop: "2px" }}>
+                                                    <div className="text-xs" style={{ color: "var(--muted-foreground)", marginTop: "2px" }}>
                                                         {venue?.name || "Venue"} · {match ? new Date(match.matchDateUTC).toLocaleString("en-US") : "TBD"}
                                                     </div>
                                                 </Link>
@@ -169,9 +166,9 @@ export default function FeedPage() {
                             {posts.length === 0 ? (
                                 <div className="card-flat" style={{ padding: "28px", textAlign: "center" }}>
                                     <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px" }}>
-                                        <Newspaper size={28} style={{ color: "var(--text-muted)" }} />
+                                        <Newspaper size={28} style={{ color: "var(--muted-foreground)" }} />
                                     </div>
-                                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                                    <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
                                         Nothing in your feed yet. Follow venues to see updates here.
                                     </p>
                                 </div>
@@ -188,38 +185,38 @@ export default function FeedPage() {
                                             <article key={post.id} className="card-flat" style={{ padding: "16px" }}>
                                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "8px", flexWrap: "wrap" }}>
                                                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                                        <MapPin size={16} style={{ color: "var(--text-muted)" }} />
+                                                        <MapPin size={16} style={{ color: "var(--muted-foreground)" }} />
                                                         {venue ? (
-                                                            <Link href={`/venues/${venue.slug}`} className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 700, textDecoration: "none" }}>
+                                                            <Link href={`/venues/${venue.slug}`} className="text-sm" style={{ color: "var(--foreground)", fontWeight: 700, textDecoration: "none" }}>
                                                                 {venue.name}
                                                             </Link>
                                                         ) : (
-                                                            <span className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 700 }}>
+                                                            <span className="text-sm" style={{ color: "var(--foreground)", fontWeight: 700 }}>
                                                                 Venue Update
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                                                    <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
                                                         {Number.isNaN(postedAt.getTime())
                                                             ? "Recently"
                                                             : postedAt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                                                     </span>
                                                 </div>
 
-                                                <p className="text-sm" style={{ color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: "10px" }}>
+                                                <p className="text-sm" style={{ color: "var(--muted-foreground)", lineHeight: 1.6, marginBottom: "10px" }}>
                                                     {post.content}
                                                 </p>
 
                                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                                                     {match ? (
-                                                        <Link href={`/matches/${match.id}`} className="text-xs" style={{ color: "var(--accent-primary)", textDecoration: "none", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                                                        <Link href={`/matches/${match.id}`} className="text-xs" style={{ color: "var(--primary)", textDecoration: "none", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "6px" }}>
                                                             <CircleDot size={12} />
                                                             {homeName} vs {awayName}
                                                         </Link>
                                                     ) : (
-                                                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>Venue announcement</span>
+                                                        <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>Venue announcement</span>
                                                     )}
-                                                    <span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>
+                                                    <span className="text-xs font-mono" style={{ color: "var(--muted-foreground)" }}>
                                                         {Number(post.viewsCount || 0).toLocaleString()} views
                                                     </span>
                                                 </div>
@@ -232,6 +229,5 @@ export default function FeedPage() {
                     )}
                 </section>
             </AppShell>
-        </ThemeProvider>
     );
 }

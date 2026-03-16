@@ -1,5 +1,5 @@
 .page {
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .hero {
@@ -54,10 +54,19 @@
   font-weight: 600;
   font-size: 0.82rem;
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.2s;
+}
+
+.backButton:hover,
+.followButton:hover {
+  background: rgba(6, 10, 16, 0.75);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .followButton {
   cursor: pointer;
+  font-family: inherit;
 }
 
 .followButton:disabled {
@@ -90,7 +99,7 @@
 
 .badge {
   color: #211400;
-  background: var(--accent-primary);
+  background: var(--primary);
 }
 
 .badgeVerified {
@@ -104,6 +113,7 @@
   font-size: clamp(2rem, 5.6vw, 3.7rem);
   line-height: 0.96;
   letter-spacing: -0.01em;
+  color: #fff;
 }
 
 .heroSubtitle {
@@ -127,6 +137,8 @@
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(10, 14, 20, 0.56);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .statValue {
@@ -163,7 +175,14 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  background: rgba(10, 14, 20, 0.4);
+  background: var(--secondary);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.galleryItem:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .galleryImage {
@@ -182,25 +201,34 @@
   overflow-x: auto;
   border-bottom: 1px solid var(--border);
   padding: 0.82rem 1.25rem 0.72rem;
-  background: rgba(12, 16, 23, 0.9);
+  background: color-mix(in oklch, var(--card) 90%, transparent);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .tabButton {
   border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
+  background: var(--secondary);
+  color: var(--muted-foreground);
   border-radius: 999px;
   padding: 0.48rem 0.95rem;
   font-size: 0.8rem;
   white-space: nowrap;
   cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.tabButton:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .tabButtonActive {
-  border-color: var(--accent-primary);
-  color: #211400;
-  background: var(--accent-primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
 }
 
 .contentGrid {
@@ -225,7 +253,7 @@
 
 .panel {
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(27, 33, 46, 0.96), rgba(21, 27, 38, 0.96));
+  background: var(--card);
   border-radius: 16px;
   padding: 1rem;
 }
@@ -235,12 +263,12 @@
   font-family: var(--font-display), sans-serif;
   font-size: 1.08rem;
   letter-spacing: 0.01em;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .panelSubtle {
   margin: 0.55rem 0 0;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 0.86rem;
   line-height: 1.5;
 }
@@ -264,8 +292,8 @@
   border-radius: 10px;
   padding: 0.58rem 0.7rem;
   border: 1px solid var(--border);
-  background: rgba(7, 11, 16, 0.26);
-  color: var(--text-secondary);
+  background: var(--secondary);
+  color: var(--muted-foreground);
   font-size: 0.84rem;
 }
 
@@ -279,24 +307,29 @@
 .chip {
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(9, 12, 18, 0.4);
-  color: var(--text-secondary);
+  background: var(--secondary);
+  color: var(--muted-foreground);
   padding: 0.33rem 0.72rem;
   font-size: 0.76rem;
 }
 
 .infoRow {
   margin: 0.6rem 0 0;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 0.86rem;
 }
 
 .mapLink {
   display: inline-block;
   margin-top: 0.5rem;
-  color: var(--accent-primary);
+  color: var(--primary);
   text-decoration: none;
   font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.mapLink:hover {
+  text-decoration: underline;
 }
 
 .factsGrid {
@@ -309,19 +342,19 @@
 .factCard {
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: rgba(8, 11, 17, 0.36);
+  background: var(--secondary);
   padding: 0.7rem;
   display: grid;
   gap: 0.18rem;
 }
 
 .factValue {
-  color: var(--accent-primary);
+  color: var(--primary);
   font-weight: 700;
 }
 
 .factLabel {
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   font-size: 0.74rem;
 }
 
@@ -333,7 +366,7 @@
 
 .eventCard {
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(25, 31, 43, 0.98), rgba(19, 25, 35, 0.98));
+  background: var(--card);
   border-radius: 14px;
   padding: 0.9rem;
   display: grid;
@@ -361,7 +394,7 @@
 
 .teamName {
   font-size: 0.83rem;
-  color: var(--text-primary);
+  color: var(--foreground);
   font-weight: 600;
 }
 
@@ -369,7 +402,7 @@
   display: grid;
   gap: 0.15rem;
   text-align: right;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 0.74rem;
 }
 
@@ -377,7 +410,7 @@
   text-transform: uppercase;
   font-size: 0.65rem;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .crest,
@@ -386,7 +419,7 @@
   height: 2rem;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(8, 11, 16, 0.66);
+  background: var(--secondary);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -407,7 +440,7 @@
 
 .crestFallback,
 .leagueCrestFallback {
-  color: #f6f7fc;
+  color: var(--foreground);
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -416,13 +449,13 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 0.78rem;
 }
 
 .eventNotes {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 0.8rem;
 }
 
@@ -434,13 +467,13 @@
 .progressBar {
   height: 6px;
   border-radius: 999px;
-  background: rgba(8, 11, 17, 0.6);
+  background: var(--secondary);
   overflow: hidden;
 }
 
 .progressFill {
   height: 100%;
-  background: linear-gradient(90deg, #f4b94b, #fb8c43);
+  background: linear-gradient(90deg, var(--primary), oklch(0.75 0.18 145));
 }
 
 .eventFooter {
@@ -457,7 +490,7 @@
 
 .menuItem {
   border: 1px solid var(--border);
-  background: rgba(9, 12, 18, 0.38);
+  background: var(--secondary);
   border-radius: 12px;
   padding: 0.7rem;
   display: flex;
@@ -471,13 +504,13 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.38rem;
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 0.87rem;
   font-weight: 600;
 }
 
 .menuPrice {
-  color: var(--accent-primary);
+  color: var(--primary);
   font-weight: 700;
   font-size: 0.86rem;
 }
@@ -490,10 +523,10 @@
 }
 
 .tag {
-  border: 1px solid rgba(244, 185, 75, 0.24);
-  background: rgba(244, 185, 75, 0.08);
+  border: 1px solid color-mix(in oklch, var(--primary) 30%, transparent);
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
   border-radius: 999px;
-  color: #f6cf85;
+  color: var(--primary);
   padding: 0.14rem 0.46rem;
   font-size: 0.66rem;
   letter-spacing: 0.02em;
@@ -502,7 +535,7 @@
 .reviewCard,
 .postCard {
   border: 1px solid var(--border);
-  background: rgba(20, 26, 36, 0.98);
+  background: var(--card);
   border-radius: 14px;
   padding: 0.9rem;
 }
@@ -511,8 +544,8 @@
   margin-top: 0.65rem;
   border-radius: 10px;
   padding: 0.65rem;
-  background: rgba(244, 185, 75, 0.08);
-  color: #f2d9a7;
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
+  color: var(--muted-foreground);
   font-size: 0.8rem;
 }
 
@@ -524,7 +557,7 @@
 
 .sideListItem {
   border: 1px solid var(--border);
-  background: rgba(9, 12, 18, 0.35);
+  background: var(--secondary);
   border-radius: 12px;
   padding: 0.62rem;
   display: grid;
@@ -536,31 +569,28 @@
 .sideMeta {
   display: grid;
   gap: 0.1rem;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 0.74rem;
 }
 
 .sideMeta strong {
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 0.79rem;
 }
 
 .sideActions {
   margin-top: 0.7rem;
   display: flex;
-}
-
-.sideActions :global(.btn-primary) {
-  width: 100%;
+  gap: 0.5rem;
 }
 
 .emptyState,
 .notFound {
   border: 1px solid var(--border);
-  background: rgba(18, 24, 34, 0.9);
+  background: var(--card);
   border-radius: 14px;
   padding: 1.1rem;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   text-align: center;
 }
 
@@ -574,12 +604,101 @@
 .notFoundIcon {
   margin: 0;
   font-family: var(--font-display), sans-serif;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .notFoundText {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
+}
+
+/* Lightbox overlay */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+.lightboxImage {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 12px 60px rgba(0, 0, 0, 0.5);
+}
+
+.lightboxClose {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-family: inherit;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.2s;
+}
+
+.lightboxClose:hover {
+  background: rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.lightboxNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-family: inherit;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.2s;
+}
+
+.lightboxNav:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.lightboxPrev {
+  left: 20px;
+}
+
+.lightboxNext {
+  right: 20px;
+}
+
+.lightboxCounter {
+  position: absolute;
+  bottom: 20px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 @media (max-width: 1080px) {
@@ -611,9 +730,5 @@
 
   .sideListItem {
     grid-template-columns: auto 1fr;
-  }
-
-  .sideListItem :global(.btn-ghost) {
-    grid-column: 1 / -1;
   }
 }

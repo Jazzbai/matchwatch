@@ -12,7 +12,7 @@ import {
   MapPin,
   Phone,
 } from "lucide-react";
-import { ThemeProvider, AppShell } from "../../../components/AppShell";
+import { AppShell } from "../../../components/AppShell";
 import { useAuth } from "../../../lib/auth-context";
 import { LocationPickerMap } from "../../../components/LocationPickerMap";
 import { Alert, AlertDescription, AlertTitle } from "../../../components/ui/alert";
@@ -74,6 +74,17 @@ export default function VenueRegisterPage() {
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+
+  const venuePwChecks = [
+    { label: "10+ characters", pass: ownerPassword.length >= 10 },
+    { label: "Uppercase", pass: /[A-Z]/.test(ownerPassword) },
+    { label: "Lowercase", pass: /[a-z]/.test(ownerPassword) },
+    { label: "Number", pass: /[0-9]/.test(ownerPassword) },
+    { label: "Symbol", pass: /[^A-Za-z0-9]/.test(ownerPassword) },
+  ];
+  const venuePwScore = venuePwChecks.filter((c) => c.pass).length;
+  const venuePwColor = venuePwScore <= 1 ? "#ef4444" : venuePwScore <= 2 ? "#f97316" : venuePwScore <= 3 ? "#eab308" : venuePwScore <= 4 ? "#84cc16" : "#22c55e";
+  const venuePwLabel = venuePwScore <= 1 ? "Weak" : venuePwScore <= 2 ? "Fair" : venuePwScore <= 3 ? "Moderate" : venuePwScore <= 4 ? "Good" : "Strong";
 
   const toggleAmenity = (value: string) => {
     setAmenities((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
@@ -162,7 +173,6 @@ export default function VenueRegisterPage() {
   };
 
   return (
-    <ThemeProvider>
       <AppShell>
         <main className="mx-auto w-full max-w-5xl px-4 py-8">
           <div className="mb-6 flex items-center justify-between gap-4">
@@ -171,12 +181,12 @@ export default function VenueRegisterPage() {
                 <Building2 className="h-3.5 w-3.5" />
                 Venue onboarding
               </Badge>
-              <h1 className="font-display text-3xl text-[var(--text-primary)]">Register Your Venue</h1>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              <h1 className="font-display text-3xl text-[var(--foreground)]">Register Your Venue</h1>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                 Create your owner account, place your venue on the map, and publish your profile.
               </p>
             </div>
-            <Link href="/login" className="text-sm text-[var(--accent-primary)]">
+            <Link href="/login" className="text-sm text-[var(--primary)]">
               Back to login
             </Link>
           </div>
@@ -214,6 +224,27 @@ export default function VenueRegisterPage() {
                     onChange={(e) => setOwnerPassword(e.target.value)}
                     required
                   />
+                  {ownerPassword.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: venuePwColor }}>{venuePwLabel}</span>
+                        <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>{venuePwScore}/5</span>
+                      </div>
+                      <div style={{ width: "100%", height: 5, borderRadius: 99, backgroundColor: "var(--border)", overflow: "hidden" }}>
+                        <div style={{ width: `${(venuePwScore / 5) * 100}%`, height: "100%", borderRadius: 99, backgroundColor: venuePwColor, transition: "all 0.3s ease" }} />
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                        {venuePwChecks.map((c) => (
+                          <span key={c.label} style={{
+                            fontSize: 10, padding: "2px 6px", borderRadius: 4,
+                            backgroundColor: c.pass ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.1)",
+                            color: c.pass ? "#22c55e" : "var(--muted-foreground)",
+                            fontWeight: 600, border: `1px solid ${c.pass ? "rgba(34,197,94,0.3)" : "transparent"}`,
+                          }}>{c.pass ? "✓" : "•"} {c.label}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -232,7 +263,7 @@ export default function VenueRegisterPage() {
                   <div className="space-y-2">
                     <Label htmlFor="venue-phone">Phone</Label>
                     <div className="relative">
-                      <Phone className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--text-muted)]" />
+                      <Phone className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--muted-foreground)]" />
                       <Input id="venue-phone" className="pl-9" value={phone} onChange={(e) => setPhone(e.target.value)} />
                     </div>
                   </div>
@@ -243,7 +274,7 @@ export default function VenueRegisterPage() {
                   <div className="rounded-lg border border-[var(--border)] p-2">
                     <LocationPickerMap lat={lat} lng={lng} onSelect={handleMapSelect} />
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                  <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
                     <MapPin className="h-3.5 w-3.5" />
                     <span>{lat.toFixed(6)}, {lng.toFixed(6)}</span>
                     {isResolvingAddress && (
@@ -271,7 +302,7 @@ export default function VenueRegisterPage() {
                   <div className="space-y-2">
                     <Label htmlFor="capacity">Capacity</Label>
                     <div className="relative">
-                      <Armchair className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--text-muted)]" />
+                      <Armchair className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--muted-foreground)]" />
                       <Input
                         id="capacity"
                         type="number"
@@ -341,7 +372,7 @@ export default function VenueRegisterPage() {
                     { title: "Vibe & audience", values: VIBE_TAGS },
                   ].map((group) => (
                     <div key={group.title} className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{group.title}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">{group.title}</p>
                       <div className="flex flex-wrap gap-2">
                         {group.values.map((value) => {
                           const selected = amenities.includes(value);
@@ -353,8 +384,8 @@ export default function VenueRegisterPage() {
                               className={cn(
                                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
                                 selected
-                                  ? "border-[var(--accent-primary)] bg-[var(--accent-primary-dim)] text-[var(--accent-primary)]"
-                                  : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent-primary)]/50",
+                                  ? "border-[var(--primary)] bg-[color-mix(in oklch, var(--primary) 15%, transparent)] text-[var(--primary)]"
+                                  : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]/50",
                               )}
                             >
                               {value}
@@ -379,8 +410,8 @@ export default function VenueRegisterPage() {
                           className={cn(
                             "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
                             selected
-                              ? "border-[var(--accent-primary)] bg-[var(--accent-primary-dim)] text-[var(--accent-primary)]"
-                              : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent-primary)]/50",
+                              ? "border-[var(--primary)] bg-[color-mix(in oklch, var(--primary) 15%, transparent)] text-[var(--primary)]"
+                              : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]/50",
                           )}
                         >
                           {value}
@@ -403,6 +434,5 @@ export default function VenueRegisterPage() {
           </form>
         </main>
       </AppShell>
-    </ThemeProvider>
   );
 }

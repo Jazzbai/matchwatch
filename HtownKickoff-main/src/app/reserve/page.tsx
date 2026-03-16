@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Trophy } from "lucide-react";
-import { ThemeProvider, AppShell } from "../../components/AppShell";
+import { AppShell } from "../../components/AppShell";
 import { useData } from "../../lib/data-provider";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
@@ -31,7 +31,7 @@ function TeamBadge({ src, fallback, alt }: { src?: string; fallback: string; alt
                     borderRadius: "999px",
                     objectFit: "cover",
                     border: "1px solid var(--border)",
-                    background: "var(--bg-elevated)",
+                    background: "var(--secondary)",
                 }}
             />
         );
@@ -44,8 +44,8 @@ function TeamBadge({ src, fallback, alt }: { src?: string; fallback: string; alt
                 height: "2rem",
                 borderRadius: "999px",
                 border: "1px solid var(--border)",
-                background: "var(--bg-elevated)",
-                color: "var(--text-primary)",
+                background: "var(--secondary)",
+                color: "var(--foreground)",
                 fontSize: "0.72rem",
                 fontWeight: 700,
                 display: "inline-flex",
@@ -129,26 +129,26 @@ export default function ReservePage() {
 
     if (!isAuthenticated) {
         return (
-            <ThemeProvider>
+            
                 <AppShell>
                     <div style={{ maxWidth: "640px", margin: "0 auto", padding: "46px 20px", textAlign: "center" }}>
-                        <h1 className="font-display text-h1" style={{ color: "var(--text-primary)", marginBottom: "8px" }}>LOGIN REQUIRED</h1>
-                        <p className="text-body" style={{ color: "var(--text-secondary)", marginBottom: "16px" }}>
+                        <h1 className="font-display text-h1" style={{ color: "var(--foreground)", marginBottom: "8px" }}>LOGIN REQUIRED</h1>
+                        <p className="text-body" style={{ color: "var(--muted-foreground)", marginBottom: "16px" }}>
                             Sign in to reserve a spot at a watch party.
                         </p>
                         <Link href="/login" className="btn-primary" style={{ textDecoration: "none" }}>Go to Login</Link>
                     </div>
                 </AppShell>
-            </ThemeProvider>
+            
         );
     }
 
     return (
-        <ThemeProvider>
+        
             <AppShell>
                 <div style={{ maxWidth: "760px", margin: "0 auto", padding: "28px 20px 56px" }}>
-                    <h1 className="font-display text-h1" style={{ color: "var(--text-primary)", marginBottom: "6px" }}>RESERVE A WATCH PARTY</h1>
-                    <p className="text-sm" style={{ color: "var(--text-secondary)", marginBottom: "18px" }}>
+                    <h1 className="font-display text-h1" style={{ color: "var(--foreground)", marginBottom: "6px" }}>RESERVE A WATCH PARTY</h1>
+                    <p className="text-sm" style={{ color: "var(--muted-foreground)", marginBottom: "18px" }}>
                         Choose a match, pick a venue event, and confirm your booking.
                     </p>
 
@@ -168,14 +168,14 @@ export default function ReservePage() {
 
                     {createdBooking ? (
                         <div className="card-flat" style={{ padding: "20px" }}>
-                            <h2 className="font-display text-h2" style={{ color: "var(--text-primary)", marginBottom: "8px" }}>BOOKING CONFIRMED</h2>
-                            <div className="text-sm" style={{ color: "var(--text-secondary)", marginBottom: "6px" }}>
+                            <h2 className="font-display text-h2" style={{ color: "var(--foreground)", marginBottom: "8px" }}>BOOKING CONFIRMED</h2>
+                            <div className="text-sm" style={{ color: "var(--muted-foreground)", marginBottom: "6px" }}>
                                 Reference: <strong>{createdBooking.bookingReference}</strong>
                             </div>
-                            <div className="text-sm" style={{ color: "var(--text-secondary)", marginBottom: "6px" }}>
+                            <div className="text-sm" style={{ color: "var(--muted-foreground)", marginBottom: "6px" }}>
                                 Status: {createdBooking.status}
                             </div>
-                            <div className="text-sm" style={{ color: "var(--text-secondary)", marginBottom: "12px" }}>
+                            <div className="text-sm" style={{ color: "var(--muted-foreground)", marginBottom: "12px" }}>
                                 Party size: {createdBooking.partySize}
                             </div>
                             <Link href="/dashboard" className="btn-primary" style={{ textDecoration: "none", padding: "10px 14px", display: "inline-block" }}>
@@ -191,7 +191,7 @@ export default function ReservePage() {
                                     style={{
                                         padding: "14px",
                                         border: "1px dashed var(--border)",
-                                        color: "var(--text-secondary)",
+                                        color: "var(--muted-foreground)",
                                         fontSize: "0.86rem",
                                     }}
                                 >
@@ -222,8 +222,8 @@ export default function ReservePage() {
                                                     width: "100%",
                                                     textAlign: "left",
                                                     borderRadius: "12px",
-                                                    border: selected ? "1px solid var(--accent-primary)" : "1px solid var(--border)",
-                                                    background: selected ? "rgba(243, 199, 84, 0.12)" : "var(--bg-card)",
+                                                    border: selected ? "1px solid var(--primary)" : "1px solid var(--border)",
+                                                    background: selected ? "rgba(243, 199, 84, 0.12)" : "var(--card)",
                                                     padding: "11px 12px",
                                                     cursor: "pointer",
                                                     display: "grid",
@@ -233,11 +233,11 @@ export default function ReservePage() {
                                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
                                                         <TeamBadge src={h?.image} fallback={h?.shortName || "H"} alt={`${h?.name || "Home"} logo`} />
-                                                        <span style={{ color: "var(--text-primary)", fontSize: "0.86rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                        <span style={{ color: "var(--foreground)", fontSize: "0.86rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                                             {h?.shortName || "HOME"}
                                                         </span>
-                                                        <span style={{ color: "var(--text-muted)", fontSize: "0.72rem", letterSpacing: "0.12em", fontWeight: 700 }}>VS</span>
-                                                        <span style={{ color: "var(--text-primary)", fontSize: "0.86rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                        <span style={{ color: "var(--muted-foreground)", fontSize: "0.72rem", letterSpacing: "0.12em", fontWeight: 700 }}>VS</span>
+                                                        <span style={{ color: "var(--foreground)", fontSize: "0.86rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                                             {a?.shortName || "AWAY"}
                                                         </span>
                                                         <TeamBadge src={a?.image} fallback={a?.shortName || "A"} alt={`${a?.name || "Away"} logo`} />
@@ -248,7 +248,7 @@ export default function ReservePage() {
                                                                 borderRadius: "999px",
                                                                 border: "1px solid rgba(243, 199, 84, 0.4)",
                                                                 background: "rgba(243, 199, 84, 0.2)",
-                                                                color: "var(--accent-primary)",
+                                                                color: "var(--primary)",
                                                                 fontSize: "0.66rem",
                                                                 fontWeight: 700,
                                                                 letterSpacing: "0.08em",
@@ -259,7 +259,7 @@ export default function ReservePage() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--text-muted)", fontSize: "0.74rem" }}>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--muted-foreground)", fontSize: "0.74rem" }}>
                                                     <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
                                                         <Trophy size={13} />
                                                         {matchLeague?.shortName || "League"}
@@ -277,12 +277,12 @@ export default function ReservePage() {
 
                             {selectedMatch && (
                                 <div className="card-flat" style={{ padding: "14px" }}>
-                                    <div className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <div className="text-sm" style={{ color: "var(--foreground)", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
                                         <TeamBadge src={home?.image} fallback={home?.shortName || "H"} alt={`${home?.name || "Home"} logo`} />
                                         <span>{home?.name || "Home"} vs {away?.name || "Away"}</span>
                                         <TeamBadge src={away?.image} fallback={away?.shortName || "A"} alt={`${away?.name || "Away"} logo`} />
                                     </div>
-                                    <div className="text-xs" style={{ color: "var(--text-muted)", marginTop: "4px" }}>
+                                    <div className="text-xs" style={{ color: "var(--muted-foreground)", marginTop: "4px" }}>
                                         {league?.shortName || "League"} · {new Date(selectedMatch.matchDateUTC).toLocaleString("en-US")}
                                     </div>
                                 </div>
@@ -297,8 +297,8 @@ export default function ReservePage() {
                                     padding: "12px 14px",
                                     borderRadius: "10px",
                                     border: "1px solid var(--border)",
-                                    background: "var(--bg-card)",
-                                    color: "var(--text-primary)",
+                                    background: "var(--card)",
+                                    color: "var(--foreground)",
                                 }}
                             >
                                 {events.length === 0 && <option value="">No venue event available</option>}
@@ -311,10 +311,10 @@ export default function ReservePage() {
 
                             {selectedEvent && (
                                 <div className="card-flat" style={{ padding: "14px" }}>
-                                    <div className="text-sm" style={{ color: "var(--text-primary)", fontWeight: 700 }}>{selectedEvent.venue.name}</div>
-                                    <div className="text-xs" style={{ color: "var(--text-muted)", marginTop: "4px" }}>{selectedEvent.venue.addressLine1}, {selectedEvent.venue.city}</div>
+                                    <div className="text-sm" style={{ color: "var(--foreground)", fontWeight: 700 }}>{selectedEvent.venue.name}</div>
+                                    <div className="text-xs" style={{ color: "var(--muted-foreground)", marginTop: "4px" }}>{selectedEvent.venue.addressLine1}, {selectedEvent.venue.city}</div>
                                     {selectedEvent.specialNotes && (
-                                        <div className="text-xs" style={{ color: "var(--text-secondary)", marginTop: "6px" }}>{selectedEvent.specialNotes}</div>
+                                        <div className="text-xs" style={{ color: "var(--muted-foreground)", marginTop: "6px" }}>{selectedEvent.specialNotes}</div>
                                     )}
                                 </div>
                             )}
@@ -333,8 +333,8 @@ export default function ReservePage() {
                                         padding: "12px 14px",
                                         borderRadius: "10px",
                                         border: "1px solid var(--border)",
-                                        background: "var(--bg-card)",
-                                        color: "var(--text-primary)",
+                                        background: "var(--card)",
+                                        color: "var(--foreground)",
                                     }}
                                 />
                                 <button className="btn-primary" onClick={() => void handleReserve()} disabled={submitting || !selectedEventId} style={{ padding: "12px 14px" }}>
@@ -352,8 +352,8 @@ export default function ReservePage() {
                                     padding: "12px 14px",
                                     borderRadius: "10px",
                                     border: "1px solid var(--border)",
-                                    background: "var(--bg-card)",
-                                    color: "var(--text-primary)",
+                                    background: "var(--card)",
+                                    color: "var(--foreground)",
                                     resize: "vertical",
                                 }}
                             />
@@ -361,6 +361,6 @@ export default function ReservePage() {
                     )}
                 </div>
             </AppShell>
-        </ThemeProvider>
+        
     );
 }

@@ -2,9 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
-import { CalendarDays, CircleDot, Filter, Globe, History, Timer, X } from "lucide-react";
-import { ThemeProvider, AppShell } from "../../components/AppShell";
+import { CalendarDays, CircleDot, Filter, Globe, History, Timer, Trophy, X } from "lucide-react";
+import { AppShell } from "../../components/AppShell";
 import { MatchCard } from "../../components/MatchCard";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useData } from "../../lib/data-provider";
 
 function asTimestamp(value: string) {
@@ -227,183 +229,261 @@ export default function MatchesPage() {
       ];
 
   return (
-    <ThemeProvider>
       <AppShell>
-        <section style={{ padding: "32px 20px 0" }}>
-          <div className="section-label" style={{ marginBottom: "6px" }}>Browse</div>
-          <h1 className="font-display text-display" style={{ color: "var(--text-primary)", marginBottom: "6px" }}>
-            Matches
-          </h1>
-          <p className="text-body" style={{ color: "var(--text-secondary)", marginBottom: "24px", maxWidth: "560px" }}>
-            Upcoming fixtures first, with league and team filters. Past matches stay hidden unless you enable history mode.
-          </p>
-
-          {liveCount > 0 && (
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "8px 16px",
-                borderRadius: "999px",
-                background: "rgba(239, 68, 68, 0.1)",
-                border: "1px solid rgba(239, 68, 68, 0.3)",
-                marginBottom: "16px",
-              }}
-            >
-              <span className="live-dot" />
-              <span className="text-sm font-body" style={{ color: "var(--live-pulse)", fontWeight: 600 }}>
-                {liveCount} match{liveCount > 1 ? "es" : ""} live now
-              </span>
+        <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 24px", position: "relative", overflow: "hidden" }}>
+          {/* Subtle gradient background */}
+          <div style={{ position: "absolute", top: -100, right: -100, width: 400, height: 400, borderRadius: "50%", background: "color-mix(in oklch, var(--primary) 8%, transparent)", filter: "blur(80px)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: -50, left: -100, width: 300, height: 300, borderRadius: "50%", background: "color-mix(in oklch, oklch(0.6 0.15 250) 8%, transparent)", filter: "blur(80px)", pointerEvents: "none" }} />
+          
+          <div style={{ position: "relative", zIndex: 10 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 99, backgroundColor: "var(--secondary)", fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--secondary-foreground)", marginBottom: 16, border: "1px solid var(--border)" }}>
+              <Trophy size={14} style={{ color: "var(--primary)" }} />
+              Browse
             </div>
-          )}
+            <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 48, fontWeight: 900, color: "var(--foreground)", marginBottom: 8, letterSpacing: "-0.02em", lineHeight: 1 }}>
+              Matches
+            </h1>
+            <p style={{ fontSize: 15, color: "var(--muted-foreground)", marginBottom: 24, maxWidth: 520, lineHeight: 1.6, fontWeight: 500 }}>
+              Upcoming fixtures first, with league and team filters. Past matches stay hidden unless you enable history mode.
+            </p>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "18px" }}>
-            <button
-              className="btn-ghost"
-              style={{ padding: "8px 14px" }}
-              onClick={() => setShowFilterModal(true)}
-            >
-              <Filter size={14} />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="badge" style={{ marginLeft: 4 }}>
-                  {activeFilterCount}
+            {liveCount > 0 && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 20px", borderRadius: 99, backgroundColor: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 24 }}>
+                <span style={{ position: "relative", width: 10, height: 10 }}>
+                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", backgroundColor: "#f59e0b", animation: "ping 1.5s cubic-bezier(0,0,0.2,1) infinite", opacity: 0.5 }} />
+                  <span style={{ position: "relative", display: "block", width: 10, height: 10, borderRadius: "50%", backgroundColor: "#f59e0b" }} />
                 </span>
-              )}
-            </button>
-            <button
-              className="btn-ghost"
-              style={{
-                padding: "8px 14px",
-                borderColor: includePast ? "var(--accent-primary)" : "var(--border)",
-                color: includePast ? "var(--accent-primary)" : "var(--text-secondary)",
-              }}
-              onClick={() => setIncludePast((prev) => !prev)}
-            >
-              <History size={14} />
-              {includePast ? "History On" : "Show History"}
-            </button>
-            <label
-              className="btn-ghost"
-              style={{
-                padding: "8px 12px",
-                borderColor: onlyWithHosting ? "var(--accent-primary)" : "var(--border)",
-                color: onlyWithHosting ? "var(--accent-primary)" : "var(--text-secondary)",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                cursor: "pointer",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={onlyWithHosting}
-                onChange={(e) => setOnlyWithHosting(e.target.checked)}
-                style={{ accentColor: "var(--accent-primary)" }}
-              />
-              Only with hosting venues
-            </label>
-          </div>
-        </section>
-
-        <section style={{ padding: "0 20px 12px" }}>
-          <div className="toggle-track" style={{ display: "inline-flex" }}>
-            {statusTabs.map((tab) => (
-              <button
-                key={tab.id}
-                className={`toggle-option ${activeStatus === tab.id ? "active" : ""}`}
-                onClick={() => setActiveStatus(tab.id as typeof activeStatus)}
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-              >
-                {tab.id === "live" && <CircleDot size={12} />}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section style={{ paddingBottom: "8px" }}>
-          <div className="carousel-track no-scrollbar" style={{ padding: "0 20px 8px" }}>
-            <button
-              className={`pill ${selectedLeagueId === null ? "active" : ""}`}
-              onClick={() => setSelectedLeagueId(null)}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-            >
-              <Globe size={14} />
-              <span>All Leagues</span>
-            </button>
-            {availableLeagues.map((league) => (
-              <button
-                key={league.id}
-                className={`pill ${selectedLeagueId === league.id ? "active" : ""}`}
-                onClick={() => setSelectedLeagueId((prev) => (prev === league.id ? null : league.id))}
-              >
-                {league.image ? <img src={league.image} alt={league.shortName} /> : <span style={{ fontSize: "1.4rem" }}>{league.logo}</span>}<span>{league.shortName}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section style={{ paddingBottom: "8px" }}>
-          <div className="carousel-track no-scrollbar" style={{ padding: "0 20px 8px" }}>
-            <button
-              className={`pill ${selectedCountry === null ? "active" : ""}`}
-              onClick={() => setSelectedCountry(null)}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-            >
-              <Globe size={14} />
-              <span>All Countries</span>
-            </button>
-            {availableCountries.map((country) => (
-              <button
-                key={country}
-                className={`pill ${selectedCountry === country ? "active" : ""}`}
-                onClick={() => setSelectedCountry((prev) => (prev === country ? null : country))}
-              >
-                <span>{country}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section style={{ paddingBottom: "8px" }}>
-          <div className="carousel-track no-scrollbar" style={{ padding: "0 20px 8px" }}>
-            <button
-              className={`pill ${selectedDateKey === null ? "active" : ""}`}
-              onClick={() => setSelectedDateKey(null)}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-            >
-              <CalendarDays size={14} />
-              <span>All Dates</span>
-            </button>
-            {availableDateFilters.map((item) => (
-              <button
-                key={item.value}
-                className={`pill ${selectedDateKey === item.value ? "active" : ""}`}
-                onClick={() => setSelectedDateKey((prev) => (prev === item.value ? null : item.value))}
-              >
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section style={{ padding: "8px 20px 40px" }}>
-          {filtered.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: "12px" }}>
-                <Timer size={44} style={{ color: "var(--text-muted)" }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#f59e0b", letterSpacing: "0.02em" }}>
+                  {liveCount} match{liveCount > 1 ? "es" : ""} live now
+                </span>
               </div>
-              <h3 className="font-display text-h2" style={{ color: "var(--text-primary)", marginBottom: "8px" }}>
+            )}
+
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-2 font-semibold shadow-sm rounded-lg"
+                onClick={() => setShowFilterModal(true)}
+              >
+                <Filter size={16} />
+                Filters
+                {activeFilterCount > 0 && (
+                  <Badge variant="secondary" className="ml-1 px-1.5 h-5 flex items-center justify-center bg-primary/20 text-primary">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </Button>
+              
+              <Button
+                variant={includePast ? "default" : "outline"}
+                size="sm"
+                className={`h-9 gap-2 font-semibold shadow-sm rounded-lg ${includePast ? 'bg-primary text-primary-foreground shadow-primary/20' : ''}`}
+                onClick={() => setIncludePast((prev) => !prev)}
+              >
+                <History size={16} />
+                {includePast ? "History On" : "Show History"}
+              </Button>
+              
+              <label style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "0 16px", height: 36, borderRadius: 8,
+                border: onlyWithHosting ? "1px solid var(--primary)" : "1px solid var(--border)",
+                backgroundColor: onlyWithHosting ? "color-mix(in oklch, var(--primary) 5%, transparent)" : "var(--card)",
+                color: onlyWithHosting ? "var(--primary)" : "var(--muted-foreground)",
+                fontWeight: 600, fontSize: 13, cursor: "pointer", transition: "all 0.2s",
+              }}>
+                <input
+                  type="checkbox"
+                  checked={onlyWithHosting}
+                  onChange={(e) => setOnlyWithHosting(e.target.checked)}
+                  style={{ width: 16, height: 16, borderRadius: 4, accentColor: "var(--primary)", cursor: "pointer" }}
+                />
+                Only with hosting venues
+              </label>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Unified Filter Panel ─── */}
+        <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 24px" }}>
+          <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+            
+            {/* Status Tabs Row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4, padding: 4, backgroundColor: "var(--secondary)", borderRadius: 14, border: "1px solid var(--border)", width: "fit-content", overflowX: "auto" }} className="custom-scrollbar">
+              {statusTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveStatus(tab.id as typeof activeStatus)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "10px 20px", borderRadius: 10, border: "none",
+                    fontSize: 13, fontWeight: 700, cursor: "pointer",
+                    fontFamily: "inherit", whiteSpace: "nowrap",
+                    transition: "all 0.2s",
+                    backgroundColor: activeStatus === tab.id ? "var(--background)" : "transparent",
+                    color: activeStatus === tab.id ? "var(--foreground)" : "var(--muted-foreground)",
+                    boxShadow: activeStatus === tab.id ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  }}
+                >
+                  {tab.id === "live" && <CircleDot size={14} style={{ color: activeStatus === "live" ? "#f59e0b" : "inherit" }} />}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, backgroundColor: "var(--border)" }} />
+
+            {/* League Filter Row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>League</span>
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                <button
+                  onClick={() => setSelectedLeagueId(null)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px", borderRadius: 99,
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    fontFamily: "inherit", whiteSpace: "nowrap",
+                    border: selectedLeagueId === null ? "1px solid var(--primary)" : "1px solid var(--border)",
+                    backgroundColor: selectedLeagueId === null ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                    color: selectedLeagueId === null ? "var(--primary)" : "var(--muted-foreground)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <Globe size={13} /> All
+                </button>
+                {availableLeagues.map((league) => {
+                  const sel = selectedLeagueId === league.id;
+                  return (
+                    <button
+                      key={league.id}
+                      onClick={() => setSelectedLeagueId((prev) => (prev === league.id ? null : league.id))}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "7px 14px", borderRadius: 99,
+                        fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        fontFamily: "inherit", whiteSpace: "nowrap",
+                        border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
+                        backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                        color: sel ? "var(--primary)" : "var(--muted-foreground)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {league.image ? <img src={league.image} alt={league.shortName} style={{ width: 16, height: 16, objectFit: "contain" }} /> : null}
+                      {league.shortName}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Country Filter Row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Region</span>
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                <button
+                  onClick={() => setSelectedCountry(null)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px", borderRadius: 99,
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    fontFamily: "inherit", whiteSpace: "nowrap",
+                    border: selectedCountry === null ? "1px solid var(--primary)" : "1px solid var(--border)",
+                    backgroundColor: selectedCountry === null ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                    color: selectedCountry === null ? "var(--primary)" : "var(--muted-foreground)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <Globe size={13} /> All
+                </button>
+                {availableCountries.map((country) => {
+                  const sel = selectedCountry === country;
+                  return (
+                    <button
+                      key={country}
+                      onClick={() => setSelectedCountry((prev) => (prev === country ? null : country))}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "7px 14px", borderRadius: 99,
+                        fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        fontFamily: "inherit", whiteSpace: "nowrap",
+                        border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
+                        backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                        color: sel ? "var(--primary)" : "var(--muted-foreground)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {country}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Date Filter Row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Date</span>
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                <button
+                  onClick={() => setSelectedDateKey(null)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px", borderRadius: 99,
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    fontFamily: "inherit", whiteSpace: "nowrap",
+                    border: selectedDateKey === null ? "1px solid var(--primary)" : "1px solid var(--border)",
+                    backgroundColor: selectedDateKey === null ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                    color: selectedDateKey === null ? "var(--primary)" : "var(--muted-foreground)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <CalendarDays size={13} /> All
+                </button>
+                {availableDateFilters.map((item) => {
+                  const sel = selectedDateKey === item.value;
+                  return (
+                    <button
+                      key={item.value}
+                      onClick={() => setSelectedDateKey((prev) => (prev === item.value ? null : item.value))}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "7px 14px", borderRadius: 99,
+                        fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        fontFamily: "inherit", whiteSpace: "nowrap",
+                        border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
+                        backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                        color: sel ? "var(--primary)" : "var(--muted-foreground)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <section style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 24px 96px" }}>
+          {filtered.length === 0 ? (
+            <div className="text-center py-20 px-5 bg-card border border-border/50 rounded-2xl shadow-sm mt-4">
+              <div className="flex justify-center mb-6">
+                <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center">
+                  <Timer size={36} className="text-muted-foreground" />
+                </div>
+              </div>
+              <h3 className="font-display text-2xl font-bold text-foreground mb-3">
                 No Matches Found
               </h3>
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                Try changing filters or turning off "Only with hosting venues."
+              <p className="text-base text-muted-foreground max-w-sm mx-auto">
+                Try changing your filters, selecting a different date, or turning off "Only with hosting venues."
               </p>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {filtered.map((match, i) => {
                 const home = getTeam(match.homeTeamId);
                 const away = getTeam(match.awayTeamId);
@@ -421,10 +501,11 @@ export default function MatchesPage() {
                   <Link
                     href={`/matches/${match.id}`}
                     key={toMatchRowKey(match)}
-                    style={{ textDecoration: "none", color: "inherit" }}
-                    className={`animate-fade-up stagger-${Math.min(i + 1, 6)}`}
+                    className={`animate-fade-up block h-full`}
+                    style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}
                   >
                     <MatchCard
+                      className="h-full"
                       homeTeam={home.shortName}
                       awayTeam={away.shortName}
                       homeCrest={home.crest}
@@ -450,11 +531,11 @@ export default function MatchesPage() {
         </section>
 
         {showFilterModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="w-full max-w-3xl rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
+            <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.7)", padding: 16 }}>
+            <div style={{ width: "100%", maxWidth: 768, borderRadius: 16, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 24 }}>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-display text-2xl text-[var(--text-primary)]">Filter Matches</h2>
-                <button className="btn-ghost" onClick={() => setShowFilterModal(false)}>
+                <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 24, fontWeight: 800, color: "var(--foreground)" }}>Filter Matches</h2>
+                <button onClick={() => setShowFilterModal(false)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}>
                   <X size={14} />
                   Close
                 </button>
@@ -462,14 +543,14 @@ export default function MatchesPage() {
 
               <div className="space-y-4">
                 <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Leagues</p>
-                  <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
+                  <p style={{ marginBottom: 8, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", fontWeight: 700 }}>Leagues</p>
+                  <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
                     {availableLeagues.map((league) => {
                       const selected = selectedLeagueId === league.id;
                       return (
                         <button
                           key={league.id}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-[var(--accent-primary)] bg-[var(--accent-primary-dim)] text-[var(--accent-primary)]" : "border-[var(--border)] text-[var(--text-secondary)]"}`}
+                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
                           onClick={() => setSelectedLeagueId((prev) => (prev === league.id ? null : league.id))}
                         >
                           {league.shortName}
@@ -480,14 +561,14 @@ export default function MatchesPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Countries</p>
-                  <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
+                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Countries</p>
+                  <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
                     {availableCountries.map((country) => {
                       const selected = selectedCountry === country;
                       return (
                         <button
                           key={country}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-[var(--accent-primary)] bg-[var(--accent-primary-dim)] text-[var(--accent-primary)]" : "border-[var(--border)] text-[var(--text-secondary)]"}`}
+                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
                           onClick={() => setSelectedCountry((prev) => (prev === country ? null : country))}
                         >
                           {country}
@@ -498,14 +579,14 @@ export default function MatchesPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Dates</p>
-                  <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
+                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Dates</p>
+                  <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
                     {availableDateFilters.map((item) => {
                       const selected = selectedDateKey === item.value;
                       return (
                         <button
                           key={item.value}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-[var(--accent-primary)] bg-[var(--accent-primary-dim)] text-[var(--accent-primary)]" : "border-[var(--border)] text-[var(--text-secondary)]"}`}
+                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
                           onClick={() => setSelectedDateKey((prev) => (prev === item.value ? null : item.value))}
                         >
                           {item.label}
@@ -516,14 +597,14 @@ export default function MatchesPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">Teams (from current dataset)</p>
-                  <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
+                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Teams (from current dataset)</p>
+                  <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
                     {availableTeams.map((team) => {
                       const selected = selectedTeamIds.includes(team.id);
                       return (
                         <button
                           key={team.id}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-[var(--accent-primary)] bg-[var(--accent-primary-dim)] text-[var(--accent-primary)]" : "border-[var(--border)] text-[var(--text-secondary)]"}`}
+                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
                           onClick={() => {
                             setSelectedTeamIds((prev) =>
                               selected ? prev.filter((id) => id !== team.id) : [...prev, team.id],
@@ -540,17 +621,17 @@ export default function MatchesPage() {
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                 <button
-                  className="btn-ghost"
                   onClick={() => {
                     setSelectedLeagueId(null);
                     setSelectedCountry(null);
                     setSelectedDateKey(null);
                     setSelectedTeamIds([]);
                   }}
+                  style={{ padding: "10px 20px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 13 }}
                 >
                   Reset Filters
                 </button>
-                <button className="btn-primary" onClick={() => setShowFilterModal(false)}>
+                <button onClick={() => setShowFilterModal(false)} style={{ padding: "10px 24px", borderRadius: 10, border: "none", backgroundColor: "var(--primary)", color: "var(--primary-foreground)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
                   Apply Filters
                 </button>
               </div>
@@ -558,6 +639,5 @@ export default function MatchesPage() {
           </div>
         )}
       </AppShell>
-    </ThemeProvider>
   );
 }

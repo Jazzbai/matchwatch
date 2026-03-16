@@ -2,19 +2,19 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   BarChart3,
   Building2,
   CalendarDays,
   MapPin,
   Megaphone,
-  Search,
   Ticket,
   Trophy,
   Users,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import { ThemeProvider } from "../components/AppShell";
 import { AppShell } from "../components/AppShell";
 import { MatchCard } from "../components/MatchCard";
 import { VenueCard } from "../components/VenueCard";
@@ -36,13 +36,13 @@ function AdPlacement({
     <div
       style={{
         padding: variant === "sidebar" ? "16px" : "12px 20px",
-        background: "var(--bg-card)",
+        background: "var(--card)",
         borderRadius: "12px",
         border: "1px solid var(--border)",
         textAlign: "center",
         opacity: 0.6,
         fontSize: "0.75rem",
-        color: "var(--text-muted)",
+        color: "var(--muted-foreground)",
         letterSpacing: "0.08em",
         textTransform: "uppercase" as const,
       }}
@@ -71,8 +71,8 @@ function LeagueFilterPills({
     }}>
       <button className="btn-ghost text-xs" style={{
         whiteSpace: "nowrap", padding: "8px 14px", borderRadius: "999px",
-        background: activeLeagueId === "all" ? "var(--accent-primary)" : "transparent",
-        color: activeLeagueId === "all" ? "#fff" : "var(--text-secondary)", fontWeight: 700,
+        background: activeLeagueId === "all" ? "var(--primary)" : "transparent",
+        color: activeLeagueId === "all" ? "#fff" : "var(--muted-foreground)", fontWeight: 700,
       }} onClick={() => onSelectLeague("all")}>
         All Matches
       </button>
@@ -82,8 +82,8 @@ function LeagueFilterPills({
           display: "inline-flex",
           alignItems: "center",
           gap: "6px",
-          borderColor: activeLeagueId === lg.id ? "var(--accent-primary)" : "var(--border)",
-          color: activeLeagueId === lg.id ? "var(--accent-primary)" : "var(--text-secondary)",
+          borderColor: activeLeagueId === lg.id ? "var(--primary)" : "var(--border)",
+          color: activeLeagueId === lg.id ? "var(--primary)" : "var(--muted-foreground)",
         }} onClick={() => onSelectLeague(lg.id)}>
           {lg.image ? <img src={lg.image} alt={lg.shortName} style={{ width: "16px", height: "16px", objectFit: "contain" }} /> : lg.logo} {lg.shortName}
         </button>
@@ -136,96 +136,59 @@ export default function HomePage() {
     : venueCards;
 
   return (
-    <ThemeProvider>
       <AppShell>
-        {/* ─── Hero Section ──────────────────────── */}
-        <section
-          className="hero-field"
-          style={{
-            background: "var(--gradient-hero)",
-            padding: "48px 20px 36px",
-            textAlign: "center",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          {/* Decorative orbs */}
-          <div style={{ position: "absolute", top: "-60px", right: "-40px", width: "200px", height: "200px", borderRadius: "50%", background: "var(--accent-primary)", opacity: 0.04, filter: "blur(60px)" }} />
-          <div style={{ position: "absolute", bottom: "-40px", left: "-30px", width: "160px", height: "160px", borderRadius: "50%", background: "var(--accent-secondary)", opacity: 0.04, filter: "blur(50px)" }} />
+        {/* ─── Immersive Floating Hero ──────────────────────── */}
+        <section style={{ position: "relative", width: "100%", minHeight: "85vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: "var(--background)" }}>
+          {/* 3D Globs & Gradients */}
+          <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full bg-primary/20 blur-[120px] mix-blend-screen animate-pulse-slow pointer-events-none" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-500/10 dark:bg-blue-600/20 blur-[100px] mix-blend-screen animate-float pointer-events-none" />
 
-          {/* Hero Image Background */}
-          <img
-            src="/home-hero.webp"
-            alt=""
-            style={{
-              position: "absolute", inset: 0,
-              width: "100%", height: "100%",
-              objectFit: "cover",
-              opacity: 0.18,
-              pointerEvents: "none",
-            }}
-          />
+          {/* Background Image */}
+          <div style={{ position: "absolute", inset: 0, zIndex: 0, opacity: 0.25, pointerEvents: "none" }}>
+            <Image
+              src="/assets/main-hero.png"
+              alt="Stadium Background"
+              fill
+              className="object-cover"
+              priority
+            />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, var(--background), transparent 50%)" }} />
+          </div>
 
-          <div className="animate-fade-up" style={{ position: "relative", zIndex: 2 }}>
-            <div className="section-label" style={{ marginBottom: "12px", fontSize: "0.7rem" }}>
+          <div style={{ position: "relative", zIndex: 10, width: "100%", maxWidth: 1024, margin: "0 auto", padding: "0 24px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/80 backdrop-blur-md text-secondary-foreground text-xs font-bold tracking-widest mb-8 border border-border/50 shadow-sm animate-fade-in">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               GLOBAL FOOTBALL NIGHTS · HOUSTON, TX
             </div>
-            <h1 className="font-display text-hero" style={{ color: "var(--text-primary)", marginBottom: "8px" }}>
+            
+            <h1 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-[7rem] tracking-tighter leading-[0.9] text-foreground mb-6 font-black drop-shadow-lg animate-slide-up w-full overflow-hidden text-clip whitespace-nowrap">
               MATCHWATCH
-              <br />
-              <span style={{ color: "var(--accent-primary)" }}>WATCHPARTY</span>
             </h1>
-            {!isApiConnected && (
-              <p className="text-xs" style={{ color: "var(--accent-hot)", marginBottom: "12px" }}>
-                API not reachable yet. Start backend services to load live matches and venues.
-              </p>
-            )}
-            <p className="text-body" style={{ color: "var(--text-secondary)", maxWidth: "380px", margin: "0 auto 24px" }}>
+            
+            <p className="text-lg md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-12 font-medium animate-fade-up stagger-1">
               Find the best bars, lounges, and restaurants hosting match-night watch parties. Book your spot and join the action.
             </p>
 
-            {/* Search Bar */}
-            <div style={{ position: "relative", maxWidth: "420px", margin: "0 auto" }}>
-              <input
-                type="text"
-                placeholder="Search venues, matches, or neighborhoods..."
-                style={{
-                  width: "100%", padding: "14px 18px 14px 44px", borderRadius: "14px",
-                  border: "1px solid var(--border)", background: "var(--bg-card)",
-                  color: "var(--text-primary)", fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "0.9rem", outline: "none", transition: "all 0.2s ease",
-                }}
-                onFocus={(e) => { e.target.style.borderColor = "var(--accent-primary)"; e.target.style.boxShadow = "0 0 0 3px var(--accent-primary-dim)"; }}
-                onBlur={(e) => { e.target.style.borderColor = "var(--border)"; e.target.style.boxShadow = "none"; }}
-              />
-              <Search size={18} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", opacity: 0.5 }} />
-            </div>
-
-            {/* Dual CTA — linked */}
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "20px", flexWrap: "wrap" }}>
-              <Link href="/matches" className="btn-primary" style={{ padding: "12px 24px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                <CalendarDays size={16} />
-                Find a Watch Party
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
+              <Link href="/matches" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 32px", borderRadius: 99, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, fontSize: 16, textDecoration: "none", transition: "all 0.2s" }}>
+                <Trophy size={20} /> Browse Matches
               </Link>
-              <Link href="/venues" className="btn-ghost" style={{ padding: "12px 24px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                <Building2 size={16} />
-                List Your Venue
+              <Link href="/venues" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 32px", borderRadius: 99, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--foreground)", fontWeight: 700, fontSize: 16, textDecoration: "none", transition: "all 0.2s" }}>
+                <MapPin size={20} /> Explore Venues
               </Link>
             </div>
+            
+            {!isApiConnected && (
+              <p style={{ fontSize: 13, color: "var(--destructive)", backgroundColor: "color-mix(in oklch, var(--destructive) 10%, transparent)", padding: "8px 16px", borderRadius: 8, fontWeight: 500, marginTop: 16 }}>
+                API not reachable yet. Start backend services to load live matches and venues.
+              </p>
+            )}
           </div>
         </section>
 
         {/* ─── Live Match Ticker ──────────────────── */}
-        <div
-          style={{
-            background: "var(--bg-surface)",
-            borderBottom: "1px solid var(--border)",
-            padding: "8px 0",
-            overflow: "hidden",
-            position: "relative",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "24px", whiteSpace: "nowrap", animation: "marquee 30s linear infinite", width: "max-content" }}>
+        <div className="w-full bg-surface border-y border-border py-3 overflow-hidden relative z-20 shadow-sm bg-background/50 backdrop-blur-sm">
+          <div className="flex items-center gap-8 whitespace-nowrap animate-[marquee_30s_linear_infinite] w-max">
             {[...liveMatches, ...liveMatches].map(
               (m, i) => {
                 const home = getTeam(m.homeTeamId);
@@ -235,19 +198,19 @@ export default function HomePage() {
                   <Link
                     key={i}
                     href={`/matches/${m.id}`}
-                    style={{ display: "inline-flex", alignItems: "center", gap: "8px", textDecoration: "none", color: "inherit" }}
+                    className="inline-flex items-center gap-3 text-foreground hover:text-primary transition-colors"
                   >
-                    <span className="live-dot" style={{ width: "6px", height: "6px" }} />
-                    <span className="text-xs font-body" style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="font-body font-bold text-sm">
                       {home.crest} {home.shortName}
                     </span>
-                    <span className="font-mono text-xs" style={{ color: "var(--live-pulse)", fontWeight: 700 }}>
+                    <span className="font-mono text-sm font-black text-red-500">
                       {m.homeScore}-{m.awayScore}
                     </span>
-                    <span className="text-xs font-body" style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                    <span className="font-body font-bold text-sm">
                       {away.shortName} {away.crest}
                     </span>
-                    <span style={{ color: "var(--border)", margin: "0 8px" }}>│</span>
+                    <span className="text-border mx-2">│</span>
                   </Link>
                 );
               }
@@ -255,244 +218,365 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ─── League Filter Pills ───────────────── */}
-        <section style={{ paddingTop: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px 12px" }}>
-            <div className="section-label">BROWSE BY LEAGUE</div>
-          </div>
-          <LeagueFilterPills
-            leagues={leagues}
-            activeLeagueId={homeLeagueFilter}
-            onSelectLeague={setHomeLeagueFilter}
-          />
-        </section>
-
-        {/* ─── Today's Matches Carousel ──────────── */}
-        <section style={{ padding: "20px 0" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px 14px" }}>
+        {/* ─── Interactive Bento Box Match View ──────────── */}
+        <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "96px 24px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 48, gap: 16 }}>
             <div>
-              <div className="section-label" style={{ marginBottom: "4px" }}>UPCOMING MATCHES</div>
-              <h2 className="font-display text-h2" style={{ color: "var(--text-primary)" }}>THIS WEEK</h2>
+              <div style={{ color: "var(--primary)", fontWeight: 700, letterSpacing: "0.16em", fontSize: 12, marginBottom: 8, textTransform: "uppercase" }}>UPCOMING MATCHES</div>
+              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>THIS WEEK</h2>
             </div>
-            <Link href="/matches" className="btn-ghost" style={{ padding: "8px 14px", textDecoration: "none" }}>
-              See All →
-            </Link>
+            {/* League Filters */}
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+                <button style={{
+                  padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
+                  border: "none", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                  backgroundColor: homeLeagueFilter === "all" ? "var(--foreground)" : "var(--secondary)",
+                  color: homeLeagueFilter === "all" ? "var(--background)" : "var(--secondary-foreground)",
+                }} onClick={() => setHomeLeagueFilter("all")}>
+                    All Matches
+                </button>
+                {leagues.slice(0, 4).map((lg) => (
+                    <button key={lg.id} style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
+                      cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                      border: homeLeagueFilter === lg.id ? "1px solid var(--primary)" : "1px solid var(--border)",
+                      color: homeLeagueFilter === lg.id ? "var(--primary)" : "var(--muted-foreground)",
+                      backgroundColor: homeLeagueFilter === lg.id ? "color-mix(in oklch, var(--primary) 10%, transparent)" : "var(--secondary)",
+                    }} onClick={() => setHomeLeagueFilter(lg.id)}>
+                        {lg.image ? <img src={lg.image} alt={lg.shortName} style={{ width: 16, height: 16, objectFit: "contain" }} /> : lg.logo} {lg.shortName}
+                    </button>
+                ))}
+            </div>
           </div>
-          <div className="carousel-track no-scrollbar">
-            {filteredUpcomingMatches.slice(0, 8).map((m, i) => {
+          
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, gridAutoRows: 320 }} className="bento-match-grid">
+            {filteredUpcomingMatches.length === 0 && (
+                <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "span 3", minHeight: 320 }}>
+                    <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", marginBottom: 16 }}>
+                        <Trophy style={{ width: 32, height: 32, opacity: 0.5 }} />
+                    </div>
+                    <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Matches Scheduled</h3>
+                    <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 400 }}>
+                        There are currently no featured matches in this category. Check back soon or select a different league to find watch parties.
+                    </p>
+                </div>
+            )}
+            {filteredUpcomingMatches.slice(0, 7).map((m, i) => {
               const home = getTeam(m.homeTeamId);
               const away = getTeam(m.awayTeamId);
               const league = getLeague(m.leagueId);
               if (!home || !away || !league) return null;
-              const d = new Date(m.matchDateUTC);
+              
               const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
               const isFinished = m.status === "FINISHED";
-              const kickoffLabel = isLive ? "LIVE" : isFinished ? "FT" :
-                d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " · " +
-                d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+              const d = new Date(m.matchDateUTC);
+              
+              const isLarge = i === 0 || i === 3;
+              
               return (
                 <Link
                   key={m.id}
                   href={`/matches/${m.id}`}
-                  style={{ textDecoration: "none", color: "inherit" }}
+                  style={{
+                    position: "relative", borderRadius: 24, overflow: "hidden",
+                    border: "1px solid var(--border)", backgroundColor: "var(--card)",
+                    transition: "all 0.5s", display: "block", textDecoration: "none", color: "inherit",
+                    gridColumn: isLarge ? "span 2" : "span 1",
+                    gridRow: isLarge ? "span 2" : "span 1",
+                  }}
                 >
-                  <MatchCard
-                    homeTeam={home.shortName}
-                    awayTeam={away.shortName}
-                    homeCrest={home.crest}
-                    awayCrest={away.crest}
-                    homeImage={home.image}
-                    awayImage={away.image}
-                    kickoff={kickoffLabel}
-                    league={league.name}
-                    leagueLogo={league.logo}
-                    leagueImage={league.image}
-                    venueCount={m.venueCount}
-                    status={isLive ? "LIVE" : isFinished ? "FINISHED" : "SCHEDULED"}
-                    homeScore={m.homeScore ?? undefined}
-                    awayScore={m.awayScore ?? undefined}
-                    matchDay={m.matchDay}
-                    isHot={m.isHot}
-                    className={`animate-fade-up stagger-${i + 1}`}
-                  />
+                    {/* Background Graphic */}
+                    <div style={{ position: "absolute", inset: 0, opacity: 0.08, background: "linear-gradient(135deg, var(--background), var(--muted), color-mix(in oklch, var(--primary) 20%, transparent))", pointerEvents: "none", transition: "opacity 0.3s" }} />
+                    
+                    {/* Content */}
+                    <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", padding: isLarge ? "24px 32px" : "20px 20px", justifyContent: "space-between", zIndex: 10 }}>
+                        {/* Status Bar */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, backgroundColor: "color-mix(in oklch, var(--background) 80%, transparent)", backdropFilter: "blur(8px)", padding: "4px 8px 4px 6px", borderRadius: 999, border: "1px solid var(--border)" }}>
+                                {league.image ? <img src={league.image} style={{ width: 18, height: 18, objectFit: "contain" }} alt="" /> : <span style={{ fontSize: 16 }}>{league.logo}</span>}
+                                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--foreground)" }}>{league.shortName}</span>
+                            </div>
+                            
+                            {isLive ? (
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", padding: "3px 10px", borderRadius: 999, fontSize: 10, fontWeight: 700, animation: "pulse 2s infinite" }}>
+                                    <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#ef4444" }} /> LIVE
+                                </div>
+                            ) : (
+                                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted-foreground)", backgroundColor: "var(--secondary)", padding: "4px 12px", borderRadius: 999, border: "1px solid var(--border)" }}>
+                                    {isFinished ? "FT" : `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Teams */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: isLarge ? 24 : 12, margin: "auto 0", flexDirection: isLarge ? "row" : "column" }}>
+                            {/* Home */}
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "33%" }}>
+                                <div style={{
+                                  position: "relative", width: isLarge ? 96 : 56, height: isLarge ? 96 : 56,
+                                  borderRadius: 16, background: "linear-gradient(to bottom, var(--background), var(--secondary))",
+                                  padding: isLarge ? 12 : 8, border: "1px solid var(--border)",
+                                  transition: "transform 0.5s", boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                }}>
+                                    {home.image ? <img src={home.image} alt={home.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", fontSize: isLarge ? 40 : 28 }}>{home.crest}</div>}
+                                </div>
+                                <span style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, textAlign: "center", lineHeight: 1.2, fontSize: isLarge ? 20 : 13, color: "var(--foreground)" }}>{home.shortName}</span>
+                            </div>
+                            
+                            {/* VS */}
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                                {(m.homeScore !== null && m.awayScore !== null) ? (
+                                    <div style={{ fontFamily: "monospace", fontWeight: 900, letterSpacing: "-0.02em", fontSize: isLarge ? 48 : 24, color: "var(--foreground)" }}>
+                                        {m.homeScore}<span style={{ color: "var(--primary)", margin: "0 4px" }}>-</span>{m.awayScore}
+                                    </div>
+                                ) : (
+                                    <div style={{ fontWeight: 900, color: "color-mix(in oklch, var(--muted-foreground) 30%, transparent)", fontStyle: "italic", fontSize: isLarge ? 28 : 18 }}>VS</div>
+                                )}
+                            </div>
+
+                            {/* Away */}
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "33%" }}>
+                                <div style={{
+                                  position: "relative", width: isLarge ? 96 : 56, height: isLarge ? 96 : 56,
+                                  borderRadius: 16, background: "linear-gradient(to bottom, var(--background), var(--secondary))",
+                                  padding: isLarge ? 12 : 8, border: "1px solid var(--border)",
+                                  transition: "transform 0.5s", boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                }}>
+                                    {away.image ? <img src={away.image} alt={away.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", fontSize: isLarge ? 40 : 28 }}>{away.crest}</div>}
+                                </div>
+                                <span style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, textAlign: "center", lineHeight: 1.2, fontSize: isLarge ? 20 : 13, color: "var(--foreground)" }}>{away.shortName}</span>
+                            </div>
+                        </div>
+
+                        {/* Footer info */}
+                        <div style={{ paddingTop: 12, borderTop: "1px solid color-mix(in oklch, var(--border) 50%, transparent)", display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 6 }}><MapPin size={14} style={{ color: "var(--primary)" }} /> {m.venueCount} Venues</span>
+                            {(isLarge || i === 1) && <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, color: "var(--primary)" }}>View Details →</span>}
+                        </div>
+                    </div>
                 </Link>
               );
             })}
-          </div>
-        </section>
 
-        {/* ─── Ad Placement: Banner ──────────────── */}
-        <AdPlacement variant="banner" />
-
-        {/* ─── Featured Venues ───────────────────── */}
-        <section style={{ padding: "24px 0" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px 14px" }}>
-            <div>
-              <div className="section-label" style={{ marginBottom: "4px" }}>POPULAR NEAR YOU</div>
-              <h2 className="font-display text-h2" style={{ color: "var(--text-primary)" }}>FEATURED VENUES</h2>
-            </div>
-            <Link href="/venues" className="btn-ghost" style={{ padding: "8px 14px", textDecoration: "none" }}>
-              View All →
+            {/* View All Tile */}
+            <Link href="/matches" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 24, border: "1px dashed var(--border)", padding: 32, minHeight: 320, textDecoration: "none", transition: "background-color 0.2s", color: "inherit" }}>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)", marginBottom: 16 }}>
+                    <CalendarDays style={{ width: 32, height: 32 }} />
+                </div>
+                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 20, color: "var(--foreground)", marginBottom: 8 }}>View Calendar</h3>
+                <p style={{ fontSize: 14, color: "var(--muted-foreground)", textAlign: "center" }}>See all upcoming fixtures and find parties.</p>
             </Link>
           </div>
-          <div className="carousel-track no-scrollbar">
-            {venueCards.map((v, i) => (
-              <div key={v.id} className={`animate-fade-up stagger-${i + 1}`} style={{ width: "340px", flexShrink: 0 }}>
-                <VenueCard
-                  name={v.name}
-                  coverImage="/venue-hero.webp"
-                  city={v.city}
-                  address={v.addressLine1}
-                  rating={v.rating}
-                  reviewCount={v.reviewCount}
-                  amenities={v.amenities}
-                  cuisineTags={v.cuisineTags}
-                  priceRange={v.priceRange}
-                  isVerified={v.isVerified}
-                  isFeatured={v.isFeatured}
-                  spotsRemaining={null}
-                  nextEvent={`${v.upcomingEventsCount} upcoming events`}
-                  onClick={() => window.location.href = `/venues/${v.slug}`}
-                  onBookNow={() => {
-                    setSelectedVenueIdx(i);
-                    setBookingOpen(true);
-                  }}
-                />
-              </div>
-            ))}
-          </div>
         </section>
 
-        {/* ─── How It Works Section ──────────────── */}
-        <section style={{ padding: "36px 20px", background: "var(--bg-surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
-          <div className="section-label" style={{ textAlign: "center", marginBottom: "8px" }}>HOW IT WORKS</div>
-          <h2 className="font-display text-h1" style={{ textAlign: "center", color: "var(--text-primary)", marginBottom: "28px" }}>
-            THREE EASY STEPS
-          </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "20px", maxWidth: "800px", margin: "0 auto" }}>
-            {[
-              { step: "01", icon: Trophy, title: "FIND A MATCH", desc: "Browse upcoming matches and find the one you want to watch", link: "/matches" },
-              { step: "02", icon: MapPin, title: "PICK A VENUE", desc: "Explore nearby bars, lounges, and restaurants hosting watch parties", link: "/venues" },
-              { step: "03", icon: Ticket, title: "RESERVE A SPOT", desc: "Book your spot with your group and show up ready to cheer", link: "/matches" },
-            ].map((s: { step: string; icon: LucideIcon; title: string; desc: string; link: string }, i) => (
-              <Link
-                key={i}
-                href={s.link}
-                className={`card-flat animate-fade-up stagger-${i + 1}`}
-                style={{ padding: "24px 20px", textAlign: "center", textDecoration: "none", color: "inherit", display: "block" }}
-              >
-                <div className="font-mono text-xs" style={{ color: "var(--accent-primary)", fontWeight: 600, marginBottom: "8px" }}>
-                  STEP {s.step}
-                </div>
-                <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center", color: "var(--accent-primary)" }}><s.icon size={30} /></div>
-                <h3 className="font-display text-h3" style={{ color: "var(--text-primary)", marginBottom: "6px", letterSpacing: "0.06em" }}>
-                  {s.title}
-                </h3>
-                <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{s.desc}</p>
-              </Link>
+        {/* ─── Immersive Featured Venues Carousel ───────────────────── */}
+        <section style={{ position: "relative", width: "100%", padding: "96px 0", backgroundColor: "var(--foreground)", borderRadius: 48, overflow: "hidden", marginBottom: -48, zIndex: 20 }}>
+           {/* Dark section background graphic */}
+           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ background: "radial-gradient(ellipse at top, color-mix(in oklch, var(--primary) 30%, transparent), var(--background))" }} />
+           
+          <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px", marginBottom: 48, display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", position: "relative", zIndex: 10 }}>
+            <div>
+              <div className="text-primary font-bold tracking-widest text-xs mb-2">POPULAR NEAR YOU</div>
+              <h2 className="font-display text-4xl md:text-5xl font-black text-background">FEATURED VENUES</h2>
+            </div>
+            <Link href="/venues" className="mt-4 md:mt-0 text-sm font-bold text-background bg-background/10 hover:bg-background/20 px-6 py-3 rounded-full transition-colors border border-background/20">
+              Explore Map →
+            </Link>
+          </div>
+          <div className="flex overflow-x-auto gap-6 px-6 pb-8 snap-x snap-mandatory scrollbar-hide relative z-10 before:content-[''] before:w-4 before:shrink-0 after:content-[''] after:w-4 after:shrink-0">
+            {venueCards.map((v, i) => (
+              <div key={v.id} className="snap-center shrink-0 w-[300px] sm:w-[380px] group cursor-pointer relative" onClick={() => window.location.href = `/venues/${v.slug}`}>
+                 {/* Creative floating Venue Card */}
+                 <div className="h-[420px] rounded-[2rem] overflow-hidden relative border border-white/10 group-hover:border-primary/50 transition-colors">
+                    <Image src="/assets/img-3.png" alt={v.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110 opacity-70" sizes="(max-width: 640px) 300px, 380px" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+                    
+                    {/* Content injected over image */}
+                    <div className="absolute inset-0 p-6 flex flex-col justify-end text-white">
+                        <div className="flex gap-2 mb-3 flex-wrap">
+                            {v.isFeatured && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary text-black">FEATURED</span>}
+                        </div>
+                        <h3 className="font-display text-3xl font-bold mb-1 group-hover:text-primary transition-colors">{v.name}</h3>
+                        <p className="text-sm text-gray-300 mb-4 font-medium flex items-center gap-1.5"><MapPin size={14} className="text-primary" /> {v.addressLine1}</p>
+                        
+                        <div className="w-full h-px bg-white/20 mb-4" />
+                        
+                        <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-gray-300">{v.upcomingEventsCount} Events</span>
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedVenueIdx(i);
+                                    setBookingOpen(true);
+                                }}
+                                className="bg-white text-black text-xs font-bold px-4 py-2 rounded-full hover:bg-primary hover:text-black transition-colors"
+                            >
+                                Book Now
+                            </button>
+                        </div>
+                    </div>
+                 </div>
+              </div>
             ))}
           </div>
         </section>
 
         {/* ─── Map / List Toggle View ────────────── */}
-        <section style={{ padding: "24px 0 0" }}>
-          <div style={{ padding: "0 20px 14px" }}>
-            <div className="section-label" style={{ marginBottom: "4px" }}>
+        <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "192px 24px 96px", position: "relative", zIndex: 10, backgroundColor: "var(--background)" }}>
+          <div className="mb-12">
+            <div className="text-primary font-bold tracking-widest text-xs mb-2">
               {featuredMatch
                 ? `${selectedHome?.shortName || "HOME"} VS ${selectedAway?.shortName || "AWAY"} · ${new Date(featuredMatch.matchDateUTC).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
                 : "UPCOMING MATCH"}
             </div>
-            <h2 className="font-display text-h2" style={{ color: "var(--text-primary)" }}>
-              VENUES HOSTING THIS MATCH
+            <h2 className="font-display text-4xl font-black text-foreground">
+              FIND HOSTING VENUES
             </h2>
           </div>
-          <MapListToggle
-            venues={mapVenueCards.map((v) => ({
-              name: v.name,
-              coverImage: "/venue-hero.webp",
-              city: v.city,
-              address: v.addressLine1,
-              rating: v.rating,
-              reviewCount: v.reviewCount,
-              amenities: v.amenities,
-              cuisineTags: v.cuisineTags,
-              priceRange: v.priceRange,
-              isVerified: v.isVerified,
-              isFeatured: v.isFeatured,
-              spotsRemaining: null,
-              nextEvent: `${v.upcomingEventsCount} upcoming events`,
-            }))}
-            onVenueClick={(i) => {
-              window.location.href = `/venues/${mapVenueCards[i]?.slug || ""}`;
-            }}
-            onBookNow={(i) => {
-              const venue = mapVenueCards[i];
-              const venueIdx = venueCards.findIndex((v) => v.id === venue?.id);
-              if (venueIdx !== -1) {
-                setSelectedVenueIdx(venueIdx);
-                setBookingOpen(true);
-              } else if (venue?.slug) {
-                window.location.href = `/venues/${venue.slug}`;
-              }
-            }}
-          />
-        </section>
-
-        {/* ─── Ad Placement: Inline ──────────────── */}
-        <div style={{ padding: "16px 20px" }}>
-          <AdPlacement variant="inline" label="Promote Your Service" />
-        </div>
-
-        {/* ─── Venue Dashboard Preview ───────────── */}
-        <section style={{ padding: "36px 20px", background: "var(--bg-surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
-          <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-            <div className="section-label" style={{ marginBottom: "8px" }}>FOR VENUE OWNERS</div>
-            <h2 className="font-display text-h1" style={{ color: "var(--text-primary)", marginBottom: "8px" }}>MANAGE YOUR VENUE</h2>
-            <p className="text-body" style={{ color: "var(--text-secondary)", marginBottom: "20px" }}>
-              List your establishment, host high-demand match nights, manage bookings, and grow your audience from one dashboard.
-            </p>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", marginBottom: "20px" }}>
-              {[
-                { icon: CalendarDays, label: "Host Matches", value: venueEvents.length.toString(), desc: "published events" },
-                { icon: BarChart3, label: "Track Bookings", value: bookings.length.toString(), desc: "reservations" },
-                {
-                  icon: Users,
-                  label: "Grow Followers",
-                  value: VENUES.reduce((sum, venue) => sum + (venue.followerCount || 0), 0).toLocaleString(),
-                  desc: "total followers",
-                },
-                { icon: Megaphone, label: "Venue Updates", value: posts.length.toString(), desc: "posts published" },
-              ].map((stat: { icon: LucideIcon; label: string; value: string; desc: string }, i) => (
-                <div key={i} className={`card-flat animate-fade-up stagger-${i + 1}`} style={{ padding: "16px", textAlign: "center" }}>
-                  <span style={{ color: "var(--accent-primary)" }}><stat.icon size={20} /></span>
-                  <div className="font-mono" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--accent-primary)", margin: "6px 0 2px" }}>{stat.value}</div>
-                  <div className="text-xs" style={{ color: "var(--text-muted)", fontWeight: 500 }}>{stat.desc}</div>
-                </div>
-              ))}
-            </div>
-
-            <Link href="/for-venues/register" className="btn-primary" style={{ padding: "14px 28px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "8px" }}>
-              <Building2 size={16} />
-              Register Your Venue, Free
-            </Link>
+          
+            <div className="bg-card rounded-3xl border border-border shadow-xl p-2 relative z-20">
+              <MapListToggle
+                venues={mapVenueCards.map((v) => ({
+                  name: v.name,
+                  coverImage: "/assets/img-4.png",
+                  city: v.city,
+                  address: v.addressLine1,
+                  rating: v.rating,
+                  reviewCount: v.reviewCount,
+                  amenities: v.amenities,
+                  cuisineTags: v.cuisineTags,
+                  priceRange: v.priceRange,
+                  isVerified: v.isVerified,
+                  isFeatured: v.isFeatured,
+                  spotsRemaining: null,
+                  nextEvent: `${v.upcomingEventsCount} upcoming events`,
+                }))}
+                onVenueClick={(i) => {
+                  window.location.href = `/venues/${mapVenueCards[i]?.slug || ""}`;
+                }}
+                onBookNow={(i) => {
+                  const venue = mapVenueCards[i];
+                  const venueIdx = venueCards.findIndex((v) => v.id === venue?.id);
+                  if (venueIdx !== -1) {
+                    setSelectedVenueIdx(venueIdx);
+                    setBookingOpen(true);
+                  } else if (venue?.slug) {
+                    window.location.href = `/venues/${venue.slug}`;
+                  }
+                }}
+              />
           </div>
         </section>
 
-        {/* ─── Footer with Real Links ────────────── */}
-        <footer style={{ padding: "36px 20px 28px", borderTop: "1px solid var(--border)" }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px", maxWidth: "800px", margin: "0 auto" }}>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <div className="font-display" style={{ fontSize: "1.8rem", letterSpacing: "0.08em", color: "var(--accent-primary)" }}>
-                MATCHWATCH
+        {/* ─── How It Works Section ──────────────── */}
+        <section style={{ width: "100%", backgroundColor: "var(--secondary)", padding: "96px 0", marginTop: 48 }}>
+            <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px" }}>
+                <div className="text-center mb-16">
+                    <div className="text-primary font-bold tracking-widest text-xs mb-2">HOW IT WORKS</div>
+                    <h2 className="font-display text-4xl md:text-5xl font-black text-foreground">THREE EASY STEPS</h2>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+                    <div className="hidden md:block absolute top-[40px] left-[15%] right-[15%] h-px bg-border z-0" />
+                    {[
+                    { step: "01", icon: Trophy, title: "FIND A MATCH", desc: "Browse upcoming matches and find the one you want to watch", link: "/matches" },
+                    { step: "02", icon: MapPin, title: "PICK A VENUE", desc: "Explore nearby bars, lounges, and restaurants hosting watch parties", link: "/venues" },
+                    { step: "03", icon: Ticket, title: "RESERVE A SPOT", desc: "Book your spot with your group and show up ready to cheer", link: "/matches" },
+                    ].map((s: { step: string; icon: LucideIcon; title: string; desc: string; link: string }, i) => (
+                    <Link
+                        key={i}
+                        href={s.link}
+                        className="relative z-10 flex flex-col items-center text-center group"
+                    >
+                        <div className="w-20 h-20 rounded-2xl bg-background border border-border shadow-md flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-background transition-colors duration-300 mb-6 group-hover:-translate-y-2 group-hover:shadow-xl">
+                            <s.icon size={32} />
+                        </div>
+                        <div className="font-mono text-xs text-primary font-bold mb-2 tracking-widest">STEP {s.step}</div>
+                        <h3 className="font-display font-bold text-xl text-foreground mb-3">{s.title}</h3>
+                        <p className="text-muted-foreground text-sm font-medium">{s.desc}</p>
+                    </Link>
+                    ))}
+                </div>
+            </div>
+        </section>
+
+        {/* ─── Venue Dashboard Preview ───────────── */}
+        <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "96px 24px", position: "relative" }}>
+             <div style={{ position: "absolute", inset: 0, borderRadius: 48, background: "linear-gradient(to right, var(--background), color-mix(in oklch, var(--secondary) 30%, transparent))", zIndex: -1 }} />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 48, padding: "32px 0" }} className="lg:flex-row lg:items-center lg:gap-24">
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 24 }}>
+                    <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--primary)", marginBottom: 8 }}>FOR VENUE OWNERS</div>
+                        <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 40, fontWeight: 900, color: "var(--foreground)", lineHeight: 1.1 }}>HOST THE GAME.<br/>PACK THE BAR.</h2>
+                    </div>
+                    <p style={{ fontSize: 17, color: "var(--muted-foreground)", fontWeight: 500, maxWidth: 480, lineHeight: 1.6 }}>
+                        List your establishment, host high-demand match nights, manage bookings, and grow your audience from one unified dashboard.
+                    </p>
+                    <ul style={{ display: "flex", flexDirection: "column", gap: 16, fontWeight: 700, color: "var(--foreground)" }}>
+                        <li style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ width: 32, height: 32, borderRadius: "50%", backgroundColor: "color-mix(in oklch, var(--primary) 15%, transparent)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center" }}><ShieldCheck size={16}/></span>
+                            Verified Venue Status
+                        </li>
+                        <li style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ width: 32, height: 32, borderRadius: "50%", backgroundColor: "color-mix(in oklch, var(--primary) 15%, transparent)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center" }}><Ticket size={16}/></span>
+                            Direct Booking Engine
+                        </li>
+                        <li style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ width: 32, height: 32, borderRadius: "50%", backgroundColor: "color-mix(in oklch, var(--primary) 15%, transparent)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center" }}><Megaphone size={16}/></span>
+                            Push Notifications to Fans
+                        </li>
+                    </ul>
+                    <Link href="/for-venues/register" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 32px", borderRadius: 99, backgroundColor: "var(--foreground)", color: "var(--background)", fontWeight: 700, fontSize: 15, textDecoration: "none", transition: "all 0.2s", width: "fit-content" }}>
+                        <Building2 size={18} />
+                        Register Your Venue
+                    </Link>
+                </div>
+
+                <div style={{ flex: 1, width: "100%", position: "relative" }}>
+                    <div style={{ width: "100%", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top right, color-mix(in oklch, var(--primary) 25%, transparent), color-mix(in oklch, oklch(0.6 0.15 250) 25%, transparent))", borderRadius: 48, filter: "blur(48px)", opacity: 0.5 }} />
+                        <div style={{ backgroundColor: "var(--card)", width: "100%", maxWidth: 420, padding: 24, borderRadius: 32, border: "1px solid color-mix(in oklch, var(--border) 60%, transparent)", boxShadow: "0 16px 48px rgba(0,0,0,0.15)", position: "relative", zIndex: 10 }}>
+                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid var(--border)" }}>
+                                <span style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>DASHBOARD</span>
+                                <div style={{ display: "flex", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#f87171" }}/><div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#fbbf24" }}/><div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#4ade80" }}/></div>
+                             </div>
+                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                                {[
+                                    { icon: CalendarDays, label: "Matches Hosted", value: venueEvents.length.toString() },
+                                    { icon: BarChart3, label: "Total Bookings", value: bookings.length.toString() },
+                                    { icon: Users, label: "Followers", value: "1,204" },
+                                    { icon: Trophy, label: "Revenue", value: "$4.2k" },
+                                ].map((stat, i) => (
+                                    <div key={i} style={{ backgroundColor: "var(--secondary)", padding: 16, borderRadius: 16, border: "1px solid var(--border)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                                       <stat.icon size={24} style={{ color: "var(--primary)", marginBottom: 8 }} />
+                                       <span style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 24, fontWeight: 900, color: "var(--foreground)" }}>{stat.value}</span>
+                                       <span style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: "0.1em" }}>{stat.label}</span>
+                                    </div>
+                                ))}
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {/* ─── Footer with Real Links ──────────── */}
+        <footer style={{ width: "100%", borderTop: "1px solid var(--border)", backgroundColor: "var(--background)", padding: "80px 0 96px", marginTop: "auto" }}>
+          <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+            <Link href="/" style={{ marginBottom: 24, textDecoration: "none" }}>
+              <div className="font-display font-black text-3xl tracking-tighter hover:scale-105 transition-transform">
+                MATCHWATCH<span className="text-primary">.</span>
               </div>
             </Link>
-            <p className="text-sm" style={{ color: "var(--text-muted)", textAlign: "center" }}>
-              The ultimate live-match watch-party directory for Houston, TX. Find venues, book spots, and never miss kickoff.
+            <p className="text-base font-medium text-muted-foreground max-w-md mx-auto mb-10">
+              The ultimate live-match watch-party directory. Find venues, book spots, and never miss kickoff.
             </p>
 
             {/* Primary nav links */}
-            <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", justifyContent: "center" }}>
+            <div className="flex flex-wrap gap-6 justify-center mb-8">
               {[
                 { label: "Home", href: "/" },
                 { label: "Matches", href: "/matches" },
@@ -502,10 +586,7 @@ export default function HomePage() {
                 <Link
                   key={link.label}
                   href={link.href}
-                  className="text-sm"
-                  style={{ color: "var(--text-secondary)", textDecoration: "none", fontWeight: 600 }}
-                  onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "var(--accent-primary)")}
-                  onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "var(--text-secondary)")}
+                  className="font-bold text-foreground hover:text-primary transition-colors text-sm"
                 >
                   {link.label}
                 </Link>
@@ -513,7 +594,7 @@ export default function HomePage() {
             </div>
 
             {/* Secondary links */}
-            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", justifyContent: "center" }}>
+            <div className="flex flex-wrap gap-4 justify-center mb-12">
               {[
                 { label: "About", href: "/about" },
                 { label: "Contact", href: "/contact" },
@@ -524,18 +605,15 @@ export default function HomePage() {
                 <Link
                   key={link.label}
                   href={link.href}
-                  className="text-xs"
-                  style={{ color: "var(--text-muted)", textDecoration: "none" }}
-                  onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "var(--accent-primary)")}
-                  onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "var(--text-muted)")}
+                  className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {link.label}
                 </Link>
               ))}
             </div>
 
-            <div className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>
-              © 2026 MatchWatch. Houston, TX.
+            <div className="text-xs font-mono font-bold text-muted-foreground opacity-50">
+              © 2026 MatchWatch. Houston, TX. All rights reserved.
             </div>
           </div>
         </footer>
@@ -565,6 +643,5 @@ export default function HomePage() {
           entryFee={selectedVenueEvent?.entryFee || undefined}
         />
       </AppShell>
-    </ThemeProvider>
   );
 }

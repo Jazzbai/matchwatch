@@ -7,7 +7,7 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-primary)]",
+        default: "border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)]",
         destructive:
           "border-[rgba(240,82,82,0.5)] bg-[rgba(240,82,82,0.1)] text-[var(--accent-danger)]",
       },

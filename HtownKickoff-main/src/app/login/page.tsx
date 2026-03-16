@@ -3,34 +3,19 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Building2,
   CircleAlert,
   CircleCheckBig,
   Lock,
-  LogIn,
   Mail,
   UserPlus,
   Users,
+  ArrowRight,
 } from "lucide-react";
-import { ThemeProvider, AppShell } from "../../components/AppShell";
 import { useAuth } from "../../lib/auth-context";
 import { api } from "../../lib/api";
-import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import { Checkbox } from "../../components/ui/checkbox";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
-import { Separator } from "../../components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 
 type AccountType = "fan" | "venue";
 
@@ -68,30 +53,33 @@ export default function LoginPage() {
     /[0-9]/.test(signupPassword) &&
     /[^A-Za-z0-9]/.test(signupPassword);
 
+  const pwChecks = [
+    { label: "10+ characters", pass: signupPassword.length >= 10 },
+    { label: "Uppercase", pass: /[A-Z]/.test(signupPassword) },
+    { label: "Lowercase", pass: /[a-z]/.test(signupPassword) },
+    { label: "Number", pass: /[0-9]/.test(signupPassword) },
+    { label: "Symbol", pass: /[^A-Za-z0-9]/.test(signupPassword) },
+  ];
+  const pwScore = pwChecks.filter((c) => c.pass).length;
+  const pwColor = pwScore <= 1 ? "#ef4444" : pwScore <= 2 ? "#f97316" : pwScore <= 3 ? "#eab308" : pwScore <= 4 ? "#84cc16" : "#22c55e";
+  const pwLabel = pwScore <= 1 ? "Weak" : pwScore <= 2 ? "Fair" : pwScore <= 3 ? "Moderate" : pwScore <= 4 ? "Good" : "Strong";
+
   const onLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setFormError(null);
     setFormSuccess(null);
-
     try {
       const normalizedEmail = loginEmail.trim().toLowerCase();
       await login(normalizedEmail, loginPassword);
-
       const me = await api.get<{ role: string }>("/user/me");
       const role = me.data.role;
       const isVenueRole = role === "VENUE_OWNER" || role === "ADMIN" || role === "SUPER_ADMIN";
-
       if (accountType === "venue" && !isVenueRole) {
         await logout();
         setFormError("This account is not a venue owner account.");
         return;
       }
-
-      if (nextPath) {
-        router.push(nextPath);
-        return;
-      }
-
+      if (nextPath) { router.push(nextPath); return; }
       router.push(isVenueRole ? "/admin" : "/dashboard");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Sign in failed";
@@ -103,29 +91,11 @@ export default function LoginPage() {
     event.preventDefault();
     setFormError(null);
     setFormSuccess(null);
-
-    if (accountType === "venue") {
-      router.push("/for-venues/register");
-      return;
-    }
-
-    if (!signupName.trim()) {
-      setFormError("Please enter your full name.");
-      return;
-    }
-    if (!passwordStrong) {
-      setFormError("Password must include uppercase, lowercase, number, and symbol.");
-      return;
-    }
-    if (signupPassword !== signupPasswordConfirm) {
-      setFormError("Passwords do not match.");
-      return;
-    }
-    if (!signupAccepted) {
-      setFormError("You must accept Terms and Privacy.");
-      return;
-    }
-
+    if (accountType === "venue") { router.push("/for-venues/register"); return; }
+    if (!signupName.trim()) { setFormError("Please enter your full name."); return; }
+    if (!passwordStrong) { setFormError("Password must include uppercase, lowercase, number, and symbol."); return; }
+    if (signupPassword !== signupPasswordConfirm) { setFormError("Passwords do not match."); return; }
+    if (!signupAccepted) { setFormError("You must accept Terms and Privacy."); return; }
     try {
       const normalizedEmail = signupEmail.trim().toLowerCase();
       const normalizedName = signupName.trim();
@@ -139,239 +109,315 @@ export default function LoginPage() {
     }
   };
 
+  const errorMsg = formError || authError;
+
   return (
-    <ThemeProvider>
-      <AppShell>
-        <main className="mx-auto flex min-h-[calc(100dvh-110px)] w-full items-center justify-center px-4 py-12 sm:px-6 md:py-16">
-          <div className="grid w-full max-w-6xl gap-8 lg:grid-cols-[1.2fr_1fr]">
-            <Card className="mx-auto w-full max-w-3xl border-[var(--border-glow)] bg-[linear-gradient(180deg,#18202d_0%,#131a26_100%)]">
-              <CardHeader className="space-y-4 pb-2">
-                <Badge className="w-fit gap-1 text-[11px] tracking-[0.08em]" variant="secondary">
-                  {accountType === "venue" ? <Building2 className="h-3.5 w-3.5" /> : <Users className="h-3.5 w-3.5" />}
-                  {accountType === "venue" ? "Venue Owner Access" : "Fan Access"}
-                </Badge>
-                <CardTitle className="font-display text-4xl leading-tight tracking-tight md:text-5xl md:leading-[1.05]">MatchWatch Account</CardTitle>
-                <CardDescription className="max-w-2xl text-base leading-relaxed">
-                  Switch between fan and venue owner workflows, then sign in or create your account.
-                </CardDescription>
-              </CardHeader>
+    <div
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        width: "100%",
+        backgroundColor: "var(--background)",
+        color: "var(--foreground)",
+        fontFamily: "var(--font-body), system-ui, sans-serif",
+      }}
+    >
+      {/* ===== LEFT PANE — FORM ===== */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 540,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          padding: "48px 40px",
+          position: "relative",
+          zIndex: 10,
+          flexShrink: 0,
+          borderRight: "1px solid var(--border)",
+          backgroundColor: "var(--card)",
+        }}
+      >
+        {/* Brand */}
+        <Link href="/" style={{ textDecoration: "none", marginBottom: 32, display: "inline-block" }}>
+          <span style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 900, fontSize: 24, color: "var(--foreground)", letterSpacing: "-0.02em" }}>
+            matchwatch<span style={{ color: "var(--primary)" }}>.</span>
+          </span>
+        </Link>
 
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    variant={accountType === "fan" ? "default" : "outline"}
-                    className="h-12 w-full text-base font-semibold"
-                    onClick={() => {
-                      setAccountType("fan");
-                      setFormError(null);
-                    }}
-                  >
-                    <Users className="h-4 w-4" />
-                    Fan
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={accountType === "venue" ? "default" : "outline"}
-                    className="h-12 w-full text-base font-semibold"
-                    onClick={() => {
-                      setAccountType("venue");
-                      setFormError(null);
-                    }}
-                  >
-                    <Building2 className="h-4 w-4" />
-                    Venue
-                  </Button>
-                </div>
+        {/* Heading */}
+        <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 36, fontWeight: 800, marginBottom: 8, lineHeight: 1.1 }}>
+          {authTab === "signin" ? "Welcome back" : "Create an account"}
+        </h1>
+        <p style={{ fontSize: 15, color: "var(--muted-foreground)", marginBottom: 28 }}>
+          Enter your credentials to access your account.
+        </p>
 
-                {(formError || authError) && (
-                  <Alert variant="destructive">
-                    <CircleAlert className="mb-2 h-4 w-4" />
-                    <AlertTitle>Action required</AlertTitle>
-                    <AlertDescription className="leading-relaxed">{formError || authError}</AlertDescription>
-                  </Alert>
-                )}
+        {/* Account Type Toggle */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: 4, borderRadius: 12, backgroundColor: "var(--secondary)", marginBottom: 24, border: "1px solid var(--border)" }}>
+          <button
+            type="button"
+            onClick={() => { setAccountType("fan"); setFormError(null); }}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              padding: "10px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+              fontWeight: 700, fontSize: 14, fontFamily: "inherit",
+              backgroundColor: accountType === "fan" ? "var(--primary)" : "transparent",
+              color: accountType === "fan" ? "var(--primary-foreground)" : "var(--muted-foreground)",
+              transition: "all 0.2s",
+            }}
+          >
+            <Users size={16} /> Fan
+          </button>
+          <button
+            type="button"
+            onClick={() => { setAccountType("venue"); setFormError(null); }}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              padding: "10px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+              fontWeight: 700, fontSize: 14, fontFamily: "inherit",
+              backgroundColor: accountType === "venue" ? "var(--primary)" : "transparent",
+              color: accountType === "venue" ? "var(--primary-foreground)" : "var(--muted-foreground)",
+              transition: "all 0.2s",
+            }}
+          >
+            <Building2 size={16} /> Venue
+          </button>
+        </div>
 
-                {formSuccess && (
-                  <Alert>
-                    <CircleCheckBig className="mb-2 h-4 w-4" />
-                    <AlertTitle>Success</AlertTitle>
-                    <AlertDescription className="leading-relaxed">{formSuccess}</AlertDescription>
-                  </Alert>
-                )}
-
-                <Tabs value={authTab} onValueChange={(value) => setAuthTab(value as "signin" | "signup")} className="w-full">
-                  <TabsList className="grid h-12 w-full grid-cols-2">
-                    <TabsTrigger value="signin" className="text-base font-semibold">
-                      <LogIn className="h-4 w-4" />
-                      Sign In
-                    </TabsTrigger>
-                    <TabsTrigger value="signup" className="text-base font-semibold">
-                      <UserPlus className="h-4 w-4" />
-                      Sign Up
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="signin" className="pt-4">
-                    <form className="space-y-5" onSubmit={onLogin}>
-                      <div className="space-y-2">
-                        <Label htmlFor="login-email" className="text-sm font-semibold">Email</Label>
-                        <div className="relative">
-                          <Mail className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--text-muted)]" />
-                          <Input
-                            id="login-email"
-                            type="email"
-                            className="h-12 pl-9 text-base"
-                            placeholder="you@example.com"
-                            value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="login-password" className="text-sm font-semibold">Password</Label>
-                        <div className="relative">
-                          <Lock className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--text-muted)]" />
-                          <Input
-                            id="login-password"
-                            type="password"
-                            className="h-12 pl-9 text-base"
-                            placeholder="Enter your password"
-                            value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <label className="flex items-center gap-2 text-sm leading-relaxed text-[var(--text-secondary)]">
-                          <Checkbox checked={remember} onCheckedChange={(checked) => setRemember(checked === true)} />
-                          Remember this device
-                        </label>
-                        <Link href="/account" className="text-sm font-semibold text-[var(--accent-primary)]">
-                          Need help?
-                        </Link>
-                      </div>
-                      <Button className="h-12 w-full text-base font-semibold" type="submit" disabled={isLoading}>
-                        {isLoading ? "Signing in..." : "Sign In"}
-                      </Button>
-                    </form>
-                  </TabsContent>
-
-                  <TabsContent value="signup" className="pt-4">
-                    {accountType === "venue" ? (
-                      <div className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-                        <h3 className="text-base font-semibold text-[var(--text-primary)]">Venue onboarding</h3>
-                        <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-                          Venue accounts require business details, map location, amenities, and branding setup.
-                        </p>
-                        <Button className="h-12 w-full text-base font-semibold" onClick={() => router.push("/for-venues/register")}>
-                          Continue to Venue Registration
-                        </Button>
-                      </div>
-                    ) : (
-                      <form className="space-y-5" onSubmit={onSignup}>
-                        <div className="space-y-2">
-                          <Label htmlFor="signup-name" className="text-sm font-semibold">Full name</Label>
-                          <Input
-                            id="signup-name"
-                            className="h-12 text-base"
-                            placeholder="Your full name"
-                            value={signupName}
-                            onChange={(e) => setSignupName(e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="signup-email" className="text-sm font-semibold">Email</Label>
-                          <Input
-                            id="signup-email"
-                            type="email"
-                            className="h-12 text-base"
-                            placeholder="you@example.com"
-                            value={signupEmail}
-                            onChange={(e) => setSignupEmail(e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="signup-password" className="text-sm font-semibold">Password</Label>
-                          <Input
-                            id="signup-password"
-                            type="password"
-                            className="h-12 text-base"
-                            placeholder="At least 10 chars with strong complexity"
-                            value={signupPassword}
-                            onChange={(e) => setSignupPassword(e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="signup-password-confirm" className="text-sm font-semibold">Confirm password</Label>
-                          <Input
-                            id="signup-password-confirm"
-                            type="password"
-                            className="h-12 text-base"
-                            placeholder="Confirm your password"
-                            value={signupPasswordConfirm}
-                            onChange={(e) => setSignupPasswordConfirm(e.target.value)}
-                            required
-                          />
-                        </div>
-                        <label className="flex items-start gap-2 text-sm leading-relaxed text-[var(--text-secondary)]">
-                          <Checkbox
-                            checked={signupAccepted}
-                            onCheckedChange={(checked) => setSignupAccepted(checked === true)}
-                            className="mt-0.5"
-                          />
-                          <span>
-                            I agree to the{" "}
-                            <Link href="/terms" className="text-[var(--accent-primary)]">
-                              Terms
-                            </Link>{" "}
-                            and{" "}
-                            <Link href="/privacy" className="text-[var(--accent-primary)]">
-                              Privacy Policy
-                            </Link>
-                            .
-                          </span>
-                        </label>
-                        <Button className="h-12 w-full text-base font-semibold" type="submit" disabled={isLoading}>
-                          {isLoading ? "Creating account..." : "Create Account"}
-                        </Button>
-                      </form>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-
-            <Card className="mx-auto h-fit w-full max-w-xl">
-              <CardHeader className="space-y-3">
-                <CardTitle className="font-display text-3xl leading-tight">Why Teams Use MatchWatch</CardTitle>
-                <CardDescription className="text-base leading-relaxed">Production-ready booking and event operations in one place.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5 text-base leading-relaxed text-[var(--text-secondary)]">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-[var(--text-primary)]">Fan accounts</h4>
-                  <p>Track matches, reserve seats, and manage bookings with live updates.</p>
-                </div>
-                <Separator className="opacity-80" />
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-[var(--text-primary)]">Venue accounts</h4>
-                  <p>Create events, handle capacity, and publish your venue profile for discovery.</p>
-                </div>
-                <Separator className="opacity-80" />
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-[var(--text-primary)]">Secure sessions</h4>
-                  <p>JWT access tokens with refresh-session rotation and role-scoped controls.</p>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Error / Success */}
+        {errorMsg && (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", borderRadius: 12, backgroundColor: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", marginBottom: 20, fontSize: 14, color: "#ef4444" }}>
+            <CircleAlert size={18} style={{ flexShrink: 0, marginTop: 2 }} /> {errorMsg}
           </div>
-        </main>
-      </AppShell>
-    </ThemeProvider>
+        )}
+        {formSuccess && (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", borderRadius: 12, backgroundColor: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", marginBottom: 20, fontSize: 14, color: "#22c55e" }}>
+            <CircleCheckBig size={18} style={{ flexShrink: 0, marginTop: 2 }} /> {formSuccess}
+          </div>
+        )}
+
+        {/* Tab Switcher */}
+        <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "2px solid var(--border)" }}>
+          <button
+            onClick={() => setAuthTab("signin")}
+            style={{
+              flex: 1, padding: "12px 0", border: "none", background: "transparent",
+              fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
+              color: authTab === "signin" ? "var(--foreground)" : "var(--muted-foreground)",
+              borderBottom: authTab === "signin" ? "2px solid var(--primary)" : "2px solid transparent",
+              marginBottom: -2, transition: "all 0.2s",
+            }}
+          >
+            Log In
+          </button>
+          <button
+            onClick={() => setAuthTab("signup")}
+            style={{
+              flex: 1, padding: "12px 0", border: "none", background: "transparent",
+              fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
+              color: authTab === "signup" ? "var(--foreground)" : "var(--muted-foreground)",
+              borderBottom: authTab === "signup" ? "2px solid var(--primary)" : "2px solid transparent",
+              marginBottom: -2, transition: "all 0.2s",
+            }}
+          >
+            Sign Up
+          </button>
+        </div>
+
+        {/* SIGN IN FORM */}
+        {authTab === "signin" && (
+          <form onSubmit={onLogin} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: "var(--foreground)" }}>Email address</label>
+              <div style={{ position: "relative" }}>
+                <Mail size={18} style={{ position: "absolute", left: 14, top: 14, color: "var(--muted-foreground)", pointerEvents: "none" }} />
+                <input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  required
+                  style={{
+                    width: "100%", height: 48, paddingLeft: 42, paddingRight: 16, fontSize: 15,
+                    borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--background)",
+                    color: "var(--foreground)", outline: "none", fontFamily: "inherit",
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>Password</label>
+                <Link href="/account" style={{ fontSize: 13, fontWeight: 600, color: "var(--primary)", textDecoration: "none" }}>Need help?</Link>
+              </div>
+              <div style={{ position: "relative" }}>
+                <Lock size={18} style={{ position: "absolute", left: 14, top: 14, color: "var(--muted-foreground)", pointerEvents: "none" }} />
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  required
+                  style={{
+                    width: "100%", height: 48, paddingLeft: 42, paddingRight: 16, fontSize: 15,
+                    borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--background)",
+                    color: "var(--foreground)", outline: "none", fontFamily: "inherit",
+                  }}
+                />
+              </div>
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "var(--muted-foreground)", cursor: "pointer" }}>
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ width: 18, height: 18, accentColor: "var(--primary)" }} />
+              Remember this device
+            </label>
+            <button
+              type="submit"
+              disabled={isLoading}
+              style={{
+                width: "100%", height: 48, borderRadius: 12, border: "none", cursor: "pointer",
+                backgroundColor: "var(--primary)", color: "var(--primary-foreground)",
+                fontWeight: 700, fontSize: 15, fontFamily: "inherit",
+                opacity: isLoading ? 0.7 : 1, transition: "all 0.2s",
+              }}
+            >
+              {isLoading ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+        )}
+
+        {/* SIGN UP FORM */}
+        {authTab === "signup" && (
+          <>
+            {accountType === "venue" ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: 32, textAlign: "center", borderRadius: 16, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Building2 size={28} style={{ color: "var(--primary)" }} />
+                </div>
+                <h3 style={{ fontWeight: 800, fontSize: 20, marginBottom: 8, fontFamily: "var(--font-display), sans-serif" }}>Venue Onboarding</h3>
+                <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginBottom: 20, lineHeight: 1.6 }}>
+                  Venue accounts require business details, location data, and branding verification.
+                </p>
+                <button
+                  onClick={() => router.push("/for-venues/register")}
+                  style={{
+                    width: "100%", height: 44, borderRadius: 12, border: "none", cursor: "pointer",
+                    backgroundColor: "var(--primary)", color: "var(--primary-foreground)",
+                    fontWeight: 700, fontSize: 14, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  }}
+                >
+                  Continue to Registration <ArrowRight size={16} />
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={onSignup} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Full name</label>
+                    <input placeholder="John Doe" value={signupName} onChange={(e) => setSignupName(e.target.value)} required
+                      style={{ width: "100%", height: 44, padding: "0 14px", fontSize: 14, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)", outline: "none", fontFamily: "inherit" }} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Email</label>
+                    <input type="email" placeholder="you@example.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required
+                      style={{ width: "100%", height: 44, padding: "0 14px", fontSize: 14, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)", outline: "none", fontFamily: "inherit" }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Password</label>
+                  <input type="password" placeholder="10+ characters, complex" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required
+                    style={{ width: "100%", height: 44, padding: "0 14px", fontSize: 14, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)", outline: "none", fontFamily: "inherit" }} />
+                  {/* Password Strength Bar */}
+                  {signupPassword.length > 0 && (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: pwColor }}>{pwLabel}</span>
+                        <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{pwScore}/5</span>
+                      </div>
+                      <div style={{ width: "100%", height: 6, borderRadius: 99, backgroundColor: "var(--border)", overflow: "hidden" }}>
+                        <div style={{ width: `${(pwScore / 5) * 100}%`, height: "100%", borderRadius: 99, backgroundColor: pwColor, transition: "all 0.3s ease" }} />
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                        {pwChecks.map((c) => (
+                          <span key={c.label} style={{
+                            fontSize: 11, padding: "3px 8px", borderRadius: 6,
+                            backgroundColor: c.pass ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.1)",
+                            color: c.pass ? "#22c55e" : "var(--muted-foreground)",
+                            fontWeight: 600, border: `1px solid ${c.pass ? "rgba(34,197,94,0.3)" : "transparent"}`,
+                          }}>{c.pass ? "✓" : "•"} {c.label}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Confirm password</label>
+                  <input type="password" placeholder="Repeat your password" value={signupPasswordConfirm} onChange={(e) => setSignupPasswordConfirm(e.target.value)} required
+                    style={{ width: "100%", height: 44, padding: "0 14px", fontSize: 14, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)", outline: "none", fontFamily: "inherit" }} />
+                </div>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "var(--muted-foreground)", cursor: "pointer", lineHeight: 1.5 }}>
+                  <input type="checkbox" checked={signupAccepted} onChange={(e) => setSignupAccepted(e.target.checked)} style={{ width: 18, height: 18, accentColor: "var(--primary)", marginTop: 2, flexShrink: 0 }} />
+                  <span>I agree to the <Link href="/terms" style={{ fontWeight: 600, color: "var(--foreground)" }}>Terms</Link> and <Link href="/privacy" style={{ fontWeight: 600, color: "var(--foreground)" }}>Privacy Policy</Link>.</span>
+                </label>
+                <button type="submit" disabled={isLoading}
+                  style={{ width: "100%", height: 48, borderRadius: 12, border: "none", cursor: "pointer", backgroundColor: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, fontSize: 15, fontFamily: "inherit", opacity: isLoading ? 0.7 : 1 }}>
+                  {isLoading ? "Creating account..." : "Create Account"}
+                </button>
+              </form>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ===== RIGHT PANE — IMAGE ===== */}
+      <div
+        style={{
+          flex: 1,
+          position: "relative",
+          display: "none",
+          backgroundColor: "#000",
+          overflow: "hidden",
+        }}
+        className="lg:!flex"
+      >
+        <Image
+          src="/assets/login-hero.png"
+          alt="Fans watching a match"
+          fill
+          priority
+          style={{ objectFit: "cover", opacity: 0.85 }}
+          sizes="60vw"
+        />
+        {/* Gradient overlays */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent 50%)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, var(--card) 0%, transparent 20%)" }} />
+
+        {/* Floating card */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 48,
+            left: 48,
+            right: 48,
+            padding: 32,
+            borderRadius: 24,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(24px)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            zIndex: 10,
+          }}
+        >
+          <div style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+            <UserPlus size={24} style={{ color: "var(--primary-foreground)" }} />
+          </div>
+          <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 32, fontWeight: 800, color: "#fff", marginBottom: 12, lineHeight: 1.2 }}>
+            Join the action. Never miss a moment.
+          </h2>
+          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.75)", lineHeight: 1.6 }}>
+            MatchWatch is the ultimate network for football fans. Find the best venues hosting the biggest games in your city.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
