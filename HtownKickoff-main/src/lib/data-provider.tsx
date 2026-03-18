@@ -4,6 +4,16 @@ import React, { createContext, useContext, useState, useEffect, useCallback, typ
 import {
     AMENITY_LABELS,
     PRICE_LABELS,
+    MATCHES as STATIC_MATCHES,
+    VENUES as STATIC_VENUES,
+    LEAGUES as STATIC_LEAGUES,
+    ALL_TEAMS as STATIC_TEAMS,
+    VENUE_EVENTS as STATIC_VENUE_EVENTS,
+    REVIEWS as STATIC_REVIEWS,
+    POSTS as STATIC_POSTS,
+    BOOKINGS as STATIC_BOOKINGS,
+    USERS as STATIC_USERS,
+    ADMIN_STATS as STATIC_ADMIN_STATS,
     type Match,
     type Venue,
     type League,
@@ -327,18 +337,18 @@ async function safeFetchPaginated<T>(
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-    const [matches, setMatches] = useState<Match[]>([]);
-    const [venues, setVenues] = useState<Venue[]>([]);
-    const [leagues, setLeagues] = useState<League[]>([]);
-    const [teams, setTeams] = useState<Team[]>([]);
-    const [venueEvents, setVenueEvents] = useState<VenueEvent[]>([]);
-    const [reviews, setReviews] = useState<Review[]>([]);
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [bookings, setBookings] = useState<Booking[]>([]);
-    const [users] = useState<User[]>([]);
-    const [adminStats] = useState(EMPTY_ADMIN_STATS);
+    const [matches, setMatches] = useState<Match[]>(STATIC_MATCHES);
+    const [venues, setVenues] = useState<Venue[]>(STATIC_VENUES);
+    const [leagues, setLeagues] = useState<League[]>(STATIC_LEAGUES);
+    const [teams, setTeams] = useState<Team[]>(STATIC_TEAMS);
+    const [venueEvents, setVenueEvents] = useState<VenueEvent[]>(STATIC_VENUE_EVENTS);
+    const [reviews, setReviews] = useState<Review[]>(STATIC_REVIEWS);
+    const [posts, setPosts] = useState<Post[]>(STATIC_POSTS);
+    const [bookings, setBookings] = useState<Booking[]>(STATIC_BOOKINGS);
+    const [users] = useState<User[]>(STATIC_USERS);
+    const [adminStats] = useState(STATIC_ADMIN_STATS || EMPTY_ADMIN_STATS);
     const [isApiConnected, setIsApiConnected] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
 
     const fetchFromApi = useCallback(async () => {
         if (typeof window !== "undefined" && shouldSkipBootstrapFetch(window.location.pathname)) {

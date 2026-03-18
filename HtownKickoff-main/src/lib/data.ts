@@ -14,6 +14,8 @@ export const FLAGS: Record<string, string> = {
     MA: "MA", TN: "TN", PL: "PL", HR: "HR", RS: "RS",
     CH: "CH", DK: "DK", SE: "SE", EC: "EC", CL: "CL",
     PE: "PE", VE: "VE", PY: "PY", JM: "JM", HN: "HN",
+    TR: "TR", RO: "RO", CZ: "CZ", IE: "IE", MK: "MK",
+    AL: "AL", SK: "SK", XK: "XK", UA: "UA", BA: "BA",
 };
 
 // ─── League Data ─────────────────────────────────
@@ -29,6 +31,7 @@ export interface League {
 
 export const LEAGUES: League[] = [
     { id: "wc-2026", name: "Global Finals 2026", shortName: "Global Finals", logo: "WC", country: "US/MX/CA", externalId: "WC" },
+    { id: "uefa-qualifiers", name: "FIFA World Cup Qualifying - UEFA", shortName: "UEFA Qualifiers", logo: "UEFA", country: "EU", externalId: "WCQ-UEFA" },
     { id: "mls", name: "Major League Soccer", shortName: "MLS", logo: "MLS", country: "US", externalId: "MLS" },
     { id: "epl", name: "English Premier League", shortName: "EPL", logo: "EPL", image: "/epl-logo.webp", country: "GB", externalId: "PL" },
     { id: "laliga", name: "La Liga", shortName: "La Liga", logo: "LL", image: "/laliga-logo.webp", country: "ES", externalId: "PD" },
@@ -53,32 +56,50 @@ export interface Team {
 }
 
 const TEAM_IMAGES = ["/argentina.png", "/germany.png", "/brazil.png", "/real-madrid.png", "/barcelona.png"];
+const FLAG_CDN_BASE = "https://flagcdn.com/w80";
+const flagImage = (code: string) => `${FLAG_CDN_BASE}/${code}.png`;
 
 export const NATIONAL_TEAMS: Team[] = [
-    { id: "usa", name: "United States", shortName: "USA", crest: "TEAM", color: "#002868", leagueId: "wc-2026", country: "US", image: TEAM_IMAGES[0] },
-    { id: "mexico", name: "Mexico", shortName: "MEX", crest: "TEAM", color: "#006847", leagueId: "wc-2026", country: "MX", image: TEAM_IMAGES[1] },
-    { id: "brazil", name: "Brazil", shortName: "BRA", crest: "TEAM", color: "#FFDF00", leagueId: "wc-2026", country: "BR", image: TEAM_IMAGES[2] },
-    { id: "argentina", name: "Argentina", shortName: "ARG", crest: "TEAM", color: "#75AADB", leagueId: "wc-2026", country: "AR", image: TEAM_IMAGES[0] },
-    { id: "germany", name: "Germany", shortName: "GER", crest: "TEAM", color: "#000000", leagueId: "wc-2026", country: "DE", image: TEAM_IMAGES[1] },
-    { id: "england", name: "England", shortName: "ENG", crest: "TEAM", color: "#FFFFFF", leagueId: "wc-2026", country: "GB", image: TEAM_IMAGES[2] },
-    { id: "france", name: "France", shortName: "FRA", crest: "TEAM", color: "#002395", leagueId: "wc-2026", country: "FR", image: TEAM_IMAGES[3] },
-    { id: "spain", name: "Spain", shortName: "ESP", crest: "TEAM", color: "#AA151B", leagueId: "wc-2026", country: "ES", image: TEAM_IMAGES[4] },
-    { id: "portugal", name: "Portugal", shortName: "POR", crest: "TEAM", color: "#006600", leagueId: "wc-2026", country: "PT", image: TEAM_IMAGES[0] },
-    { id: "netherlands", name: "Netherlands", shortName: "NED", crest: "TEAM", color: "#FF6600", leagueId: "wc-2026", country: "NL", image: TEAM_IMAGES[1] },
-    { id: "belgium", name: "Belgium", shortName: "BEL", crest: "TEAM", color: "#ED2939", leagueId: "wc-2026", country: "BE", image: TEAM_IMAGES[2] },
-    { id: "japan", name: "Japan", shortName: "JPN", crest: "TEAM", color: "#000080", leagueId: "wc-2026", country: "JP", image: TEAM_IMAGES[3] },
-    { id: "korea", name: "South Korea", shortName: "KOR", crest: "TEAM", color: "#C60C30", leagueId: "wc-2026", country: "KR", image: TEAM_IMAGES[4] },
-    { id: "senegal", name: "Senegal", shortName: "SEN", crest: "TEAM", color: "#00853F", leagueId: "wc-2026", country: "SN", image: TEAM_IMAGES[0] },
-    { id: "morocco", name: "Morocco", shortName: "MAR", crest: "TEAM", color: "#C1272D", leagueId: "wc-2026", country: "MA", image: TEAM_IMAGES[1] },
-    { id: "canada", name: "Canada", shortName: "CAN", crest: "TEAM", color: "#FF0000", leagueId: "wc-2026", country: "CA", image: TEAM_IMAGES[2] },
-    { id: "colombia", name: "Colombia", shortName: "COL", crest: "TEAM", color: "#FCD116", leagueId: "wc-2026", country: "CO", image: TEAM_IMAGES[3] },
-    { id: "uruguay", name: "Uruguay", shortName: "URU", crest: "TEAM", color: "#001489", leagueId: "wc-2026", country: "UY", image: TEAM_IMAGES[4] },
-    { id: "croatia", name: "Croatia", shortName: "CRO", crest: "TEAM", color: "#FF0000", leagueId: "wc-2026", country: "HR", image: TEAM_IMAGES[0] },
-    { id: "switzerland", name: "Switzerland", shortName: "SUI", crest: "TEAM", color: "#FF0000", leagueId: "wc-2026", country: "CH", image: TEAM_IMAGES[1] },
-    { id: "ghana", name: "Ghana", shortName: "GHA", crest: "TEAM", color: "#FFFFFF", leagueId: "wc-2026", country: "GH", image: TEAM_IMAGES[2] },
-    { id: "nigeria", name: "Nigeria", shortName: "NGA", crest: "TEAM", color: "#008751", leagueId: "wc-2026", country: "NG", image: TEAM_IMAGES[3] },
-    { id: "cameroon", name: "Cameroon", shortName: "CMR", crest: "TEAM", color: "#007A5E", leagueId: "wc-2026", country: "CM", image: TEAM_IMAGES[4] },
-    { id: "costarica", name: "Costa Rica", shortName: "CRC", crest: "TEAM", color: "#CE1126", leagueId: "wc-2026", country: "CR", image: TEAM_IMAGES[0] },
+    { id: "usa", name: "United States", shortName: "USA", crest: "USA", color: "#002868", leagueId: "wc-2026", country: "US", image: flagImage("us") },
+    { id: "mexico", name: "Mexico", shortName: "MEX", crest: "MEX", color: "#006847", leagueId: "wc-2026", country: "MX", image: flagImage("mx") },
+    { id: "brazil", name: "Brazil", shortName: "BRA", crest: "BRA", color: "#FFDF00", leagueId: "wc-2026", country: "BR", image: flagImage("br") },
+    { id: "argentina", name: "Argentina", shortName: "ARG", crest: "ARG", color: "#75AADB", leagueId: "wc-2026", country: "AR", image: flagImage("ar") },
+    { id: "germany", name: "Germany", shortName: "GER", crest: "GER", color: "#000000", leagueId: "wc-2026", country: "DE", image: flagImage("de") },
+    { id: "england", name: "England", shortName: "ENG", crest: "ENG", color: "#FFFFFF", leagueId: "wc-2026", country: "GB", image: flagImage("gb-eng") },
+    { id: "france", name: "France", shortName: "FRA", crest: "FRA", color: "#002395", leagueId: "wc-2026", country: "FR", image: flagImage("fr") },
+    { id: "spain", name: "Spain", shortName: "ESP", crest: "ESP", color: "#AA151B", leagueId: "wc-2026", country: "ES", image: flagImage("es") },
+    { id: "portugal", name: "Portugal", shortName: "POR", crest: "POR", color: "#006600", leagueId: "wc-2026", country: "PT", image: flagImage("pt") },
+    { id: "netherlands", name: "Netherlands", shortName: "NED", crest: "NED", color: "#FF6600", leagueId: "wc-2026", country: "NL", image: flagImage("nl") },
+    { id: "belgium", name: "Belgium", shortName: "BEL", crest: "BEL", color: "#ED2939", leagueId: "wc-2026", country: "BE", image: flagImage("be") },
+    { id: "japan", name: "Japan", shortName: "JPN", crest: "JPN", color: "#000080", leagueId: "wc-2026", country: "JP", image: flagImage("jp") },
+    { id: "korea", name: "South Korea", shortName: "KOR", crest: "KOR", color: "#C60C30", leagueId: "wc-2026", country: "KR", image: flagImage("kr") },
+    { id: "senegal", name: "Senegal", shortName: "SEN", crest: "SEN", color: "#00853F", leagueId: "wc-2026", country: "SN", image: flagImage("sn") },
+    { id: "morocco", name: "Morocco", shortName: "MAR", crest: "MAR", color: "#C1272D", leagueId: "wc-2026", country: "MA", image: flagImage("ma") },
+    { id: "canada", name: "Canada", shortName: "CAN", crest: "CAN", color: "#FF0000", leagueId: "wc-2026", country: "CA", image: flagImage("ca") },
+    { id: "colombia", name: "Colombia", shortName: "COL", crest: "COL", color: "#FCD116", leagueId: "wc-2026", country: "CO", image: flagImage("co") },
+    { id: "uruguay", name: "Uruguay", shortName: "URU", crest: "URU", color: "#001489", leagueId: "wc-2026", country: "UY", image: flagImage("uy") },
+    { id: "croatia", name: "Croatia", shortName: "CRO", crest: "CRO", color: "#FF0000", leagueId: "wc-2026", country: "HR", image: flagImage("hr") },
+    { id: "switzerland", name: "Switzerland", shortName: "SUI", crest: "SUI", color: "#FF0000", leagueId: "wc-2026", country: "CH", image: flagImage("ch") },
+    { id: "ghana", name: "Ghana", shortName: "GHA", crest: "GHA", color: "#FFFFFF", leagueId: "wc-2026", country: "GH", image: flagImage("gh") },
+    { id: "nigeria", name: "Nigeria", shortName: "NGA", crest: "NGA", color: "#008751", leagueId: "wc-2026", country: "NG", image: flagImage("ng") },
+    { id: "cameroon", name: "Cameroon", shortName: "CMR", crest: "CMR", color: "#007A5E", leagueId: "wc-2026", country: "CM", image: flagImage("cm") },
+    { id: "costarica", name: "Costa Rica", shortName: "CRC", crest: "CRC", color: "#CE1126", leagueId: "wc-2026", country: "CR", image: flagImage("cr") },
+    { id: "turkiye", name: "Turkiye", shortName: "TUR", crest: "TUR", color: "#E30A17", leagueId: "uefa-qualifiers", country: "TR", image: flagImage("tr") },
+    { id: "romania", name: "Romania", shortName: "ROU", crest: "ROU", color: "#FCD116", leagueId: "uefa-qualifiers", country: "RO", image: flagImage("ro") },
+    { id: "czechia", name: "Czechia", shortName: "CZE", crest: "CZE", color: "#11457E", leagueId: "uefa-qualifiers", country: "CZ", image: flagImage("cz") },
+    { id: "republic-of-ireland", name: "Republic of Ireland", shortName: "IRL", crest: "IRL", color: "#169B62", leagueId: "uefa-qualifiers", country: "IE", image: flagImage("ie") },
+    { id: "denmark", name: "Denmark", shortName: "DEN", crest: "DEN", color: "#C60C30", leagueId: "uefa-qualifiers", country: "DK", image: flagImage("dk") },
+    { id: "north-macedonia", name: "North Macedonia", shortName: "MKD", crest: "MKD", color: "#D20000", leagueId: "uefa-qualifiers", country: "MK", image: flagImage("mk") },
+    { id: "italy", name: "Italy", shortName: "ITA", crest: "ITA", color: "#008C45", leagueId: "uefa-qualifiers", country: "IT", image: flagImage("it") },
+    { id: "northern-ireland", name: "Northern Ireland", shortName: "NIR", crest: "NIR", color: "#006B3F", leagueId: "uefa-qualifiers", country: "GB", image: flagImage("gb-nir") },
+    { id: "poland", name: "Poland", shortName: "POL", crest: "POL", color: "#DC143C", leagueId: "uefa-qualifiers", country: "PL", image: flagImage("pl") },
+    { id: "albania", name: "Albania", shortName: "ALB", crest: "ALB", color: "#D40000", leagueId: "uefa-qualifiers", country: "AL", image: flagImage("al") },
+    { id: "slovakia", name: "Slovakia", shortName: "SVK", crest: "SVK", color: "#0B4EA2", leagueId: "uefa-qualifiers", country: "SK", image: flagImage("sk") },
+    { id: "kosovo", name: "Kosovo", shortName: "KOS", crest: "KOS", color: "#244AA5", leagueId: "uefa-qualifiers", country: "XK", image: flagImage("xk") },
+    { id: "ukraine", name: "Ukraine", shortName: "UKR", crest: "UKR", color: "#0057B7", leagueId: "uefa-qualifiers", country: "UA", image: flagImage("ua") },
+    { id: "sweden", name: "Sweden", shortName: "SWE", crest: "SWE", color: "#006AA7", leagueId: "uefa-qualifiers", country: "SE", image: flagImage("se") },
+    { id: "wales", name: "Wales", shortName: "WAL", crest: "WAL", color: "#D30731", leagueId: "uefa-qualifiers", country: "GB", image: flagImage("gb-wls") },
+    { id: "bosnia-and-herzegovina", name: "Bosnia and Herzegovina", shortName: "BIH", crest: "BIH", color: "#002F6C", leagueId: "uefa-qualifiers", country: "BA", image: flagImage("ba") },
 ];
 
 export const CLUB_TEAMS: Team[] = [
@@ -136,6 +157,15 @@ export const MATCHES: Match[] = [
     { id: "wc-6", homeTeamId: "portugal", awayTeamId: "senegal", leagueId: "wc-2026", matchDateUTC: "2026-06-19T21:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group F", stadiumName: "NRG Stadium, Houston", venueCount: 11, isHot: false },
     { id: "wc-7", homeTeamId: "netherlands", awayTeamId: "colombia", leagueId: "wc-2026", matchDateUTC: "2026-06-20T18:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group G", stadiumName: "NRG Stadium, Houston", venueCount: 13, isHot: false },
     { id: "wc-8", homeTeamId: "croatia", awayTeamId: "canada", leagueId: "wc-2026", matchDateUTC: "2026-06-21T21:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group H", stadiumName: "NRG Stadium, Houston", venueCount: 9, isHot: false },
+    // FIFA World Cup Qualifying - UEFA
+    { id: "uefaq-1", homeTeamId: "turkiye", awayTeamId: "romania", leagueId: "uefa-qualifiers", matchDateUTC: "2026-03-26T17:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Matchday 1", stage: "UEFA Qualifying", stadiumName: "Vodafone Park, Istanbul, Turkiye", venueCount: 6, isHot: false },
+    { id: "uefaq-2", homeTeamId: "czechia", awayTeamId: "republic-of-ireland", leagueId: "uefa-qualifiers", matchDateUTC: "2026-03-26T19:45:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Matchday 1", stage: "UEFA Qualifying", stadiumName: "Fortuna Arena, Prague, Czechia", venueCount: 5, isHot: false },
+    { id: "uefaq-3", homeTeamId: "denmark", awayTeamId: "north-macedonia", leagueId: "uefa-qualifiers", matchDateUTC: "2026-03-26T19:45:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Matchday 1", stage: "UEFA Qualifying", stadiumName: "Parken Stadium, Copenhagen, Denmark", venueCount: 5, isHot: false },
+    { id: "uefaq-4", homeTeamId: "italy", awayTeamId: "northern-ireland", leagueId: "uefa-qualifiers", matchDateUTC: "2026-03-26T19:45:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Matchday 1", stage: "UEFA Qualifying", stadiumName: "New Balance Arena, Bergamo, Italy", venueCount: 7, isHot: false },
+    { id: "uefaq-5", homeTeamId: "poland", awayTeamId: "albania", leagueId: "uefa-qualifiers", matchDateUTC: "2026-03-26T19:45:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Matchday 1", stage: "UEFA Qualifying", stadiumName: "PGE Narodowy, Warsaw, Poland", venueCount: 4, isHot: false },
+    { id: "uefaq-6", homeTeamId: "slovakia", awayTeamId: "kosovo", leagueId: "uefa-qualifiers", matchDateUTC: "2026-03-26T19:45:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Matchday 1", stage: "UEFA Qualifying", stadiumName: "Narodny Futbalovy Stadion, Bratislava, Slovakia", venueCount: 4, isHot: false },
+    { id: "uefaq-7", homeTeamId: "ukraine", awayTeamId: "sweden", leagueId: "uefa-qualifiers", matchDateUTC: "2026-03-26T19:45:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Matchday 1", stage: "UEFA Qualifying", stadiumName: "Estadi Ciutat de Valencia, Manises, Spain", venueCount: 5, isHot: false },
+    { id: "uefaq-8", homeTeamId: "wales", awayTeamId: "bosnia-and-herzegovina", leagueId: "uefa-qualifiers", matchDateUTC: "2026-03-26T19:45:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Matchday 1", stage: "UEFA Qualifying", stadiumName: "Cardiff City Stadium, Cardiff, Wales", venueCount: 5, isHot: false },
     // Live match
     { id: "mls-1", homeTeamId: "dynamo", awayTeamId: "austin", leagueId: "mls", matchDateUTC: "2026-02-22T20:00:00Z", status: "IN_PLAY", homeScore: 2, awayScore: 1, matchDay: "Week 4", stage: "Regular Season", stadiumName: "Shell Energy Stadium", venueCount: 12, isHot: false },
     // Finished matches
