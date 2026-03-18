@@ -40,8 +40,8 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-4000}
       POSTGRES_PASSWORD: matchwatch_dev
-      DATABASE_URL: ${DATABASE_URL:-postgresql://matchwatch:matchwatch_dev@postgres:5432/matchwatch}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://matchwatch:matchwatch_dev@postgres:5432/matchwatch}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
       JWT_SECRET: ${JWT_SECRET}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       AUTO_VERIFY_EMAIL: ${AUTO_VERIFY_EMAIL:-true}
@@ -74,16 +74,16 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: /api/v1
-        API_PROXY_TARGET: http://api:4000
+        API_PROXY_TARGET: ${DOCKER_API_PROXY_TARGET:-https://matchwatch.us}
     restart: unless-stopped
-    ports: ["3000:3000"]
+    ports: ["3100:3000"]
     depends_on:
       api:
         condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
-      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://api:4000}
+      API_PROXY_TARGET: ${DOCKER_API_PROXY_TARGET:-https://matchwatch.us}
 
   # ── MailHog (dev only) ──────────────────────
   mailhog:

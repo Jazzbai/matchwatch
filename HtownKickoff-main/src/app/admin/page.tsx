@@ -140,6 +140,17 @@ type VenueProfile = {
   promotedVenueEventId?: string | null;
 };
 
+type OwnedVenue = {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  country: string;
+  isVerified: boolean;
+  isFeatured: boolean;
+  createdAt: string;
+};
+
 type CustomEvent = {
   id: string;
   title: string;
@@ -268,6 +279,9 @@ export default function AdminPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState("overview");
+  const [ownedVenues, setOwnedVenues] = React.useState<OwnedVenue[]>([]);
+  const [selectedVenueId, setSelectedVenueId] = React.useState("");
+  const [showCreateVenueForm, setShowCreateVenueForm] = React.useState(false);
 
   const [overview, setOverview] = React.useState<DashboardOverview | null>(null);
   const [events, setEvents] = React.useState<OwnerEvent[]>([]);
@@ -294,6 +308,7 @@ export default function AdminPage() {
   const [deletingVenue, setDeletingVenue] = React.useState(false);
   const [creatingMenuCategory, setCreatingMenuCategory] = React.useState(false);
   const [creatingMenuItem, setCreatingMenuItem] = React.useState(false);
+  const [creatingVenue, setCreatingVenue] = React.useState(false);
 
   const [newEventMatchId, setNewEventMatchId] = React.useState("");
   const [matchPickerLeague, setMatchPickerLeague] = React.useState("all");
@@ -329,6 +344,17 @@ export default function AdminPage() {
   const coverInputRef = React.useRef<HTMLInputElement | null>(null);
   const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
   const [deleteVenueEmailConfirm, setDeleteVenueEmailConfirm] = React.useState("");
+  const [newOwnedVenue, setNewOwnedVenue] = React.useState({
+    name: "",
+    addressLine1: "",
+    city: "Houston",
+    country: "US",
+    lat: "29.7604",
+    lng: "-95.3698",
+    timezone: "America/Chicago",
+    phone: "",
+    description: "",
+  });
 
   const availableMatches = React.useMemo(() => {
     const existing = new Set(events.map((event) => event.matchId));
@@ -390,6 +416,28 @@ export default function AdminPage() {
     return Array.from(grouped.values()).sort((a, b) => a.leagueLabel.localeCompare(b.leagueLabel));
   }, [matchPickerRows]);
 
+  const dashboardPath = React.useCallback((path: string, venueIdOverride?: string) => {
+    const venueId = venueIdOverride || selectedVenueId;
+    if (!venueId) return path;
+    const separator = path.includes("?") ? "&" : "?";
+    return `${path}${separator}venueId=${encodeURIComponent(venueId)}`;
+  }, [selectedVenueId]);
+
+  const loadOwnedVenues = React.useCallback(async () => {
+    const response = await api.get<OwnedVenue[]>("/dashboard/venues");
+    const rows = response.data || [];
+    setOwnedVenues(rows);
+
+    setSelectedVenueId((prev) => {
+      if (prev && rows.some((venue) => venue.id === prev)) {
+        return prev;
+      }
+      return rows[0]?.id || "";
+    });
+
+    return rows;
+  }, []);
+
   const loadDashboard = React.useCallback(async () => {
     if (!isAuthenticated) {
       setLoading(false);
@@ -400,6 +448,33 @@ export default function AdminPage() {
     setError(null);
 
     try {
+      const venueRows = await loadOwnedVenues();
+      const effectiveVenueId = selectedVenueId && venueRows.some((venue) => venue.id === selectedVenueId)
+        ? selectedVenueId
+        : (venueRows[0]?.id || "");
+
+      if (effectiveVenueId && effectiveVenueId !== selectedVenueId) {
+        setSelectedVenueId(effectiveVenueId);
+      }
+
+      if (!effectiveVenueId) {
+        setOverview(null);
+        setEvents([]);
+        setBookingsByEvent([]);
+        setCustomEvents([]);
+        setMenu([]);
+        setUpcomingMatches([]);
+        setPromotedEventId(null);
+        setVenueName("");
+        setVenueDescription("");
+        setVenuePhone("");
+        setCoverImageUrl("");
+        setCoverImageS3Key("");
+        setGalleryItems([]);
+        setLoading(false);
+        return;
+      }
+
       const [
         overviewRes,
         eventsRes,
@@ -409,13 +484,13 @@ export default function AdminPage() {
         customEventsRes,
         menuRes,
       ] = await Promise.all([
-        api.get<DashboardOverview>("/dashboard"),
-        api.get<OwnerEvent[]>("/dashboard/events"),
-        api.get<GroupedBookingEvent[]>("/dashboard/bookings/events"),
-        api.get<VenueProfile>("/dashboard/venue"),
+        api.get<DashboardOverview>(dashboardPath("/dashboard", effectiveVenueId)),
+        api.get<OwnerEvent[]>(dashboardPath("/dashboard/events", effectiveVenueId)),
+        api.get<GroupedBookingEvent[]>(dashboardPath("/dashboard/bookings/events", effectiveVenueId)),
+        api.get<VenueProfile>(dashboardPath("/dashboard/venue", effectiveVenueId)),
         api.get<Record<string, UpcomingMatch[]>>("/matches/upcoming"),
-        api.get<CustomEvent[]>("/dashboard/custom-events"),
-        api.get<MenuCategory[]>("/dashboard/menu"),
+        api.get<CustomEvent[]>(dashboardPath("/dashboard/custom-events", effectiveVenueId)),
+        api.get<MenuCategory[]>(dashboardPath("/dashboard/menu", effectiveVenueId)),
       ]);
 
       setOverview(overviewRes.data);
@@ -446,7 +521,7 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [dashboardPath, isAuthenticated, loadOwnedVenues, selectedVenueId]);
 
   React.useEffect(() => {
     void loadDashboard();
@@ -486,11 +561,15 @@ export default function AdminPage() {
 
   const createMatchEvent = async () => {
     if (!newEventMatchId) return;
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
 
     setCreatingEvent(true);
     setError(null);
     try {
-      await api.post("/dashboard/events", {
+      await api.post(dashboardPath("/dashboard/events"), {
         matchId: newEventMatchId,
         bookingLimit: newEventLimit ? Number(newEventLimit) : undefined,
         specialNotes: newEventNotes || undefined,
@@ -509,10 +588,15 @@ export default function AdminPage() {
   };
 
   const updateVenuePromotion = async (venueEventId: string | null) => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+
     setUpdatingPromotion(true);
     setError(null);
     try {
-      await api.put<{ promotedVenueEventId: string | null }>("/dashboard/venue/promotion", {
+      await api.put<{ promotedVenueEventId: string | null }>(dashboardPath("/dashboard/venue/promotion"), {
         venueEventId,
       });
       setPromotedEventId(venueEventId);
@@ -525,6 +609,11 @@ export default function AdminPage() {
   };
 
   const createCustomEvent = async () => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+
     if (!customTitle.trim() || !customStartsAt || !customEndsAt || customTags.length === 0) {
       setError("Fill title, start/end time, and at least one event type.");
       return;
@@ -533,7 +622,7 @@ export default function AdminPage() {
     setCreatingEvent(true);
     setError(null);
     try {
-      await api.post("/dashboard/custom-events", {
+      await api.post(dashboardPath("/dashboard/custom-events"), {
         title: customTitle.trim(),
         description: customDescription.trim() || undefined,
         startsAt: new Date(customStartsAt).toISOString(),
@@ -576,9 +665,14 @@ export default function AdminPage() {
   };
 
   const deleteCustomEvent = async (customEventId: string) => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+
     setError(null);
     try {
-      await api.delete(`/dashboard/custom-events/${customEventId}`);
+      await api.delete(dashboardPath(`/dashboard/custom-events/${customEventId}`));
       await loadDashboard();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to remove custom event");
@@ -590,6 +684,11 @@ export default function AdminPage() {
     status: "CONFIRMED" | "CANCELLED_BY_VENUE",
     currentStatus: string,
   ) => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+
     if (updatingBooking) return;
     const isPending = currentStatus === "PENDING";
     const isConfirmed = currentStatus === "CONFIRMED";
@@ -606,7 +705,7 @@ export default function AdminPage() {
     setBookingAction({ bookingId, action: status });
     setError(null);
     try {
-      await api.put(`/dashboard/bookings/${bookingId}`, { status });
+      await api.put(dashboardPath(`/dashboard/bookings/${bookingId}`), { status });
       await Promise.all([loadDashboard(), refetch()]);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update booking");
@@ -617,12 +716,16 @@ export default function AdminPage() {
   };
 
   const createMenuCategory = async () => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
     if (!newCategoryName.trim()) return;
 
     setCreatingMenuCategory(true);
     setError(null);
     try {
-      await api.post("/dashboard/menu/categories", {
+      await api.post(dashboardPath("/dashboard/menu/categories"), {
         name: newCategoryName.trim(),
         description: newCategoryDescription.trim() || undefined,
       });
@@ -637,12 +740,16 @@ export default function AdminPage() {
   };
 
   const createMenuItem = async () => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
     if (!newMenuItemCategoryId || !newMenuItemName.trim() || !newMenuItemPrice.trim()) return;
 
     setCreatingMenuItem(true);
     setError(null);
     try {
-      await api.post("/dashboard/menu/items", {
+      await api.post(dashboardPath("/dashboard/menu/items"), {
         categoryId: newMenuItemCategoryId,
         name: newMenuItemName.trim(),
         description: newMenuItemDescription.trim() || undefined,
@@ -700,10 +807,15 @@ export default function AdminPage() {
   };
 
   const saveVenueSettings = async () => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+
     setSavingSettings(true);
     setError(null);
     try {
-      await api.put("/dashboard/venue", {
+      await api.put(dashboardPath("/dashboard/venue"), {
         name: venueName.trim(),
         description: venueDescription.trim() || undefined,
         phone: venuePhone.trim() || undefined,
@@ -722,6 +834,11 @@ export default function AdminPage() {
   };
 
   const deleteOwnedVenue = async () => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+
     const accountEmail = (user?.email || "").trim().toLowerCase();
     const typedEmail = deleteVenueEmailConfirm.trim().toLowerCase();
     if (!accountEmail || typedEmail !== accountEmail) {
@@ -737,13 +854,76 @@ export default function AdminPage() {
     setDeletingVenue(true);
     setError(null);
     try {
-      await api.post<{ message: string }>("/dashboard/venue/delete", { email: typedEmail });
-      await logout();
-      router.replace("/for-venues");
+      const response = await api.delete<{ message: string; remainingVenues: number; demotedToUser: boolean }>(`/dashboard/venues/${selectedVenueId}`);
+      const remainingVenues = Number(response.data?.remainingVenues || 0);
+
+      setDeleteVenueEmailConfirm("");
+      await loadOwnedVenues();
+
+      if (remainingVenues === 0) {
+        await logout();
+        router.replace("/for-venues");
+        return;
+      }
+
+      await Promise.all([loadDashboard(), refetch()]);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete venue");
     } finally {
       setDeletingVenue(false);
+    }
+  };
+
+  const createOwnedVenue = async () => {
+    if (!newOwnedVenue.name.trim() || !newOwnedVenue.addressLine1.trim() || !newOwnedVenue.city.trim() || !newOwnedVenue.country.trim()) {
+      setError("Name, address, city, and country are required to create a venue.");
+      return;
+    }
+
+    const lat = Number(newOwnedVenue.lat);
+    const lng = Number(newOwnedVenue.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setError("Latitude and longitude must be valid numbers.");
+      return;
+    }
+
+    setCreatingVenue(true);
+    setError(null);
+    try {
+      const response = await api.post<{ id: string; name: string; slug: string; city: string; country: string }>("/dashboard/venues", {
+        name: newOwnedVenue.name.trim(),
+        addressLine1: newOwnedVenue.addressLine1.trim(),
+        city: newOwnedVenue.city.trim(),
+        country: newOwnedVenue.country.trim(),
+        lat,
+        lng,
+        timezone: newOwnedVenue.timezone.trim() || "America/Chicago",
+        phone: newOwnedVenue.phone.trim() || undefined,
+        description: newOwnedVenue.description.trim() || undefined,
+      });
+
+      setShowCreateVenueForm(false);
+      setNewOwnedVenue({
+        name: "",
+        addressLine1: "",
+        city: "Houston",
+        country: "US",
+        lat: "29.7604",
+        lng: "-95.3698",
+        timezone: "America/Chicago",
+        phone: "",
+        description: "",
+      });
+
+      await loadOwnedVenues();
+      if (response.data?.id) {
+        setSelectedVenueId(response.data.id);
+      }
+      await Promise.all([loadDashboard(), refetch()]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create venue");
+    } finally {
+      setCreatingVenue(false);
     }
   };
 
@@ -752,7 +932,7 @@ export default function AdminPage() {
         <AppShell>
           <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "40px 24px", color: "var(--muted-foreground)" }}>
             <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite" }} />
-            <span>Loading venue dashboard...</span>
+            <span>Loading business dashboard...</span>
           </div>
         </AppShell>
     );
@@ -764,7 +944,7 @@ export default function AdminPage() {
           <div style={{ maxWidth: 540, margin: "0 auto", padding: "64px 24px", textAlign: "center" }}>
             <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 28, fontWeight: 900, color: "var(--foreground)", marginBottom: 8 }}>Login Required</h1>
             <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginBottom: 24 }}>
-              Sign in with a venue account to access the dashboard.
+              Sign in with a business account to access the dashboard.
             </p>
             <Link href="/login" style={{ display: "inline-block", padding: "10px 24px", borderRadius: 10, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Go to Login</Link>
           </div>
@@ -773,7 +953,7 @@ export default function AdminPage() {
   }
 
   const isBusy =
-    creatingEvent || updatingBooking || updatingPromotion || savingSettings || uploadingCover || uploadingGallery || deletingVenue;
+    creatingEvent || updatingBooking || updatingPromotion || savingSettings || uploadingCover || uploadingGallery || deletingVenue || creatingVenue;
 
   /* ── Inline style helpers ── */
   const inputStyle: React.CSSProperties = {
@@ -836,7 +1016,7 @@ export default function AdminPage() {
           <div style={{ marginBottom: 24, display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
             <div>
               <div style={{ display: "inline-block", padding: "4px 12px", borderRadius: 8, backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-                Venue Dashboard
+                Business Dashboard
               </div>
               <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 28, fontWeight: 900, color: "var(--foreground)", margin: 0 }}>
                 {overview?.venue?.name || "Venue"}
@@ -846,9 +1026,104 @@ export default function AdminPage() {
                 {overview?.venue?.city || "City unavailable"}
               </p>
             </div>
-            <button onClick={() => void loadDashboard()} disabled={isBusy} style={btnOutline(isBusy)}>
-              Refresh
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, minWidth: 280 }}>
+              <div style={{ display: "flex", gap: 8, width: "100%", justifyContent: "flex-end" }}>
+                <select
+                  value={selectedVenueId}
+                  onChange={(event) => setSelectedVenueId(event.target.value)}
+                  style={{ ...inputStyle, maxWidth: 320 }}
+                >
+                  {ownedVenues.length === 0 && <option value="">No venues yet</option>}
+                  {ownedVenues.map((venue) => (
+                    <option key={venue.id} value={venue.id}>
+                      {venue.name} ({venue.city})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setShowCreateVenueForm((prev) => !prev)}
+                  style={btnOutline(isBusy)}
+                  disabled={isBusy}
+                >
+                  <Plus size={14} />
+                  {showCreateVenueForm ? "Close" : "New Venue"}
+                </button>
+                <button onClick={() => void loadDashboard()} disabled={isBusy} style={btnOutline(isBusy)}>
+                  Refresh
+                </button>
+              </div>
+              {showCreateVenueForm && (
+                <div style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12, display: "grid", gap: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <input
+                      value={newOwnedVenue.name}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, name: event.target.value }))}
+                      placeholder="Venue name"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.addressLine1}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, addressLine1: event.target.value }))}
+                      placeholder="Street address"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px 120px", gap: 8 }}>
+                    <input
+                      value={newOwnedVenue.city}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, city: event.target.value }))}
+                      placeholder="City"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.country}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, country: event.target.value }))}
+                      placeholder="Country"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.lat}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, lat: event.target.value }))}
+                      placeholder="Lat"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.lng}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, lng: event.target.value }))}
+                      placeholder="Lng"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 8 }}>
+                    <input
+                      value={newOwnedVenue.timezone}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, timezone: event.target.value }))}
+                      placeholder="Timezone"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.phone}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, phone: event.target.value }))}
+                      placeholder="Phone (optional)"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.description}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, description: event.target.value }))}
+                      placeholder="Short description (optional)"
+                      style={inputStyle}
+                    />
+                    <button
+                      onClick={() => void createOwnedVenue()}
+                      disabled={creatingVenue}
+                      style={btnPrimary(creatingVenue)}
+                    >
+                      {creatingVenue ? "Creating..." : "Create"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Error */}

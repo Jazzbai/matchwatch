@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/client';
-import { matches, leagues, teams, venueEvents, venues } from '../db/schema';
+import { matches, leagues, sports, teams, venueEvents, venues } from '../db/schema';
 import { eq, and, gte, lte, desc, asc, count, inArray, or } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { matchQuerySchema, matchVenueQuerySchema } from '@matchwatch/shared';
@@ -15,13 +15,14 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid query parameters', query.error.issues), 400);
     }
 
-    const { page, limit, sort, league_id, date_from, date_to, status, has_venues } = query.data;
+    const { page, limit, sort, sport_id, league_id, date_from, date_to, status, has_venues } = query.data;
     const offset = paginationOffset(page, limit);
 
     let conditions: any[] = [];
     const now = new Date();
 
     if (league_id) conditions.push(eq(matches.leagueId, league_id));
+    if (sport_id) conditions.push(eq(leagues.sportId, sport_id));
     if (query.data.team_id) {
         conditions.push(or(
             eq(matches.homeTeamId, query.data.team_id),
@@ -46,17 +47,22 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
         db.select({
             match: matches,
             league: leagues,
+            sport: sports,
             homeTeam: teams,
         })
             .from(matches)
             .leftJoin(leagues, eq(matches.leagueId, leagues.id))
+            .leftJoin(sports, eq(leagues.sportId, sports.id))
             .leftJoin(teams, eq(matches.homeTeamId, teams.id))
             .where(whereClause)
             .orderBy(orderBy)
             .limit(limit)
             .offset(offset),
 
-        db.select({ count: count() }).from(matches).where(whereClause),
+        db.select({ count: count() })
+            .from(matches)
+            .leftJoin(leagues, eq(matches.leagueId, leagues.id))
+            .where(whereClause),
     ]);
 
     // Get venue counts for each match
@@ -108,7 +114,19 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
             stage: r.match.stage,
             venueName: r.match.venueName,
             venueCount: venueCounts.get(r.match.id) || 0,
-            league: r.league ? { id: r.league.id, name: r.league.name, shortName: r.league.shortName, logoUrl: r.league.logoUrl } : null,
+            league: r.league ? {
+                id: r.league.id,
+                sportId: r.league.sportId,
+                name: r.league.name,
+                shortName: r.league.shortName,
+                logoUrl: r.league.logoUrl,
+                sport: r.sport ? {
+                    id: r.sport.id,
+                    name: r.sport.name,
+                    slug: r.sport.slug,
+                    shortName: r.sport.shortName,
+                } : null,
+            } : null,
         }));
 
     return c.json(apiResponse(results, paginationMeta(page, limit, totalResult?.count ?? 0)));
@@ -117,6 +135,7 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
 matchRoutes.get('/facets', async (c) => {
     const now = new Date();
     const includePast = c.req.query('include_past') === 'true';
+    const sportId = c.req.query('sport_id');
     const baseWhere = includePast
         ? undefined
         : and(
@@ -129,21 +148,40 @@ matchRoutes.get('/facets', async (c) => {
         leagueName: leagues.name,
         leagueShortName: leagues.shortName,
         leagueLogoUrl: leagues.logoUrl,
+        leagueSportId: leagues.sportId,
+        sportId: sports.id,
+        sportName: sports.name,
+        sportSlug: sports.slug,
+        sportShortName: sports.shortName,
         homeTeamId: matches.homeTeamId,
         awayTeamId: matches.awayTeamId,
     })
         .from(matches)
         .leftJoin(leagues, eq(matches.leagueId, leagues.id))
-        .where(baseWhere)
+        .leftJoin(sports, eq(leagues.sportId, sports.id))
+        .where(and(
+            ...(baseWhere ? [baseWhere] : []),
+            ...(sportId ? [eq(leagues.sportId, sportId)] : []),
+        ))
         .orderBy(asc(matches.matchDateUtc))
         .limit(800);
 
     const teamIds = new Set<string>();
-    const leagueMap = new Map<string, { id: string; name: string; shortName: string | null; logoUrl: string | null }>();
+    const leagueMap = new Map<string, { id: string; sportId: string | null; name: string; shortName: string | null; logoUrl: string | null }>();
+    const sportMap = new Map<string, { id: string; name: string; slug: string; shortName: string | null }>();
     for (const row of rows) {
+        if (row.sportId && row.sportName && row.sportSlug) {
+            sportMap.set(row.sportId, {
+                id: row.sportId,
+                name: row.sportName,
+                slug: row.sportSlug,
+                shortName: row.sportShortName,
+            });
+        }
         if (row.leagueId && row.leagueName) {
             leagueMap.set(row.leagueId, {
                 id: row.leagueId,
+                sportId: row.leagueSportId,
                 name: row.leagueName,
                 shortName: row.leagueShortName,
                 logoUrl: row.leagueLogoUrl,
@@ -164,6 +202,7 @@ matchRoutes.get('/facets', async (c) => {
         : [];
 
     return c.json(apiResponse({
+        sports: Array.from(sportMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
         leagues: Array.from(leagueMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
         teams: teamRows.sort((a, b) => a.name.localeCompare(b.name)),
     }));
@@ -318,6 +357,7 @@ matchRoutes.get('/:matchId/venues', async (c) => {
                 city: r.venue.city,
                 coverImageUrl: r.venue.coverImageUrl || null,
                 amenities: r.venue.amenities,
+                vibes: r.venue.vibes,
                 cuisineTags: r.venue.cuisineTags,
                 priceRange: r.venue.priceRange,
                 averageRating: r.venue.averageRating,

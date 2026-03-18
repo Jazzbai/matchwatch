@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db/client';
 import { venues, venueEvents, matches, posts, menuCategories, menuItems, follows, reviews, users, venueCustomEvents } from '../db/schema';
-import { eq, and, gte, count, desc, asc, sql, ilike } from 'drizzle-orm';
+import { eq, and, gte, lt, count, desc, asc, sql, ilike } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { venueQuerySchema, paginationSchema } from '@matchwatch/shared';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware';
@@ -66,6 +66,7 @@ venueRoutes.get('/', async (c) => {
             coverImageUrl,
             galleryImageUrls,
             amenities: v.amenities,
+            vibes: v.vibes,
             cuisineTags: v.cuisineTags,
             priceRange: v.priceRange,
             averageRating: v.averageRating,
@@ -139,7 +140,7 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
     }).where(and(
         eq(venueCustomEvents.venueId, venue.id),
         eq(venueCustomEvents.isActive, true),
-        sql`${venueCustomEvents.endsAt} < ${now}`,
+        lt(venueCustomEvents.endsAt, now),
     ));
 
     const upcomingEvents = await db.select({
@@ -279,7 +280,7 @@ venueRoutes.get('/:slugOrId/custom-events', async (c) => {
     }).where(and(
         eq(venueCustomEvents.venueId, venue.id),
         eq(venueCustomEvents.isActive, true),
-        sql`${venueCustomEvents.endsAt} < ${now}`,
+        lt(venueCustomEvents.endsAt, now),
     ));
 
     const rows = await db.select().from(venueCustomEvents)

@@ -7,6 +7,7 @@ import {
     type Match,
     type Venue,
     type League,
+    type Sport,
     type Team,
     type VenueEvent,
     type Review,
@@ -41,6 +42,7 @@ interface DataContextType {
     matches: Match[];
     venues: Venue[];
     leagues: League[];
+    sports: Sport[];
     teams: Team[];
     venueEvents: VenueEvent[];
     reviews: Review[];
@@ -66,6 +68,7 @@ interface DataContextType {
     isLoading: boolean;
     getTeam: (id: string) => Team | undefined;
     getLeague: (id: string) => League | undefined;
+    getSport: (id: string) => Sport | undefined;
     getVenue: (idOrSlug: string) => Venue | undefined;
     getMatch: (id: string) => Match | undefined;
     getVenueEvents: (matchId: string) => (VenueEvent & { venue: Venue })[];
@@ -112,9 +115,16 @@ type ApiMatch = {
     venueCount?: number;
     league?: {
         id: string;
+        sportId?: string | null;
         name: string;
         shortName?: string | null;
         logoUrl?: string | null;
+        sport?: {
+            id: string;
+            name: string;
+            slug: string;
+            shortName?: string | null;
+        } | null;
     } | null;
 };
 
@@ -149,6 +159,23 @@ function inferLeagueCountry(name: string) {
     if (key.includes("nwsl")) return "USA";
     if (key.includes("global finals") || key.includes("world cup")) return "International";
     return "International";
+}
+
+function inferSportFromLeague(name: string): Sport {
+    const key = name.toLowerCase();
+    if (key.includes('nfl') || key.includes('american football')) {
+        return { id: 'american-football', name: 'American Football', slug: 'american-football', shortName: 'NFL' };
+    }
+    if (key.includes('nba') || key.includes('basketball')) {
+        return { id: 'basketball', name: 'Basketball', slug: 'basketball', shortName: 'NBA' };
+    }
+    if (key.includes('mlb') || key.includes('baseball')) {
+        return { id: 'baseball', name: 'Baseball', slug: 'baseball', shortName: 'MLB' };
+    }
+    if (key.includes('nhl') || key.includes('hockey')) {
+        return { id: 'hockey', name: 'Hockey', slug: 'hockey', shortName: 'NHL' };
+    }
+    return { id: 'soccer', name: 'Soccer', slug: 'soccer', shortName: 'SOC' };
 }
 
 function resolveLeagueBranding(name: string, logoUrl?: string | null) {
@@ -330,6 +357,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const [matches, setMatches] = useState<Match[]>([]);
     const [venues, setVenues] = useState<Venue[]>([]);
     const [leagues, setLeagues] = useState<League[]>([]);
+    const [sports, setSports] = useState<Sport[]>([]);
     const [teams, setTeams] = useState<Team[]>([]);
     const [venueEvents, setVenueEvents] = useState<VenueEvent[]>([]);
     const [reviews, setReviews] = useState<Review[]>([]);
@@ -365,9 +393,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         const teamMap = new Map<string, Team>();
         const leagueMap = new Map<string, League>();
+        const sportMap = new Map<string, Sport>();
+
+        const upsertSport = (input: { id: string; name: string; slug: string; shortName?: string | null }) => {
+            if (!input.id || !input.name || !input.slug) return;
+            const existing = sportMap.get(input.id);
+            if (existing) {
+                sportMap.set(input.id, {
+                    ...existing,
+                    name: existing.name || input.name,
+                    slug: existing.slug || input.slug,
+                    shortName: existing.shortName || input.shortName || undefined,
+                });
+                return;
+            }
+            sportMap.set(input.id, {
+                id: input.id,
+                name: input.name,
+                slug: input.slug,
+                shortName: input.shortName || undefined,
+            });
+        };
 
         const upsertLeague = (leagueInput: {
             id: string;
+            sportId?: string | null;
             name: string;
             shortName?: string | null;
             logoUrl?: string | null;
@@ -375,10 +425,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
             const safeName = sanitizeLegalText(leagueInput.name);
             const safeShortName = sanitizeLegalText(leagueInput.shortName || leagueInput.name);
             const branding = resolveLeagueBranding(safeName, leagueInput.logoUrl);
+            const inferredSport = inferSportFromLeague(safeName);
+            const sportId = leagueInput.sportId || inferredSport.id;
+            upsertSport({
+                id: sportId,
+                name: inferredSport.name,
+                slug: inferredSport.slug,
+                shortName: inferredSport.shortName,
+            });
             const existing = leagueMap.get(leagueInput.id);
             if (existing) {
                 leagueMap.set(leagueInput.id, {
                     ...existing,
+                    sportId: existing.sportId || sportId,
                     name: existing.name || safeName,
                     shortName: existing.shortName || safeShortName,
                     logo: existing.logo || branding.logo,
@@ -390,6 +449,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
             leagueMap.set(leagueInput.id, {
                 id: leagueInput.id,
+                sportId,
                 name: safeName,
                 shortName: safeShortName,
                 logo: branding.logo,
@@ -433,8 +493,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
             const leagueId = m.leagueId || m.league?.id || "unknown-league";
 
             if (m.league?.id && m.league.name) {
+                if (m.league.sport?.id && m.league.sport.name && m.league.sport.slug) {
+                    upsertSport({
+                        id: m.league.sport.id,
+                        name: m.league.sport.name,
+                        slug: m.league.sport.slug,
+                        shortName: m.league.sport.shortName,
+                    });
+                }
                 upsertLeague({
                     id: m.league.id,
+                    sportId: m.league.sportId || m.league.sport?.id || undefined,
                     name: m.league.name,
                     shortName: m.league.shortName,
                     logoUrl: m.league.logoUrl,
@@ -564,8 +633,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 const awayTeamId = match?.awayTeamId || slugify(match?.awayTeamName || `away-${ev.id}`);
 
                 if (match?.league?.id && match.league.name) {
+                    if (match.league.sport?.id && match.league.sport.name && match.league.sport.slug) {
+                        upsertSport({
+                            id: match.league.sport.id,
+                            name: match.league.sport.name,
+                            slug: match.league.sport.slug,
+                            shortName: match.league.sport.shortName,
+                        });
+                    }
                     upsertLeague({
                         id: match.league.id,
+                        sportId: match.league.sportId || match.league.sport?.id || undefined,
                         name: match.league.name,
                         shortName: match.league.shortName,
                         logoUrl: match.league.logoUrl,
@@ -651,6 +729,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setMatches(mappedMatches);
         setVenues(mergedVenues);
         setLeagues(Array.from(leagueMap.values()));
+        setSports(
+            Array.from(sportMap.values()).length > 0
+                ? Array.from(sportMap.values())
+                : [{ id: 'soccer', name: 'Soccer', slug: 'soccer', shortName: 'SOC' }],
+        );
         setTeams(Array.from(teamMap.values()));
         setVenueEvents(mappedVenueEvents);
         setPosts(mappedPosts);
@@ -700,6 +783,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const getTeam = (id: string) => teams.find((t) => t.id === id);
     const getLeague = (id: string) => leagues.find((l) => l.id === id);
+    const getSport = (id: string) => sports.find((s) => s.id === id);
     const getVenue = (idOrSlug: string) => venues.find((v) => v.id === idOrSlug || v.slug === idOrSlug);
     const getMatch = (id: string) => matches.find((m) => m.id === id);
 
@@ -729,6 +813,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 matches,
                 venues,
                 leagues,
+                sports,
                 teams,
                 venueEvents,
                 reviews,
@@ -740,6 +825,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 isLoading,
                 getTeam,
                 getLeague,
+                getSport,
                 getVenue,
                 getMatch,
                 getVenueEvents: getVenueEventsForMatch,
@@ -761,4 +847,4 @@ export function useData(): DataContextType {
 }
 
 export { AMENITY_LABELS, PRICE_LABELS };
-export type { Match, Venue, League, Team, VenueEvent, Review, Post, Booking, User, MatchStatus, PriceRange };
+export type { Match, Venue, League, Sport, Team, VenueEvent, Review, Post, Booking, User, MatchStatus, PriceRange };

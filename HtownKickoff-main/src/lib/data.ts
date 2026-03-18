@@ -17,8 +17,16 @@ export const FLAGS: Record<string, string> = {
 };
 
 // ─── League Data ─────────────────────────────────
+export interface Sport {
+    id: string;
+    name: string;
+    slug: string;
+    shortName?: string;
+}
+
 export interface League {
     id: string;
+    sportId?: string;
     name: string;
     shortName: string;
     logo: string;
@@ -28,16 +36,16 @@ export interface League {
 }
 
 export const LEAGUES: League[] = [
-    { id: "wc-2026", name: "Global Finals 2026", shortName: "Global Finals", logo: "WC", country: "US/MX/CA", externalId: "WC" },
-    { id: "mls", name: "Major League Soccer", shortName: "MLS", logo: "MLS", country: "US", externalId: "MLS" },
-    { id: "epl", name: "English Premier League", shortName: "EPL", logo: "EPL", image: "/epl-logo.webp", country: "GB", externalId: "PL" },
-    { id: "laliga", name: "La Liga", shortName: "La Liga", logo: "LL", image: "/laliga-logo.webp", country: "ES", externalId: "PD" },
-    { id: "bundesliga", name: "Bundesliga", shortName: "Bundesliga", logo: "BL", image: "/bundesliga-logo.svg", country: "DE", externalId: "BL1" },
-    { id: "seriea", name: "Serie A", shortName: "Serie A", logo: "SA", image: "/seriea-logo.png", country: "IT", externalId: "SA" },
-    { id: "ligue1", name: "Ligue 1", shortName: "Ligue 1", logo: "L1", country: "FR", externalId: "FL1" },
-    { id: "ucl", name: "UEFA Champions League", shortName: "UCL", logo: "UCL", country: "EU", externalId: "CL" },
-    { id: "ligamx", name: "Liga MX", shortName: "Liga MX", logo: "LMX", country: "MX", externalId: "LMX" },
-    { id: "nwsl", name: "NWSL", shortName: "NWSL", logo: "NWSL", country: "US", externalId: "NWSL" },
+    { id: "wc-2026", sportId: "soccer", name: "Global Finals 2026", shortName: "Global Finals", logo: "WC", country: "US/MX/CA", externalId: "WC" },
+    { id: "mls", sportId: "soccer", name: "Major League Soccer", shortName: "MLS", logo: "MLS", country: "US", externalId: "MLS" },
+    { id: "epl", sportId: "soccer", name: "English Premier League", shortName: "EPL", logo: "EPL", image: "/epl-logo.webp", country: "GB", externalId: "PL" },
+    { id: "laliga", sportId: "soccer", name: "La Liga", shortName: "La Liga", logo: "LL", image: "/laliga-logo.webp", country: "ES", externalId: "PD" },
+    { id: "bundesliga", sportId: "soccer", name: "Bundesliga", shortName: "Bundesliga", logo: "BL", image: "/bundesliga-logo.svg", country: "DE", externalId: "BL1" },
+    { id: "seriea", sportId: "soccer", name: "Serie A", shortName: "Serie A", logo: "SA", image: "/seriea-logo.png", country: "IT", externalId: "SA" },
+    { id: "ligue1", sportId: "soccer", name: "Ligue 1", shortName: "Ligue 1", logo: "L1", country: "FR", externalId: "FL1" },
+    { id: "ucl", sportId: "soccer", name: "UEFA Champions League", shortName: "UCL", logo: "UCL", country: "EU", externalId: "CL" },
+    { id: "ligamx", sportId: "soccer", name: "Liga MX", shortName: "Liga MX", logo: "LMX", country: "MX", externalId: "LMX" },
+    { id: "nwsl", sportId: "soccer", name: "NWSL", shortName: "NWSL", logo: "NWSL", country: "US", externalId: "NWSL" },
 ];
 
 // ─── Team / National Team Data ───────────────────
@@ -406,7 +414,7 @@ export interface User {
     id: string;
     name: string;
     email: string;
-    role: "USER" | "VENUE_OWNER" | "ADMIN" | "SUPER_ADMIN";
+    role: "USER" | "VENUE_OWNER" | "BUSINESS" | "ADMIN" | "SUPER_ADMIN";
     avatar: string;
     isActive: boolean;
     isSuspended: boolean;
@@ -421,11 +429,11 @@ export const USERS: User[] = [
     { id: "u3", name: "Roberto Mendoza", email: "roberto.m@yahoo.com", role: "USER", avatar: "", isActive: true, isSuspended: false, createdAt: "2026-01-20", lastLoginAt: "2026-02-22", bookingsCount: 12 },
     { id: "u4", name: "Jessica Liu", email: "jessica.l@gmail.com", role: "USER", avatar: "", isActive: true, isSuspended: false, createdAt: "2026-01-22", lastLoginAt: "2026-02-20", bookingsCount: 3 },
     { id: "u5", name: "David Rodriguez", email: "david.r@gmail.com", role: "USER", avatar: "", isActive: true, isSuspended: false, createdAt: "2026-01-25", lastLoginAt: "2026-02-19", bookingsCount: 7 },
-    { id: "u6", name: "Emre Yilmaz", email: "emre@thepitchhouse.com", role: "VENUE_OWNER", avatar: "", isActive: true, isSuspended: false, createdAt: "2025-11-01", lastLoginAt: "2026-02-22", bookingsCount: 0 },
-    { id: "u7", name: "Carlos Mendoza", email: "carlos@golazosportsbar.com", role: "VENUE_OWNER", avatar: "", isActive: true, isSuspended: false, createdAt: "2025-12-01", lastLoginAt: "2026-02-22", bookingsCount: 0 },
+    { id: "u6", name: "Emre Yilmaz", email: "emre@thepitchhouse.com", role: "BUSINESS", avatar: "", isActive: true, isSuspended: false, createdAt: "2025-11-01", lastLoginAt: "2026-02-22", bookingsCount: 0 },
+    { id: "u7", name: "Carlos Mendoza", email: "carlos@golazosportsbar.com", role: "BUSINESS", avatar: "", isActive: true, isSuspended: false, createdAt: "2025-12-01", lastLoginAt: "2026-02-22", bookingsCount: 0 },
     { id: "u8", name: "Admin User", email: "admin@matchwatch.us", role: "ADMIN", avatar: "", isActive: true, isSuspended: false, createdAt: "2025-10-01", lastLoginAt: "2026-02-22", bookingsCount: 0 },
     { id: "u9", name: "Suspended Troll", email: "troll@example.com", role: "USER", avatar: "", isActive: false, isSuspended: true, createdAt: "2026-02-01", lastLoginAt: "2026-02-05", bookingsCount: 0 },
-    { id: "u10", name: "Hassan El-Khoury", email: "hassan@smokeandscore.com", role: "VENUE_OWNER", avatar: "", isActive: true, isSuspended: false, createdAt: "2025-11-15", lastLoginAt: "2026-02-22", bookingsCount: 0 },
+    { id: "u10", name: "Hassan El-Khoury", email: "hassan@smokeandscore.com", role: "BUSINESS", avatar: "", isActive: true, isSuspended: false, createdAt: "2025-11-15", lastLoginAt: "2026-02-22", bookingsCount: 0 },
 ];
 
 // ─── Booking Data ────────────────────────────────

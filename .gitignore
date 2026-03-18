@@ -29,6 +29,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+logs/
 
 # Test
 coverage/
@@ -38,3 +39,4 @@ coverage/
 
 # Misc
 *.tsbuildinfo
+tools/redis5/

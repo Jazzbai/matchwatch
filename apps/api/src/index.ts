@@ -3,8 +3,12 @@ import { Hono } from 'hono';
 import 'dotenv/config';
 
 import {
-    requestIdMiddleware, loggerMiddleware, corsMiddleware,
-    securityHeadersMiddleware, errorHandler, publicRateLimit,
+    requestIdMiddleware,
+    loggerMiddleware,
+    corsMiddleware,
+    securityHeadersMiddleware,
+    errorHandler,
+    publicRateLimit,
 } from './middleware';
 import authRoutes from './routes/auth';
 import matchRoutes from './routes/matches';
@@ -18,24 +22,20 @@ import superAdminRoutes from './routes/superAdmin';
 import { logger } from './lib/logger';
 import { scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
 
-// ─── Create App ─────────────────────────────────
-
+// Create App
 const app = new Hono();
 
-// ─── Global Middleware ──────────────────────────
-
+// Global Middleware
 app.use('*', requestIdMiddleware);
 app.use('*', errorHandler);
 app.use('*', corsMiddleware);
 app.use('*', securityHeadersMiddleware);
 app.use('*', loggerMiddleware);
 
-// ─── Health Check ───────────────────────────────
-
+// Health Check
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' }));
 
-// ─── API v1 Routes ──────────────────────────────
-
+// API v1 Routes
 const v1 = new Hono();
 
 v1.use('*', publicRateLimit);
@@ -52,44 +52,68 @@ v1.route('/upload', uploadRoutes);
 
 app.route('/api/v1', v1);
 
-// ─── 404 Catch ──────────────────────────────────
-
+// 404 Catch
 app.notFound((c) => c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
 
-// ─── Start Server ───────────────────────────────
-
+// Start Server
 import { migrate } from './db/auto-migrate';
 import { autoSeed } from './db/auto-seed';
 
 const port = parseInt(process.env.PORT || '4000', 10);
 
+function envFlag(name: string, defaultValue: boolean) {
+    const raw = process.env[name];
+    if (raw === undefined || raw === null || raw.trim() === '') return defaultValue;
+    return ['1', 'true', 'yes', 'on'].includes(raw.trim().toLowerCase());
+}
+
+const runStartupMigrations = envFlag('RUN_STARTUP_MIGRATIONS', true);
+const runStartupSeed = envFlag('RUN_STARTUP_SEED', true);
+const enableMatchSyncWorker = envFlag('ENABLE_MATCH_SYNC_WORKER', true);
+
 async function start() {
-    // Run migrations first (creates tables if missing)
-    try {
-        await migrate();
-    } catch (err) {
-        logger.error({ err }, 'Migration failed — starting anyway');
+    if (runStartupMigrations) {
+        try {
+            await migrate();
+        } catch (err) {
+            logger.error({ err }, 'Migration failed - starting anyway');
+        }
+    } else {
+        logger.warn('Startup migrations disabled via RUN_STARTUP_MIGRATIONS=false');
     }
 
-    // Seed demo data if tables are empty
-    try {
-        await autoSeed();
-    } catch (err) {
-        logger.error({ err }, 'Auto-seed failed — starting anyway');
+    if (runStartupSeed) {
+        try {
+            await autoSeed();
+        } catch (err) {
+            logger.error({ err }, 'Auto-seed failed - starting anyway');
+        }
+    } else {
+        logger.warn('Startup auto-seed disabled via RUN_STARTUP_SEED=false');
     }
 
-    serve({
-        fetch: app.fetch,
-        port,
-    }, async () => {
-        logger.info(`MatchWatch API running on http://localhost:${port}`);
-        logger.info(`Health check: http://localhost:${port}/health`);
-        logger.info(`API base: http://localhost:${port}/api/v1`);
+    serve(
+        {
+            fetch: app.fetch,
+            port,
+        },
+        async () => {
+            logger.info(`MatchWatch API running on http://localhost:${port}`);
+            logger.info(`Health check: http://localhost:${port}/health`);
+            logger.info(`API base: http://localhost:${port}/api/v1`);
 
-        // Start background workers
-        startMatchSyncWorker();
-        await scheduleMatchSync();
-    });
+            if (enableMatchSyncWorker) {
+                try {
+                    startMatchSyncWorker();
+                    await scheduleMatchSync();
+                } catch (err) {
+                    logger.error({ err }, 'Match sync worker startup failed');
+                }
+            } else {
+                logger.warn('Match sync worker disabled via ENABLE_MATCH_SYNC_WORKER=false');
+            }
+        },
+    );
 }
 
 start();

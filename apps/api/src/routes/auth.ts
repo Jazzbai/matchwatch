@@ -138,7 +138,7 @@ auth.post('/register-venue', authRateLimit, async (c) => {
         name,
         timezone,
         locale,
-        role: 'VENUE_OWNER',
+        role: 'BUSINESS',
         emailVerified: shouldAutoVerifyEmail(),
         emailVerificationToken: shouldAutoVerifyEmail() ? null : verificationToken,
         emailVerificationExpiresAt: shouldAutoVerifyEmail() ? null : verificationExpires,

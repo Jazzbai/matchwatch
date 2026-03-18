@@ -2,11 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { CalendarDays, CircleDot, Filter, Globe, History, Timer, Trophy, X } from "lucide-react";
+import { CalendarDays, CircleDot, Globe, Timer, Trophy, X } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { MatchCard } from "../../components/MatchCard";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useData } from "../../lib/data-provider";
 
 function asTimestamp(value: string) {
@@ -59,11 +57,12 @@ export default function MatchesPage() {
   const [includePast, setIncludePast] = React.useState(false);
   const [onlyWithHosting, setOnlyWithHosting] = React.useState(false);
   const [showFilterModal, setShowFilterModal] = React.useState(false);
+  const [selectedSportId, setSelectedSportId] = React.useState<string | null>(null);
   const [selectedLeagueId, setSelectedLeagueId] = React.useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = React.useState<string | null>(null);
   const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
   const [selectedTeamIds, setSelectedTeamIds] = React.useState<string[]>([]);
-  const { matches: MATCHES, leagues, teams, venueEvents, getTeam, getLeague } = useData();
+  const { matches: MATCHES, leagues, sports, teams, venueEvents, getTeam, getLeague } = useData();
 
   React.useEffect(() => {
     if (!includePast && activeStatus === "finished") {
@@ -103,12 +102,29 @@ export default function MatchesPage() {
     return teams.filter((team) => ids.has(team.id)).sort((a, b) => a.name.localeCompare(b.name));
   }, [uniqueBaseMatches, teams]);
 
+  const availableSports = React.useMemo(() => {
+    const leagueIdsInDataset = new Set(uniqueBaseMatches.map((m) => m.leagueId));
+    const sportIdsInDataset = new Set(
+      leagues
+        .filter((league) => leagueIdsInDataset.has(league.id))
+        .map((league) => league.sportId || "soccer"),
+    );
+
+    const rows = sports
+      .filter((sport) => sportIdsInDataset.has(sport.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (rows.length > 0) return rows;
+    return [{ id: "soccer", name: "Soccer", slug: "soccer", shortName: "SOC" }];
+  }, [uniqueBaseMatches, leagues, sports]);
+
   const availableLeagues = React.useMemo(() => {
     const leagueIdsInDataset = new Set(uniqueBaseMatches.map((m) => m.leagueId));
     return leagues
       .filter((league) => leagueIdsInDataset.has(league.id))
+      .filter((league) => !selectedSportId || (league.sportId || "soccer") === selectedSportId)
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [uniqueBaseMatches, leagues]);
+  }, [uniqueBaseMatches, leagues, selectedSportId]);
 
   const availableCountries = React.useMemo(() => {
     const leagueIdsInDataset = new Set(uniqueBaseMatches.map((m) => m.leagueId));
@@ -134,8 +150,9 @@ export default function MatchesPage() {
     return uniqueBaseMatches.filter((match) => {
       const matchIdKey = String(match.id).trim().toLowerCase();
       const hostingAllowed = !onlyWithHosting || hostingMatchIds.has(matchIdKey);
-      const leagueAllowed = !selectedLeagueId || match.leagueId === selectedLeagueId;
       const league = getLeague(match.leagueId);
+      const sportAllowed = !selectedSportId || (league?.sportId || "soccer") === selectedSportId;
+      const leagueAllowed = !selectedLeagueId || match.leagueId === selectedLeagueId;
       const countryAllowed = !selectedCountry || league?.country === selectedCountry;
       const teamAllowed =
         selectedTeamIds.length === 0 ||
@@ -148,9 +165,16 @@ export default function MatchesPage() {
         (activeStatus === "upcoming" && (match.status === "SCHEDULED" || match.status === "TIMED")) ||
         (activeStatus === "finished" && match.status === "FINISHED");
 
-      return hostingAllowed && leagueAllowed && countryAllowed && teamAllowed && statusAllowed;
+      return hostingAllowed && sportAllowed && leagueAllowed && countryAllowed && teamAllowed && statusAllowed;
     });
-  }, [uniqueBaseMatches, onlyWithHosting, hostingMatchIds, selectedLeagueId, selectedCountry, selectedTeamIds, activeStatus, getLeague]);
+  }, [uniqueBaseMatches, onlyWithHosting, hostingMatchIds, selectedSportId, selectedLeagueId, selectedCountry, selectedTeamIds, activeStatus, getLeague]);
+
+  React.useEffect(() => {
+    if (!selectedSportId) return;
+    if (!availableSports.some((sport) => sport.id === selectedSportId)) {
+      setSelectedSportId(null);
+    }
+  }, [selectedSportId, availableSports]);
 
   const availableDateFilters = React.useMemo(() => {
     const dateMap = new Map<string, string>();
@@ -209,11 +233,6 @@ export default function MatchesPage() {
   }, [rowsBeforeDate, selectedDateKey]);
 
   const liveCount = MATCHES.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED").length;
-  const activeFilterCount =
-    (selectedLeagueId ? 1 : 0) +
-    (selectedCountry ? 1 : 0) +
-    (selectedDateKey ? 1 : 0) +
-    selectedTeamIds.length;
 
   const statusTabs = includePast
     ? [
@@ -260,31 +279,6 @@ export default function MatchesPage() {
             )}
 
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 gap-2 font-semibold shadow-sm rounded-lg"
-                onClick={() => setShowFilterModal(true)}
-              >
-                <Filter size={16} />
-                Filters
-                {activeFilterCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 px-1.5 h-5 flex items-center justify-center bg-primary/20 text-primary">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
-              
-              <Button
-                variant={includePast ? "default" : "outline"}
-                size="sm"
-                className={`h-9 gap-2 font-semibold shadow-sm rounded-lg ${includePast ? 'bg-primary text-primary-foreground shadow-primary/20' : ''}`}
-                onClick={() => setIncludePast((prev) => !prev)}
-              >
-                <History size={16} />
-                {includePast ? "History On" : "Show History"}
-              </Button>
-              
               <label style={{
                 display: "flex", alignItems: "center", gap: 8, padding: "0 16px", height: 36, borderRadius: 8,
                 border: onlyWithHosting ? "1px solid var(--primary)" : "1px solid var(--border)",
@@ -333,6 +327,49 @@ export default function MatchesPage() {
 
             {/* Divider */}
             <div style={{ height: 1, backgroundColor: "var(--border)" }} />
+
+            {/* Sport Filter Row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Sport</span>
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                <button
+                  onClick={() => setSelectedSportId(null)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px", borderRadius: 99,
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    fontFamily: "inherit", whiteSpace: "nowrap",
+                    border: selectedSportId === null ? "1px solid var(--primary)" : "1px solid var(--border)",
+                    backgroundColor: selectedSportId === null ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                    color: selectedSportId === null ? "var(--primary)" : "var(--muted-foreground)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <Trophy size={13} /> All
+                </button>
+                {availableSports.map((sport) => {
+                  const sel = selectedSportId === sport.id;
+                  return (
+                    <button
+                      key={sport.id}
+                      onClick={() => setSelectedSportId((prev) => (prev === sport.id ? null : sport.id))}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "7px 14px", borderRadius: 99,
+                        fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        fontFamily: "inherit", whiteSpace: "nowrap",
+                        border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
+                        backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                        color: sel ? "var(--primary)" : "var(--muted-foreground)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {sport.shortName || sport.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* League Filter Row */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -543,6 +580,24 @@ export default function MatchesPage() {
 
               <div className="space-y-4">
                 <div>
+                  <p style={{ marginBottom: 8, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", fontWeight: 700 }}>Sports</p>
+                  <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
+                    {availableSports.map((sport) => {
+                      const selected = selectedSportId === sport.id;
+                      return (
+                        <button
+                          key={sport.id}
+                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                          onClick={() => setSelectedSportId((prev) => (prev === sport.id ? null : sport.id))}
+                        >
+                          {sport.shortName || sport.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
                   <p style={{ marginBottom: 8, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", fontWeight: 700 }}>Leagues</p>
                   <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
                     {availableLeagues.map((league) => {
@@ -622,6 +677,7 @@ export default function MatchesPage() {
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                 <button
                   onClick={() => {
+                    setSelectedSportId(null);
                     setSelectedLeagueId(null);
                     setSelectedCountry(null);
                     setSelectedDateKey(null);
