@@ -2,11 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { CalendarDays, CircleDot, Filter, Globe, History, Timer, Trophy, X } from "lucide-react";
+import { CalendarDays, CircleDot, Globe, Timer, Trophy } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { MatchCard } from "../../components/MatchCard";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useData } from "../../lib/data-provider";
 import { formatLocalDateFilterLabel, formatMatchKickoffLocal, getLocalDateKey } from "../../lib/datetime";
 
@@ -27,31 +25,23 @@ function toMatchRowKey(match: {
 
 export default function MatchesPage() {
   const [activeStatus, setActiveStatus] = React.useState<"all" | "live" | "upcoming" | "finished">("upcoming");
-  const [includePast, setIncludePast] = React.useState(false);
   const [onlyWithHosting, setOnlyWithHosting] = React.useState(false);
-  const [showFilterModal, setShowFilterModal] = React.useState(false);
   const [selectedLeagueId, setSelectedLeagueId] = React.useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = React.useState<string | null>(null);
   const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
   const [selectedTeamIds, setSelectedTeamIds] = React.useState<string[]>([]);
   const { matches: MATCHES, leagues, teams, venueEvents, getTeam, getLeague } = useData();
 
-  React.useEffect(() => {
-    if (!includePast && activeStatus === "finished") {
-      setActiveStatus("upcoming");
-    }
-  }, [includePast, activeStatus]);
-
   const baseMatches = React.useMemo(() => {
     const threshold = Date.now() - 2 * 60 * 60 * 1000;
     return MATCHES.filter((match) => {
-      if (includePast) return true;
       const ts = asTimestamp(match.matchDateUTC);
       const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
+      const isFinished = match.status === "FINISHED";
       const isUpcoming = (match.status === "SCHEDULED" || match.status === "TIMED") && ts >= threshold;
-      return isLive || isUpcoming;
+      return isLive || isUpcoming || isFinished;
     });
-  }, [MATCHES, includePast]);
+  }, [MATCHES]);
 
   const uniqueBaseMatches = React.useMemo(() => {
     const seen = new Set<string>();
@@ -158,6 +148,10 @@ export default function MatchesPage() {
     }
   }, [selectedDateKey, availableDateFilters]);
 
+  React.useEffect(() => {
+    setSelectedTeamIds((prev) => prev.filter((teamId) => availableTeams.some((team) => team.id === teamId)));
+  }, [availableTeams]);
+
   const filtered = React.useMemo(() => {
       const rows = rowsBeforeDate.filter((match) => {
       if (!selectedDateKey) return true;
@@ -180,24 +174,12 @@ export default function MatchesPage() {
   }, [rowsBeforeDate, selectedDateKey]);
 
   const liveCount = MATCHES.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED").length;
-  const activeFilterCount =
-    (selectedLeagueId ? 1 : 0) +
-    (selectedCountry ? 1 : 0) +
-    (selectedDateKey ? 1 : 0) +
-    selectedTeamIds.length;
-
-  const statusTabs = includePast
-    ? [
-        { id: "all", label: "All" },
-        { id: "live", label: "Live" },
-        { id: "upcoming", label: "Upcoming" },
-        { id: "finished", label: "Results" },
-      ]
-    : [
-        { id: "all", label: "All" },
-        { id: "live", label: "Live" },
-        { id: "upcoming", label: "Upcoming" },
-      ];
+  const statusTabs = [
+    { id: "all", label: "All" },
+    { id: "live", label: "Live" },
+    { id: "upcoming", label: "Upcoming" },
+    { id: "finished", label: "Results" },
+  ];
 
   return (
       <AppShell>
@@ -215,7 +197,7 @@ export default function MatchesPage() {
               Matches
             </h1>
             <p style={{ fontSize: 15, color: "var(--muted-foreground)", marginBottom: 24, maxWidth: 520, lineHeight: 1.6, fontWeight: 500 }}>
-              Upcoming fixtures first, with league and team filters. Past matches stay hidden unless you enable history mode.
+              Browse live matches, upcoming fixtures, and recent results with inline league, region, date, and team filters.
             </p>
 
             {liveCount > 0 && (
@@ -231,31 +213,6 @@ export default function MatchesPage() {
             )}
 
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 gap-2 font-semibold shadow-sm rounded-lg"
-                onClick={() => setShowFilterModal(true)}
-              >
-                <Filter size={16} />
-                Filters
-                {activeFilterCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 px-1.5 h-5 flex items-center justify-center bg-primary/20 text-primary">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
-              
-              <Button
-                variant={includePast ? "default" : "outline"}
-                size="sm"
-                className={`h-9 gap-2 font-semibold shadow-sm rounded-lg ${includePast ? 'bg-primary text-primary-foreground shadow-primary/20' : ''}`}
-                onClick={() => setIncludePast((prev) => !prev)}
-              >
-                <History size={16} />
-                {includePast ? "History On" : "Show History"}
-              </Button>
-              
               <label style={{
                 display: "flex", alignItems: "center", gap: 8, padding: "0 16px", height: 36, borderRadius: 8,
                 border: onlyWithHosting ? "1px solid var(--primary)" : "1px solid var(--border)",
@@ -435,6 +392,52 @@ export default function MatchesPage() {
               </div>
             </div>
 
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Team</span>
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                <button
+                  onClick={() => setSelectedTeamIds([])}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px", borderRadius: 99,
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    fontFamily: "inherit", whiteSpace: "nowrap",
+                    border: selectedTeamIds.length === 0 ? "1px solid var(--primary)" : "1px solid var(--border)",
+                    backgroundColor: selectedTeamIds.length === 0 ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                    color: selectedTeamIds.length === 0 ? "var(--primary)" : "var(--muted-foreground)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  All
+                </button>
+                {availableTeams.map((team) => {
+                  const selected = selectedTeamIds.includes(team.id);
+                  return (
+                    <button
+                      key={team.id}
+                      onClick={() => {
+                        setSelectedTeamIds((prev) =>
+                          selected ? prev.filter((id) => id !== team.id) : [...prev, team.id],
+                        );
+                      }}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "7px 14px", borderRadius: 99,
+                        fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        fontFamily: "inherit", whiteSpace: "nowrap",
+                        border: selected ? "1px solid var(--primary)" : "1px solid var(--border)",
+                        backgroundColor: selected ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                        color: selected ? "var(--primary)" : "var(--muted-foreground)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {team.shortName}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -460,7 +463,6 @@ export default function MatchesPage() {
                 const away = getTeam(match.awayTeamId);
                 const league = getLeague(match.leagueId);
                 if (!home || !away || !league) return null;
-                const date = new Date(match.matchDateUTC);
                 const kickoffLabel =
                   match.status === "IN_PLAY" ? "LIVE" :
                   match.status === "PAUSED" ? "HT" :
@@ -499,115 +501,6 @@ export default function MatchesPage() {
             </div>
           )}
         </section>
-
-        {showFilterModal && (
-            <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.7)", padding: 16 }}>
-            <div style={{ width: "100%", maxWidth: 768, borderRadius: 16, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 24 }}>
-              <div className="mb-4 flex items-center justify-between">
-                <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 24, fontWeight: 800, color: "var(--foreground)" }}>Filter Matches</h2>
-                <button onClick={() => setShowFilterModal(false)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}>
-                  <X size={14} />
-                  Close
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <p style={{ marginBottom: 8, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", fontWeight: 700 }}>Leagues</p>
-                  <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
-                    {availableLeagues.map((league) => {
-                      const selected = selectedLeagueId === league.id;
-                      return (
-                        <button
-                          key={league.id}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-                          onClick={() => setSelectedLeagueId((prev) => (prev === league.id ? null : league.id))}
-                        >
-                          {league.shortName}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Countries</p>
-                  <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
-                    {availableCountries.map((country) => {
-                      const selected = selectedCountry === country;
-                      return (
-                        <button
-                          key={country}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-                          onClick={() => setSelectedCountry((prev) => (prev === country ? null : country))}
-                        >
-                          {country}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Dates</p>
-                  <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
-                    {availableDateFilters.map((item) => {
-                      const selected = selectedDateKey === item.value;
-                      return (
-                        <button
-                          key={item.value}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-                          onClick={() => setSelectedDateKey((prev) => (prev === item.value ? null : item.value))}
-                        >
-                          {item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Teams (from current dataset)</p>
-                  <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
-                    {availableTeams.map((team) => {
-                      const selected = selectedTeamIds.includes(team.id);
-                      return (
-                        <button
-                          key={team.id}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-                          onClick={() => {
-                            setSelectedTeamIds((prev) =>
-                              selected ? prev.filter((id) => id !== team.id) : [...prev, team.id],
-                            );
-                          }}
-                        >
-                          {team.shortName}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedLeagueId(null);
-                    setSelectedCountry(null);
-                    setSelectedDateKey(null);
-                    setSelectedTeamIds([]);
-                  }}
-                  style={{ padding: "10px 20px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 13 }}
-                >
-                  Reset Filters
-                </button>
-                <button onClick={() => setShowFilterModal(false)} style={{ padding: "10px 24px", borderRadius: 10, border: "none", backgroundColor: "var(--primary)", color: "var(--primary-foreground)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
-                  Apply Filters
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </AppShell>
   );
 }
