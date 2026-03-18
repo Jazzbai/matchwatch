@@ -8,40 +8,11 @@ import { MatchCard } from "../../components/MatchCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useData } from "../../lib/data-provider";
+import { formatLocalDateFilterLabel, formatMatchKickoffLocal, getLocalDateKey } from "../../lib/datetime";
 
 function asTimestamp(value: string) {
   const ts = new Date(value).getTime();
   return Number.isFinite(ts) ? ts : 0;
-}
-
-function toUtcDateKey(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "";
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function ordinal(day: number) {
-  if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`;
-  switch (day % 10) {
-    case 1:
-      return `${day}st`;
-    case 2:
-      return `${day}nd`;
-    case 3:
-      return `${day}rd`;
-    default:
-      return `${day}th`;
-  }
-}
-
-function formatDateFilterLabel(dateKey: string) {
-  const date = new Date(`${dateKey}T00:00:00.000Z`);
-  if (!Number.isFinite(date.getTime())) return dateKey;
-  const month = date.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
-  return `${month} ${ordinal(date.getUTCDate())}`;
 }
 
 function toMatchRowKey(match: {
@@ -51,7 +22,7 @@ function toMatchRowKey(match: {
   awayTeamId: string;
   matchDateUTC: string;
 }) {
-  return `${match.id}:${match.leagueId}:${match.homeTeamId}:${match.awayTeamId}:${toUtcDateKey(match.matchDateUTC)}`;
+  return `${match.id}:${match.leagueId}:${match.homeTeamId}:${match.awayTeamId}:${getLocalDateKey(match.matchDateUTC)}`;
 }
 
 export default function MatchesPage() {
@@ -155,10 +126,10 @@ export default function MatchesPage() {
   const availableDateFilters = React.useMemo(() => {
     const dateMap = new Map<string, string>();
     for (const match of rowsBeforeDate) {
-      const key = toUtcDateKey(match.matchDateUTC);
+      const key = getLocalDateKey(match.matchDateUTC);
       if (!key) continue;
       if (!dateMap.has(key)) {
-        dateMap.set(key, formatDateFilterLabel(key));
+        dateMap.set(key, formatLocalDateFilterLabel(key));
       }
     }
     return Array.from(dateMap.entries())
@@ -188,9 +159,9 @@ export default function MatchesPage() {
   }, [selectedDateKey, availableDateFilters]);
 
   const filtered = React.useMemo(() => {
-    const rows = rowsBeforeDate.filter((match) => {
+      const rows = rowsBeforeDate.filter((match) => {
       if (!selectedDateKey) return true;
-      return toUtcDateKey(match.matchDateUTC) === selectedDateKey;
+      return getLocalDateKey(match.matchDateUTC) === selectedDateKey;
     });
 
     return rows.sort((a, b) => {
@@ -494,8 +465,7 @@ export default function MatchesPage() {
                   match.status === "IN_PLAY" ? "LIVE" :
                   match.status === "PAUSED" ? "HT" :
                   match.status === "FINISHED" ? "FT" :
-                  date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " · " +
-                  date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+                  formatMatchKickoffLocal(match.matchDateUTC);
 
                 return (
                   <Link
