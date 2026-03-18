@@ -132,7 +132,7 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
     }
 
     // Get upcoming events (next 5)
-    const now = new Date();
+    const now = new Date().toISOString();
     await db.update(venueCustomEvents).set({
         isActive: false,
         updatedAt: new Date(),
@@ -272,7 +272,7 @@ venueRoutes.get('/:slugOrId/custom-events', async (c) => {
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
 
-    const now = new Date();
+    const now = new Date().toISOString();
     await db.update(venueCustomEvents).set({
         isActive: false,
         updatedAt: new Date(),
