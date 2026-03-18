@@ -206,6 +206,14 @@ function formatDateTime(value?: string | null) {
   });
 }
 
+function detectBrowserTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
 const MATCH_STATUSES: Array<MatchRow["status"]> = [
   "SCHEDULED",
   "TIMED",
@@ -218,6 +226,7 @@ const MATCH_STATUSES: Array<MatchRow["status"]> = [
 ];
 
 export default function JazzbaiSuperAdminPage() {
+  const [browserTimeZone, setBrowserTimeZone] = React.useState("UTC");
   const [checkingSession, setCheckingSession] = React.useState(true);
   const [authenticated, setAuthenticated] = React.useState(false);
   const [adminUsername, setAdminUsername] = React.useState("");
@@ -261,7 +270,7 @@ export default function JazzbaiSuperAdminPage() {
     country: "US",
     lat: "29.7604",
     lng: "-95.3698",
-    timezone: "America/Chicago",
+    timezone: browserTimeZone,
     phone: "",
     coverImageUrl: "",
   });
@@ -306,6 +315,16 @@ export default function JazzbaiSuperAdminPage() {
   });
 
   const [submittingAction, setSubmittingAction] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const detected = detectBrowserTimeZone();
+    setBrowserTimeZone(detected);
+    setNewVenue((prev) => (
+      prev.timezone && prev.timezone !== "UTC"
+        ? prev
+        : { ...prev, timezone: detected }
+    ));
+  }, []);
 
   const loadOverview = React.useCallback(async () => {
     const [statsData, systemData] = await Promise.all([
@@ -1343,7 +1362,12 @@ export default function JazzbaiSuperAdminPage() {
           <section style={{ display: "grid", gap: 14 }}>
             <div style={cardStyle}>
               <div style={sectionHeadStyle}>
-                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Match</h2>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Match</h2>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                    Manual kickoff entry uses your detected browser timezone: <strong>{browserTimeZone}</strong>. It is automatically converted to UTC for storage and shown on the frontend in each viewer&apos;s local timezone.
+                  </div>
+                </div>
               </div>
               <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "2fr 2fr 2fr 2fr 1.2fr 2fr auto" }}>
                 <select style={inputStyle} value={newMatch.leagueId} onChange={(e) => setNewMatch((prev) => ({ ...prev, leagueId: e.target.value }))}>
