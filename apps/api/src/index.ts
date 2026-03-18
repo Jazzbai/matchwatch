@@ -68,14 +68,20 @@ async function start() {
     try {
         await migrate();
     } catch (err) {
-        logger.error({ err }, 'Migration failed — starting anyway');
+        logger.error({ err }, 'Migration failed');
+        if (process.env.NODE_ENV === 'production') {
+            process.exit(1);
+        }
     }
 
     // Seed demo data if tables are empty
     try {
         await autoSeed();
     } catch (err) {
-        logger.error({ err }, 'Auto-seed failed — starting anyway');
+        logger.error({ err }, 'Auto-seed failed');
+        if (process.env.NODE_ENV === 'production') {
+            process.exit(1);
+        }
     }
 
     serve({

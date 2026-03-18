@@ -124,6 +124,10 @@ EMAIL_FROM=noreply@matchwatch.us
 FCM_PROJECT_ID=
 FCM_PRIVATE_KEY=
 FCM_CLIENT_EMAIL=
+SUPER_ADMIN_USERNAME=superadmin
+SUPER_ADMIN_PASSWORD=
+SUPER_ADMIN_PASSWORD_HASH=
+SUPER_ADMIN_SESSION_SECRET=CHANGE_THIS_TO_A_LONG_RANDOM_SECRET
 EOF
 ```
 
@@ -224,6 +228,9 @@ sudo systemctl reload nginx
 ```bash
 docker compose logs -f api
 docker compose logs -f frontend
+docker compose exec api printenv | grep SUPER_ADMIN || true
+docker compose exec postgres psql -U matchwatch -d matchwatch -c "\dt"
+docker compose exec postgres psql -U matchwatch -d matchwatch -c "\d+ venue_custom_events"
 sudo nginx -t
 sudo systemctl status nginx --no-pager
 sudo certbot certificates
