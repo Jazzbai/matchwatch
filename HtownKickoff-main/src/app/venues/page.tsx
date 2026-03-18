@@ -19,9 +19,19 @@ const PRICE_OPTIONS: { value: PriceRange | "all"; label: string; icon: React.Rea
 export default function VenuesPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [activePrice, setActivePrice] = useState<PriceRange | "all">("all");
+    const [activeCity, setActiveCity] = useState("all");
     const [activeAmenity, setActiveAmenity] = useState("all");
     const [sortBy, setSortBy] = useState<"rating" | "reviews" | "name">("rating");
     const { venues: VENUES } = useData();
+
+    const availableCities = Array.from(
+        new Set(
+            VENUES
+                .filter((v) => v.isActive && v.city)
+                .map((v) => v.city.trim())
+                .filter(Boolean),
+        ),
+    ).sort((a, b) => a.localeCompare(b));
 
     const filtered = VENUES
         .filter((v) => {
@@ -29,10 +39,12 @@ export default function VenuesPage() {
                 searchQuery === "" ||
                 v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 v.cuisineTags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                v.addressLine1.toLowerCase().includes(searchQuery.toLowerCase());
+                v.addressLine1.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                v.city.toLowerCase().includes(searchQuery.toLowerCase());
             const priceOK = activePrice === "all" || v.priceRange === activePrice;
+            const cityOK = activeCity === "all" || v.city === activeCity;
             const amenityOK = activeAmenity === "all" || v.amenities.includes(activeAmenity);
-            return searchOK && priceOK && amenityOK && v.isActive;
+            return searchOK && priceOK && cityOK && amenityOK && v.isActive;
         })
         .sort((a, b) => {
             if (sortBy === "rating") return b.rating - a.rating;
@@ -77,6 +89,49 @@ export default function VenuesPage() {
 
                     {/* Divider */}
                     <div style={{ height: 1, backgroundColor: "var(--border)" }} />
+
+                    {/* City Filter Row */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>City</span>
+                        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                            <button
+                                onClick={() => setActiveCity("all")}
+                                style={{
+                                    display: "inline-flex", alignItems: "center", gap: 6,
+                                    padding: "7px 14px", borderRadius: 99,
+                                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                    fontFamily: "inherit", whiteSpace: "nowrap",
+                                    border: activeCity === "all" ? "1px solid var(--primary)" : "1px solid var(--border)",
+                                    backgroundColor: activeCity === "all" ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                                    color: activeCity === "all" ? "var(--primary)" : "var(--muted-foreground)",
+                                    transition: "all 0.2s",
+                                }}
+                            >
+                                All
+                            </button>
+                            {availableCities.map((city) => {
+                                const sel = activeCity === city;
+                                return (
+                                    <button
+                                        key={city}
+                                        onClick={() => setActiveCity(city)}
+                                        style={{
+                                            display: "inline-flex", alignItems: "center", gap: 6,
+                                            padding: "7px 14px", borderRadius: 99,
+                                            fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                            fontFamily: "inherit", whiteSpace: "nowrap",
+                                            border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
+                                            backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                                            color: sel ? "var(--primary)" : "var(--muted-foreground)",
+                                            transition: "all 0.2s",
+                                        }}
+                                    >
+                                        {city}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
 
                     {/* Price Filter Row */}
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
