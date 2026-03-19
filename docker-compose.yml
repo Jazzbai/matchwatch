@@ -42,6 +42,9 @@ services:
       POSTGRES_PASSWORD: matchwatch_dev
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://matchwatch:matchwatch_dev@postgres:5432/matchwatch}
       REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
+      RUN_STARTUP_MIGRATIONS: ${RUN_STARTUP_MIGRATIONS:-false}
+      RUN_STARTUP_SEED: ${RUN_STARTUP_SEED:-false}
+      ENABLE_MATCH_SYNC_WORKER: ${ENABLE_MATCH_SYNC_WORKER:-false}
       JWT_SECRET: ${JWT_SECRET}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       AUTO_VERIFY_EMAIL: ${AUTO_VERIFY_EMAIL:-true}
@@ -76,7 +79,7 @@ services:
         NEXT_PUBLIC_API_URL: /api/v1
         API_PROXY_TARGET: ${DOCKER_API_PROXY_TARGET:-https://matchwatch.us}
     restart: unless-stopped
-    ports: ["3100:3000"]
+    ports: ["${FRONTEND_PORT:-3000}:3000"]
     depends_on:
       api:
         condition: service_healthy
