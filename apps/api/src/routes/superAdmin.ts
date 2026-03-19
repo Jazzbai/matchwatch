@@ -711,7 +711,10 @@ superAdminRoutes.post('/logout', async (c) => {
 superAdminRoutes.get('/session', async (c) => {
     const session = await getSuperAdminSession(c);
     if (!session) {
-        return c.json(apiError('UNAUTHORIZED', 'Session not found'), 401);
+        return c.json(apiResponse({
+            authenticated: false,
+            username: '',
+        }));
     }
     return c.json(apiResponse({
         authenticated: true,

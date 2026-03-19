@@ -520,12 +520,38 @@ async function superAdminFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   const payload = await response.json().catch(() => null);
   if (!response.ok || !payload?.success) {
-    const error = new Error(payload?.error?.message || "Request failed") as Error & { status?: number };
+    const error = new Error(formatApiErrorMessage(payload, "Request failed")) as Error & { status?: number };
     error.status = response.status;
     throw error;
   }
 
   return payload.data as T;
+}
+
+function formatApiErrorMessage(payload: any, fallback: string): string {
+  const message = typeof payload?.error?.message === "string" ? payload.error.message.trim() : "";
+  const details = Array.isArray(payload?.error?.details) ? payload.error.details : [];
+
+  if (details.length > 0) {
+    const detailMessage = details
+      .slice(0, 3)
+      .map((issue: any) => {
+        const path = Array.isArray(issue?.path) && issue.path.length > 0
+          ? issue.path.join(".")
+          : "field";
+        const issueMessage = typeof issue?.message === "string" ? issue.message : "Invalid value";
+        return `${path}: ${issueMessage}`;
+      })
+      .join(" | ");
+
+    if (!message || ["Invalid input", "Invalid query", "Invalid credentials payload"].includes(message)) {
+      return detailMessage;
+    }
+
+    return `${message}: ${detailMessage}`;
+  }
+
+  return message || fallback;
 }
 
 function toDatetimeLocal(value?: string | null) {
@@ -807,7 +833,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load users");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load users"));
       setUsers(payload.data || []);
       setUsersMeta(payload.meta || null);
     } finally {
@@ -822,7 +848,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load venues");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load venues"));
       setVenues(payload.data || []);
       setVenuesMeta(payload.meta || null);
     } finally {
@@ -837,7 +863,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load events");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load events"));
       setEvents(payload.data || []);
       setEventsMeta(payload.meta || null);
     } finally {
@@ -872,7 +898,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load teams");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load teams"));
       setTeamsRows(payload.data || []);
       setTeamsMeta(payload.meta || null);
     } finally {
@@ -887,7 +913,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load custom events");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load custom events"));
       setCustomEvents(payload.data || []);
       setCustomEventsMeta(payload.meta || null);
     } finally {
@@ -902,7 +928,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load matches");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load matches"));
       setMatches(payload.data || []);
       setMatchesMeta(payload.meta || null);
     } finally {
@@ -917,7 +943,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load sports");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load sports"));
       setSportsRows(payload.data || []);
       setSportsMeta(payload.meta || null);
     } finally {
@@ -932,7 +958,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load leagues");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load leagues"));
       setAdminLeagues(payload.data || []);
       setAdminLeaguesMeta(payload.meta || null);
     } finally {
