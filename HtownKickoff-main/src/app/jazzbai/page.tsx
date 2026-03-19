@@ -597,6 +597,17 @@ function teamToOption(team: LookupTeam, leagueLabelById?: Map<string, string>): 
   };
 }
 
+function isNationalCompetitionLabel(value?: string | null) {
+  const label = String(value || "").trim().toLowerCase();
+  if (!label) return false;
+  return label.includes("world cup")
+    || label.includes("global finals")
+    || label.includes("uefa po")
+    || label.includes("play-off")
+    || label.includes("friendlies")
+    || label === "intl";
+}
+
 function stadiumToOption(stadium: LookupStadium): SearchPickerOption {
   return {
     id: stadium.id,
@@ -1337,7 +1348,34 @@ export default function JazzbaiSuperAdminPage() {
       lookupAttributes.filter((item) => item.type === type).sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)),
     ]),
   );
-  const defaultTeamOptions = lookupTeams.slice(0, 12).map((team) => teamToOption(team, leagueLabelById));
+  const isNationalLeagueId = React.useCallback((leagueId?: string | null) => {
+    if (!leagueId) return false;
+    return isNationalCompetitionLabel(leagueLabelById.get(leagueId));
+  }, [leagueLabelById]);
+
+  const isNationalTeamLookup = React.useCallback((team: LookupTeam) => {
+    if (!team.leagueId) return false;
+    return isNationalCompetitionLabel(leagueLabelById.get(team.leagueId));
+  }, [leagueLabelById]);
+
+  const buildTeamPickerOptions = React.useCallback((leagueId?: string | null) => {
+    let source = lookupTeams;
+    if (leagueId) {
+      source = isNationalLeagueId(leagueId)
+        ? lookupTeams.filter((team) => isNationalTeamLookup(team))
+        : lookupTeams.filter((team) => team.leagueId === leagueId);
+    }
+    return source.slice(0, 12).map((team) => teamToOption(team, leagueLabelById));
+  }, [isNationalLeagueId, isNationalTeamLookup, leagueLabelById, lookupTeams]);
+
+  const searchTeamsForLeague = React.useCallback(async (query: string, leagueId?: string | null) => {
+    const scopedLeagueId = leagueId && !isNationalLeagueId(leagueId) ? leagueId : undefined;
+    const rows = await searchTeams(query, scopedLeagueId || undefined);
+    return leagueId && isNationalLeagueId(leagueId)
+      ? rows.filter((team) => isNationalTeamLookup(team))
+      : rows;
+  }, [isNationalLeagueId, isNationalTeamLookup, searchTeams]);
+
   const defaultStadiumOptions = lookupStadiums.slice(0, 12).map(stadiumToOption);
 
   const textareaStyle: React.CSSProperties = {
@@ -2866,7 +2904,7 @@ export default function JazzbaiSuperAdminPage() {
                   value={newMatch.homeTeamName}
                   selectedId={newMatch.homeTeamId || null}
                   searchKey={newMatch.leagueId || "no-league"}
-                  initialOptions={defaultTeamOptions}
+                  initialOptions={buildTeamPickerOptions(newMatch.leagueId)}
                   excludeIds={newMatch.awayTeamId ? [newMatch.awayTeamId] : []}
                   createHint="Create team"
                   createFields={[
@@ -2885,7 +2923,7 @@ export default function JazzbaiSuperAdminPage() {
                     setNewMatch((prev) => ({ ...prev, homeTeamId: team.id, homeTeamName: team.name }));
                   }}
                   search={async (query) => {
-                    const rows = await searchTeams(query, newMatch.leagueId || undefined);
+                    const rows = await searchTeamsForLeague(query, newMatch.leagueId || undefined);
                     return rows.filter((team) => team.id !== newMatch.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
                   }}
                 />
@@ -2894,7 +2932,7 @@ export default function JazzbaiSuperAdminPage() {
                   value={newMatch.awayTeamName}
                   selectedId={newMatch.awayTeamId || null}
                   searchKey={newMatch.leagueId || "no-league"}
-                  initialOptions={defaultTeamOptions}
+                  initialOptions={buildTeamPickerOptions(newMatch.leagueId)}
                   excludeIds={newMatch.homeTeamId ? [newMatch.homeTeamId] : []}
                   createHint="Create team"
                   createFields={[
@@ -2913,7 +2951,7 @@ export default function JazzbaiSuperAdminPage() {
                     setNewMatch((prev) => ({ ...prev, awayTeamId: team.id, awayTeamName: team.name }));
                   }}
                   search={async (query) => {
-                    const rows = await searchTeams(query, newMatch.leagueId || undefined);
+                    const rows = await searchTeamsForLeague(query, newMatch.leagueId || undefined);
                     return rows.filter((team) => team.id !== newMatch.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
                   }}
                 />
@@ -3033,7 +3071,7 @@ export default function JazzbaiSuperAdminPage() {
                               value={String(draft.homeTeamName ?? "")}
                               selectedId={String(draft.homeTeamId ?? "") || null}
                               searchKey={String(draft.leagueId || "") || "no-league"}
-                              initialOptions={defaultTeamOptions}
+                              initialOptions={buildTeamPickerOptions(String(draft.leagueId || "") || undefined)}
                               excludeIds={draft.awayTeamId ? [String(draft.awayTeamId)] : []}
                               createHint="Create team"
                               createFields={[
@@ -3052,7 +3090,7 @@ export default function JazzbaiSuperAdminPage() {
                                 setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: team.id, homeTeamName: team.name } }));
                               }}
                               search={async (query) => {
-                                const rows = await searchTeams(query, String(draft.leagueId || "") || undefined);
+                                const rows = await searchTeamsForLeague(query, String(draft.leagueId || "") || undefined);
                                 return rows.filter((team) => team.id !== draft.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
                               }}
                             />
@@ -3063,7 +3101,7 @@ export default function JazzbaiSuperAdminPage() {
                               value={String(draft.awayTeamName ?? "")}
                               selectedId={String(draft.awayTeamId ?? "") || null}
                               searchKey={String(draft.leagueId || "") || "no-league"}
-                              initialOptions={defaultTeamOptions}
+                              initialOptions={buildTeamPickerOptions(String(draft.leagueId || "") || undefined)}
                               excludeIds={draft.homeTeamId ? [String(draft.homeTeamId)] : []}
                               createHint="Create team"
                               createFields={[
@@ -3082,7 +3120,7 @@ export default function JazzbaiSuperAdminPage() {
                                 setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: team.id, awayTeamName: team.name } }));
                               }}
                               search={async (query) => {
-                                const rows = await searchTeams(query, String(draft.leagueId || "") || undefined);
+                                const rows = await searchTeamsForLeague(query, String(draft.leagueId || "") || undefined);
                                 return rows.filter((team) => team.id !== draft.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
                               }}
                             />
