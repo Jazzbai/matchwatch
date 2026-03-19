@@ -35,6 +35,12 @@ type SyncResult = {
     skipped?: boolean;
 };
 
+type MatchSyncRunOptions = {
+    providerOverride?: MatchSyncProvider;
+    sportSlug?: string;
+    writeHistory?: boolean;
+};
+
 interface FootballDataMatch {
     id: number;
     homeTeam: { id: number; name: string; shortName: string; crest: string };
@@ -117,28 +123,39 @@ interface TheSportsDbEventsSeasonResponse {
     }>;
 }
 
-export const matchSyncQueue = new Queue(QUEUE_NAME, {
-    connection: redis,
-    defaultJobOptions: {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: 100,
-        removeOnFail: 50,
-    },
-});
+let matchSyncQueueInstance: Queue | null = null;
+
+export function getMatchSyncQueue() {
+    if (!matchSyncQueueInstance) {
+        matchSyncQueueInstance = new Queue(QUEUE_NAME, {
+            connection: redis,
+            defaultJobOptions: {
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 5000 },
+                removeOnComplete: 100,
+                removeOnFail: 50,
+            },
+        });
+    }
+    return matchSyncQueueInstance;
+}
 
 function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function resolveProvider(): MatchSyncProvider {
-    const raw = (process.env.MATCH_SYNC_PROVIDER || '').trim().toUpperCase();
+export function resolveMatchSyncProvider(rawProvider = process.env.MATCH_SYNC_PROVIDER || ''): MatchSyncProvider {
+    const raw = rawProvider.trim().toUpperCase();
     if (raw === 'API_FOOTBALL' || raw === 'API-FOOTBALL') return 'API_FOOTBALL';
     if (raw === 'FOOTBALL_DATA') return 'FOOTBALL_DATA';
     if (raw === 'THE_SPORTS_DB' || raw === 'THESPORTSDB') return 'THE_SPORTS_DB';
     if (process.env.API_FOOTBALL_API_KEY) return 'API_FOOTBALL';
     if (process.env.FOOTBALL_DATA_API_KEY) return 'FOOTBALL_DATA';
     return 'THE_SPORTS_DB';
+}
+
+function resolveProvider(): MatchSyncProvider {
+    return resolveMatchSyncProvider();
 }
 
 const teamLookupCache = new Map<string, string | null>();
@@ -676,6 +693,7 @@ async function syncLeagueFromApiFootball(league: LeagueRow, apiKey: string): Pro
 }
 
 export async function scheduleMatchSync() {
+    const matchSyncQueue = getMatchSyncQueue();
     const existingJobs = await matchSyncQueue.getRepeatableJobs();
     for (const job of existingJobs) {
         await matchSyncQueue.removeRepeatableByKey(job.key);
@@ -689,62 +707,63 @@ export async function scheduleMatchSync() {
     logger.info('Match sync cron scheduled: nightly at 02:00 UTC');
 }
 
-export function startMatchSyncWorker() {
-    const provider = resolveProvider();
+export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
+    const provider = options.providerOverride || resolveProvider();
     const apiKey: string | undefined = provider === 'API_FOOTBALL'
         ? process.env.API_FOOTBALL_API_KEY
         : provider === 'FOOTBALL_DATA'
             ? process.env.FOOTBALL_DATA_API_KEY
             : undefined;
     const footballDataApiKey = process.env.FOOTBALL_DATA_API_KEY;
+    const sportSlug = options.sportSlug || 'soccer';
+    const writeHistory = options.writeHistory ?? true;
 
     if (!apiKey && provider !== 'THE_SPORTS_DB') {
-        logger.warn(`${provider === 'API_FOOTBALL' ? 'API_FOOTBALL_API_KEY' : 'FOOTBALL_DATA_API_KEY'} not set, match sync worker disabled`);
-        return;
+        throw new Error(`${provider === 'API_FOOTBALL' ? 'API_FOOTBALL_API_KEY' : 'FOOTBALL_DATA_API_KEY'} not set`);
     }
 
-    const worker = new Worker(QUEUE_NAME, async (job) => {
-        logger.info({ jobId: job.id, provider }, 'Starting match sync job');
+    logger.info({ provider, sportSlug }, 'Starting direct match sync run');
 
-        const leagueRows = provider === 'API_FOOTBALL'
-            ? await db.select({ league: leagues })
-                .from(leagues)
-                .innerJoin(sports, eq(leagues.sportId, sports.id))
-                .where(and(eq(leagues.isActive, true), eq(sports.slug, 'soccer')))
-            : await db.select({ league: leagues })
-                .from(leagues)
-                .innerJoin(sports, eq(leagues.sportId, sports.id))
-                .where(and(eq(leagues.isActive, true), eq(sports.slug, 'soccer'), sql`${leagues.externalId} IS NOT NULL`));
+    const leagueRows = provider === 'API_FOOTBALL'
+        ? await db.select({ league: leagues })
+            .from(leagues)
+            .innerJoin(sports, eq(leagues.sportId, sports.id))
+            .where(and(eq(leagues.isActive, true), eq(sports.slug, sportSlug)))
+        : await db.select({ league: leagues })
+            .from(leagues)
+            .innerJoin(sports, eq(leagues.sportId, sports.id))
+            .where(and(eq(leagues.isActive, true), eq(sports.slug, sportSlug), sql`${leagues.externalId} IS NOT NULL`));
 
-        const syncResults: Record<string, SyncResult> = {};
-        clearSyncCaches();
+    const syncResults: Record<string, SyncResult> = {};
+    clearSyncCaches();
 
-        for (const row of leagueRows) {
-            const league = row.league;
-            const startedAt = Date.now();
-            const externalCode = (league.externalId || '').trim().toUpperCase();
+    for (const row of leagueRows) {
+        const league = row.league;
+        const startedAt = Date.now();
+        const externalCode = (league.externalId || '').trim().toUpperCase();
 
-            // Keep US leagues on TheSportsDB for MLS/NWSL/LigaMX coverage.
-            // Use Football-Data for major global leagues when key exists.
-            let providerUsed: MatchSyncProvider = provider;
-            let result: SyncResult;
-            if (US_PRIORITY_LEAGUE_CODES.has(externalCode)) {
-                providerUsed = 'THE_SPORTS_DB';
-                result = await syncLeagueFromTheSportsDb(league);
-            } else if (provider === 'API_FOOTBALL') {
-                result = await syncLeagueFromApiFootball(league, apiKey as string);
-            } else if (provider === 'FOOTBALL_DATA') {
-                result = await syncLeagueFromFootballData(league, apiKey as string);
-            } else if (footballDataApiKey) {
-                providerUsed = 'FOOTBALL_DATA';
-                result = await syncLeagueFromFootballData(league, footballDataApiKey);
-            } else {
-                result = await syncLeagueFromTheSportsDb(league);
-            }
+        // Keep US leagues on TheSportsDB for MLS/NWSL/LigaMX coverage.
+        // Use Football-Data for major global leagues when key exists.
+        let providerUsed: MatchSyncProvider = provider;
+        let result: SyncResult;
+        if (US_PRIORITY_LEAGUE_CODES.has(externalCode)) {
+            providerUsed = 'THE_SPORTS_DB';
+            result = await syncLeagueFromTheSportsDb(league);
+        } else if (provider === 'API_FOOTBALL') {
+            result = await syncLeagueFromApiFootball(league, apiKey as string);
+        } else if (provider === 'FOOTBALL_DATA') {
+            result = await syncLeagueFromFootballData(league, apiKey as string);
+        } else if (footballDataApiKey) {
+            providerUsed = 'FOOTBALL_DATA';
+            result = await syncLeagueFromFootballData(league, footballDataApiKey);
+        } else {
+            result = await syncLeagueFromTheSportsDb(league);
+        }
 
-            const durationMs = Date.now() - startedAt;
-            syncResults[league.name] = result;
+        const durationMs = Date.now() - startedAt;
+        syncResults[league.name] = result;
 
+        if (writeHistory) {
             await db.insert(syncHistory).values({
                 leagueId: league.id,
                 matchesUpserted: result.upserted,
@@ -755,15 +774,34 @@ export function startMatchSyncWorker() {
                 status: result.errors > 0 ? 'PARTIAL' : 'SUCCESS',
                 durationMs,
             });
-
-            await sleep(providerUsed === 'FOOTBALL_DATA' ? 6200 : providerUsed === 'THE_SPORTS_DB' ? 900 : 1200);
         }
 
-        const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-        await db.delete(matches).where(and(lt(matches.matchDateUtc, sixtyDaysAgo), eq(matches.status, 'FINISHED')));
+        await sleep(providerUsed === 'FOOTBALL_DATA' ? 6200 : providerUsed === 'THE_SPORTS_DB' ? 900 : 1200);
+    }
 
-        logger.info({ provider, syncResults }, 'Match sync completed');
-        return syncResults;
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+    await db.delete(matches).where(and(lt(matches.matchDateUtc, sixtyDaysAgo), eq(matches.status, 'FINISHED')));
+
+    logger.info({ provider, syncResults }, 'Match sync completed');
+    return syncResults;
+}
+
+export function startMatchSyncWorker() {
+    const provider = resolveProvider();
+    const apiKey: string | undefined = provider === 'API_FOOTBALL'
+        ? process.env.API_FOOTBALL_API_KEY
+        : provider === 'FOOTBALL_DATA'
+            ? process.env.FOOTBALL_DATA_API_KEY
+            : undefined;
+
+    if (!apiKey && provider !== 'THE_SPORTS_DB') {
+        logger.warn(`${provider === 'API_FOOTBALL' ? 'API_FOOTBALL_API_KEY' : 'FOOTBALL_DATA_API_KEY'} not set, match sync worker disabled`);
+        return;
+    }
+
+    const worker = new Worker(QUEUE_NAME, async (job) => {
+        logger.info({ jobId: job.id, provider }, 'Starting match sync job');
+        return runMatchSyncOnce({ providerOverride: provider, sportSlug: 'soccer', writeHistory: true });
     }, {
         connection: redis,
         concurrency: 1,
@@ -783,6 +821,7 @@ export function startMatchSyncWorker() {
 }
 
 export async function triggerManualSync() {
+    const matchSyncQueue = getMatchSyncQueue();
     const job = await matchSyncQueue.add('manual-sync', {}, { priority: 1 });
     return { jobId: job.id, message: 'Match sync queued' };
 }
