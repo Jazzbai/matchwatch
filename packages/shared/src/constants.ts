@@ -1,5 +1,5 @@
 // ─── User Roles ─────────────────────────────────
-export const USER_ROLES = ['USER', 'VENUE_OWNER', 'ADMIN', 'SUPER_ADMIN'] as const;
+export const USER_ROLES = ['USER', 'VENUE_OWNER', 'BUSINESS', 'ADMIN', 'SUPER_ADMIN'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 // ─── Match Status ───────────────────────────────
@@ -39,6 +39,16 @@ export const CUISINE_TAGS = [
     'SEAFOOD', 'BBQ', 'VEGAN', 'FAST_FOOD',
 ] as const;
 export type CuisineTag = (typeof CUISINE_TAGS)[number];
+
+// —— Venue Vibes ———————————————————————————————————————————————
+export const VIBES = [
+    'CASUAL', 'LIVELY', 'FAMILY_FRIENDLY', 'LUXURY',
+    'NEIGHBORHOOD', 'GAME_DAY', 'LATE_NIGHT', 'UPSCALE',
+] as const;
+export type VenueVibe = (typeof VIBES)[number];
+
+export const VENUE_ATTRIBUTE_TYPES = ['AMENITY', 'VIBE', 'CUISINE'] as const;
+export type VenueAttributeType = (typeof VENUE_ATTRIBUTE_TYPES)[number];
 
 // ─── Price Range ────────────────────────────────
 export const PRICE_RANGES = ['BUDGET', 'MID', 'UPSCALE', 'LUXURY'] as const;

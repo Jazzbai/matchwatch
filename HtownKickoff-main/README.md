@@ -1,135 +1,249 @@
-#  MatchWatch
+# MatchWatch
 
-**Houston's Premier Live Match Watch Party Hub**
+MatchWatch is a multi-sport watch-party platform for fans, businesses, and super-admins.
 
-MatchWatch connects football fans with the best bars, lounges, and restaurants hosting live match screenings across Houston. Discover venues, book your spot, and experience every goal like you're in the stadium.
+The application now supports dynamic sports and leagues, business-owned multi-venue management, searchable team and stadium selection for custom matches, and dynamic venue attribute management.
 
----
+## Current scope
 
-##  Features
+- Multi-sport catalog with admin-managed `sports` and sport-linked `leagues`
+- Public matches experience with `Sport`, `League`, `Region`, and `Date` filters
+- Fan accounts for bookings and account management
+- `Business` accounts that can own and manage multiple venues
+- Super-admin dashboard for users, venues, attributes, teams, sports, leagues, CSV imports, and matches
+- Searchable team and stadium pickers for custom match creation
+- Venue attributes managed dynamically through `amenities`, `vibes`, and `cuisineTags`
 
-- **Match Directory** — Browse international tournaments, MLS, EPL, La Liga, Bundesliga, Serie A, Ligue 1, UCL, Liga MX, and NWSL fixtures with live scores, detailed stats, lineups, and venue listings
-- **Venue Discovery** — Search, filter (by price, amenities, cuisine), and sort 8+ partner venues with ratings, reviews, menus, and real-time capacity tracking
-- **Team Profiles** — View team match records, fixtures, and related teams across all leagues
-- **Booking System** — Reserve spots at watch parties with party size, special requests, and entry fee calculation via the slide-up Booking Drawer
-- **Admin Dashboard** — Full management panel with 7 tabs: Overview, Users, Venues, Matches, Bookings, Posts, and Analytics
-- **Dark / Light Themes** — "Neon Nightlife" dark mode and "Houston Day" light mode, togglable site-wide
-- **Mobile-First Design** — PWA-ready responsive layout with bottom tab navigation and desktop top bar
+## Repository layout
 
-##  Tech Stack
+This README lives in `HtownKickoff-main/`, but the project is a monorepo rooted one level above it.
 
-| Layer | Technology |
-|---|---|
-| Framework | [Next.js 16](https://nextjs.org) (App Router, Turbopack) |
-| Language | TypeScript |
-| Styling | Tailwind CSS 4 + custom CSS design system |
-| Fonts | Bebas Neue (headings), DM Sans (body), JetBrains Mono (scores) |
-| Routing | File-based App Router with dynamic segments |
-
-##  Project Structure
-
-```
-src/
-├── app/
-│   ├── page.tsx                  # Home — hero, live ticker, carousels, CTAs
-│   ├── layout.tsx                # Root layout
-│   ├── globals.css               # "Neon Gridiron" design system
-│   ├── not-found.tsx             # Custom 404 (VAR offside theme)
-│   ├── matches/
-│   │   ├── page.tsx              # Matches listing with filters
-│   │   └── [matchId]/page.tsx    # Match detail — scores, lineups, stats, venues
-│   ├── venues/
-│   │   ├── page.tsx              # Venues listing with search/sort
-│   │   └── [slug]/page.tsx       # Venue profile — 5 tabs (About, Events, Menu, Reviews, Posts)
-│   ├── teams/
-│   │   └── [teamId]/page.tsx     # Team profile — record, fixtures, related teams
-│   ├── admin/page.tsx            # Admin dashboard — 7 management panels
-│   ├── about/page.tsx            # About MatchWatch
-│   ├── contact/page.tsx          # Contact form
-│   ├── for-venues/page.tsx       # Venue registration info
-│   ├── privacy/page.tsx          # Privacy policy
-│   └── terms/page.tsx            # Terms of service
-├── components/
-│   ├── AppShell.tsx              # Theme provider, top bar, bottom tabs, footer
-│   ├── MatchCard.tsx             # Match card with live pulse, scores, venue count
-│   ├── VenueCard.tsx             # Venue card with ratings, amenities, booking CTA
-│   ├── MapListToggle.tsx         # Map/list view toggle with mock Mapbox pins
-│   └── BookingDrawer.tsx         # Slide-up booking panel
-└── lib/
-    └── data.ts                   # Centralized fixture data (teams, matches, venues, etc.)
+```text
+JazzB-watchparty/
+|- HtownKickoff-main/        # Next.js 16 frontend
+|- apps/api/                # Hono + Drizzle + Postgres API
+|- packages/shared/         # Shared schemas, constants, types
+|- docker-compose.yml       # Local Docker stack
+|- .env.example             # Root env template for API/runtime
+|- LOCAL_DATA_FROM_MAIN_DB.md
 ```
 
-##  Getting Started
+## Major recent changes
+
+### Multi-sport expansion
+
+- Added first-class `sports`
+- Linked `leagues` to `sports`
+- Added sport-aware match filtering and match facets
+- Added super-admin Sports and Leagues management
+- Added CSV-based match import for non-soccer and manually managed schedules
+
+### Business role migration
+
+- Added `BUSINESS` as a first-class role
+- Kept compatibility for legacy `VENUE_OWNER`
+- Business users can manage multiple venues from `/admin`
+- Event, menu, reservations, and venue settings are scoped by venue
+
+### Match creation improvements
+
+- Super-admin custom match forms now use searchable dropdowns for:
+  - home team
+  - away team
+  - stadium
+- Added first-class `stadiums`
+- Match records can store `stadiumId` while still mirroring `venueName` for backward compatibility
+- Missing teams and stadiums can be created inline from the match form
+
+### Venue admin expansion
+
+- Added `venues.vibes`
+- Added `venue_attributes` catalog with types:
+  - `AMENITY`
+  - `VIBE`
+  - `CUISINE`
+- Super-admin can now manage venue attribute values from a dedicated `Attributes` tab
+- Venue editing in super-admin uses dynamic attribute dropdowns instead of hardcoded/free-text values
+
+## Database migrations added recently
+
+- `apps/api/src/db/migrations/0002_multi_sport_business.sql`
+  - adds `BUSINESS`
+  - creates `sports`
+  - links `leagues.sport_id`
+- `apps/api/src/db/migrations/0003_match_stadiums.sql`
+  - creates `stadiums`
+  - adds `matches.stadium_id`
+- `apps/api/src/db/migrations/0004_venue_attributes.sql`
+  - adds `venues.vibes`
+  - creates `venue_attributes`
+  - seeds default amenity, vibe, and cuisine values
+
+## Main application surfaces
+
+### Public app
+
+- `/` home page
+- `/matches` multi-sport match listing
+- `/matches/[matchId]` match detail
+- `/venues` venue listing
+- `/venues/[slug]` venue detail
+- `/teams/[teamId]` team detail
+
+### Business dashboard
+
+- `/admin`
+- Venue selector for businesses with multiple venues
+- Venue-scoped event, reservation, menu, and settings workflows
+
+### Super-admin dashboard
+
+- `/jazzbai`
+- Tabs currently include:
+  - `Overview`
+  - `Users`
+  - `Venues`
+  - `Attributes`
+  - `Teams`
+  - `Match Events`
+  - `Custom Events`
+  - `Sports`
+  - `Leagues`
+  - `CSV Import`
+  - `Matches`
+
+## Local development
 
 ### Prerequisites
 
-- **Node.js** 18.18+ (LTS recommended)
-- **npm** 9+ (comes with Node.js)
+- Node.js 20+
+- npm 10+
+- Docker Desktop or local Postgres + Redis
 
-### Installation
+### Install dependencies
+
+Run from the repository root:
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd <project-directory>
-
-# Install dependencies
 npm install
-
-# Start the development server
-npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+### Environment setup
 
-### Build for Production
+1. Copy the root template:
 
 ```bash
-npm run build
-npm run start
+cp .env.example .env
 ```
 
-##  Routes
+2. Adjust values as needed.
 
-| Route | Type | Description |
-|---|---|---|
-| `/` | Static | Home page with hero, live ticker, match/venue carousels |
-| `/matches` | Static | All matches with league & status filters |
-| `/matches/[matchId]` | Dynamic | Match detail with venues, lineups, stats |
-| `/venues` | Static | All venues with search, price/amenity filters, sort |
-| `/venues/[slug]` | Dynamic | Venue profile with 5 tabs |
-| `/teams/[teamId]` | Dynamic | Team profile with match record and fixtures |
-| `/admin` | Static | Admin dashboard with 7 management panels |
-| `/about` | Static | About page |
-| `/contact` | Static | Contact form |
-| `/for-venues` | Static | Venue owner registration info |
-| `/privacy` | Static | Privacy policy |
-| `/terms` | Static | Terms of service |
+Important defaults in `.env.example`:
 
-##  Design System — "Neon Gridiron"
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/matchwatch
+REDIS_URL=redis://localhost:6379
+PORT=4000
+NEXT_PUBLIC_API_URL=/api/v1
+API_PROXY_TARGET=http://localhost:4000
+```
 
-The design blends Houston's vibrant energy with major tournament excitement:
+### Recommended local run
 
-- **Dark theme** ("Neon Nightlife") — Deep navy backgrounds with cyan/hot-pink accents
-- **Light theme** ("Houston Day") — Clean whites with confident blue/orange accent palette
-- **Typography** — Display headings (Bebas Neue), readable body text (DM Sans), monospaced scores (JetBrains Mono)
-- **Animations** — Fade-in with stagger, live pulse dots, shimmer loading, marquee ticker
-- **Components** — Glass-panel headers, gradient cards, pill filters, toggle tracks, booking drawers
+Start only Postgres and Redis in Docker, then run the app processes locally.
 
-##  Data Model
+```bash
+docker compose up -d postgres redis
+npm run dev --workspace=@matchwatch/api
+cd HtownKickoff-main
+npm run dev -- --port 3100
+```
 
-All fixture data lives in `src/lib/data.ts` and includes:
+Open:
 
-- **25 national teams** + **17 club teams** across 10 leagues
-- **15 matches** (international finals group stage, MLS, EPL, La Liga, Liga MX)
-- **8 Houston venues** with full profiles, menus, reviews, and posts
-- **8 venue events** linking matches to venues with capacity tracking
-- **10 users**, **8 bookings**, and admin statistics
+- Frontend: `http://localhost:3100`
+- API health: `http://localhost:4000/health`
 
-##  License
+### Full Docker stack
 
-This project is for educational and demonstration purposes.
+```bash
+docker compose up --build
+```
 
----
+Default ports:
 
-Built in Houston, TX for football fans
+- frontend: `3100`
+- api: `4000`
+- postgres: `5432`
+- redis: `6379`
+- mailhog: `8025` and `1025` when enabled
+
+## Production-data safety switches
+
+When pointing a local API at a production-connected or AWS-hosted database, keep these disabled:
+
+```env
+RUN_STARTUP_MIGRATIONS=false
+RUN_STARTUP_SEED=false
+ENABLE_MATCH_SYNC_WORKER=false
+```
+
+Those flags prevent accidental schema writes, demo seeding, and background sync jobs against production data.
+
+For the supported local-data workflows, see:
+
+- `../LOCAL_DATA_FROM_MAIN_DB.md`
+
+That document covers:
+
+- using the production API directly from local frontend
+- running local backend code against the main AWS database
+- building an anonymized local clone with realistic production-shaped data
+
+## Useful commands
+
+From the repository root:
+
+```bash
+npm run dev
+npm run build
+npm run type-check
+npm run db:migrate --workspace=@matchwatch/api
+npm run db:seed --workspace=@matchwatch/api
+npm run db:seed:anonymized --workspace=@matchwatch/api
+```
+
+Frontend only:
+
+```bash
+cd HtownKickoff-main
+npm run dev -- --port 3100
+npx tsc --noEmit
+```
+
+API only:
+
+```bash
+npm run dev --workspace=@matchwatch/api
+npm run type-check --workspace=@matchwatch/api
+```
+
+## Notes for admins
+
+- Public route compatibility has been preserved even where internal roles changed from `Venue` to `Business`
+- Existing `venueName` fields are still populated for match display compatibility
+- Existing soccer sync behavior remains supported, while non-soccer ingestion is currently manual or CSV-driven
+- Team management is now available directly in super-admin, not only through sync-created data
+- Venue attributes are soft-archived rather than hard-deleted so existing venue records do not break
+
+## Verification status
+
+Recent feature work was verified locally with:
+
+- TypeScript checks for frontend and API
+- local API and frontend smoke tests
+- Playwright browser testing of public flows, business flows, and super-admin flows
+
+## License
+
+This project is for internal/product development use unless the repository owner states otherwise.

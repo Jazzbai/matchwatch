@@ -66,6 +66,7 @@ venueRoutes.get('/', async (c) => {
             coverImageUrl,
             galleryImageUrls,
             amenities: v.amenities,
+            vibes: v.vibes,
             cuisineTags: v.cuisineTags,
             priceRange: v.priceRange,
             averageRating: v.averageRating,
@@ -131,17 +132,6 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
         return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
     }
 
-    // Get upcoming events (next 5)
-    const now = new Date().toISOString();
-    await db.update(venueCustomEvents).set({
-        isActive: false,
-        updatedAt: new Date(),
-    }).where(and(
-        eq(venueCustomEvents.venueId, venue.id),
-        eq(venueCustomEvents.isActive, true),
-        sql`${venueCustomEvents.endsAt} < ${now}`,
-    ));
-
     const upcomingEvents = await db.select({
         event: venueEvents,
         match: matches,
@@ -151,7 +141,6 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
         .where(and(
             eq(venueEvents.venueId, venue.id),
             eq(venueEvents.isActive, true),
-            gte(matches.matchDateUtc, now),
         ))
         .orderBy(asc(matches.matchDateUtc))
         .limit(5);
@@ -160,7 +149,6 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
         .where(and(
             eq(venueCustomEvents.venueId, venue.id),
             eq(venueCustomEvents.isActive, true),
-            gte(venueCustomEvents.endsAt, now),
         ))
         .orderBy(asc(venueCustomEvents.startsAt))
         .limit(10);
@@ -176,7 +164,6 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
             eq(venueEvents.id, promotedVenueEventId),
             eq(venueEvents.venueId, venue.id),
             eq(venueEvents.isActive, true),
-            gte(matches.matchDateUtc, now),
         ))
         .limit(1) : [];
 
@@ -272,21 +259,10 @@ venueRoutes.get('/:slugOrId/custom-events', async (c) => {
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
 
-    const now = new Date().toISOString();
-    await db.update(venueCustomEvents).set({
-        isActive: false,
-        updatedAt: new Date(),
-    }).where(and(
-        eq(venueCustomEvents.venueId, venue.id),
-        eq(venueCustomEvents.isActive, true),
-        sql`${venueCustomEvents.endsAt} < ${now}`,
-    ));
-
     const rows = await db.select().from(venueCustomEvents)
         .where(and(
             eq(venueCustomEvents.venueId, venue.id),
             eq(venueCustomEvents.isActive, true),
-            gte(venueCustomEvents.endsAt, now),
         ))
         .orderBy(asc(venueCustomEvents.startsAt));
 

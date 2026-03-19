@@ -437,7 +437,7 @@ export default function VenueRegisterPage() {
                 <Link href="/login">Cancel</Link>
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating venue account..." : "Create Venue Account"}
+                {isSubmitting ? "Creating business account..." : "Create Business Account"}
               </Button>
             </div>
           </form>

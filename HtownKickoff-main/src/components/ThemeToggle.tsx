@@ -8,6 +8,19 @@ import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full relative overflow-hidden transition-all duration-300" aria-label="Theme toggle loading">
+        <Sun className="h-[1.2rem] w-[1.2rem] text-amber-500 opacity-50" />
+      </Button>
+    );
+  }
 
   return (
     <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "light" ? "dark" : "light")} className="h-9 w-9 rounded-full relative overflow-hidden transition-all duration-300">

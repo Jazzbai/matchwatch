@@ -1,7 +1,7 @@
 import { Queue, Worker } from 'bullmq';
 import { redis } from '../lib/redis';
 import { db } from '../db/client';
-import { leagues, matches, teams, syncHistory } from '../db/schema';
+import { sports, leagues, matches, teams, syncHistory } from '../db/schema';
 import { and, eq, lt, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
@@ -707,13 +707,20 @@ export function startMatchSyncWorker() {
         logger.info({ jobId: job.id, provider }, 'Starting match sync job');
 
         const leagueRows = provider === 'API_FOOTBALL'
-            ? await db.select().from(leagues).where(eq(leagues.isActive, true))
-            : await db.select().from(leagues).where(and(eq(leagues.isActive, true), sql`${leagues.externalId} IS NOT NULL`));
+            ? await db.select({ league: leagues })
+                .from(leagues)
+                .innerJoin(sports, eq(leagues.sportId, sports.id))
+                .where(and(eq(leagues.isActive, true), eq(sports.slug, 'soccer')))
+            : await db.select({ league: leagues })
+                .from(leagues)
+                .innerJoin(sports, eq(leagues.sportId, sports.id))
+                .where(and(eq(leagues.isActive, true), eq(sports.slug, 'soccer'), sql`${leagues.externalId} IS NOT NULL`));
 
         const syncResults: Record<string, SyncResult> = {};
         clearSyncCaches();
 
-        for (const league of leagueRows) {
+        for (const row of leagueRows) {
+            const league = row.league;
             const startedAt = Date.now();
             const externalCode = (league.externalId || '').trim().toUpperCase();
 

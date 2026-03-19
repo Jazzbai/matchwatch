@@ -5,7 +5,7 @@ import {
     follows, notifications, auditLogs, users, venueCustomEvents,
 } from '../db/schema';
 import { eq, and, count, desc, asc, sql, gte, lt } from 'drizzle-orm';
-import { apiResponse, apiError, paginationMeta, paginationOffset } from '../lib/utils';
+import { apiResponse, apiError, paginationMeta, paginationOffset, generateUniqueSlug } from '../lib/utils';
 import {
     createEventSchema, updateEventSchema, createPostSchema,
     createMenuCategorySchema, createMenuItemSchema, updateVenueSchema,
@@ -17,16 +17,43 @@ import { z } from 'zod';
 
 const dashboardRoutes = new Hono();
 
-// All dashboard routes require auth + VENUE_OWNER role
+// All dashboard routes require auth + business or admin role
 dashboardRoutes.use('*', authMiddleware);
-dashboardRoutes.use('*', requireRole('VENUE_OWNER', 'ADMIN', 'SUPER_ADMIN'));
+dashboardRoutes.use('*', requireRole('BUSINESS', 'VENUE_OWNER', 'ADMIN', 'SUPER_ADMIN'));
 
-// Helper: get venue owned by current user
-async function getOwnedVenue(userId: string) {
+// Helper: get a specific venue owned by current user (or first active venue by default)
+async function getOwnedVenue(userId: string, venueId?: string | null) {
+    const normalizedVenueId = typeof venueId === 'string' && venueId.trim().length > 0 ? venueId.trim() : null;
     const [venue] = await db.select().from(venues)
-        .where(and(eq(venues.ownerId, userId), eq(venues.isActive, true)))
+        .where(and(
+            eq(venues.ownerId, userId),
+            eq(venues.isActive, true),
+            ...(normalizedVenueId ? [eq(venues.id, normalizedVenueId)] : []),
+        ))
+        .orderBy(desc(venues.createdAt))
         .limit(1);
     return venue;
+}
+
+async function getOwnedVenues(userId: string) {
+    return db.select({
+        id: venues.id,
+        name: venues.name,
+        slug: venues.slug,
+        city: venues.city,
+        country: venues.country,
+        isVerified: venues.isVerified,
+        isFeatured: venues.isFeatured,
+        createdAt: venues.createdAt,
+    }).from(venues)
+        .where(and(eq(venues.ownerId, userId), eq(venues.isActive, true)))
+        .orderBy(desc(venues.createdAt));
+}
+
+function getRequestedVenueId(c: any) {
+    const fromQuery = c.req.query('venueId');
+    if (typeof fromQuery === 'string' && fromQuery.trim().length > 0) return fromQuery.trim();
+    return null;
 }
 
 function galleryImageUrlsFromMetadata(metadata: unknown): string[] {
@@ -48,11 +75,17 @@ function promotedVenueEventIdFromMetadata(metadata: unknown): string | null {
 
 async function getVenueOr404(c: any) {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const requestedVenueId = getRequestedVenueId(c);
+    const venue = await getOwnedVenue(user.id, requestedVenueId);
     if (!venue) {
-        return { error: c.json(apiError('NOT_FOUND', 'No venue found'), 404) } as const;
+        return {
+            error: c.json(
+                apiError('NOT_FOUND', requestedVenueId ? 'Venue not found for this business account' : 'No venue found'),
+                404,
+            ),
+        } as const;
     }
-    return { user, venue } as const;
+    return { user, venue, requestedVenueId } as const;
 }
 
 async function deactivateExpiredCustomEvents(venueId: string) {
@@ -68,9 +101,9 @@ async function deactivateExpiredCustomEvents(venueId: string) {
 
 // ─── GET /overview ──────────────────────────────
 async function getOverviewHandler(c: any) {
-    const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
-    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+    const context = await getVenueOr404(c);
+    if ('error' in context) return context.error;
+    const { venue } = context;
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -125,6 +158,190 @@ async function getOverviewHandler(c: any) {
 dashboardRoutes.get('/', getOverviewHandler);
 dashboardRoutes.get('/overview', getOverviewHandler);
 
+const createOwnedVenueSchema = z.object({
+    name: z.string().min(2).max(150),
+    addressLine1: z.string().min(3).max(255),
+    city: z.string().min(2).max(100),
+    country: z.string().min(2).max(100),
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+    timezone: z.string().min(3).max(50).default('America/Chicago'),
+    stateProvince: z.string().max(100).optional(),
+    postalCode: z.string().max(20).optional(),
+    phone: z.string().max(30).optional(),
+    description: z.string().max(5000).optional(),
+    shortDescription: z.string().max(280).optional(),
+    amenities: z.array(z.string().min(1).max(80)).max(60).default([]),
+    vibes: z.array(z.string().min(1).max(80)).max(60).default([]),
+    cuisineTags: z.array(z.string().min(1).max(80)).max(60).default([]),
+    priceRange: z.enum(['BUDGET', 'MID', 'UPSCALE', 'LUXURY']).default('MID'),
+    capacity: z.number().int().positive().optional(),
+});
+
+dashboardRoutes.get('/venues', async (c) => {
+    const user = c.get('user');
+    const rows = await getOwnedVenues(user.id);
+    return c.json(apiResponse(rows));
+});
+
+dashboardRoutes.post('/venues', async (c) => {
+    const user = c.get('user');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createOwnedVenueSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const [created] = await db.insert(venues).values({
+        ownerId: user.id,
+        name: parsed.data.name.trim(),
+        slug: generateUniqueSlug(parsed.data.name.trim()),
+        description: parsed.data.description || null,
+        shortDescription: parsed.data.shortDescription || null,
+        addressLine1: parsed.data.addressLine1.trim(),
+        city: parsed.data.city.trim(),
+        stateProvince: parsed.data.stateProvince || null,
+        country: parsed.data.country.trim(),
+        postalCode: parsed.data.postalCode || null,
+        lat: String(parsed.data.lat),
+        lng: String(parsed.data.lng),
+        timezone: parsed.data.timezone.trim(),
+        phone: parsed.data.phone || null,
+        capacity: parsed.data.capacity || null,
+        amenities: parsed.data.amenities,
+        vibes: parsed.data.vibes,
+        cuisineTags: parsed.data.cuisineTags,
+        priceRange: parsed.data.priceRange,
+        isActive: true,
+    }).returning({
+        id: venues.id,
+        name: venues.name,
+        slug: venues.slug,
+        city: venues.city,
+        country: venues.country,
+    });
+
+    await db.insert(auditLogs).values({
+        userId: user.id,
+        action: 'VENUE_CREATED',
+        entityType: 'Venue',
+        entityId: created.id,
+    });
+
+    if (user.role === 'USER' || user.role === 'VENUE_OWNER') {
+        await db.update(users).set({
+            role: 'BUSINESS',
+            updatedAt: new Date(),
+        }).where(eq(users.id, user.id));
+    }
+
+    return c.json(apiResponse(created), 201);
+});
+
+dashboardRoutes.patch('/venues/:venueId', async (c) => {
+    const user = c.get('user');
+    const venueId = c.req.param('venueId');
+    const [ownedVenue] = await db.select({ id: venues.id, metadata: venues.metadata }).from(venues)
+        .where(and(eq(venues.id, venueId), eq(venues.ownerId, user.id), eq(venues.isActive, true)))
+        .limit(1);
+
+    if (!ownedVenue) {
+        return c.json(apiError('NOT_FOUND', 'Venue not found for this business account'), 404);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateVenueSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name;
+    if (parsed.data.description !== undefined) updates.description = parsed.data.description;
+    if (parsed.data.shortDescription !== undefined) updates.shortDescription = parsed.data.shortDescription;
+    if (parsed.data.addressLine1 !== undefined) updates.addressLine1 = parsed.data.addressLine1;
+    if (parsed.data.addressLine2 !== undefined) updates.addressLine2 = parsed.data.addressLine2;
+    if (parsed.data.city !== undefined) updates.city = parsed.data.city;
+    if (parsed.data.stateProvince !== undefined) updates.stateProvince = parsed.data.stateProvince;
+    if (parsed.data.country !== undefined) updates.country = parsed.data.country;
+    if (parsed.data.postalCode !== undefined) updates.postalCode = parsed.data.postalCode;
+    if (parsed.data.lat !== undefined) updates.lat = String(parsed.data.lat);
+    if (parsed.data.lng !== undefined) updates.lng = String(parsed.data.lng);
+    if (parsed.data.timezone !== undefined) updates.timezone = parsed.data.timezone;
+    if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone;
+    if (parsed.data.website !== undefined) updates.website = parsed.data.website;
+    if (parsed.data.instagramHandle !== undefined) updates.instagramHandle = parsed.data.instagramHandle;
+    if (parsed.data.googleMapsUrl !== undefined) updates.googleMapsUrl = parsed.data.googleMapsUrl;
+    if (parsed.data.capacity !== undefined) updates.capacity = parsed.data.capacity;
+    if (parsed.data.amenities !== undefined) updates.amenities = parsed.data.amenities;
+    if (parsed.data.vibes !== undefined) updates.vibes = parsed.data.vibes;
+    if (parsed.data.cuisineTags !== undefined) updates.cuisineTags = parsed.data.cuisineTags;
+    if (parsed.data.priceRange !== undefined) updates.priceRange = parsed.data.priceRange;
+    if (parsed.data.coverImageUrl !== undefined) updates.coverImageUrl = parsed.data.coverImageUrl;
+    if (parsed.data.coverImageS3Key !== undefined) updates.coverImageS3Key = parsed.data.coverImageS3Key;
+    if (parsed.data.galleryS3Keys !== undefined) updates.galleryS3Keys = parsed.data.galleryS3Keys.slice(0, 5);
+    if (parsed.data.galleryImageUrls !== undefined) {
+        const currentMetadata = venueMetadataRecord(ownedVenue.metadata);
+        updates.metadata = {
+            ...currentMetadata,
+            galleryImageUrls: parsed.data.galleryImageUrls.slice(0, 5),
+        };
+    }
+
+    await db.update(venues).set(updates).where(eq(venues.id, venueId));
+    return c.json(apiResponse({ message: 'Venue updated' }));
+});
+
+dashboardRoutes.delete('/venues/:venueId', async (c) => {
+    const user = c.get('user');
+    const venueId = c.req.param('venueId');
+    const [ownedVenue] = await db.select({ id: venues.id, metadata: venues.metadata }).from(venues)
+        .where(and(eq(venues.id, venueId), eq(venues.ownerId, user.id), eq(venues.isActive, true)))
+        .limit(1);
+
+    if (!ownedVenue) {
+        return c.json(apiError('NOT_FOUND', 'Venue not found for this business account'), 404);
+    }
+
+    await db.transaction(async (tx) => {
+        await tx.update(venueEvents).set({
+            isActive: false,
+            updatedAt: new Date(),
+        }).where(eq(venueEvents.venueId, venueId));
+
+        await tx.update(venueCustomEvents).set({
+            isActive: false,
+            updatedAt: new Date(),
+        }).where(eq(venueCustomEvents.venueId, venueId));
+
+        await tx.update(menuCategories).set({ isActive: false }).where(eq(menuCategories.venueId, venueId));
+
+        await tx.update(venues).set({
+            isActive: false,
+            deletedAt: new Date(),
+            updatedAt: new Date(),
+            metadata: {
+                ...venueMetadataRecord(ownedVenue.metadata),
+                promotedVenueEventId: null,
+            },
+        }).where(eq(venues.id, venueId));
+    });
+
+    const remaining = await getOwnedVenues(user.id);
+    if (remaining.length === 0 && (user.role === 'BUSINESS' || user.role === 'VENUE_OWNER')) {
+        await db.update(users).set({
+            role: 'USER',
+            updatedAt: new Date(),
+        }).where(eq(users.id, user.id));
+    }
+
+    return c.json(apiResponse({
+        message: 'Venue archived',
+        remainingVenues: remaining.length,
+        demotedToUser: remaining.length === 0,
+    }));
+});
+
 // ─── Venue Profile ──────────────────────────────
 dashboardRoutes.get('/venue', async (c) => {
     const context = await getVenueOr404(c);
@@ -168,6 +385,7 @@ async function updateVenueHandler(c: any) {
     if (parsed.data.googleMapsUrl !== undefined) updates.googleMapsUrl = parsed.data.googleMapsUrl;
     if (parsed.data.capacity !== undefined) updates.capacity = parsed.data.capacity;
     if (parsed.data.amenities !== undefined) updates.amenities = parsed.data.amenities;
+    if (parsed.data.vibes !== undefined) updates.vibes = parsed.data.vibes;
     if (parsed.data.cuisineTags !== undefined) updates.cuisineTags = parsed.data.cuisineTags;
     if (parsed.data.priceRange !== undefined) updates.priceRange = parsed.data.priceRange;
     if (parsed.data.coverImageUrl !== undefined) updates.coverImageUrl = parsed.data.coverImageUrl;
@@ -296,11 +514,6 @@ dashboardRoutes.post('/venue/delete', async (c) => {
             metadata: updatedMetadata,
         }).where(eq(venues.id, venue.id));
 
-        await tx.update(users).set({
-            role: 'USER',
-            updatedAt: new Date(),
-        }).where(eq(users.id, user.id));
-
         await tx.insert(auditLogs).values({
             userId: user.id,
             action: 'VENUE_DELETED',
@@ -310,14 +523,26 @@ dashboardRoutes.post('/venue/delete', async (c) => {
         });
     });
 
-    return c.json(apiResponse({ message: 'Venue deleted successfully' }));
+    const remainingVenues = await getOwnedVenues(user.id);
+    if (remainingVenues.length === 0 && (user.role === 'BUSINESS' || user.role === 'VENUE_OWNER')) {
+        await db.update(users).set({
+            role: 'USER',
+            updatedAt: new Date(),
+        }).where(eq(users.id, user.id));
+    }
+
+    return c.json(apiResponse({
+        message: 'Venue deleted successfully',
+        remainingVenues: remainingVenues.length,
+        demotedToUser: remainingVenues.length === 0,
+    }));
 });
 
 // ─── Events CRUD ────────────────────────────────
 
 dashboardRoutes.post('/events', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const body = await c.req.json();
@@ -352,7 +577,7 @@ dashboardRoutes.post('/events', async (c) => {
 
 dashboardRoutes.get('/events', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const rows = await db.select({
@@ -496,7 +721,7 @@ dashboardRoutes.delete('/custom-events/:customEventId', async (c) => {
 
 async function updateEventHandler(c: any) {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const eventId = c.req.param('eventId');
@@ -524,7 +749,7 @@ dashboardRoutes.patch('/events/:eventId', updateEventHandler);
 
 dashboardRoutes.put('/events/:eventId/booking-limit', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const eventId = c.req.param('eventId');
@@ -550,7 +775,7 @@ dashboardRoutes.put('/events/:eventId/booking-limit', async (c) => {
 
 dashboardRoutes.delete('/events/:eventId', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const eventId = c.req.param('eventId');
@@ -568,7 +793,7 @@ dashboardRoutes.delete('/events/:eventId', async (c) => {
 
 dashboardRoutes.get('/bookings', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const query = paginationSchema.safeParse(c.req.query());
@@ -677,7 +902,7 @@ dashboardRoutes.get('/bookings/events', async (c) => {
 
 async function updateBookingStatusHandler(c: any) {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const bookingId = c.req.param('bookingId');
@@ -735,7 +960,7 @@ dashboardRoutes.patch('/bookings/:bookingId', updateBookingStatusHandler);
 
 dashboardRoutes.post('/posts', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const body = await c.req.json();
@@ -758,7 +983,7 @@ dashboardRoutes.post('/posts', async (c) => {
 
 dashboardRoutes.get('/posts', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const rows = await db.select().from(posts)
@@ -770,7 +995,7 @@ dashboardRoutes.get('/posts', async (c) => {
 
 dashboardRoutes.delete('/posts/:postId', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const postId = c.req.param('postId');
@@ -783,7 +1008,7 @@ dashboardRoutes.delete('/posts/:postId', async (c) => {
 
 dashboardRoutes.get('/menu', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const categories = await db.select().from(menuCategories)
@@ -804,7 +1029,7 @@ dashboardRoutes.get('/menu', async (c) => {
 
 dashboardRoutes.post('/menu/categories', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const body = await c.req.json();
@@ -823,7 +1048,7 @@ dashboardRoutes.post('/menu/categories', async (c) => {
 
 async function updateMenuCategoryHandler(c: any) {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const categoryId = c.req.param('id');
@@ -850,7 +1075,7 @@ dashboardRoutes.patch('/menu/categories/:id', updateMenuCategoryHandler);
 
 dashboardRoutes.delete('/menu/categories/:id', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const categoryId = c.req.param('id');
@@ -867,7 +1092,7 @@ dashboardRoutes.delete('/menu/categories/:id', async (c) => {
 
 dashboardRoutes.post('/menu/items', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const body = await c.req.json();
@@ -891,7 +1116,7 @@ dashboardRoutes.post('/menu/items', async (c) => {
 
 async function updateMenuItemHandler(c: any) {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const itemId = c.req.param('itemId') || c.req.param('id');
@@ -936,7 +1161,7 @@ dashboardRoutes.patch('/menu/items/:id', updateMenuItemHandler);
 
 dashboardRoutes.delete('/menu/items/:itemId', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const itemId = c.req.param('itemId');
@@ -947,7 +1172,7 @@ dashboardRoutes.delete('/menu/items/:itemId', async (c) => {
 
 dashboardRoutes.delete('/menu/items/:id', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const itemId = c.req.param('id');
@@ -960,7 +1185,7 @@ dashboardRoutes.delete('/menu/items/:id', async (c) => {
 
 async function notifyFollowersHandler(c: any) {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const body = await c.req.json();
@@ -1004,7 +1229,7 @@ dashboardRoutes.post('/notify-followers', notifyFollowersHandler);
 // ─── Analytics ──────────────────────────────────
 dashboardRoutes.get('/analytics', async (c) => {
     const user = c.get('user');
-    const venue = await getOwnedVenue(user.id);
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
 
     const bookingRows = await db.select({
@@ -1041,3 +1266,4 @@ dashboardRoutes.get('/analytics', async (c) => {
 });
 
 export default dashboardRoutes;
+

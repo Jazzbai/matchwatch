@@ -23,7 +23,7 @@ export function FloatingNav() {
     }, []);
 
     const dashboardHref =
-        user?.role === "VENUE_OWNER" ? "/admin"
+        user?.role === "BUSINESS" || user?.role === "VENUE_OWNER" ? "/admin"
         : user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" ? "/admin"
         : "/account";
     const avatarUrl = (user?.avatarUrl || "").trim();
@@ -125,7 +125,7 @@ export function FloatingNav() {
                             ) : (
                                 <UserCircle2 size={20} style={{ color: "var(--foreground)" }} />
                             )}
-                            {user?.role === "VENUE_OWNER" ? (user?.name || "Venue") : "Account"}
+                            {user?.role === "BUSINESS" || user?.role === "VENUE_OWNER" ? (user?.name || "Business") : "Account"}
                         </Link>
                     ) : (
                         <Link
@@ -226,7 +226,7 @@ export function FloatingNav() {
    ═══════════════════════════════════════════════════ */
 export function AppShell({ children }: { children: React.ReactNode }) {
     return (
-        <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", backgroundColor: "var(--background)", fontFamily: "var(--font-body), system-ui, sans-serif" }}>
+        <div suppressHydrationWarning style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", backgroundColor: "var(--background)", fontFamily: "var(--font-body), system-ui, sans-serif" }}>
             <FloatingNav />
             {/* Top padding accounts for the fixed floating nav pill */}
             <main style={{ flex: 1, paddingTop: 96, paddingBottom: 48, overflowX: "hidden" }}>

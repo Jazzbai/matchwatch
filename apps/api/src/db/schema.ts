@@ -6,7 +6,7 @@ import { relations } from 'drizzle-orm';
 
 // ─── Enums ──────────────────────────────────────
 
-export const userRoleEnum = pgEnum('user_role', ['USER', 'VENUE_OWNER', 'ADMIN', 'SUPER_ADMIN']);
+export const userRoleEnum = pgEnum('user_role', ['USER', 'VENUE_OWNER', 'BUSINESS', 'ADMIN', 'SUPER_ADMIN']);
 export const matchStatusEnum = pgEnum('match_status', [
     'SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED', 'FINISHED', 'POSTPONED', 'CANCELLED', 'SUSPENDED',
 ]);
@@ -17,6 +17,7 @@ export const notificationTypeEnum = pgEnum('notification_type', [
     'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'VENUE_POST', 'MATCH_REMINDER', 'VENUE_NOTIFICATION', 'SYSTEM',
 ]);
 export const priceRangeEnum = pgEnum('price_range', ['BUDGET', 'MID', 'UPSCALE', 'LUXURY']);
+export const venueAttributeTypeEnum = pgEnum('venue_attribute_type', ['AMENITY', 'VIBE', 'CUISINE']);
 export const claimStatusEnum = pgEnum('claim_status', ['PENDING', 'APPROVED', 'REJECTED']);
 export const discountTypeEnum = pgEnum('discount_type', ['PERCENTAGE', 'FIXED', 'FREE_ITEM']);
 
@@ -86,8 +87,23 @@ export const auditLogs = pgTable('audit_logs', {
 
 // ─── Leagues ────────────────────────────────────
 
+export const sports = pgTable('sports', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: varchar('name', { length: 80 }).notNull().unique(),
+    slug: varchar('slug', { length: 80 }).notNull().unique(),
+    shortName: varchar('short_name', { length: 20 }),
+    sortOrder: integer('sort_order').default(0),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('sports_active_idx').on(table.isActive),
+    index('sports_sort_idx').on(table.sortOrder),
+]);
+
 export const leagues = pgTable('leagues', {
     id: uuid('id').primaryKey().defaultRandom(),
+    sportId: uuid('sport_id').notNull().references(() => sports.id),
     name: varchar('name', { length: 100 }).notNull(),
     shortName: varchar('short_name', { length: 20 }),
     logoUrl: varchar('logo_url'),
@@ -96,7 +112,10 @@ export const leagues = pgTable('leagues', {
     isActive: boolean('is_active').default(true).notNull(),
     sortOrder: integer('sort_order').default(0),
     createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('leagues_sport_idx').on(table.sportId),
+]);
 
 // ─── Teams ──────────────────────────────────────
 
@@ -113,6 +132,20 @@ export const teams = pgTable('teams', {
     index('teams_league_idx').on(table.leagueId),
 ]);
 
+export const stadiums = pgTable('stadiums', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: varchar('name', { length: 200 }).notNull(),
+    city: varchar('city', { length: 100 }),
+    country: varchar('country', { length: 100 }),
+    externalId: varchar('external_id', { length: 50 }).unique(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('stadiums_name_idx').on(table.name),
+    index('stadiums_city_idx').on(table.city),
+]);
+
 // ─── Matches ────────────────────────────────────
 
 export const matches = pgTable('matches', {
@@ -121,6 +154,7 @@ export const matches = pgTable('matches', {
     leagueId: uuid('league_id').references(() => leagues.id),
     homeTeamId: uuid('home_team_id').references(() => teams.id),
     awayTeamId: uuid('away_team_id').references(() => teams.id),
+    stadiumId: uuid('stadium_id').references(() => stadiums.id),
     homeTeamName: varchar('home_team_name', { length: 150 }),
     awayTeamName: varchar('away_team_name', { length: 150 }),
     homeTeamCrestUrl: varchar('home_team_crest_url'),
@@ -170,6 +204,7 @@ export const venues = pgTable('venues', {
     averageRating: decimal('average_rating', { precision: 3, scale: 2 }).default('0'),
     totalReviews: integer('total_reviews').default(0),
     amenities: text('amenities').array().notNull().default([]),
+    vibes: text('vibes').array().notNull().default([]),
     cuisineTags: text('cuisine_tags').array().notNull().default([]),
     priceRange: priceRangeEnum('price_range').default('MID'),
     isVerified: boolean('is_verified').default(false).notNull(),
@@ -184,6 +219,22 @@ export const venues = pgTable('venues', {
     index('venues_owner_idx').on(table.ownerId),
     index('venues_city_idx').on(table.city),
     index('venues_slug_idx').on(table.slug),
+]);
+
+export const venueAttributes = pgTable('venue_attributes', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    type: venueAttributeTypeEnum('type').notNull(),
+    label: varchar('label', { length: 80 }).notNull(),
+    slug: varchar('slug', { length: 80 }).notNull(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('venue_attributes_type_slug_unique').on(table.type, table.slug),
+    index('venue_attributes_type_idx').on(table.type),
+    index('venue_attributes_active_idx').on(table.isActive),
+    index('venue_attributes_sort_idx').on(table.type, table.sortOrder),
 ]);
 
 // ─── Venue Events ───────────────────────────────
@@ -466,6 +517,7 @@ export const matchesRelations = relations(matches, ({ one, many }) => ({
     league: one(leagues, { fields: [matches.leagueId], references: [leagues.id] }),
     homeTeam: one(teams, { fields: [matches.homeTeamId], references: [teams.id], relationName: 'homeTeam' }),
     awayTeam: one(teams, { fields: [matches.awayTeamId], references: [teams.id], relationName: 'awayTeam' }),
+    stadium: one(stadiums, { fields: [matches.stadiumId], references: [stadiums.id] }),
     venueEvents: many(venueEvents),
 }));
 
@@ -484,7 +536,12 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
     venueEvent: one(venueEvents, { fields: [bookings.venueEventId], references: [venueEvents.id] }),
 }));
 
-export const leaguesRelations = relations(leagues, ({ many }) => ({
+export const sportsRelations = relations(sports, ({ many }) => ({
+    leagues: many(leagues),
+}));
+
+export const leaguesRelations = relations(leagues, ({ one, many }) => ({
+    sport: one(sports, { fields: [leagues.sportId], references: [sports.id] }),
     teams: many(teams),
     matches: many(matches),
 }));
@@ -492,3 +549,9 @@ export const leaguesRelations = relations(leagues, ({ many }) => ({
 export const teamsRelations = relations(teams, ({ one }) => ({
     league: one(leagues, { fields: [teams.leagueId], references: [leagues.id] }),
 }));
+
+export const stadiumsRelations = relations(stadiums, ({ many }) => ({
+    matches: many(matches),
+}));
+
+export const venueAttributesRelations = relations(venueAttributes, () => ({}));

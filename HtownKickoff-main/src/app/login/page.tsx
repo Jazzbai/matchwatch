@@ -73,10 +73,10 @@ export default function LoginPage() {
       await login(normalizedEmail, loginPassword);
       const me = await api.get<{ role: string }>("/user/me");
       const role = me.data.role;
-      const isVenueRole = role === "VENUE_OWNER" || role === "ADMIN" || role === "SUPER_ADMIN";
+      const isVenueRole = role === "BUSINESS" || role === "VENUE_OWNER" || role === "ADMIN" || role === "SUPER_ADMIN";
       if (accountType === "venue" && !isVenueRole) {
         await logout();
-        setFormError("This account is not a venue owner account.");
+        setFormError("This account is not a business account.");
         return;
       }
       if (nextPath) { router.push(nextPath); return; }
@@ -181,7 +181,7 @@ export default function LoginPage() {
               transition: "all 0.2s",
             }}
           >
-            <Building2 size={16} /> Venue
+            <Building2 size={16} /> Business
           </button>
         </div>
 
@@ -296,7 +296,7 @@ export default function LoginPage() {
                 </div>
                 <h3 style={{ fontWeight: 800, fontSize: 20, marginBottom: 8, fontFamily: "var(--font-display), sans-serif" }}>Venue Onboarding</h3>
                 <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginBottom: 20, lineHeight: 1.6 }}>
-                  Venue accounts require business details, location data, and branding verification.
+                  Business accounts require business details, location data, and branding verification.
                 </p>
                 <button
                   onClick={() => router.push("/for-venues/register")}

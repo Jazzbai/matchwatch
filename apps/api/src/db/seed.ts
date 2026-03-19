@@ -1,9 +1,17 @@
 import 'dotenv/config';
 import { db } from './client';
-import { leagues, teams, users, venues, matches, venueEvents } from './schema';
+import { sports, leagues, teams, users, venues, matches, venueEvents } from './schema';
 import { hashPassword } from '../lib/auth';
 import { generateUniqueSlug } from '../lib/utils';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+
+export const CORE_SPORT_DATA = [
+    { name: 'Soccer', slug: 'soccer', shortName: 'SOC', sortOrder: 1 },
+    { name: 'American Football', slug: 'american-football', shortName: 'NFL', sortOrder: 2 },
+    { name: 'Baseball', slug: 'baseball', shortName: 'MLB', sortOrder: 3 },
+    { name: 'Basketball', slug: 'basketball', shortName: 'NBA', sortOrder: 4 },
+    { name: 'Hockey', slug: 'hockey', shortName: 'NHL', sortOrder: 5 },
+];
 
 export const CORE_LEAGUE_DATA = [
     { name: 'FIFA World Cup 2026', shortName: 'WC 2026', externalId: 'WC', country: 'US/MX/CA', sortOrder: 1 },
@@ -18,12 +26,30 @@ export const CORE_LEAGUE_DATA = [
     { name: 'NWSL Women', shortName: 'NWSL', externalId: 'NWSL', country: 'USA', sortOrder: 10 },
 ];
 
+export async function ensureSportsSeeded() {
+    return db.insert(sports).values(CORE_SPORT_DATA).onConflictDoNothing().returning();
+}
+
 export async function ensureLeaguesSeeded() {
-    return db.insert(leagues).values(CORE_LEAGUE_DATA).onConflictDoNothing().returning();
+    await ensureSportsSeeded();
+    const sportRows = await db.select({ id: sports.id, slug: sports.slug }).from(sports);
+    const soccerSportId = sportRows.find((row) => row.slug === 'soccer')?.id;
+    if (!soccerSportId) {
+        throw new Error('Soccer sport row is missing');
+    }
+
+    const rows = CORE_LEAGUE_DATA.map((league) => ({
+        ...league,
+        sportId: soccerSportId,
+    }));
+    return db.insert(leagues).values(rows).onConflictDoNothing().returning();
 }
 
 export async function seedDatabase() {
     console.log('Starting database seed...\n');
+    console.log('Seeding sports...');
+    const insertedSports = await ensureSportsSeeded();
+    console.log(`  OK: ${insertedSports.length} sports inserted\n`);
 
     // ─── Leagues ────────────────────────────────
     console.log('Seeding leagues...');
@@ -89,6 +115,7 @@ export async function seedDatabase() {
         role: 'SUPER_ADMIN',
         emailVerified: true,
     }).onConflictDoNothing().returning();
+    const adminUser = admin || (await db.select({ id: users.id }).from(users).where(eq(users.email, 'admin@matchwatch.us')).limit(1))[0];
 
     // ─── Demo User ──────────────────────────────
     console.log('Seeding demo user...');
@@ -102,22 +129,27 @@ export async function seedDatabase() {
     }).onConflictDoNothing().returning();
 
     // ─── Demo Venue Owner ───────────────────────
-    console.log('Seeding demo venue owner...');
+    console.log('Seeding demo business owner...');
     const venueOwnerHash = await hashPassword('VenueOwner@12345');
     const [venueOwner] = await db.insert(users).values({
         email: 'owner@matchwatch.us',
         passwordHash: venueOwnerHash,
-        name: 'Venue Owner',
-        role: 'VENUE_OWNER',
+        name: 'Business Owner',
+        role: 'BUSINESS',
         emailVerified: true,
     }).onConflictDoNothing().returning();
+    const resolvedVenueOwner = venueOwner || (await db.select({ id: users.id }).from(users).where(eq(users.email, 'owner@matchwatch.us')).limit(1))[0];
+    const venueOwnerId = resolvedVenueOwner?.id || adminUser?.id;
+    if (!venueOwnerId) {
+        throw new Error('Seed users are missing; cannot create demo venues');
+    }
 
     // ─── Demo Venues ────────────────────────────
     console.log('Seeding demo venues...');
 
     const venueData = [
         {
-            ownerId: venueOwner?.id || admin?.id || '',
+            ownerId: venueOwnerId,
             name: 'The Pitch Sports Bar',
             slug: generateUniqueSlug('The Pitch Sports Bar'),
             description: 'Houston\'s premier football watch party destination with 20 screens, craft beer, and international cuisine.',
@@ -133,13 +165,14 @@ export async function seedDatabase() {
             phone: '+1-713-555-0101',
             capacity: 200,
             amenities: ['TV', 'PROJECTOR', 'WIFI', 'FOOD', 'PARKING', 'ALCOHOLIC'],
+            vibes: ['GAME_DAY', 'LIVELY'],
             cuisineTags: ['AMERICAN', 'BBQ'],
             priceRange: 'MID' as const,
             isVerified: true,
             isFeatured: true,
         },
         {
-            ownerId: venueOwner?.id || admin?.id || '',
+            ownerId: venueOwnerId,
             name: 'Mediterranean Lounge',
             slug: generateUniqueSlug('Mediterranean Lounge'),
             description: 'Cozy Mediterranean-themed lounge with hookahs, outdoor seating, and the best hummus in town.',
@@ -155,13 +188,14 @@ export async function seedDatabase() {
             phone: '+1-713-555-0202',
             capacity: 80,
             amenities: ['TV', 'HOOKAH', 'OUTDOOR', 'WIFI', 'FOOD'],
+            vibes: ['CASUAL', 'NEIGHBORHOOD'],
             cuisineTags: ['MIDDLE_EASTERN', 'MEDITERRANEAN'],
             priceRange: 'MID' as const,
             isVerified: true,
             isFeatured: true,
         },
         {
-            ownerId: venueOwner?.id || admin?.id || '',
+            ownerId: venueOwnerId,
             name: 'Casa Fútbol',
             slug: generateUniqueSlug('Casa Fútbol'),
             description: 'Authentic Mexican sports cantina with massive projectors, tacos, and margaritas for the best match day atmosphere.',
@@ -177,13 +211,14 @@ export async function seedDatabase() {
             phone: '+1-713-555-0303',
             capacity: 150,
             amenities: ['TV', 'PROJECTOR', 'FOOD', 'ALCOHOLIC', 'KIDS', 'PARKING'],
+            vibes: ['FAMILY_FRIENDLY', 'GAME_DAY'],
             cuisineTags: ['MEXICAN', 'AMERICAN'],
             priceRange: 'BUDGET' as const,
             isVerified: true,
             isFeatured: false,
         },
         {
-            ownerId: venueOwner?.id || admin?.id || '',
+            ownerId: venueOwnerId,
             name: 'VIP Skybox',
             slug: generateUniqueSlug('VIP Skybox'),
             description: 'Premium watching experience with private rooms, luxury seating, premium drinks, and personal service.',
@@ -199,6 +234,7 @@ export async function seedDatabase() {
             phone: '+1-713-555-0404',
             capacity: 40,
             amenities: ['TV', 'VIP', 'WIFI', 'FOOD', 'ALCOHOLIC', 'PRIVATE_ROOM'],
+            vibes: ['LUXURY', 'UPSCALE'],
             cuisineTags: ['FRENCH', 'SEAFOOD'],
             priceRange: 'LUXURY' as const,
             isVerified: true,
@@ -301,7 +337,7 @@ export async function seedDatabase() {
     console.log('Demo accounts:');
     console.log('  Admin:       admin@matchwatch.us / Admin@12345');
     console.log('  User:        demo@matchwatch.us / Demo@12345');
-    console.log('  Venue Owner: owner@matchwatch.us / VenueOwner@12345');
+    console.log('  Business:    owner@matchwatch.us / VenueOwner@12345');
 
 }
 

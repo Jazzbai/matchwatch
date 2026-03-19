@@ -2,15 +2,44 @@
 
 import React from "react";
 import Link from "next/link";
-import { CalendarDays, CircleDot, Globe, Timer, Trophy } from "lucide-react";
+import { CalendarDays, CircleDot, Globe, Timer, Trophy, X } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { MatchCard } from "../../components/MatchCard";
 import { useData } from "../../lib/data-provider";
-import { formatLocalDateFilterLabel, formatMatchKickoffLocal, getLocalDateKey } from "../../lib/datetime";
 
 function asTimestamp(value: string) {
   const ts = new Date(value).getTime();
   return Number.isFinite(ts) ? ts : 0;
+}
+
+function toUtcDateKey(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function ordinal(day: number) {
+  if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`;
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}
+
+function formatDateFilterLabel(dateKey: string) {
+  const date = new Date(`${dateKey}T00:00:00.000Z`);
+  if (!Number.isFinite(date.getTime())) return dateKey;
+  const month = date.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
+  return `${month} ${ordinal(date.getUTCDate())}`;
 }
 
 function toMatchRowKey(match: {
@@ -20,28 +49,37 @@ function toMatchRowKey(match: {
   awayTeamId: string;
   matchDateUTC: string;
 }) {
-  return `${match.id}:${match.leagueId}:${match.homeTeamId}:${match.awayTeamId}:${getLocalDateKey(match.matchDateUTC)}`;
+  return `${match.id}:${match.leagueId}:${match.homeTeamId}:${match.awayTeamId}:${toUtcDateKey(match.matchDateUTC)}`;
 }
 
 export default function MatchesPage() {
   const [activeStatus, setActiveStatus] = React.useState<"all" | "live" | "upcoming" | "finished">("upcoming");
+  const [includePast, setIncludePast] = React.useState(false);
   const [onlyWithHosting, setOnlyWithHosting] = React.useState(false);
+  const [showFilterModal, setShowFilterModal] = React.useState(false);
+  const [selectedSportId, setSelectedSportId] = React.useState<string | null>(null);
   const [selectedLeagueId, setSelectedLeagueId] = React.useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = React.useState<string | null>(null);
   const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
   const [selectedTeamIds, setSelectedTeamIds] = React.useState<string[]>([]);
-  const { matches: MATCHES, leagues, teams, venueEvents, getTeam, getLeague } = useData();
+  const { matches: MATCHES, leagues, sports, teams, venueEvents, getTeam, getLeague } = useData();
+
+  React.useEffect(() => {
+    if (!includePast && activeStatus === "finished") {
+      setActiveStatus("upcoming");
+    }
+  }, [includePast, activeStatus]);
 
   const baseMatches = React.useMemo(() => {
     const threshold = Date.now() - 2 * 60 * 60 * 1000;
     return MATCHES.filter((match) => {
+      if (includePast) return true;
       const ts = asTimestamp(match.matchDateUTC);
       const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
-      const isFinished = match.status === "FINISHED";
       const isUpcoming = (match.status === "SCHEDULED" || match.status === "TIMED") && ts >= threshold;
-      return isLive || isUpcoming || isFinished;
+      return isLive || isUpcoming;
     });
-  }, [MATCHES]);
+  }, [MATCHES, includePast]);
 
   const uniqueBaseMatches = React.useMemo(() => {
     const seen = new Set<string>();
@@ -64,12 +102,29 @@ export default function MatchesPage() {
     return teams.filter((team) => ids.has(team.id)).sort((a, b) => a.name.localeCompare(b.name));
   }, [uniqueBaseMatches, teams]);
 
+  const availableSports = React.useMemo(() => {
+    const leagueIdsInDataset = new Set(uniqueBaseMatches.map((m) => m.leagueId));
+    const sportIdsInDataset = new Set(
+      leagues
+        .filter((league) => leagueIdsInDataset.has(league.id))
+        .map((league) => league.sportId || "soccer"),
+    );
+
+    const rows = sports
+      .filter((sport) => sportIdsInDataset.has(sport.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (rows.length > 0) return rows;
+    return [{ id: "soccer", name: "Soccer", slug: "soccer", shortName: "SOC" }];
+  }, [uniqueBaseMatches, leagues, sports]);
+
   const availableLeagues = React.useMemo(() => {
     const leagueIdsInDataset = new Set(uniqueBaseMatches.map((m) => m.leagueId));
     return leagues
       .filter((league) => leagueIdsInDataset.has(league.id))
+      .filter((league) => !selectedSportId || (league.sportId || "soccer") === selectedSportId)
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [uniqueBaseMatches, leagues]);
+  }, [uniqueBaseMatches, leagues, selectedSportId]);
 
   const availableCountries = React.useMemo(() => {
     const leagueIdsInDataset = new Set(uniqueBaseMatches.map((m) => m.leagueId));
@@ -95,8 +150,9 @@ export default function MatchesPage() {
     return uniqueBaseMatches.filter((match) => {
       const matchIdKey = String(match.id).trim().toLowerCase();
       const hostingAllowed = !onlyWithHosting || hostingMatchIds.has(matchIdKey);
-      const leagueAllowed = !selectedLeagueId || match.leagueId === selectedLeagueId;
       const league = getLeague(match.leagueId);
+      const sportAllowed = !selectedSportId || (league?.sportId || "soccer") === selectedSportId;
+      const leagueAllowed = !selectedLeagueId || match.leagueId === selectedLeagueId;
       const countryAllowed = !selectedCountry || league?.country === selectedCountry;
       const teamAllowed =
         selectedTeamIds.length === 0 ||
@@ -109,17 +165,24 @@ export default function MatchesPage() {
         (activeStatus === "upcoming" && (match.status === "SCHEDULED" || match.status === "TIMED")) ||
         (activeStatus === "finished" && match.status === "FINISHED");
 
-      return hostingAllowed && leagueAllowed && countryAllowed && teamAllowed && statusAllowed;
+      return hostingAllowed && sportAllowed && leagueAllowed && countryAllowed && teamAllowed && statusAllowed;
     });
-  }, [uniqueBaseMatches, onlyWithHosting, hostingMatchIds, selectedLeagueId, selectedCountry, selectedTeamIds, activeStatus, getLeague]);
+  }, [uniqueBaseMatches, onlyWithHosting, hostingMatchIds, selectedSportId, selectedLeagueId, selectedCountry, selectedTeamIds, activeStatus, getLeague]);
+
+  React.useEffect(() => {
+    if (!selectedSportId) return;
+    if (!availableSports.some((sport) => sport.id === selectedSportId)) {
+      setSelectedSportId(null);
+    }
+  }, [selectedSportId, availableSports]);
 
   const availableDateFilters = React.useMemo(() => {
     const dateMap = new Map<string, string>();
     for (const match of rowsBeforeDate) {
-      const key = getLocalDateKey(match.matchDateUTC);
+      const key = toUtcDateKey(match.matchDateUTC);
       if (!key) continue;
       if (!dateMap.has(key)) {
-        dateMap.set(key, formatLocalDateFilterLabel(key));
+        dateMap.set(key, formatDateFilterLabel(key));
       }
     }
     return Array.from(dateMap.entries())
@@ -148,14 +211,10 @@ export default function MatchesPage() {
     }
   }, [selectedDateKey, availableDateFilters]);
 
-  React.useEffect(() => {
-    setSelectedTeamIds((prev) => prev.filter((teamId) => availableTeams.some((team) => team.id === teamId)));
-  }, [availableTeams]);
-
   const filtered = React.useMemo(() => {
-      const rows = rowsBeforeDate.filter((match) => {
+    const rows = rowsBeforeDate.filter((match) => {
       if (!selectedDateKey) return true;
-      return getLocalDateKey(match.matchDateUTC) === selectedDateKey;
+      return toUtcDateKey(match.matchDateUTC) === selectedDateKey;
     });
 
     return rows.sort((a, b) => {
@@ -174,12 +233,19 @@ export default function MatchesPage() {
   }, [rowsBeforeDate, selectedDateKey]);
 
   const liveCount = MATCHES.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED").length;
-  const statusTabs = [
-    { id: "all", label: "All" },
-    { id: "live", label: "Live" },
-    { id: "upcoming", label: "Upcoming" },
-    { id: "finished", label: "Results" },
-  ];
+
+  const statusTabs = includePast
+    ? [
+        { id: "all", label: "All" },
+        { id: "live", label: "Live" },
+        { id: "upcoming", label: "Upcoming" },
+        { id: "finished", label: "Results" },
+      ]
+    : [
+        { id: "all", label: "All" },
+        { id: "live", label: "Live" },
+        { id: "upcoming", label: "Upcoming" },
+      ];
 
   return (
       <AppShell>
@@ -197,7 +263,7 @@ export default function MatchesPage() {
               Matches
             </h1>
             <p style={{ fontSize: 15, color: "var(--muted-foreground)", marginBottom: 24, maxWidth: 520, lineHeight: 1.6, fontWeight: 500 }}>
-              Browse live matches, upcoming fixtures, and recent results with inline league, region, date, and team filters.
+              Upcoming fixtures first, with league and team filters. Past matches stay hidden unless you enable history mode.
             </p>
 
             {liveCount > 0 && (
@@ -261,6 +327,49 @@ export default function MatchesPage() {
 
             {/* Divider */}
             <div style={{ height: 1, backgroundColor: "var(--border)" }} />
+
+            {/* Sport Filter Row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Sport</span>
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                <button
+                  onClick={() => setSelectedSportId(null)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px", borderRadius: 99,
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    fontFamily: "inherit", whiteSpace: "nowrap",
+                    border: selectedSportId === null ? "1px solid var(--primary)" : "1px solid var(--border)",
+                    backgroundColor: selectedSportId === null ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                    color: selectedSportId === null ? "var(--primary)" : "var(--muted-foreground)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <Trophy size={13} /> All
+                </button>
+                {availableSports.map((sport) => {
+                  const sel = selectedSportId === sport.id;
+                  return (
+                    <button
+                      key={sport.id}
+                      onClick={() => setSelectedSportId((prev) => (prev === sport.id ? null : sport.id))}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "7px 14px", borderRadius: 99,
+                        fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        fontFamily: "inherit", whiteSpace: "nowrap",
+                        border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
+                        backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                        color: sel ? "var(--primary)" : "var(--muted-foreground)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {sport.shortName || sport.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* League Filter Row */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -392,52 +501,6 @@ export default function MatchesPage() {
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Team</span>
-              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
-                <button
-                  onClick={() => setSelectedTeamIds([])}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "7px 14px", borderRadius: 99,
-                    fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    fontFamily: "inherit", whiteSpace: "nowrap",
-                    border: selectedTeamIds.length === 0 ? "1px solid var(--primary)" : "1px solid var(--border)",
-                    backgroundColor: selectedTeamIds.length === 0 ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                    color: selectedTeamIds.length === 0 ? "var(--primary)" : "var(--muted-foreground)",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  All
-                </button>
-                {availableTeams.map((team) => {
-                  const selected = selectedTeamIds.includes(team.id);
-                  return (
-                    <button
-                      key={team.id}
-                      onClick={() => {
-                        setSelectedTeamIds((prev) =>
-                          selected ? prev.filter((id) => id !== team.id) : [...prev, team.id],
-                        );
-                      }}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "7px 14px", borderRadius: 99,
-                        fontSize: 12, fontWeight: 700, cursor: "pointer",
-                        fontFamily: "inherit", whiteSpace: "nowrap",
-                        border: selected ? "1px solid var(--primary)" : "1px solid var(--border)",
-                        backgroundColor: selected ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                        color: selected ? "var(--primary)" : "var(--muted-foreground)",
-                        transition: "all 0.2s",
-                      }}
-                    >
-                      {team.shortName}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
           </div>
         </section>
 
@@ -463,11 +526,13 @@ export default function MatchesPage() {
                 const away = getTeam(match.awayTeamId);
                 const league = getLeague(match.leagueId);
                 if (!home || !away || !league) return null;
+                const date = new Date(match.matchDateUTC);
                 const kickoffLabel =
                   match.status === "IN_PLAY" ? "LIVE" :
                   match.status === "PAUSED" ? "HT" :
                   match.status === "FINISHED" ? "FT" :
-                  formatMatchKickoffLocal(match.matchDateUTC);
+                  date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " · " +
+                  date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
                 return (
                   <Link
@@ -501,6 +566,134 @@ export default function MatchesPage() {
             </div>
           )}
         </section>
+
+        {showFilterModal && (
+            <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.7)", padding: 16 }}>
+            <div style={{ width: "100%", maxWidth: 768, borderRadius: 16, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 24 }}>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 24, fontWeight: 800, color: "var(--foreground)" }}>Filter Matches</h2>
+                <button onClick={() => setShowFilterModal(false)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}>
+                  <X size={14} />
+                  Close
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <p style={{ marginBottom: 8, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", fontWeight: 700 }}>Sports</p>
+                  <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
+                    {availableSports.map((sport) => {
+                      const selected = selectedSportId === sport.id;
+                      return (
+                        <button
+                          key={sport.id}
+                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                          onClick={() => setSelectedSportId((prev) => (prev === sport.id ? null : sport.id))}
+                        >
+                          {sport.shortName || sport.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p style={{ marginBottom: 8, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", fontWeight: 700 }}>Leagues</p>
+                  <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
+                    {availableLeagues.map((league) => {
+                      const selected = selectedLeagueId === league.id;
+                      return (
+                        <button
+                          key={league.id}
+                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                          onClick={() => setSelectedLeagueId((prev) => (prev === league.id ? null : league.id))}
+                        >
+                          {league.shortName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Countries</p>
+                  <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
+                    {availableCountries.map((country) => {
+                      const selected = selectedCountry === country;
+                      return (
+                        <button
+                          key={country}
+                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                          onClick={() => setSelectedCountry((prev) => (prev === country ? null : country))}
+                        >
+                          {country}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Dates</p>
+                  <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
+                    {availableDateFilters.map((item) => {
+                      const selected = selectedDateKey === item.value;
+                      return (
+                        <button
+                          key={item.value}
+                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                          onClick={() => setSelectedDateKey((prev) => (prev === item.value ? null : item.value))}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Teams (from current dataset)</p>
+                  <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
+                    {availableTeams.map((team) => {
+                      const selected = selectedTeamIds.includes(team.id);
+                      return (
+                        <button
+                          key={team.id}
+                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                          onClick={() => {
+                            setSelectedTeamIds((prev) =>
+                              selected ? prev.filter((id) => id !== team.id) : [...prev, team.id],
+                            );
+                          }}
+                        >
+                          {team.shortName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedSportId(null);
+                    setSelectedLeagueId(null);
+                    setSelectedCountry(null);
+                    setSelectedDateKey(null);
+                    setSelectedTeamIds([]);
+                  }}
+                  style={{ padding: "10px 20px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 13 }}
+                >
+                  Reset Filters
+                </button>
+                <button onClick={() => setShowFilterModal(false)} style={{ padding: "10px 24px", borderRadius: 10, border: "none", backgroundColor: "var(--primary)", color: "var(--primary-foreground)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
+                  Apply Filters
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </AppShell>
   );
 }

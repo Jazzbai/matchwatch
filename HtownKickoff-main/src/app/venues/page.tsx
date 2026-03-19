@@ -23,6 +23,15 @@ export default function VenuesPage() {
     const [activeAmenity, setActiveAmenity] = useState("all");
     const [sortBy, setSortBy] = useState<"rating" | "reviews" | "name">("rating");
     const { venues: VENUES } = useData();
+    const cityOptions = React.useMemo(
+        () => Array.from(new Set(
+            VENUES
+                .filter((venue) => venue.isActive)
+                .map((venue) => venue.city.trim())
+                .filter(Boolean),
+        )).sort((a, b) => a.localeCompare(b)),
+        [VENUES],
+    );
 
     const availableCities = Array.from(
         new Set(
@@ -155,6 +164,49 @@ export default function VenuesPage() {
                                         }}
                                     >
                                         {p.icon} {p.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* City Filter Row */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>City</span>
+                        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                            <button
+                                onClick={() => setActiveCity("all")}
+                                style={{
+                                    display: "inline-flex", alignItems: "center", gap: 6,
+                                    padding: "7px 14px", borderRadius: 99,
+                                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                    fontFamily: "inherit", whiteSpace: "nowrap",
+                                    border: activeCity === "all" ? "1px solid var(--primary)" : "1px solid var(--border)",
+                                    backgroundColor: activeCity === "all" ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                                    color: activeCity === "all" ? "var(--primary)" : "var(--muted-foreground)",
+                                    transition: "all 0.2s",
+                                }}
+                            >
+                                All
+                            </button>
+                            {cityOptions.map((city) => {
+                                const sel = activeCity === city;
+                                return (
+                                    <button
+                                        key={city}
+                                        onClick={() => setActiveCity(city)}
+                                        style={{
+                                            display: "inline-flex", alignItems: "center", gap: 6,
+                                            padding: "7px 14px", borderRadius: 99,
+                                            fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                            fontFamily: "inherit", whiteSpace: "nowrap",
+                                            border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
+                                            backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                                            color: sel ? "var(--primary)" : "var(--muted-foreground)",
+                                            transition: "all 0.2s",
+                                        }}
+                                    >
+                                        {city}
                                     </button>
                                 );
                             })}

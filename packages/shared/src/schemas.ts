@@ -33,6 +33,7 @@ export const registerVenueSchema = registerSchema.extend({
         phone: z.string().optional(),
         description: z.string().optional(),
         amenities: z.array(z.string().min(1).max(80)).max(60).default([]),
+        vibes: z.array(z.string().min(1).max(80)).max(60).default([]),
         cuisineTags: z.array(z.string().min(1).max(80)).max(60).default([]),
         priceRange: z.enum(PRICE_RANGES).default('MID'),
         capacity: z.number().int().positive().optional(),
@@ -66,6 +67,7 @@ export const changePasswordSchema = z.object({
 // ─── Match Schemas ──────────────────────────────
 
 export const matchQuerySchema = z.object({
+    sport_id: z.string().uuid().optional(),
     league_id: z.string().uuid().optional(),
     team_id: z.string().uuid().optional(),
     date_from: z.string().optional(),
@@ -129,6 +131,7 @@ export const updateVenueSchema = z.object({
     googleMapsUrl: z.string().url().optional(),
     capacity: z.number().int().positive().optional(),
     amenities: z.array(z.string().min(1).max(80)).max(60).optional(),
+    vibes: z.array(z.string().min(1).max(80)).max(60).optional(),
     cuisineTags: z.array(z.string().min(1).max(80)).max(60).optional(),
     priceRange: z.enum(PRICE_RANGES).optional(),
     coverImageUrl: z.string().url().optional(),

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { AppShell } from "../../components/AppShell";
 
-type TabId = "overview" | "users" | "venues" | "events" | "customEvents" | "matches";
+type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches";
 
 type ApiListMeta = {
   page: number;
@@ -64,13 +64,26 @@ type LookupMatch = {
   status: string;
   leagueId: string | null;
 };
-type LookupLeague = { id: string; name: string; shortName: string | null };
+type LookupLeague = { id: string; sportId: string | null; name: string; shortName: string | null };
+type LookupSport = { id: string; name: string; slug: string; shortName: string | null };
+type LookupTeam = { id: string; leagueId?: string | null; name: string; shortName?: string | null; crestUrl?: string | null };
+type LookupStadium = { id: string; name: string; city?: string | null; country?: string | null };
+type LookupOwner = { id: string; email: string; name: string; role: UserRow["role"] };
+type VenueAttributeType = "AMENITY" | "VIBE" | "CUISINE";
+type LookupAttribute = {
+  id: string;
+  type: VenueAttributeType;
+  label: string;
+  slug: string;
+  sortOrder: number;
+  isActive: boolean;
+};
 
 type UserRow = {
   id: string;
   email: string;
   name: string;
-  role: "USER" | "VENUE_OWNER" | "ADMIN" | "SUPER_ADMIN";
+  role: "USER" | "VENUE_OWNER" | "BUSINESS" | "ADMIN" | "SUPER_ADMIN";
   isActive: boolean;
   isSuspended: boolean;
   emailVerified: boolean;
@@ -79,24 +92,168 @@ type UserRow = {
   avatarUrl?: string | null;
 };
 
+type SportRow = {
+  id: string;
+  name: string;
+  slug: string;
+  shortName?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type AdminLeagueRow = {
+  id: string;
+  sportId: string;
+  sportName?: string | null;
+  sportSlug?: string | null;
+  name: string;
+  shortName?: string | null;
+  logoUrl?: string | null;
+  externalId?: string | null;
+  country?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type CsvImportResult = {
+  dryRun: boolean;
+  rowsRead: number;
+  imported: number;
+  updated: number;
+  failed: number;
+  errors: Array<{ row: number; message: string }>;
+};
+
 type VenueRow = {
   id: string;
   ownerId: string;
   ownerEmail?: string | null;
+  ownerName?: string | null;
   name: string;
   slug: string;
+  description?: string | null;
+  shortDescription?: string | null;
+  addressLine2?: string | null;
   city: string;
   country: string;
   addressLine1: string;
-  lat: string | number;
-  lng: string | number;
+  stateProvince?: string | null;
+  postalCode?: string | null;
+  lat: number;
+  lng: number;
+  timezone: string;
   coverImageUrl?: string | null;
+  coverImageS3Key?: string | null;
   galleryImageUrls?: string[];
   galleryS3Keys?: string[] | null;
+  website?: string | null;
+  instagramHandle?: string | null;
+  googleMapsUrl?: string | null;
+  capacity?: number | null;
+  amenities: string[];
+  vibes: string[];
+  cuisineTags: string[];
+  priceRange?: "BUDGET" | "MID" | "UPSCALE" | "LUXURY" | null;
   isActive: boolean;
   isVerified: boolean;
   isFeatured: boolean;
   phone?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+type VenuePriceRange = "BUDGET" | "MID" | "UPSCALE" | "LUXURY";
+
+type VenueEditorDraft = {
+  ownerId?: string;
+  name?: string;
+  slug?: string;
+  description?: string | null;
+  shortDescription?: string | null;
+  addressLine1?: string;
+  addressLine2?: string | null;
+  city?: string;
+  stateProvince?: string | null;
+  country?: string;
+  postalCode?: string | null;
+  lat?: string | number;
+  lng?: string | number;
+  timezone?: string;
+  coverImageUrl?: string | null;
+  coverImageS3Key?: string | null;
+  galleryImageUrls?: string[];
+  galleryS3Keys?: string[];
+  phone?: string | null;
+  website?: string | null;
+  instagramHandle?: string | null;
+  googleMapsUrl?: string | null;
+  capacity?: string | number | null;
+  amenities?: string[];
+  vibes?: string[];
+  cuisineTags?: string[];
+  priceRange?: VenuePriceRange | null;
+  isVerified?: boolean;
+  isActive?: boolean;
+  isFeatured?: boolean;
+};
+
+type NewVenueForm = {
+  ownerId: string;
+  name: string;
+  slug: string;
+  description: string;
+  shortDescription: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  stateProvince: string;
+  country: string;
+  postalCode: string;
+  lat: string;
+  lng: string;
+  timezone: string;
+  phone: string;
+  coverImageUrl: string;
+  coverImageS3Key: string;
+  galleryImageUrls: string[];
+  galleryS3Keys: string[];
+  website: string;
+  instagramHandle: string;
+  googleMapsUrl: string;
+  capacity: string;
+  priceRange: VenuePriceRange;
+  amenities: string[];
+  vibes: string[];
+  cuisineTags: string[];
+  isVerified: boolean;
+  isActive: boolean;
+  isFeatured: boolean;
+};
+
+type VenueAttributeRow = {
+  id: string;
+  type: VenueAttributeType;
+  label: string;
+  slug: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type TeamAdminRow = {
+  id: string;
+  leagueId?: string | null;
+  leagueName?: string | null;
+  name: string;
+  shortName?: string | null;
+  crestUrl?: string | null;
+  externalId?: string | null;
+  isActive: boolean;
   createdAt: string;
 };
 
@@ -149,6 +306,7 @@ type MatchRow = {
   leagueName?: string | null;
   homeTeamId?: string | null;
   awayTeamId?: string | null;
+  stadiumId?: string | null;
   homeTeamName: string;
   awayTeamName: string;
   homeTeamCrestUrl?: string | null;
@@ -165,6 +323,191 @@ type ListResponse<T> = {
   meta?: ApiListMeta;
 };
 
+type SearchPickerOption = {
+  id: string;
+  label: string;
+  subtitle?: string | null;
+};
+
+type SearchPickerProps = {
+  placeholder: string;
+  value: string;
+  selectedId?: string | null;
+  onInputChange: (nextValue: string) => void;
+  onSelect: (option: SearchPickerOption) => void;
+  onCreate: (query: string, extra: Record<string, string>) => Promise<void>;
+  search: (query: string) => Promise<SearchPickerOption[]>;
+  searchKey?: string;
+  initialOptions?: SearchPickerOption[];
+  createHint: string;
+  createFields?: Array<{ key: string; label: string; placeholder: string }>;
+  excludeIds?: string[];
+};
+
+function SearchPicker({
+  placeholder,
+  value,
+  selectedId,
+  onInputChange,
+  onSelect,
+  onCreate,
+  search,
+  searchKey,
+  initialOptions = [],
+  createHint,
+  createFields = [],
+  excludeIds = [],
+}: SearchPickerProps) {
+  const wrapperRef = React.useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [results, setResults] = React.useState<SearchPickerOption[]>(initialOptions);
+  const [createFieldsState, setCreateFieldsState] = React.useState<Record<string, string>>({});
+  const [creating, setCreating] = React.useState(false);
+  const searchRef = React.useRef(search);
+
+  React.useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setLoading(true);
+    const handle = window.setTimeout(async () => {
+      try {
+        const rows = await searchRef.current(value.trim());
+        if (!active) return;
+        setResults(rows);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }, 150);
+
+    return () => {
+      active = false;
+      window.clearTimeout(handle);
+    };
+  }, [open, searchKey, value]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handleClick = (event: MouseEvent) => {
+      if (!wrapperRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  React.useEffect(() => {
+    setResults(initialOptions);
+  }, [initialOptions]);
+
+  const normalizedQuery = value.trim().toLowerCase();
+  const filteredResults = results.filter((option) => !excludeIds.includes(option.id));
+  const exactMatch = filteredResults.some((option) => option.label.trim().toLowerCase() === normalizedQuery);
+  const canCreate = normalizedQuery.length >= 2 && !exactMatch;
+
+  return (
+    <div ref={wrapperRef} style={{ position: "relative", minWidth: 0 }}>
+      <input
+        style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", background: "var(--secondary)", color: "var(--foreground)", padding: "8px 10px", fontSize: 13 }}
+        placeholder={placeholder}
+        value={value}
+        onFocus={() => setOpen(true)}
+        onChange={(event) => {
+          onInputChange(event.target.value);
+          setOpen(true);
+        }}
+      />
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 30, borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", boxShadow: "0 18px 42px rgba(15, 23, 42, 0.18)", padding: 8, display: "grid", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+          {loading && (
+            <div style={{ padding: "6px 8px", fontSize: 12, color: "var(--muted-foreground)" }}>
+              Searching...
+            </div>
+          )}
+          {!loading && filteredResults.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onSelect(option);
+                setOpen(false);
+              }}
+              style={{
+                textAlign: "left",
+                borderRadius: 8,
+                border: option.id === selectedId ? "1px solid color-mix(in oklch, var(--primary) 60%, var(--border))" : "1px solid transparent",
+                background: option.id === selectedId ? "color-mix(in oklch, var(--primary) 9%, var(--card))" : "transparent",
+                color: "var(--foreground)",
+                padding: "8px 10px",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700 }}>{option.label}</div>
+              {option.subtitle && <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{option.subtitle}</div>}
+            </button>
+          ))}
+          {!loading && filteredResults.length === 0 && (
+            <div style={{ padding: "6px 8px", fontSize: 12, color: "var(--muted-foreground)" }}>
+              No matches found.
+            </div>
+          )}
+          {canCreate && (
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8, display: "grid", gap: 6 }}>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>
+                {createHint}
+              </div>
+              {createFields.map((field) => (
+                <input
+                  key={field.key}
+                  style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", background: "var(--secondary)", color: "var(--foreground)", padding: "8px 10px", fontSize: 12 }}
+                  placeholder={field.placeholder}
+                  value={createFieldsState[field.key] || ""}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onChange={(event) => setCreateFieldsState((prev) => ({ ...prev, [field.key]: event.target.value }))}
+                />
+              ))}
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                disabled={creating}
+                onClick={async () => {
+                  setCreating(true);
+                  try {
+                    await onCreate(value.trim(), createFieldsState);
+                    setCreateFieldsState({});
+                    setOpen(false);
+                  } finally {
+                    setCreating(false);
+                  }
+                }}
+                style={{
+                  borderRadius: 8,
+                  border: "none",
+                  background: "var(--primary)",
+                  color: "var(--primary-foreground)",
+                  padding: "8px 10px",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: creating ? "not-allowed" : "pointer",
+                  opacity: creating ? 0.65 : 1,
+                }}
+              >
+                {creating ? "Creating..." : `Create "${value.trim()}"`}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 async function superAdminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/v1/super-admin${path}`, {
     credentials: "include",
@@ -177,12 +520,38 @@ async function superAdminFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   const payload = await response.json().catch(() => null);
   if (!response.ok || !payload?.success) {
-    const error = new Error(payload?.error?.message || "Request failed") as Error & { status?: number };
+    const error = new Error(formatApiErrorMessage(payload, "Request failed")) as Error & { status?: number };
     error.status = response.status;
     throw error;
   }
 
   return payload.data as T;
+}
+
+function formatApiErrorMessage(payload: any, fallback: string): string {
+  const message = typeof payload?.error?.message === "string" ? payload.error.message.trim() : "";
+  const details = Array.isArray(payload?.error?.details) ? payload.error.details : [];
+
+  if (details.length > 0) {
+    const detailMessage = details
+      .slice(0, 3)
+      .map((issue: any) => {
+        const path = Array.isArray(issue?.path) && issue.path.length > 0
+          ? issue.path.join(".")
+          : "field";
+        const issueMessage = typeof issue?.message === "string" ? issue.message : "Invalid value";
+        return `${path}: ${issueMessage}`;
+      })
+      .join(" | ");
+
+    if (!message || ["Invalid input", "Invalid query", "Invalid credentials payload"].includes(message)) {
+      return detailMessage;
+    }
+
+    return `${message}: ${detailMessage}`;
+  }
+
+  return message || fallback;
 }
 
 function toDatetimeLocal(value?: string | null) {
@@ -206,12 +575,34 @@ function formatDateTime(value?: string | null) {
   });
 }
 
-function detectBrowserTimeZone() {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  } catch {
-    return "UTC";
-  }
+function dedupeById<T extends { id: string }>(rows: T[]) {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    if (seen.has(row.id)) return false;
+    seen.add(row.id);
+    return true;
+  });
+}
+
+function getMultiSelectValues(select: HTMLSelectElement): string[] {
+  return Array.from(select.selectedOptions).map((option) => option.value);
+}
+
+function teamToOption(team: LookupTeam, leagueLabelById?: Map<string, string>): SearchPickerOption {
+  const leagueLabel = team.leagueId ? leagueLabelById?.get(team.leagueId) : undefined;
+  return {
+    id: team.id,
+    label: team.name,
+    subtitle: [team.shortName, leagueLabel].filter(Boolean).join(" • "),
+  };
+}
+
+function stadiumToOption(stadium: LookupStadium): SearchPickerOption {
+  return {
+    id: stadium.id,
+    label: stadium.name,
+    subtitle: [stadium.city, stadium.country].filter(Boolean).join(", "),
+  };
 }
 
 const MATCH_STATUSES: Array<MatchRow["status"]> = [
@@ -226,7 +617,6 @@ const MATCH_STATUSES: Array<MatchRow["status"]> = [
 ];
 
 export default function JazzbaiSuperAdminPage() {
-  const [browserTimeZone, setBrowserTimeZone] = React.useState("UTC");
   const [checkingSession, setCheckingSession] = React.useState(true);
   const [authenticated, setAuthenticated] = React.useState(false);
   const [adminUsername, setAdminUsername] = React.useState("");
@@ -244,6 +634,11 @@ export default function JazzbaiSuperAdminPage() {
   const [lookupVenues, setLookupVenues] = React.useState<LookupVenue[]>([]);
   const [lookupMatches, setLookupMatches] = React.useState<LookupMatch[]>([]);
   const [lookupLeagues, setLookupLeagues] = React.useState<LookupLeague[]>([]);
+  const [lookupSports, setLookupSports] = React.useState<LookupSport[]>([]);
+  const [lookupTeams, setLookupTeams] = React.useState<LookupTeam[]>([]);
+  const [lookupStadiums, setLookupStadiums] = React.useState<LookupStadium[]>([]);
+  const [lookupOwners, setLookupOwners] = React.useState<LookupOwner[]>([]);
+  const [lookupAttributes, setLookupAttributes] = React.useState<LookupAttribute[]>([]);
 
   const [users, setUsers] = React.useState<UserRow[]>([]);
   const [usersMeta, setUsersMeta] = React.useState<ApiListMeta | null>(null);
@@ -261,18 +656,65 @@ export default function JazzbaiSuperAdminPage() {
   const [venuesMeta, setVenuesMeta] = React.useState<ApiListMeta | null>(null);
   const [venuesSearch, setVenuesSearch] = React.useState("");
   const [venuesLoading, setVenuesLoading] = React.useState(false);
-  const [venueDrafts, setVenueDrafts] = React.useState<Record<string, Partial<VenueRow>>>({});
-  const [newVenue, setNewVenue] = React.useState({
-    ownerEmail: "",
+  const [venueDrafts, setVenueDrafts] = React.useState<Record<string, VenueEditorDraft>>({});
+  const [newVenue, setNewVenue] = React.useState<NewVenueForm>({
+    ownerId: "",
     name: "",
+    slug: "",
+    description: "",
+    shortDescription: "",
     addressLine1: "",
+    addressLine2: "",
     city: "Houston",
+    stateProvince: "Texas",
     country: "US",
+    postalCode: "",
     lat: "29.7604",
     lng: "-95.3698",
-    timezone: browserTimeZone,
+    timezone: "America/Chicago",
     phone: "",
     coverImageUrl: "",
+    coverImageS3Key: "",
+    galleryImageUrls: [] as string[],
+    galleryS3Keys: [] as string[],
+    website: "",
+    instagramHandle: "",
+    googleMapsUrl: "",
+    capacity: "",
+    priceRange: "MID" as const,
+    amenities: [] as string[],
+    vibes: [] as string[],
+    cuisineTags: [] as string[],
+    isVerified: false,
+    isActive: true,
+    isFeatured: false,
+  });
+
+  const [attributesRows, setAttributesRows] = React.useState<VenueAttributeRow[]>([]);
+  const [attributesLoading, setAttributesLoading] = React.useState(false);
+  const [attributesSearch, setAttributesSearch] = React.useState("");
+  const [attributeTypeFilter, setAttributeTypeFilter] = React.useState<VenueAttributeType | "ALL">("ALL");
+  const [attributeDrafts, setAttributeDrafts] = React.useState<Record<string, Partial<VenueAttributeRow>>>({});
+  const [newAttribute, setNewAttribute] = React.useState({
+    type: "AMENITY" as VenueAttributeType,
+    label: "",
+    slug: "",
+    sortOrder: "0",
+    isActive: true,
+  });
+
+  const [teamsRows, setTeamsRows] = React.useState<TeamAdminRow[]>([]);
+  const [teamsMeta, setTeamsMeta] = React.useState<ApiListMeta | null>(null);
+  const [teamsSearch, setTeamsSearch] = React.useState("");
+  const [teamsLoading, setTeamsLoading] = React.useState(false);
+  const [teamDrafts, setTeamDrafts] = React.useState<Record<string, Partial<TeamAdminRow>>>({});
+  const [newAdminTeam, setNewAdminTeam] = React.useState({
+    leagueId: "",
+    name: "",
+    shortName: "",
+    crestUrl: "",
+    externalId: "",
+    isActive: true,
   });
 
   const [events, setEvents] = React.useState<MatchEventRow[]>([]);
@@ -307,6 +749,9 @@ export default function JazzbaiSuperAdminPage() {
   const [matchDrafts, setMatchDrafts] = React.useState<Record<string, Partial<MatchRow>>>({});
   const [newMatch, setNewMatch] = React.useState({
     leagueId: "",
+    homeTeamId: "",
+    awayTeamId: "",
+    stadiumId: "",
     homeTeamName: "",
     awayTeamName: "",
     matchDateUtc: "",
@@ -314,17 +759,41 @@ export default function JazzbaiSuperAdminPage() {
     venueName: "",
   });
 
-  const [submittingAction, setSubmittingAction] = React.useState<string | null>(null);
+  const [sportsRows, setSportsRows] = React.useState<SportRow[]>([]);
+  const [sportsMeta, setSportsMeta] = React.useState<ApiListMeta | null>(null);
+  const [sportsSearch, setSportsSearch] = React.useState("");
+  const [sportsLoading, setSportsLoading] = React.useState(false);
+  const [sportDrafts, setSportDrafts] = React.useState<Record<string, Partial<SportRow>>>({});
+  const [newSport, setNewSport] = React.useState({
+    name: "",
+    slug: "",
+    shortName: "",
+    sortOrder: "0",
+    isActive: true,
+  });
 
-  React.useEffect(() => {
-    const detected = detectBrowserTimeZone();
-    setBrowserTimeZone(detected);
-    setNewVenue((prev) => (
-      prev.timezone && prev.timezone !== "UTC"
-        ? prev
-        : { ...prev, timezone: detected }
-    ));
-  }, []);
+  const [adminLeagues, setAdminLeagues] = React.useState<AdminLeagueRow[]>([]);
+  const [adminLeaguesMeta, setAdminLeaguesMeta] = React.useState<ApiListMeta | null>(null);
+  const [adminLeaguesSearch, setAdminLeaguesSearch] = React.useState("");
+  const [adminLeaguesLoading, setAdminLeaguesLoading] = React.useState(false);
+  const [leagueDrafts, setLeagueDrafts] = React.useState<Record<string, Partial<AdminLeagueRow>>>({});
+  const [newLeague, setNewLeague] = React.useState({
+    sportId: "",
+    name: "",
+    shortName: "",
+    logoUrl: "",
+    externalId: "",
+    country: "",
+    sortOrder: "0",
+    isActive: true,
+  });
+
+  const [csvImportText, setCsvImportText] = React.useState("");
+  const [csvImportDryRun, setCsvImportDryRun] = React.useState(true);
+  const [csvImportResult, setCsvImportResult] = React.useState<CsvImportResult | null>(null);
+  const [csvImporting, setCsvImporting] = React.useState(false);
+
+  const [submittingAction, setSubmittingAction] = React.useState<string | null>(null);
 
   const loadOverview = React.useCallback(async () => {
     const [statsData, systemData] = await Promise.all([
@@ -342,10 +811,20 @@ export default function JazzbaiSuperAdminPage() {
         venues: LookupVenue[];
         matches: LookupMatch[];
         leagues: LookupLeague[];
+        sports: LookupSport[];
+        teams: LookupTeam[];
+        stadiums: LookupStadium[];
+        owners: LookupOwner[];
+        attributes: LookupAttribute[];
       }>("/lookups");
       setLookupVenues(data.venues || []);
       setLookupMatches(data.matches || []);
       setLookupLeagues(data.leagues || []);
+      setLookupSports(data.sports || []);
+      setLookupTeams(data.teams || []);
+      setLookupStadiums(data.stadiums || []);
+      setLookupOwners(data.owners || []);
+      setLookupAttributes(data.attributes || []);
     } finally {
       setLookupsLoading(false);
     }
@@ -358,7 +837,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load users");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load users"));
       setUsers(payload.data || []);
       setUsersMeta(payload.meta || null);
     } finally {
@@ -373,7 +852,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load venues");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load venues"));
       setVenues(payload.data || []);
       setVenuesMeta(payload.meta || null);
     } finally {
@@ -388,13 +867,48 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load events");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load events"));
       setEvents(payload.data || []);
       setEventsMeta(payload.meta || null);
     } finally {
       setEventsLoading(false);
     }
   }, [eventsSearch]);
+
+  const loadAttributes = React.useCallback(async () => {
+    setAttributesLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (attributesSearch.trim()) params.set("search", attributesSearch.trim());
+      if (attributeTypeFilter !== "ALL") params.set("type", attributeTypeFilter);
+      params.set("includeInactive", "true");
+      const rows = await superAdminFetch<VenueAttributeRow[]>(`/attributes?${params.toString()}`);
+      setAttributesRows(rows || []);
+    } finally {
+      setAttributesLoading(false);
+    }
+  }, [attributeTypeFilter, attributesSearch]);
+
+  const loadTeamsAdmin = React.useCallback(async () => {
+    setTeamsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "50",
+        includeInactive: "true",
+      });
+      if (teamsSearch.trim()) params.set("search", teamsSearch.trim());
+      const response = await fetch(`/api/v1/super-admin/teams?${params.toString()}`, {
+        credentials: "include",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load teams"));
+      setTeamsRows(payload.data || []);
+      setTeamsMeta(payload.meta || null);
+    } finally {
+      setTeamsLoading(false);
+    }
+  }, [teamsSearch]);
 
   const loadCustomEvents = React.useCallback(async () => {
     setCustomEventsLoading(true);
@@ -403,7 +917,7 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load custom events");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load custom events"));
       setCustomEvents(payload.data || []);
       setCustomEventsMeta(payload.meta || null);
     } finally {
@@ -418,13 +932,88 @@ export default function JazzbaiSuperAdminPage() {
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || "Failed to load matches");
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load matches"));
       setMatches(payload.data || []);
       setMatchesMeta(payload.meta || null);
     } finally {
       setMatchesLoading(false);
     }
   }, [matchesSearch]);
+
+  const loadSportsAdmin = React.useCallback(async () => {
+    setSportsLoading(true);
+    try {
+      const response = await fetch(`/api/v1/super-admin/sports?page=1&limit=120&search=${encodeURIComponent(sportsSearch.trim())}`, {
+        credentials: "include",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load sports"));
+      setSportsRows(payload.data || []);
+      setSportsMeta(payload.meta || null);
+    } finally {
+      setSportsLoading(false);
+    }
+  }, [sportsSearch]);
+
+  const loadLeaguesAdmin = React.useCallback(async () => {
+    setAdminLeaguesLoading(true);
+    try {
+      const response = await fetch(`/api/v1/super-admin/leagues?page=1&limit=150&search=${encodeURIComponent(adminLeaguesSearch.trim())}`, {
+        credentials: "include",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load leagues"));
+      setAdminLeagues(payload.data || []);
+      setAdminLeaguesMeta(payload.meta || null);
+    } finally {
+      setAdminLeaguesLoading(false);
+    }
+  }, [adminLeaguesSearch]);
+
+  const mergeLookupTeams = React.useCallback((rows: LookupTeam[]) => {
+    setLookupTeams((prev) => dedupeById([...rows, ...prev]));
+  }, []);
+
+  const mergeLookupStadiums = React.useCallback((rows: LookupStadium[]) => {
+    setLookupStadiums((prev) => dedupeById([...rows, ...prev]));
+  }, []);
+
+  const searchTeams = React.useCallback(async (query: string, leagueId?: string) => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("search", query.trim());
+    if (leagueId) params.set("leagueId", leagueId);
+    params.set("limit", "12");
+    const rows = await superAdminFetch<LookupTeam[]>(`/teams?${params.toString()}`);
+    mergeLookupTeams(rows);
+    return rows;
+  }, [mergeLookupTeams]);
+
+  const searchStadiums = React.useCallback(async (query: string) => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("search", query.trim());
+    params.set("limit", "12");
+    const rows = await superAdminFetch<LookupStadium[]>(`/stadiums?${params.toString()}`);
+    mergeLookupStadiums(rows);
+    return rows;
+  }, [mergeLookupStadiums]);
+
+  const createTeam = React.useCallback(async (payload: { name: string; shortName?: string; leagueId?: string | null }) => {
+    const team = await superAdminFetch<LookupTeam>("/teams", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    mergeLookupTeams([team]);
+    return team;
+  }, [mergeLookupTeams]);
+
+  const createStadium = React.useCallback(async (payload: { name: string; city?: string; country?: string }) => {
+    const stadium = await superAdminFetch<LookupStadium>("/stadiums", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    mergeLookupStadiums([stadium]);
+    return stadium;
+  }, [mergeLookupStadiums]);
 
   const loadTabData = React.useCallback(async (tab: TabId) => {
     if (tab === "overview") {
@@ -439,6 +1028,14 @@ export default function JazzbaiSuperAdminPage() {
       await Promise.all([loadVenues(), loadLookups()]);
       return;
     }
+    if (tab === "attributes") {
+      await Promise.all([loadAttributes(), loadLookups()]);
+      return;
+    }
+    if (tab === "teams") {
+      await Promise.all([loadTeamsAdmin(), loadLookups()]);
+      return;
+    }
     if (tab === "events") {
       await Promise.all([loadEvents(), loadLookups()]);
       return;
@@ -447,8 +1044,20 @@ export default function JazzbaiSuperAdminPage() {
       await Promise.all([loadCustomEvents(), loadLookups()]);
       return;
     }
+    if (tab === "sports") {
+      await loadSportsAdmin();
+      return;
+    }
+    if (tab === "leagues") {
+      await Promise.all([loadLeaguesAdmin(), loadLookups()]);
+      return;
+    }
+    if (tab === "imports") {
+      await loadLookups();
+      return;
+    }
     await Promise.all([loadMatches(), loadLookups()]);
-  }, [loadCustomEvents, loadEvents, loadLookups, loadMatches, loadOverview, loadUsers, loadVenues]);
+  }, [loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
 
   React.useEffect(() => {
     async function checkSession() {
@@ -471,6 +1080,11 @@ export default function JazzbaiSuperAdminPage() {
     if (!authenticated) return;
     void loadTabData(activeTab);
   }, [activeTab, authenticated, loadTabData]);
+
+  React.useEffect(() => {
+    if (newLeague.sportId || lookupSports.length === 0) return;
+    setNewLeague((prev) => ({ ...prev, sportId: lookupSports[0].id }));
+  }, [lookupSports, newLeague.sportId]);
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -509,6 +1123,11 @@ export default function JazzbaiSuperAdminPage() {
       setEvents([]);
       setCustomEvents([]);
       setMatches([]);
+      setAttributesRows([]);
+      setTeamsRows([]);
+      setSportsRows([]);
+      setAdminLeagues([]);
+      setCsvImportResult(null);
     }
   };
 
@@ -521,6 +1140,31 @@ export default function JazzbaiSuperAdminPage() {
       setError(err instanceof Error ? err.message : "Action failed");
     } finally {
       setSubmittingAction(null);
+    }
+  };
+
+  const handleCsvImport = async () => {
+    if (!csvImportText.trim()) {
+      setError("CSV content is required.");
+      return;
+    }
+
+    setError(null);
+    setCsvImporting(true);
+    try {
+      const result = await superAdminFetch<CsvImportResult>("/matches/import", {
+        method: "POST",
+        body: JSON.stringify({
+          csv: csvImportText,
+          dryRun: csvImportDryRun,
+        }),
+      });
+      setCsvImportResult(result);
+      await Promise.all([loadMatches(), loadOverview(), loadLookups()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "CSV import failed");
+    } finally {
+      setCsvImporting(false);
     }
   };
 
@@ -578,7 +1222,7 @@ export default function JazzbaiSuperAdminPage() {
                   onChange={(e) => setLoginPassword(e.target.value)}
                   type="password"
                   autoComplete="current-password"
-                  placeholder="••••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   style={{ width: "100%", borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", color: "var(--foreground)", padding: "11px 12px", fontSize: 14 }}
                   required
                 />
@@ -676,7 +1320,49 @@ export default function JazzbaiSuperAdminPage() {
   const venuesCount = venuesMeta?.total ?? venues.length;
   const eventsCount = eventsMeta?.total ?? events.length;
   const customEventsCount = customEventsMeta?.total ?? customEvents.length;
+  const attributesCount = attributesRows.length;
+  const teamsCount = teamsMeta?.total ?? teamsRows.length;
+  const sportsCount = sportsMeta?.total ?? sportsRows.length;
+  const leaguesCount = adminLeaguesMeta?.total ?? adminLeagues.length;
   const matchesCount = matchesMeta?.total ?? matches.length;
+  const leagueLabelById = new Map(
+    lookupLeagues.map((league) => [league.id, league.shortName || league.name]),
+  );
+  const ownerLabelById = new Map(
+    lookupOwners.map((owner) => [owner.id, `${owner.name} (${owner.email})`]),
+  );
+  const attributeOptionsByType = new Map<VenueAttributeType, LookupAttribute[]>(
+    (["AMENITY", "VIBE", "CUISINE"] as VenueAttributeType[]).map((type) => [
+      type,
+      lookupAttributes.filter((item) => item.type === type).sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)),
+    ]),
+  );
+  const defaultTeamOptions = lookupTeams.slice(0, 12).map((team) => teamToOption(team, leagueLabelById));
+  const defaultStadiumOptions = lookupStadiums.slice(0, 12).map(stadiumToOption);
+
+  const textareaStyle: React.CSSProperties = {
+    ...inputStyle,
+    minHeight: 88,
+    resize: "vertical",
+  };
+
+  const multiSelectStyle: React.CSSProperties = {
+    ...inputStyle,
+    minHeight: 120,
+    padding: 8,
+  };
+
+  const toCsvList = (values?: string[] | null) => (values || []).join(", ");
+  const parseCsvList = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+  const ensureAttributeValues = (type: VenueAttributeType, values: string[] = []) => {
+    const options = [...(attributeOptionsByType.get(type) || [])];
+    for (const value of values) {
+      if (!options.some((option) => option.slug === value)) {
+        options.push({ id: `legacy-${type}-${value}`, type, label: value, slug: value, sortOrder: 9999, isActive: false });
+      }
+    }
+    return options.sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
+  };
 
   return (
     <AppShell>
@@ -719,8 +1405,13 @@ export default function JazzbaiSuperAdminPage() {
             ["overview", "Overview"],
             ["users", "Users"],
             ["venues", "Venues"],
+            ["attributes", "Attributes"],
+            ["teams", "Teams"],
             ["events", "Match Events"],
             ["customEvents", "Custom Events"],
+            ["sports", "Sports"],
+            ["leagues", "Leagues"],
+            ["imports", "CSV Import"],
             ["matches", "Matches"],
           ] as Array<[TabId, string]>).map(([id, label]) => (
             <button
@@ -809,6 +1500,7 @@ export default function JazzbaiSuperAdminPage() {
                 <input style={inputStyle} placeholder="Password" type="password" value={newUser.password} onChange={(e) => setNewUser((prev) => ({ ...prev, password: e.target.value }))} />
                 <select style={inputStyle} value={newUser.role} onChange={(e) => setNewUser((prev) => ({ ...prev, role: e.target.value as UserRow["role"] }))}>
                   <option value="USER">USER</option>
+                  <option value="BUSINESS">BUSINESS</option>
                   <option value="VENUE_OWNER">VENUE_OWNER</option>
                   <option value="ADMIN">ADMIN</option>
                   <option value="SUPER_ADMIN">SUPER_ADMIN</option>
@@ -874,6 +1566,7 @@ export default function JazzbaiSuperAdminPage() {
                           <td style={tdStyle}>
                             <select style={inputStyle} value={String(draft.role ?? "USER")} onChange={(e) => setUserDrafts((prev) => ({ ...prev, [row.id]: { ...draft, role: e.target.value as UserRow["role"] } }))}>
                               <option value="USER">USER</option>
+                              <option value="BUSINESS">BUSINESS</option>
                               <option value="VENUE_OWNER">VENUE_OWNER</option>
                               <option value="ADMIN">ADMIN</option>
                               <option value="SUPER_ADMIN">SUPER_ADMIN</option>
@@ -937,15 +1630,85 @@ export default function JazzbaiSuperAdminPage() {
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Venue</h2>
               </div>
               <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                <input style={inputStyle} placeholder="Owner email" value={newVenue.ownerEmail} onChange={(e) => setNewVenue((prev) => ({ ...prev, ownerEmail: e.target.value }))} />
+                <select style={inputStyle} value={newVenue.ownerId} onChange={(e) => setNewVenue((prev) => ({ ...prev, ownerId: e.target.value }))}>
+                  <option value="">Owner</option>
+                  {lookupOwners.map((owner) => (
+                    <option key={owner.id} value={owner.id}>{owner.name} ({owner.email})</option>
+                  ))}
+                </select>
                 <input style={inputStyle} placeholder="Venue name" value={newVenue.name} onChange={(e) => setNewVenue((prev) => ({ ...prev, name: e.target.value }))} />
+                <input style={inputStyle} placeholder="Slug (optional)" value={newVenue.slug} onChange={(e) => setNewVenue((prev) => ({ ...prev, slug: e.target.value }))} />
+                <input style={inputStyle} placeholder="Short description" value={newVenue.shortDescription} onChange={(e) => setNewVenue((prev) => ({ ...prev, shortDescription: e.target.value }))} />
                 <input style={inputStyle} placeholder="Address" value={newVenue.addressLine1} onChange={(e) => setNewVenue((prev) => ({ ...prev, addressLine1: e.target.value }))} />
+                <input style={inputStyle} placeholder="Address line 2" value={newVenue.addressLine2} onChange={(e) => setNewVenue((prev) => ({ ...prev, addressLine2: e.target.value }))} />
                 <input style={inputStyle} placeholder="City" value={newVenue.city} onChange={(e) => setNewVenue((prev) => ({ ...prev, city: e.target.value }))} />
+                <input style={inputStyle} placeholder="State / Province" value={newVenue.stateProvince} onChange={(e) => setNewVenue((prev) => ({ ...prev, stateProvince: e.target.value }))} />
                 <input style={inputStyle} placeholder="Country" value={newVenue.country} onChange={(e) => setNewVenue((prev) => ({ ...prev, country: e.target.value }))} />
+                <input style={inputStyle} placeholder="Postal code" value={newVenue.postalCode} onChange={(e) => setNewVenue((prev) => ({ ...prev, postalCode: e.target.value }))} />
                 <input style={inputStyle} placeholder="Lat" value={newVenue.lat} onChange={(e) => setNewVenue((prev) => ({ ...prev, lat: e.target.value }))} />
                 <input style={inputStyle} placeholder="Lng" value={newVenue.lng} onChange={(e) => setNewVenue((prev) => ({ ...prev, lng: e.target.value }))} />
                 <input style={inputStyle} placeholder="Timezone" value={newVenue.timezone} onChange={(e) => setNewVenue((prev) => ({ ...prev, timezone: e.target.value }))} />
+                <input style={inputStyle} placeholder="Phone" value={newVenue.phone} onChange={(e) => setNewVenue((prev) => ({ ...prev, phone: e.target.value }))} />
+                <input style={inputStyle} placeholder="Website" value={newVenue.website} onChange={(e) => setNewVenue((prev) => ({ ...prev, website: e.target.value }))} />
+                <input style={inputStyle} placeholder="Instagram handle" value={newVenue.instagramHandle} onChange={(e) => setNewVenue((prev) => ({ ...prev, instagramHandle: e.target.value }))} />
+                <input style={inputStyle} placeholder="Google Maps URL" value={newVenue.googleMapsUrl} onChange={(e) => setNewVenue((prev) => ({ ...prev, googleMapsUrl: e.target.value }))} />
                 <input style={inputStyle} placeholder="Cover image URL" value={newVenue.coverImageUrl} onChange={(e) => setNewVenue((prev) => ({ ...prev, coverImageUrl: e.target.value }))} />
+                <input style={inputStyle} placeholder="Cover image S3 key" value={newVenue.coverImageS3Key} onChange={(e) => setNewVenue((prev) => ({ ...prev, coverImageS3Key: e.target.value }))} />
+                <input style={inputStyle} placeholder="Gallery URLs (comma separated)" value={toCsvList(newVenue.galleryImageUrls)} onChange={(e) => setNewVenue((prev) => ({ ...prev, galleryImageUrls: parseCsvList(e.target.value) }))} />
+                <input style={inputStyle} placeholder="Gallery S3 keys (comma separated)" value={toCsvList(newVenue.galleryS3Keys)} onChange={(e) => setNewVenue((prev) => ({ ...prev, galleryS3Keys: parseCsvList(e.target.value) }))} />
+                <input style={inputStyle} placeholder="Capacity" value={newVenue.capacity} onChange={(e) => setNewVenue((prev) => ({ ...prev, capacity: e.target.value }))} />
+                <select style={inputStyle} value={newVenue.priceRange} onChange={(e) => setNewVenue((prev) => ({ ...prev, priceRange: e.target.value as "BUDGET" | "MID" | "UPSCALE" | "LUXURY" }))}>
+                  <option value="BUDGET">BUDGET</option>
+                  <option value="MID">MID</option>
+                  <option value="UPSCALE">UPSCALE</option>
+                  <option value="LUXURY">LUXURY</option>
+                </select>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <input type="checkbox" checked={newVenue.isVerified} onChange={(e) => setNewVenue((prev) => ({ ...prev, isVerified: e.target.checked }))} />
+                  Verified
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <input type="checkbox" checked={newVenue.isActive} onChange={(e) => setNewVenue((prev) => ({ ...prev, isActive: e.target.checked }))} />
+                  Active
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <input type="checkbox" checked={newVenue.isFeatured} onChange={(e) => setNewVenue((prev) => ({ ...prev, isFeatured: e.target.checked }))} />
+                  Featured
+                </label>
+                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1" }} placeholder="Description" value={newVenue.description} onChange={(e) => setNewVenue((prev) => ({ ...prev, description: e.target.value }))} />
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Amenities</span>
+                  <select multiple style={multiSelectStyle} value={newVenue.amenities} onChange={(e) => {
+                    const amenities = getMultiSelectValues(e.currentTarget);
+                    setNewVenue((prev) => ({ ...prev, amenities }));
+                  }}>
+                    {ensureAttributeValues("AMENITY", newVenue.amenities).map((item) => (
+                      <option key={item.slug} value={item.slug}>{item.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Vibes</span>
+                  <select multiple style={multiSelectStyle} value={newVenue.vibes} onChange={(e) => {
+                    const vibes = getMultiSelectValues(e.currentTarget);
+                    setNewVenue((prev) => ({ ...prev, vibes }));
+                  }}>
+                    {ensureAttributeValues("VIBE", newVenue.vibes).map((item) => (
+                      <option key={item.slug} value={item.slug}>{item.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cuisine</span>
+                  <select multiple style={multiSelectStyle} value={newVenue.cuisineTags} onChange={(e) => {
+                    const cuisineTags = getMultiSelectValues(e.currentTarget);
+                    setNewVenue((prev) => ({ ...prev, cuisineTags }));
+                  }}>
+                    {ensureAttributeValues("CUISINE", newVenue.cuisineTags).map((item) => (
+                      <option key={item.slug} value={item.slug}>{item.label}</option>
+                    ))}
+                  </select>
+                </label>
                 <button
                   style={smallBtn("primary", submittingAction === "create-venue")}
                   disabled={submittingAction === "create-venue"}
@@ -954,21 +1717,55 @@ export default function JazzbaiSuperAdminPage() {
                       method: "POST",
                       body: JSON.stringify({
                         ...newVenue,
+                        ownerId: newVenue.ownerId || undefined,
+                        slug: newVenue.slug || undefined,
+                        description: newVenue.description || undefined,
+                        shortDescription: newVenue.shortDescription || undefined,
+                        addressLine2: newVenue.addressLine2 || undefined,
+                        stateProvince: newVenue.stateProvince || undefined,
+                        postalCode: newVenue.postalCode || undefined,
+                        phone: newVenue.phone || undefined,
+                        website: newVenue.website || undefined,
+                        instagramHandle: newVenue.instagramHandle || undefined,
+                        googleMapsUrl: newVenue.googleMapsUrl || undefined,
+                        coverImageUrl: newVenue.coverImageUrl || undefined,
+                        coverImageS3Key: newVenue.coverImageS3Key || undefined,
                         lat: Number(newVenue.lat),
                         lng: Number(newVenue.lng),
+                        capacity: newVenue.capacity ? Number(newVenue.capacity) : undefined,
                       }),
                     });
                     setNewVenue({
-                      ownerEmail: "",
+                      ownerId: "",
                       name: "",
+                      slug: "",
+                      description: "",
+                      shortDescription: "",
                       addressLine1: "",
+                      addressLine2: "",
                       city: "Houston",
+                      stateProvince: "Texas",
                       country: "US",
+                      postalCode: "",
                       lat: "29.7604",
                       lng: "-95.3698",
                       timezone: "America/Chicago",
                       phone: "",
                       coverImageUrl: "",
+                      coverImageS3Key: "",
+                      galleryImageUrls: [],
+                      galleryS3Keys: [],
+                      website: "",
+                      instagramHandle: "",
+                      googleMapsUrl: "",
+                      capacity: "",
+                      priceRange: "MID",
+                      amenities: [],
+                      vibes: [],
+                      cuisineTags: [],
+                      isVerified: false,
+                      isActive: true,
+                      isFeatured: false,
                     });
                     await Promise.all([loadVenues(), loadLookups(), loadOverview()]);
                   })}
@@ -986,92 +1783,446 @@ export default function JazzbaiSuperAdminPage() {
                   <button style={smallBtn("outline", venuesLoading)} onClick={() => void loadVenues()} disabled={venuesLoading}>Search</button>
                 </div>
               </div>
+              <div style={{ padding: 14, display: "grid", gap: 12 }}>
+                {venues.map((row) => {
+                  const draft = venueDrafts[row.id] ?? {
+                    ownerId: row.ownerId,
+                    name: row.name,
+                    slug: row.slug,
+                    description: row.description || "",
+                    shortDescription: row.shortDescription || "",
+                    addressLine1: row.addressLine1,
+                    addressLine2: row.addressLine2 || "",
+                    city: row.city,
+                    stateProvince: row.stateProvince || "",
+                    country: row.country,
+                    postalCode: row.postalCode || "",
+                    lat: String(row.lat),
+                    lng: String(row.lng),
+                    timezone: row.timezone,
+                    phone: row.phone || "",
+                    website: row.website || "",
+                    instagramHandle: row.instagramHandle || "",
+                    googleMapsUrl: row.googleMapsUrl || "",
+                    coverImageUrl: row.coverImageUrl || "",
+                    coverImageS3Key: row.coverImageS3Key || "",
+                    galleryImageUrls: row.galleryImageUrls || [],
+                    galleryS3Keys: row.galleryS3Keys || [],
+                    capacity: row.capacity == null ? "" : String(row.capacity),
+                    priceRange: row.priceRange || "MID",
+                    amenities: row.amenities || [],
+                    vibes: row.vibes || [],
+                    cuisineTags: row.cuisineTags || [],
+                    isVerified: row.isVerified,
+                    isActive: row.isActive,
+                    isFeatured: row.isFeatured,
+                  };
+                  return (
+                    <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 14, display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
+                          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                            {row.id} • {ownerLabelById.get(row.ownerId) || row.ownerEmail || row.ownerId} • Created {formatDateTime(row.createdAt)}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            style={smallBtn("primary", submittingAction === `save-venue-${row.id}`)}
+                            disabled={submittingAction === `save-venue-${row.id}`}
+                            onClick={() => void runAction(`save-venue-${row.id}`, async () => {
+                              await superAdminFetch(`/venues/${row.id}`, {
+                                method: "PATCH",
+                                body: JSON.stringify({
+                                  ownerId: draft.ownerId,
+                                  name: draft.name,
+                                  slug: draft.slug,
+                                  description: draft.description || null,
+                                  shortDescription: draft.shortDescription || null,
+                                  addressLine1: draft.addressLine1,
+                                  addressLine2: draft.addressLine2 || null,
+                                  city: draft.city,
+                                  stateProvince: draft.stateProvince || null,
+                                  country: draft.country,
+                                  postalCode: draft.postalCode || null,
+                                  lat: draft.lat ? Number(draft.lat) : undefined,
+                                  lng: draft.lng ? Number(draft.lng) : undefined,
+                                  timezone: draft.timezone,
+                                  phone: draft.phone || null,
+                                  website: draft.website || null,
+                                  instagramHandle: draft.instagramHandle || null,
+                                  googleMapsUrl: draft.googleMapsUrl || null,
+                                  coverImageUrl: draft.coverImageUrl || null,
+                                  coverImageS3Key: draft.coverImageS3Key || null,
+                                  galleryImageUrls: Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [],
+                                  galleryS3Keys: Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [],
+                                  capacity: draft.capacity ? Number(draft.capacity) : null,
+                                  priceRange: draft.priceRange,
+                                  amenities: Array.isArray(draft.amenities) ? draft.amenities : [],
+                                  vibes: Array.isArray(draft.vibes) ? draft.vibes : [],
+                                  cuisineTags: Array.isArray(draft.cuisineTags) ? draft.cuisineTags : [],
+                                  isVerified: draft.isVerified,
+                                  isActive: draft.isActive,
+                                  isFeatured: draft.isFeatured,
+                                }),
+                              });
+                              await Promise.all([loadVenues(), loadLookups(), loadOverview()]);
+                            })}
+                          >
+                            Save
+                          </button>
+                          <button
+                            style={smallBtn("danger", submittingAction === `archive-venue-${row.id}`)}
+                            disabled={submittingAction === `archive-venue-${row.id}`}
+                            onClick={() => void runAction(`archive-venue-${row.id}`, async () => {
+                              await superAdminFetch(`/venues/${row.id}`, { method: "DELETE" });
+                              await Promise.all([loadVenues(), loadLookups(), loadOverview()]);
+                            })}
+                          >
+                            Archive
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                        <select style={inputStyle} value={String(draft.ownerId ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, ownerId: e.target.value } }))}>
+                          <option value="">Owner</option>
+                          {lookupOwners.map((owner) => (
+                            <option key={owner.id} value={owner.id}>{owner.name} ({owner.email})</option>
+                          ))}
+                        </select>
+                        <input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} placeholder="Venue name" />
+                        <input style={inputStyle} value={String(draft.slug ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, slug: e.target.value } }))} placeholder="Slug" />
+                        <input style={inputStyle} value={String(draft.shortDescription ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortDescription: e.target.value } }))} placeholder="Short description" />
+                        <input style={inputStyle} value={String(draft.addressLine1 ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, addressLine1: e.target.value } }))} placeholder="Address line 1" />
+                        <input style={inputStyle} value={String(draft.addressLine2 ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, addressLine2: e.target.value } }))} placeholder="Address line 2" />
+                        <input style={inputStyle} value={String(draft.city ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, city: e.target.value } }))} placeholder="City" />
+                        <input style={inputStyle} value={String(draft.stateProvince ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, stateProvince: e.target.value } }))} placeholder="State / Province" />
+                        <input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} placeholder="Country" />
+                        <input style={inputStyle} value={String(draft.postalCode ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, postalCode: e.target.value } }))} placeholder="Postal code" />
+                        <input style={inputStyle} value={String(draft.lat ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, lat: e.target.value } }))} placeholder="Lat" />
+                        <input style={inputStyle} value={String(draft.lng ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, lng: e.target.value } }))} placeholder="Lng" />
+                        <input style={inputStyle} value={String(draft.timezone ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, timezone: e.target.value } }))} placeholder="Timezone" />
+                        <input style={inputStyle} value={String(draft.phone ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, phone: e.target.value } }))} placeholder="Phone" />
+                        <input style={inputStyle} value={String(draft.website ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, website: e.target.value } }))} placeholder="Website" />
+                        <input style={inputStyle} value={String(draft.instagramHandle ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, instagramHandle: e.target.value } }))} placeholder="Instagram handle" />
+                        <input style={inputStyle} value={String(draft.googleMapsUrl ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, googleMapsUrl: e.target.value } }))} placeholder="Google Maps URL" />
+                        <input style={inputStyle} value={String(draft.coverImageUrl ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, coverImageUrl: e.target.value } }))} placeholder="Cover image URL" />
+                        <input style={inputStyle} value={String(draft.coverImageS3Key ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, coverImageS3Key: e.target.value } }))} placeholder="Cover image S3 key" />
+                        <input style={inputStyle} value={toCsvList(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [])} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, galleryImageUrls: parseCsvList(e.target.value) } }))} placeholder="Gallery URLs" />
+                        <input style={inputStyle} value={toCsvList(Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [])} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, galleryS3Keys: parseCsvList(e.target.value) } }))} placeholder="Gallery S3 keys" />
+                        <input style={inputStyle} value={String(draft.capacity ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, capacity: e.target.value } }))} placeholder="Capacity" />
+                        <select style={inputStyle} value={String(draft.priceRange ?? "MID")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, priceRange: e.target.value as VenueRow["priceRange"] } }))}>
+                          <option value="BUDGET">BUDGET</option>
+                          <option value="MID">MID</option>
+                          <option value="UPSCALE">UPSCALE</option>
+                          <option value="LUXURY">LUXURY</option>
+                        </select>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                          <input type="checkbox" checked={Boolean(draft.isVerified)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isVerified: e.target.checked } }))} />
+                          Verified
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                          <input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} />
+                          Active
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                          <input type="checkbox" checked={Boolean(draft.isFeatured)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isFeatured: e.target.checked } }))} />
+                          Featured
+                        </label>
+                        <textarea style={{ ...textareaStyle, gridColumn: "1 / -1" }} value={String(draft.description ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, description: e.target.value } }))} placeholder="Description" />
+                        <label style={{ display: "grid", gap: 6 }}>
+                          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Amenities</span>
+                          <select multiple style={multiSelectStyle} value={Array.isArray(draft.amenities) ? draft.amenities : []} onChange={(e) => {
+                            const amenities = getMultiSelectValues(e.currentTarget);
+                            setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, amenities } }));
+                          }}>
+                            {ensureAttributeValues("AMENITY", Array.isArray(draft.amenities) ? draft.amenities : []).map((item) => (
+                              <option key={item.slug} value={item.slug}>{item.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label style={{ display: "grid", gap: 6 }}>
+                          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Vibes</span>
+                          <select multiple style={multiSelectStyle} value={Array.isArray(draft.vibes) ? draft.vibes : []} onChange={(e) => {
+                            const vibes = getMultiSelectValues(e.currentTarget);
+                            setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, vibes } }));
+                          }}>
+                            {ensureAttributeValues("VIBE", Array.isArray(draft.vibes) ? draft.vibes : []).map((item) => (
+                              <option key={item.slug} value={item.slug}>{item.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label style={{ display: "grid", gap: 6 }}>
+                          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cuisine</span>
+                          <select multiple style={multiSelectStyle} value={Array.isArray(draft.cuisineTags) ? draft.cuisineTags : []} onChange={(e) => {
+                            const cuisineTags = getMultiSelectValues(e.currentTarget);
+                            setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, cuisineTags } }));
+                          }}>
+                            {ensureAttributeValues("CUISINE", Array.isArray(draft.cuisineTags) ? draft.cuisineTags : []).map((item) => (
+                              <option key={item.slug} value={item.slug}>{item.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "attributes" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Attribute</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.1fr 1.5fr 1.3fr 0.8fr 0.8fr auto" }}>
+                <select style={inputStyle} value={newAttribute.type} onChange={(e) => setNewAttribute((prev) => ({ ...prev, type: e.target.value as VenueAttributeType }))}>
+                  <option value="AMENITY">AMENITY</option>
+                  <option value="VIBE">VIBE</option>
+                  <option value="CUISINE">CUISINE</option>
+                </select>
+                <input style={inputStyle} placeholder="Label" value={newAttribute.label} onChange={(e) => setNewAttribute((prev) => ({ ...prev, label: e.target.value }))} />
+                <input style={inputStyle} placeholder="Slug (optional)" value={newAttribute.slug} onChange={(e) => setNewAttribute((prev) => ({ ...prev, slug: e.target.value }))} />
+                <input style={inputStyle} placeholder="Sort" value={newAttribute.sortOrder} onChange={(e) => setNewAttribute((prev) => ({ ...prev, sortOrder: e.target.value }))} />
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <input type="checkbox" checked={newAttribute.isActive} onChange={(e) => setNewAttribute((prev) => ({ ...prev, isActive: e.target.checked }))} />
+                  Active
+                </label>
+                <button
+                  style={smallBtn("primary", submittingAction === "create-attribute")}
+                  disabled={submittingAction === "create-attribute"}
+                  onClick={() => void runAction("create-attribute", async () => {
+                    await superAdminFetch("/attributes", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        type: newAttribute.type,
+                        label: newAttribute.label,
+                        slug: newAttribute.slug || undefined,
+                        sortOrder: Number(newAttribute.sortOrder || "0"),
+                        isActive: newAttribute.isActive,
+                      }),
+                    });
+                    setNewAttribute({ type: "AMENITY", label: "", slug: "", sortOrder: "0", isActive: true });
+                    await Promise.all([loadAttributes(), loadLookups()]);
+                  })}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Attributes ({attributesCount})</h2>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <select style={inputStyle} value={attributeTypeFilter} onChange={(e) => setAttributeTypeFilter(e.target.value as VenueAttributeType | "ALL")}>
+                    <option value="ALL">All types</option>
+                    <option value="AMENITY">Amenities</option>
+                    <option value="VIBE">Vibes</option>
+                    <option value="CUISINE">Cuisine</option>
+                  </select>
+                  <input value={attributesSearch} onChange={(e) => setAttributesSearch(e.target.value)} placeholder="Search attributes" style={{ ...inputStyle, minWidth: 220 }} />
+                  <button style={smallBtn("outline", attributesLoading)} onClick={() => void loadAttributes()} disabled={attributesLoading}>Search</button>
+                </div>
+              </div>
               <div style={tableWrapStyle}>
                 <table style={tableStyle}>
                   <thead>
                     <tr>
-                      <th style={thStyle}>Name</th>
-                      <th style={thStyle}>Owner</th>
-                      <th style={thStyle}>City</th>
-                      <th style={thStyle}>Cover</th>
-                      <th style={thStyle}>Gallery URLs</th>
-                      <th style={thStyle}>Verified</th>
+                      <th style={thStyle}>Type</th>
+                      <th style={thStyle}>Label</th>
+                      <th style={thStyle}>Slug</th>
+                      <th style={thStyle}>Sort</th>
                       <th style={thStyle}>Active</th>
-                      <th style={thStyle}>Featured</th>
+                      <th style={thStyle}>Updated</th>
                       <th style={thStyle}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {venues.map((row) => {
-                      const draft = venueDrafts[row.id] ?? {
-                        name: row.name,
-                        city: row.city,
-                        coverImageUrl: row.coverImageUrl || "",
-                        galleryImageUrls: row.galleryImageUrls || [],
-                        isVerified: row.isVerified,
+                    {attributesRows.map((row) => {
+                      const draft = attributeDrafts[row.id] ?? {
+                        label: row.label,
+                        slug: row.slug,
+                        sortOrder: row.sortOrder,
                         isActive: row.isActive,
-                        isFeatured: row.isFeatured,
                       };
                       return (
                         <tr key={row.id}>
-                          <td style={tdStyle}>
-                            <input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} />
-                          </td>
-                          <td style={tdStyle}>{row.ownerEmail || row.ownerId}</td>
-                          <td style={tdStyle}>
-                            <input style={inputStyle} value={String(draft.city ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, city: e.target.value } }))} />
-                          </td>
-                          <td style={tdStyle}>
-                            <input style={inputStyle} value={String(draft.coverImageUrl ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, coverImageUrl: e.target.value } }))} />
-                          </td>
-                          <td style={tdStyle}>
-                            <input
-                              style={inputStyle}
-                              value={Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls.join(", ") : ""}
-                              onChange={(e) => setVenueDrafts((prev) => ({
-                                ...prev,
-                                [row.id]: {
-                                  ...draft,
-                                  galleryImageUrls: e.target.value
-                                    .split(",")
-                                    .map((item) => item.trim())
-                                    .filter(Boolean),
-                                },
-                              }))}
-                            />
-                          </td>
-                          <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isVerified)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isVerified: e.target.checked } }))} /></td>
-                          <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
-                          <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isFeatured)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isFeatured: e.target.checked } }))} /></td>
+                          <td style={tdStyle}>{row.type}</td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.label ?? "")} onChange={(e) => setAttributeDrafts((prev) => ({ ...prev, [row.id]: { ...draft, label: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.slug ?? "")} onChange={(e) => setAttributeDrafts((prev) => ({ ...prev, [row.id]: { ...draft, slug: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.sortOrder ?? 0)} onChange={(e) => setAttributeDrafts((prev) => ({ ...prev, [row.id]: { ...draft, sortOrder: Number(e.target.value || "0") } }))} /></td>
+                          <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setAttributeDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
+                          <td style={tdStyle}>{formatDateTime(row.updatedAt)}</td>
                           <td style={tdStyle}>
                             <div style={{ display: "flex", gap: 6 }}>
                               <button
-                                style={smallBtn("primary", submittingAction === `save-venue-${row.id}`)}
-                                disabled={submittingAction === `save-venue-${row.id}`}
-                                onClick={() => void runAction(`save-venue-${row.id}`, async () => {
-                                  await superAdminFetch(`/venues/${row.id}`, {
+                                style={smallBtn("primary", submittingAction === `save-attribute-${row.id}`)}
+                                disabled={submittingAction === `save-attribute-${row.id}`}
+                                onClick={() => void runAction(`save-attribute-${row.id}`, async () => {
+                                  await superAdminFetch(`/attributes/${row.id}`, {
                                     method: "PATCH",
                                     body: JSON.stringify({
-                                      name: draft.name,
-                                      city: draft.city,
-                                      coverImageUrl: draft.coverImageUrl || null,
-                                      galleryImageUrls: draft.galleryImageUrls || [],
-                                      isVerified: draft.isVerified,
+                                      label: draft.label,
+                                      slug: draft.slug,
+                                      sortOrder: draft.sortOrder,
                                       isActive: draft.isActive,
-                                      isFeatured: draft.isFeatured,
                                     }),
                                   });
-                                  await Promise.all([loadVenues(), loadOverview()]);
+                                  await Promise.all([loadAttributes(), loadLookups()]);
                                 })}
                               >
                                 Save
                               </button>
                               <button
-                                style={smallBtn("danger", submittingAction === `archive-venue-${row.id}`)}
-                                disabled={submittingAction === `archive-venue-${row.id}`}
-                                onClick={() => void runAction(`archive-venue-${row.id}`, async () => {
-                                  await superAdminFetch(`/venues/${row.id}`, { method: "DELETE" });
-                                  await Promise.all([loadVenues(), loadOverview()]);
+                                style={smallBtn("danger", submittingAction === `archive-attribute-${row.id}`)}
+                                disabled={submittingAction === `archive-attribute-${row.id}`}
+                                onClick={() => void runAction(`archive-attribute-${row.id}`, async () => {
+                                  await superAdminFetch(`/attributes/${row.id}`, { method: "DELETE" });
+                                  await Promise.all([loadAttributes(), loadLookups()]);
+                                })}
+                              >
+                                Archive
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "teams" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Team</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1.6fr 1.2fr 2fr 1.2fr 0.8fr auto" }}>
+                <select style={inputStyle} value={newAdminTeam.leagueId} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, leagueId: e.target.value }))}>
+                  <option value="">No league</option>
+                  {lookupLeagues.map((league) => (
+                    <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
+                  ))}
+                </select>
+                <input style={inputStyle} placeholder="Team name" value={newAdminTeam.name} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, name: e.target.value }))} />
+                <input style={inputStyle} placeholder="Short name" value={newAdminTeam.shortName} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, shortName: e.target.value }))} />
+                <input style={inputStyle} placeholder="Crest URL" value={newAdminTeam.crestUrl} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, crestUrl: e.target.value }))} />
+                <input style={inputStyle} placeholder="External ID" value={newAdminTeam.externalId} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, externalId: e.target.value }))} />
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <input type="checkbox" checked={newAdminTeam.isActive} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, isActive: e.target.checked }))} />
+                  Active
+                </label>
+                <button
+                  style={smallBtn("primary", submittingAction === "create-admin-team")}
+                  disabled={submittingAction === "create-admin-team"}
+                  onClick={() => void runAction("create-admin-team", async () => {
+                    await superAdminFetch("/teams", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        leagueId: newAdminTeam.leagueId || null,
+                        name: newAdminTeam.name,
+                        shortName: newAdminTeam.shortName || null,
+                        crestUrl: newAdminTeam.crestUrl || null,
+                        externalId: newAdminTeam.externalId || null,
+                        isActive: newAdminTeam.isActive,
+                      }),
+                    });
+                    setNewAdminTeam({ leagueId: "", name: "", shortName: "", crestUrl: "", externalId: "", isActive: true });
+                    await Promise.all([loadTeamsAdmin(), loadLookups()]);
+                  })}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Teams ({teamsCount})</h2>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={teamsSearch} onChange={(e) => setTeamsSearch(e.target.value)} placeholder="Search teams" style={{ ...inputStyle, minWidth: 220 }} />
+                  <button style={smallBtn("outline", teamsLoading)} onClick={() => void loadTeamsAdmin()} disabled={teamsLoading}>Search</button>
+                </div>
+              </div>
+              <div style={tableWrapStyle}>
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>ID</th>
+                      <th style={thStyle}>League</th>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Short</th>
+                      <th style={thStyle}>Crest URL</th>
+                      <th style={thStyle}>External</th>
+                      <th style={thStyle}>Active</th>
+                      <th style={thStyle}>Created</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamsRows.map((row) => {
+                      const draft = teamDrafts[row.id] ?? {
+                        leagueId: row.leagueId || "",
+                        name: row.name,
+                        shortName: row.shortName || "",
+                        crestUrl: row.crestUrl || "",
+                        externalId: row.externalId || "",
+                        isActive: row.isActive,
+                      };
+                      return (
+                        <tr key={row.id}>
+                          <td style={tdStyle}>{row.id}</td>
+                          <td style={tdStyle}>
+                            <select style={inputStyle} value={String(draft.leagueId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, leagueId: e.target.value } }))}>
+                              <option value="">No league</option>
+                              {lookupLeagues.map((league) => (
+                                <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.crestUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, crestUrl: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
+                          <td style={tdStyle}>{formatDateTime(row.createdAt)}</td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                style={smallBtn("primary", submittingAction === `save-team-${row.id}`)}
+                                disabled={submittingAction === `save-team-${row.id}`}
+                                onClick={() => void runAction(`save-team-${row.id}`, async () => {
+                                  await superAdminFetch(`/teams/${row.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({
+                                      leagueId: draft.leagueId || null,
+                                      name: draft.name,
+                                      shortName: draft.shortName || null,
+                                      crestUrl: draft.crestUrl || null,
+                                      externalId: draft.externalId || null,
+                                      isActive: draft.isActive,
+                                    }),
+                                  });
+                                  await Promise.all([loadTeamsAdmin(), loadLookups()]);
+                                })}
+                              >
+                                Save
+                              </button>
+                              <button
+                                style={smallBtn("danger", submittingAction === `archive-team-${row.id}`)}
+                                disabled={submittingAction === `archive-team-${row.id}`}
+                                onClick={() => void runAction(`archive-team-${row.id}`, async () => {
+                                  await superAdminFetch(`/teams/${row.id}`, { method: "DELETE" });
+                                  await Promise.all([loadTeamsAdmin(), loadLookups()]);
                                 })}
                               >
                                 Archive
@@ -1358,33 +2509,435 @@ export default function JazzbaiSuperAdminPage() {
           </section>
         )}
 
-        {activeTab === "matches" && (
+        {activeTab === "sports" && (
           <section style={{ display: "grid", gap: 14 }}>
             <div style={cardStyle}>
               <div style={sectionHeadStyle}>
-                <div style={{ display: "grid", gap: 4 }}>
-                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Match</h2>
-                  <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                    Manual kickoff entry uses your detected browser timezone: <strong>{browserTimeZone}</strong>. It is automatically converted to UTC for storage and shown on the frontend in each viewer&apos;s local timezone.
-                  </div>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Sport</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "2fr 1.5fr 1fr 1fr auto" }}>
+                <input
+                  style={inputStyle}
+                  placeholder="Name (e.g. Soccer)"
+                  value={newSport.name}
+                  onChange={(e) => setNewSport((prev) => ({ ...prev, name: e.target.value }))}
+                />
+                <input
+                  style={inputStyle}
+                  placeholder="Slug (e.g. soccer)"
+                  value={newSport.slug}
+                  onChange={(e) => setNewSport((prev) => ({ ...prev, slug: e.target.value }))}
+                />
+                <input
+                  style={inputStyle}
+                  placeholder="Short name"
+                  value={newSport.shortName}
+                  onChange={(e) => setNewSport((prev) => ({ ...prev, shortName: e.target.value }))}
+                />
+                <input
+                  style={inputStyle}
+                  type="number"
+                  placeholder="Sort order"
+                  value={newSport.sortOrder}
+                  onChange={(e) => setNewSport((prev) => ({ ...prev, sortOrder: e.target.value }))}
+                />
+                <button
+                  style={smallBtn("primary", submittingAction === "create-sport")}
+                  disabled={submittingAction === "create-sport"}
+                  onClick={() => void runAction("create-sport", async () => {
+                    await superAdminFetch("/sports", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        name: newSport.name,
+                        slug: newSport.slug,
+                        shortName: newSport.shortName || undefined,
+                        sortOrder: Number(newSport.sortOrder || 0),
+                        isActive: newSport.isActive,
+                      }),
+                    });
+                    setNewSport({ name: "", slug: "", shortName: "", sortOrder: "0", isActive: true });
+                    await Promise.all([loadSportsAdmin(), loadLookups()]);
+                  })}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Sports ({sportsCount})</h2>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={sportsSearch} onChange={(e) => setSportsSearch(e.target.value)} placeholder="Search sports" style={{ ...inputStyle, minWidth: 220 }} />
+                  <button style={smallBtn("outline", sportsLoading)} onClick={() => void loadSportsAdmin()} disabled={sportsLoading}>Search</button>
                 </div>
               </div>
-              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "2fr 2fr 2fr 2fr 1.2fr 2fr auto" }}>
+              <div style={tableWrapStyle}>
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Slug</th>
+                      <th style={thStyle}>Short</th>
+                      <th style={thStyle}>Sort</th>
+                      <th style={thStyle}>Active</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sportsRows.map((row) => {
+                      const draft = sportDrafts[row.id] ?? {
+                        name: row.name,
+                        slug: row.slug,
+                        shortName: row.shortName || "",
+                        sortOrder: row.sortOrder,
+                        isActive: row.isActive,
+                      };
+                      return (
+                        <tr key={row.id}>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setSportDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.slug ?? "")} onChange={(e) => setSportDrafts((prev) => ({ ...prev, [row.id]: { ...draft, slug: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setSportDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} type="number" value={String(draft.sortOrder ?? 0)} onChange={(e) => setSportDrafts((prev) => ({ ...prev, [row.id]: { ...draft, sortOrder: Number(e.target.value || 0) } }))} /></td>
+                          <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setSportDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                style={smallBtn("primary", submittingAction === `save-sport-${row.id}`)}
+                                disabled={submittingAction === `save-sport-${row.id}`}
+                                onClick={() => void runAction(`save-sport-${row.id}`, async () => {
+                                  await superAdminFetch(`/sports/${row.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({
+                                      name: draft.name,
+                                      slug: draft.slug,
+                                      shortName: draft.shortName || null,
+                                      sortOrder: Number(draft.sortOrder || 0),
+                                      isActive: draft.isActive,
+                                    }),
+                                  });
+                                  await Promise.all([loadSportsAdmin(), loadLookups()]);
+                                })}
+                              >
+                                Save
+                              </button>
+                              <button
+                                style={smallBtn("danger", submittingAction === `archive-sport-${row.id}`)}
+                                disabled={submittingAction === `archive-sport-${row.id}`}
+                                onClick={() => void runAction(`archive-sport-${row.id}`, async () => {
+                                  await superAdminFetch(`/sports/${row.id}`, { method: "DELETE" });
+                                  await Promise.all([loadSportsAdmin(), loadLookups(), loadLeaguesAdmin()]);
+                                })}
+                              >
+                                Archive
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "leagues" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create League</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.5fr 2fr 1.2fr 1.2fr 1.2fr 1fr auto" }}>
+                <select style={inputStyle} value={newLeague.sportId} onChange={(e) => setNewLeague((prev) => ({ ...prev, sportId: e.target.value }))}>
+                  <option value="">Sport</option>
+                  {lookupSports.map((sport) => (
+                    <option key={sport.id} value={sport.id}>{sport.name}</option>
+                  ))}
+                </select>
+                <input style={inputStyle} placeholder="League name" value={newLeague.name} onChange={(e) => setNewLeague((prev) => ({ ...prev, name: e.target.value }))} />
+                <input style={inputStyle} placeholder="Short name" value={newLeague.shortName} onChange={(e) => setNewLeague((prev) => ({ ...prev, shortName: e.target.value }))} />
+                <input style={inputStyle} placeholder="External ID" value={newLeague.externalId} onChange={(e) => setNewLeague((prev) => ({ ...prev, externalId: e.target.value }))} />
+                <input style={inputStyle} placeholder="Country" value={newLeague.country} onChange={(e) => setNewLeague((prev) => ({ ...prev, country: e.target.value }))} />
+                <input style={inputStyle} type="number" placeholder="Sort" value={newLeague.sortOrder} onChange={(e) => setNewLeague((prev) => ({ ...prev, sortOrder: e.target.value }))} />
+                <button
+                  style={smallBtn("primary", submittingAction === "create-league")}
+                  disabled={submittingAction === "create-league"}
+                  onClick={() => void runAction("create-league", async () => {
+                    await superAdminFetch("/leagues", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        sportId: newLeague.sportId,
+                        name: newLeague.name,
+                        shortName: newLeague.shortName || undefined,
+                        logoUrl: newLeague.logoUrl || undefined,
+                        externalId: newLeague.externalId || undefined,
+                        country: newLeague.country || undefined,
+                        sortOrder: Number(newLeague.sortOrder || 0),
+                        isActive: newLeague.isActive,
+                      }),
+                    });
+                    setNewLeague({
+                      sportId: lookupSports[0]?.id || "",
+                      name: "",
+                      shortName: "",
+                      logoUrl: "",
+                      externalId: "",
+                      country: "",
+                      sortOrder: "0",
+                      isActive: true,
+                    });
+                    await Promise.all([loadLeaguesAdmin(), loadLookups(), loadMatches()]);
+                  })}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Leagues ({leaguesCount})</h2>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={adminLeaguesSearch} onChange={(e) => setAdminLeaguesSearch(e.target.value)} placeholder="Search leagues" style={{ ...inputStyle, minWidth: 220 }} />
+                  <button style={smallBtn("outline", adminLeaguesLoading)} onClick={() => void loadLeaguesAdmin()} disabled={adminLeaguesLoading}>Search</button>
+                </div>
+              </div>
+              <div style={tableWrapStyle}>
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Sport</th>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Short</th>
+                      <th style={thStyle}>External ID</th>
+                      <th style={thStyle}>Country</th>
+                      <th style={thStyle}>Sort</th>
+                      <th style={thStyle}>Active</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminLeagues.map((row) => {
+                      const draft = leagueDrafts[row.id] ?? {
+                        sportId: row.sportId,
+                        name: row.name,
+                        shortName: row.shortName || "",
+                        externalId: row.externalId || "",
+                        country: row.country || "",
+                        sortOrder: row.sortOrder,
+                        isActive: row.isActive,
+                      };
+                      return (
+                        <tr key={row.id}>
+                          <td style={tdStyle}>
+                            <select style={inputStyle} value={String(draft.sportId || "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, sportId: e.target.value } }))}>
+                              <option value="">Sport</option>
+                              {lookupSports.map((sport) => (
+                                <option key={sport.id} value={sport.id}>{sport.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} type="number" value={String(draft.sortOrder ?? 0)} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, sortOrder: Number(e.target.value || 0) } }))} /></td>
+                          <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                style={smallBtn("primary", submittingAction === `save-league-${row.id}`)}
+                                disabled={submittingAction === `save-league-${row.id}`}
+                                onClick={() => void runAction(`save-league-${row.id}`, async () => {
+                                  await superAdminFetch(`/leagues/${row.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({
+                                      sportId: draft.sportId,
+                                      name: draft.name,
+                                      shortName: draft.shortName || null,
+                                      externalId: draft.externalId || null,
+                                      country: draft.country || null,
+                                      sortOrder: Number(draft.sortOrder || 0),
+                                      isActive: draft.isActive,
+                                    }),
+                                  });
+                                  await Promise.all([loadLeaguesAdmin(), loadLookups(), loadMatches()]);
+                                })}
+                              >
+                                Save
+                              </button>
+                              <button
+                                style={smallBtn("danger", submittingAction === `archive-league-${row.id}`)}
+                                disabled={submittingAction === `archive-league-${row.id}`}
+                                onClick={() => void runAction(`archive-league-${row.id}`, async () => {
+                                  await superAdminFetch(`/leagues/${row.id}`, { method: "DELETE" });
+                                  await Promise.all([loadLeaguesAdmin(), loadLookups(), loadMatches()]);
+                                })}
+                              >
+                                Archive
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "imports" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>CSV Match Import</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--muted-foreground)" }}>
+                  Required headers: <code>homeTeamName</code>, <code>awayTeamName</code>, <code>matchDateUtc</code>, plus <code>leagueId</code> or <code>leagueName</code>.
+                  Optional headers: <code>status</code>, <code>stage</code>, <code>venueName</code>, <code>externalMatchId</code>.
+                </p>
+                <textarea
+                  style={{ ...inputStyle, minHeight: 220, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}
+                  placeholder={"homeTeamName,awayTeamName,matchDateUtc,leagueName,status,stage,venueName,externalMatchId\nTeam A,Team B,2026-04-01T18:30:00.000Z,MLS,SCHEDULED,Regular Season,Shell Energy Stadium,MW-1234"}
+                  value={csvImportText}
+                  onChange={(e) => setCsvImportText(e.target.value)}
+                />
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--foreground)" }}>
+                  <input type="checkbox" checked={csvImportDryRun} onChange={(e) => setCsvImportDryRun(e.target.checked)} />
+                  Dry run only (validate without writing rows)
+                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button style={smallBtn("primary", csvImporting)} disabled={csvImporting} onClick={() => void handleCsvImport()}>
+                    {csvImporting ? "Running..." : "Run Import"}
+                  </button>
+                  <button style={smallBtn("outline")} onClick={() => setCsvImportText("")}>Clear</button>
+                </div>
+              </div>
+            </div>
+
+            {csvImportResult && (
+              <div style={cardStyle}>
+                <div style={sectionHeadStyle}>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Import Result</h2>
+                </div>
+                <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+                    <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10 }}><strong>{csvImportResult.rowsRead}</strong><div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Rows read</div></div>
+                    <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10 }}><strong>{csvImportResult.imported}</strong><div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Inserted</div></div>
+                    <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10 }}><strong>{csvImportResult.updated}</strong><div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Updated</div></div>
+                    <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10 }}><strong>{csvImportResult.failed}</strong><div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Failed</div></div>
+                  </div>
+                  {csvImportResult.errors.length > 0 && (
+                    <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10, maxHeight: 260, overflow: "auto" }}>
+                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: "#ef4444" }}>Row-level errors</p>
+                      {csvImportResult.errors.slice(0, 50).map((row) => (
+                        <div key={`${row.row}-${row.message}`} style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 4 }}>
+                          Row {row.row}: {row.message}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === "matches" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={{ ...cardStyle, overflow: "visible", position: "relative", zIndex: 20 }}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Match</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1.8fr 1.8fr 1.8fr 1.6fr 1.2fr auto" }}>
                 <select style={inputStyle} value={newMatch.leagueId} onChange={(e) => setNewMatch((prev) => ({ ...prev, leagueId: e.target.value }))}>
                   <option value="">League</option>
                   {lookupLeagues.map((league) => (
                     <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
                   ))}
                 </select>
-                <input style={inputStyle} placeholder="Home team" value={newMatch.homeTeamName} onChange={(e) => setNewMatch((prev) => ({ ...prev, homeTeamName: e.target.value }))} />
-                <input style={inputStyle} placeholder="Away team" value={newMatch.awayTeamName} onChange={(e) => setNewMatch((prev) => ({ ...prev, awayTeamName: e.target.value }))} />
+                <SearchPicker
+                  placeholder="Home team"
+                  value={newMatch.homeTeamName}
+                  selectedId={newMatch.homeTeamId || null}
+                  searchKey={newMatch.leagueId || "no-league"}
+                  initialOptions={defaultTeamOptions}
+                  excludeIds={newMatch.awayTeamId ? [newMatch.awayTeamId] : []}
+                  createHint="Create team"
+                  createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
+                  onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, homeTeamId: "", homeTeamName: nextValue }))}
+                  onSelect={(option) => setNewMatch((prev) => ({ ...prev, homeTeamId: option.id, homeTeamName: option.label }))}
+                  onCreate={async (query, extra) => {
+                    const team = await createTeam({
+                      name: query,
+                      shortName: extra.shortName?.trim() || undefined,
+                      leagueId: newMatch.leagueId || null,
+                    });
+                    setNewMatch((prev) => ({ ...prev, homeTeamId: team.id, homeTeamName: team.name }));
+                  }}
+                  search={async (query) => {
+                    const rows = await searchTeams(query, newMatch.leagueId || undefined);
+                    return rows.filter((team) => team.id !== newMatch.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
+                  }}
+                />
+                <SearchPicker
+                  placeholder="Away team"
+                  value={newMatch.awayTeamName}
+                  selectedId={newMatch.awayTeamId || null}
+                  searchKey={newMatch.leagueId || "no-league"}
+                  initialOptions={defaultTeamOptions}
+                  excludeIds={newMatch.homeTeamId ? [newMatch.homeTeamId] : []}
+                  createHint="Create team"
+                  createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
+                  onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, awayTeamId: "", awayTeamName: nextValue }))}
+                  onSelect={(option) => setNewMatch((prev) => ({ ...prev, awayTeamId: option.id, awayTeamName: option.label }))}
+                  onCreate={async (query, extra) => {
+                    const team = await createTeam({
+                      name: query,
+                      shortName: extra.shortName?.trim() || undefined,
+                      leagueId: newMatch.leagueId || null,
+                    });
+                    setNewMatch((prev) => ({ ...prev, awayTeamId: team.id, awayTeamName: team.name }));
+                  }}
+                  search={async (query) => {
+                    const rows = await searchTeams(query, newMatch.leagueId || undefined);
+                    return rows.filter((team) => team.id !== newMatch.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
+                  }}
+                />
+                <SearchPicker
+                  placeholder="Stadium"
+                  value={newMatch.venueName}
+                  selectedId={newMatch.stadiumId || null}
+                  searchKey="stadiums"
+                  initialOptions={defaultStadiumOptions}
+                  createHint="Create stadium"
+                  createFields={[
+                    { key: "city", label: "City", placeholder: "City (optional)" },
+                    { key: "country", label: "Country", placeholder: "Country (optional)" },
+                  ]}
+                  onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, stadiumId: "", venueName: nextValue }))}
+                  onSelect={(option) => setNewMatch((prev) => ({ ...prev, stadiumId: option.id, venueName: option.label }))}
+                  onCreate={async (query, extra) => {
+                    const stadium = await createStadium({
+                      name: query,
+                      city: extra.city?.trim() || undefined,
+                      country: extra.country?.trim() || undefined,
+                    });
+                    setNewMatch((prev) => ({ ...prev, stadiumId: stadium.id, venueName: stadium.name }));
+                  }}
+                  search={async (query) => (await searchStadiums(query)).map(stadiumToOption)}
+                />
                 <input style={inputStyle} type="datetime-local" value={newMatch.matchDateUtc} onChange={(e) => setNewMatch((prev) => ({ ...prev, matchDateUtc: e.target.value }))} />
                 <select style={inputStyle} value={newMatch.status} onChange={(e) => setNewMatch((prev) => ({ ...prev, status: e.target.value as MatchRow["status"] }))}>
                   {MATCH_STATUSES.map((status) => (
                     <option key={status} value={status}>{status}</option>
                   ))}
                 </select>
-                <input style={inputStyle} placeholder="Venue name" value={newMatch.venueName} onChange={(e) => setNewMatch((prev) => ({ ...prev, venueName: e.target.value }))} />
                 <button
                   style={smallBtn("primary", submittingAction === "create-match")}
                   disabled={submittingAction === "create-match"}
@@ -1393,6 +2946,9 @@ export default function JazzbaiSuperAdminPage() {
                       method: "POST",
                       body: JSON.stringify({
                         leagueId: newMatch.leagueId || null,
+                        homeTeamId: newMatch.homeTeamId || null,
+                        awayTeamId: newMatch.awayTeamId || null,
+                        stadiumId: newMatch.stadiumId || null,
                         homeTeamName: newMatch.homeTeamName,
                         awayTeamName: newMatch.awayTeamName,
                         matchDateUtc: new Date(newMatch.matchDateUtc).toISOString(),
@@ -1402,6 +2958,9 @@ export default function JazzbaiSuperAdminPage() {
                     });
                     setNewMatch({
                       leagueId: "",
+                      homeTeamId: "",
+                      awayTeamId: "",
+                      stadiumId: "",
                       homeTeamName: "",
                       awayTeamName: "",
                       matchDateUtc: "",
@@ -1441,6 +3000,9 @@ export default function JazzbaiSuperAdminPage() {
                     {matches.map((row) => {
                       const draft = matchDrafts[row.id] ?? {
                         leagueId: row.leagueId || "",
+                        homeTeamId: row.homeTeamId || "",
+                        awayTeamId: row.awayTeamId || "",
+                        stadiumId: row.stadiumId || "",
                         homeTeamName: row.homeTeamName,
                         awayTeamName: row.awayTeamName,
                         matchDateUtc: toDatetimeLocal(row.matchDateUtc),
@@ -1457,8 +3019,58 @@ export default function JazzbaiSuperAdminPage() {
                               ))}
                             </select>
                           </td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.homeTeamName ?? "")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamName: e.target.value } }))} /></td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.awayTeamName ?? "")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamName: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <SearchPicker
+                              placeholder="Home team"
+                              value={String(draft.homeTeamName ?? "")}
+                              selectedId={String(draft.homeTeamId ?? "") || null}
+                              searchKey={String(draft.leagueId || "") || "no-league"}
+                              initialOptions={defaultTeamOptions}
+                              excludeIds={draft.awayTeamId ? [String(draft.awayTeamId)] : []}
+                              createHint="Create team"
+                              createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
+                              onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: "", homeTeamName: nextValue } }))}
+                              onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: option.id, homeTeamName: option.label } }))}
+                              onCreate={async (query, extra) => {
+                                const team = await createTeam({
+                                  name: query,
+                                  shortName: extra.shortName?.trim() || undefined,
+                                  leagueId: String(draft.leagueId || "") || null,
+                                });
+                                setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: team.id, homeTeamName: team.name } }));
+                              }}
+                              search={async (query) => {
+                                const rows = await searchTeams(query, String(draft.leagueId || "") || undefined);
+                                return rows.filter((team) => team.id !== draft.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
+                              }}
+                            />
+                          </td>
+                          <td style={tdStyle}>
+                            <SearchPicker
+                              placeholder="Away team"
+                              value={String(draft.awayTeamName ?? "")}
+                              selectedId={String(draft.awayTeamId ?? "") || null}
+                              searchKey={String(draft.leagueId || "") || "no-league"}
+                              initialOptions={defaultTeamOptions}
+                              excludeIds={draft.homeTeamId ? [String(draft.homeTeamId)] : []}
+                              createHint="Create team"
+                              createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
+                              onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: "", awayTeamName: nextValue } }))}
+                              onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: option.id, awayTeamName: option.label } }))}
+                              onCreate={async (query, extra) => {
+                                const team = await createTeam({
+                                  name: query,
+                                  shortName: extra.shortName?.trim() || undefined,
+                                  leagueId: String(draft.leagueId || "") || null,
+                                });
+                                setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: team.id, awayTeamName: team.name } }));
+                              }}
+                              search={async (query) => {
+                                const rows = await searchTeams(query, String(draft.leagueId || "") || undefined);
+                                return rows.filter((team) => team.id !== draft.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
+                              }}
+                            />
+                          </td>
                           <td style={tdStyle}><input style={inputStyle} type="datetime-local" value={String(draft.matchDateUtc ?? "")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, matchDateUtc: e.target.value } }))} /></td>
                           <td style={tdStyle}>
                             <select style={inputStyle} value={String(draft.status ?? "SCHEDULED")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, status: e.target.value as MatchRow["status"] } }))}>
@@ -1467,7 +3079,31 @@ export default function JazzbaiSuperAdminPage() {
                               ))}
                             </select>
                           </td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.venueName ?? "")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, venueName: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <SearchPicker
+                              placeholder="Stadium"
+                              value={String(draft.venueName ?? "")}
+                              selectedId={String(draft.stadiumId ?? "") || null}
+                              searchKey="stadiums"
+                              initialOptions={defaultStadiumOptions}
+                              createHint="Create stadium"
+                              createFields={[
+                                { key: "city", label: "City", placeholder: "City (optional)" },
+                                { key: "country", label: "Country", placeholder: "Country (optional)" },
+                              ]}
+                              onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, stadiumId: "", venueName: nextValue } }))}
+                              onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, stadiumId: option.id, venueName: option.label } }))}
+                              onCreate={async (query, extra) => {
+                                const stadium = await createStadium({
+                                  name: query,
+                                  city: extra.city?.trim() || undefined,
+                                  country: extra.country?.trim() || undefined,
+                                });
+                                setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, stadiumId: stadium.id, venueName: stadium.name } }));
+                              }}
+                              search={async (query) => (await searchStadiums(query)).map(stadiumToOption)}
+                            />
+                          </td>
                           <td style={tdStyle}>
                             <div style={{ display: "flex", gap: 6 }}>
                               <button
@@ -1478,6 +3114,9 @@ export default function JazzbaiSuperAdminPage() {
                                     method: "PATCH",
                                     body: JSON.stringify({
                                       leagueId: draft.leagueId || null,
+                                      homeTeamId: draft.homeTeamId || null,
+                                      awayTeamId: draft.awayTeamId || null,
+                                      stadiumId: draft.stadiumId || null,
                                       homeTeamName: draft.homeTeamName,
                                       awayTeamName: draft.awayTeamName,
                                       matchDateUtc: draft.matchDateUtc ? new Date(String(draft.matchDateUtc)).toISOString() : undefined,
@@ -1515,3 +3154,4 @@ export default function JazzbaiSuperAdminPage() {
     </AppShell>
   );
 }
+

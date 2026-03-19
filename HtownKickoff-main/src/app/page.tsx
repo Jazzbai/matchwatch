@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -99,7 +99,36 @@ export default function HomePage() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedVenueIdx, setSelectedVenueIdx] = useState(0);
   const [homeLeagueFilter, setHomeLeagueFilter] = useState("all");
+  const [hydrated, setHydrated] = useState(false);
+  const [nowTs, setNowTs] = useState<number | null>(null);
   const { matches: MATCHES, venues: VENUES, leagues, venueEvents, bookings, posts, getTeam, getLeague, getVenueEvents, isApiConnected } = useData();
+
+  useEffect(() => {
+    setHydrated(true);
+    setNowTs(Date.now());
+  }, []);
+
+  const formatDateLabel = (isoDate: string) => {
+    const date = new Date(isoDate);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      ...(hydrated ? {} : { timeZone: "UTC" }),
+    });
+  };
+
+  const formatKickoffLabel = (isoDate: string) => {
+    const date = new Date(isoDate);
+    return `${date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      ...(hydrated ? {} : { timeZone: "UTC" }),
+    })} · ${date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      ...(hydrated ? {} : { timeZone: "UTC" }),
+    })}`;
+  };
 
   // Prepare venue data for VenueCard display
   const venueCards = VENUES.filter((v) => v.isActive).slice(0, 6);
@@ -109,10 +138,11 @@ export default function HomePage() {
       .filter((m) => {
         const isUpcomingStatus = m.status === "SCHEDULED" || m.status === "TIMED";
         if (!isUpcomingStatus) return false;
-        return new Date(m.matchDateUTC).getTime() >= Date.now();
+        if (!hydrated || nowTs === null) return true;
+        return new Date(m.matchDateUTC).getTime() >= nowTs;
       })
       .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime()),
-    [MATCHES],
+    [MATCHES, hydrated, nowTs],
   );
   const filteredUpcomingMatches = useMemo(
     () =>
@@ -271,7 +301,6 @@ export default function HomePage() {
               
               const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
               const isFinished = m.status === "FINISHED";
-              const d = new Date(m.matchDateUTC);
               const cardStatus: "SCHEDULED" | "LIVE" | "FINISHED" = isLive
                 ? "LIVE"
                 : isFinished
@@ -287,7 +316,7 @@ export default function HomePage() {
                   awayCrest={away.crest}
                   homeImage={home.image}
                   awayImage={away.image}
-                  kickoff={`${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
+                  kickoff={formatKickoffLabel(m.matchDateUTC)}
                   league={league.shortName || league.name}
                   leagueLogo={league.logo}
                   leagueImage={league.image}
@@ -380,7 +409,7 @@ export default function HomePage() {
           <div className="mb-12">
             <div className="text-primary font-bold tracking-widest text-xs mb-2">
               {featuredMatch
-                ? `${selectedHome?.shortName || "HOME"} VS ${selectedAway?.shortName || "AWAY"} · ${new Date(featuredMatch.matchDateUTC).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                ? `${selectedHome?.shortName || "HOME"} VS ${selectedAway?.shortName || "AWAY"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
                 : "UPCOMING MATCH"}
             </div>
             <h2 className="font-display text-4xl font-black text-foreground">
@@ -584,7 +613,7 @@ export default function HomePage() {
             homeCrest: selectedHome?.image || selectedHome?.crest || "HOME",
             awayCrest: selectedAway?.image || selectedAway?.crest || "AWAY",
             kickoff: featuredMatch
-              ? `${new Date(featuredMatch.matchDateUTC).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${new Date(featuredMatch.matchDateUTC).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+              ? formatKickoffLabel(featuredMatch.matchDateUTC)
               : "TBD",
             league: selectedLeague?.name || "Match",
           }}
