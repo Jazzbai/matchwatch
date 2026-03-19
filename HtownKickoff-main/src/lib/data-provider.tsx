@@ -25,6 +25,7 @@ const VENUE_CHILD_LIMIT = 50;
 const VENUE_MAX_PAGES = 4;
 const MATCH_MAX_PAGES = 8;
 const BOOKING_FETCH_LIMIT = 50;
+const FLAG_CDN_BASE = "https://flagcdn.com";
 
 type ApiMeta = {
     page: number;
@@ -198,6 +199,8 @@ function resolveLeagueBranding(name: string, logoUrl?: string | null) {
     if (key.includes("serie a")) return { logo: "SA", image: "/seriea-logo.png" };
     if (key.includes("ligue 1")) return { logo: "L1" };
     if (key.includes("champions league")) return { logo: "UCL" };
+    if (key.includes("play-off")) return { logo: "PO" };
+    if (key.includes("friendlies")) return { logo: "INTL" };
     if (key.includes("world cup") || key.includes("global finals")) return { logo: "WC" };
     if (key === "mls" || key.includes("major league soccer")) return { logo: "MLS" };
     return { logo: "LG" };
@@ -219,7 +222,141 @@ function hashColor(input: string) {
     return palette[Math.abs(hash) % palette.length];
 }
 
+type NationalTeamMeta = {
+    countryCode: string;
+    flagCode: string;
+    shortName: string;
+};
+
+const NATIONAL_TEAM_META_BY_NAME: Record<string, NationalTeamMeta> = {
+    "Albania": { countryCode: "AL", flagCode: "al", shortName: "ALB" },
+    "Algeria": { countryCode: "DZ", flagCode: "dz", shortName: "ALG" },
+    "Argentina": { countryCode: "AR", flagCode: "ar", shortName: "ARG" },
+    "Armenia": { countryCode: "AM", flagCode: "am", shortName: "ARM" },
+    "Australia": { countryCode: "AU", flagCode: "au", shortName: "AUS" },
+    "Austria": { countryCode: "AT", flagCode: "at", shortName: "AUT" },
+    "Azerbaijan": { countryCode: "AZ", flagCode: "az", shortName: "AZE" },
+    "Belgium": { countryCode: "BE", flagCode: "be", shortName: "BEL" },
+    "Bolivia": { countryCode: "BO", flagCode: "bo", shortName: "BOL" },
+    "Bosnia and Herzegovina": { countryCode: "BA", flagCode: "ba", shortName: "BIH" },
+    "Brazil": { countryCode: "BR", flagCode: "br", shortName: "BRA" },
+    "Cameroon": { countryCode: "CM", flagCode: "cm", shortName: "CMR" },
+    "Canada": { countryCode: "CA", flagCode: "ca", shortName: "CAN" },
+    "Cape Verde": { countryCode: "CV", flagCode: "cv", shortName: "CPV" },
+    "Chile": { countryCode: "CL", flagCode: "cl", shortName: "CHI" },
+    "Colombia": { countryCode: "CO", flagCode: "co", shortName: "COL" },
+    "Costa Rica": { countryCode: "CR", flagCode: "cr", shortName: "CRC" },
+    "Croatia": { countryCode: "HR", flagCode: "hr", shortName: "CRO" },
+    "Curaçao": { countryCode: "CW", flagCode: "cw", shortName: "CUW" },
+    "Czechia": { countryCode: "CZ", flagCode: "cz", shortName: "CZE" },
+    "Denmark": { countryCode: "DK", flagCode: "dk", shortName: "DEN" },
+    "Ecuador": { countryCode: "EC", flagCode: "ec", shortName: "ECU" },
+    "Egypt": { countryCode: "EG", flagCode: "eg", shortName: "EGY" },
+    "England": { countryCode: "GB-ENG", flagCode: "gb-eng", shortName: "ENG" },
+    "Finland": { countryCode: "FI", flagCode: "fi", shortName: "FIN" },
+    "France": { countryCode: "FR", flagCode: "fr", shortName: "FRA" },
+    "Georgia": { countryCode: "GE", flagCode: "ge", shortName: "GEO" },
+    "Germany": { countryCode: "DE", flagCode: "de", shortName: "GER" },
+    "Ghana": { countryCode: "GH", flagCode: "gh", shortName: "GHA" },
+    "Greece": { countryCode: "GR", flagCode: "gr", shortName: "GRE" },
+    "Haiti": { countryCode: "HT", flagCode: "ht", shortName: "HAI" },
+    "Honduras": { countryCode: "HN", flagCode: "hn", shortName: "HON" },
+    "Hungary": { countryCode: "HU", flagCode: "hu", shortName: "HUN" },
+    "Iceland": { countryCode: "IS", flagCode: "is", shortName: "ISL" },
+    "Iran": { countryCode: "IR", flagCode: "ir", shortName: "IRN" },
+    "Ireland": { countryCode: "IE", flagCode: "ie", shortName: "IRL" },
+    "Israel": { countryCode: "IL", flagCode: "il", shortName: "ISR" },
+    "Italy": { countryCode: "IT", flagCode: "it", shortName: "ITA" },
+    "Ivory Coast": { countryCode: "CI", flagCode: "ci", shortName: "CIV" },
+    "Jamaica": { countryCode: "JM", flagCode: "jm", shortName: "JAM" },
+    "Japan": { countryCode: "JP", flagCode: "jp", shortName: "JPN" },
+    "Jordan": { countryCode: "JO", flagCode: "jo", shortName: "JOR" },
+    "Kosovo": { countryCode: "XK", flagCode: "xk", shortName: "KOS" },
+    "Mexico": { countryCode: "MX", flagCode: "mx", shortName: "MEX" },
+    "Montenegro": { countryCode: "ME", flagCode: "me", shortName: "MNE" },
+    "Morocco": { countryCode: "MA", flagCode: "ma", shortName: "MAR" },
+    "Netherlands": { countryCode: "NL", flagCode: "nl", shortName: "NED" },
+    "New Zealand": { countryCode: "NZ", flagCode: "nz", shortName: "NZL" },
+    "Nigeria": { countryCode: "NG", flagCode: "ng", shortName: "NGA" },
+    "Northern Ireland": { countryCode: "GB-NIR", flagCode: "gb-nir", shortName: "NIR" },
+    "North Macedonia": { countryCode: "MK", flagCode: "mk", shortName: "MKD" },
+    "Norway": { countryCode: "NO", flagCode: "no", shortName: "NOR" },
+    "Panama": { countryCode: "PA", flagCode: "pa", shortName: "PAN" },
+    "Paraguay": { countryCode: "PY", flagCode: "py", shortName: "PAR" },
+    "Peru": { countryCode: "PE", flagCode: "pe", shortName: "PER" },
+    "Poland": { countryCode: "PL", flagCode: "pl", shortName: "POL" },
+    "Portugal": { countryCode: "PT", flagCode: "pt", shortName: "POR" },
+    "Qatar": { countryCode: "QA", flagCode: "qa", shortName: "QAT" },
+    "Romania": { countryCode: "RO", flagCode: "ro", shortName: "ROU" },
+    "Saudi Arabia": { countryCode: "SA", flagCode: "sa", shortName: "KSA" },
+    "Scotland": { countryCode: "GB-SCT", flagCode: "gb-sct", shortName: "SCO" },
+    "Senegal": { countryCode: "SN", flagCode: "sn", shortName: "SEN" },
+    "Serbia": { countryCode: "RS", flagCode: "rs", shortName: "SRB" },
+    "Slovakia": { countryCode: "SK", flagCode: "sk", shortName: "SVK" },
+    "Slovenia": { countryCode: "SI", flagCode: "si", shortName: "SVN" },
+    "South Africa": { countryCode: "ZA", flagCode: "za", shortName: "RSA" },
+    "South Korea": { countryCode: "KR", flagCode: "kr", shortName: "KOR" },
+    "Spain": { countryCode: "ES", flagCode: "es", shortName: "ESP" },
+    "Sweden": { countryCode: "SE", flagCode: "se", shortName: "SWE" },
+    "Switzerland": { countryCode: "CH", flagCode: "ch", shortName: "SUI" },
+    "Tunisia": { countryCode: "TN", flagCode: "tn", shortName: "TUN" },
+    "Turkey": { countryCode: "TR", flagCode: "tr", shortName: "TUR" },
+    "Ukraine": { countryCode: "UA", flagCode: "ua", shortName: "UKR" },
+    "United Arab Emirates": { countryCode: "AE", flagCode: "ae", shortName: "UAE" },
+    "United States": { countryCode: "US", flagCode: "us", shortName: "USA" },
+    "Uruguay": { countryCode: "UY", flagCode: "uy", shortName: "URU" },
+    "Uzbekistan": { countryCode: "UZ", flagCode: "uz", shortName: "UZB" },
+    "Venezuela": { countryCode: "VE", flagCode: "ve", shortName: "VEN" },
+    "Wales": { countryCode: "GB-WLS", flagCode: "gb-wls", shortName: "WAL" },
+};
+
+const NATIONAL_TEAM_ALIASES: Record<string, string> = {
+    usa: "United States",
+    us: "United States",
+    usmnt: "United States",
+    "united states of america": "United States",
+    mex: "Mexico",
+    eng: "England",
+    sco: "Scotland",
+    wal: "Wales",
+    nir: "Northern Ireland",
+    ni: "Northern Ireland",
+    "cote d ivoire": "Ivory Coast",
+    "cote divoire": "Ivory Coast",
+    "cape verde islands": "Cape Verde",
+    curacao: "Curaçao",
+    "czech republic": "Czechia",
+    "korea republic": "South Korea",
+    "republic of korea": "South Korea",
+    korea: "South Korea",
+    uae: "United Arab Emirates",
+    ksa: "Saudi Arabia",
+};
+
+function normalizeTeamKey(input: string) {
+    return input
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+function resolveNationalTeamMeta(name: string) {
+    const normalized = normalizeTeamKey(name);
+    const canonical = NATIONAL_TEAM_ALIASES[normalized]
+        || Object.keys(NATIONAL_TEAM_META_BY_NAME).find((candidate) => normalizeTeamKey(candidate) === normalized);
+    return canonical ? NATIONAL_TEAM_META_BY_NAME[canonical] : null;
+}
+
+function buildFlagImageUrl(flagCode: string) {
+    return `${FLAG_CDN_BASE}/w80/${flagCode.toLowerCase()}.png`;
+}
+
 function toShortName(name: string) {
+    const national = resolveNationalTeamMeta(name);
+    if (national) return national.shortName;
     const words = name.trim().split(/\s+/);
     if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
     if (words.length === 2) return words.map((w) => w[0]).join("").toUpperCase();
@@ -227,54 +364,12 @@ function toShortName(name: string) {
 }
 
 function toFlagOrBall(name: string) {
-    const map: Record<string, string> = {
-        "united states": "US",
-        mexico: "MX",
-        canada: "CA",
-        brazil: "BR",
-        argentina: "AR",
-        germany: "DE",
-        england: "GB",
-        france: "FR",
-        spain: "ES",
-        portugal: "PT",
-        netherlands: "NL",
-        belgium: "BE",
-        japan: "JP",
-        "south korea": "KR",
-        morocco: "MA",
-        senegal: "SN",
-        uruguay: "UY",
-        croatia: "HR",
-        switzerland: "CH",
-    };
-    const key = name.toLowerCase();
-    return map[key] || "TEAM";
+    const national = resolveNationalTeamMeta(name);
+    return national?.shortName || "TEAM";
 }
 
 function toCountry(name: string) {
-    const map: Record<string, string> = {
-        "united states": "US",
-        mexico: "MX",
-        canada: "CA",
-        brazil: "BR",
-        argentina: "AR",
-        germany: "DE",
-        england: "GB",
-        france: "FR",
-        spain: "ES",
-        portugal: "PT",
-        netherlands: "NL",
-        belgium: "BE",
-        japan: "JP",
-        "south korea": "KR",
-        morocco: "MA",
-        senegal: "SN",
-        uruguay: "UY",
-        croatia: "HR",
-        switzerland: "CH",
-    };
-    return map[name.toLowerCase()] || "INT";
+    return resolveNationalTeamMeta(name)?.countryCode || "INT";
 }
 
 function toEventTimeLabel(isoOrNull: string | null | undefined) {
@@ -466,7 +561,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             crestUrl?: string | null,
         ) => {
             if (!teamId || !teamName) return;
-            const image = normalizeImageUrl(crestUrl);
+            const nationalTeam = resolveNationalTeamMeta(teamName);
+            const image = normalizeImageUrl(crestUrl) || (nationalTeam ? buildFlagImageUrl(nationalTeam.flagCode) : "");
             const existing = teamMap.get(teamId);
             if (existing) {
                 if (!existing.image && image) {

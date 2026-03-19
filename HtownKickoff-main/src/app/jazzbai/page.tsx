@@ -997,7 +997,7 @@ export default function JazzbaiSuperAdminPage() {
     return rows;
   }, [mergeLookupStadiums]);
 
-  const createTeam = React.useCallback(async (payload: { name: string; shortName?: string; leagueId?: string | null }) => {
+  const createTeam = React.useCallback(async (payload: { name: string; shortName?: string; crestUrl?: string; leagueId?: string | null }) => {
     const team = await superAdminFetch<LookupTeam>("/teams", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -2869,13 +2869,17 @@ export default function JazzbaiSuperAdminPage() {
                   initialOptions={defaultTeamOptions}
                   excludeIds={newMatch.awayTeamId ? [newMatch.awayTeamId] : []}
                   createHint="Create team"
-                  createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
+                  createFields={[
+                    { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                    { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                  ]}
                   onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, homeTeamId: "", homeTeamName: nextValue }))}
                   onSelect={(option) => setNewMatch((prev) => ({ ...prev, homeTeamId: option.id, homeTeamName: option.label }))}
                   onCreate={async (query, extra) => {
                     const team = await createTeam({
                       name: query,
                       shortName: extra.shortName?.trim() || undefined,
+                      crestUrl: extra.crestUrl?.trim() || undefined,
                       leagueId: newMatch.leagueId || null,
                     });
                     setNewMatch((prev) => ({ ...prev, homeTeamId: team.id, homeTeamName: team.name }));
@@ -2893,13 +2897,17 @@ export default function JazzbaiSuperAdminPage() {
                   initialOptions={defaultTeamOptions}
                   excludeIds={newMatch.homeTeamId ? [newMatch.homeTeamId] : []}
                   createHint="Create team"
-                  createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
+                  createFields={[
+                    { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                    { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                  ]}
                   onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, awayTeamId: "", awayTeamName: nextValue }))}
                   onSelect={(option) => setNewMatch((prev) => ({ ...prev, awayTeamId: option.id, awayTeamName: option.label }))}
                   onCreate={async (query, extra) => {
                     const team = await createTeam({
                       name: query,
                       shortName: extra.shortName?.trim() || undefined,
+                      crestUrl: extra.crestUrl?.trim() || undefined,
                       leagueId: newMatch.leagueId || null,
                     });
                     setNewMatch((prev) => ({ ...prev, awayTeamId: team.id, awayTeamName: team.name }));
@@ -3028,13 +3036,17 @@ export default function JazzbaiSuperAdminPage() {
                               initialOptions={defaultTeamOptions}
                               excludeIds={draft.awayTeamId ? [String(draft.awayTeamId)] : []}
                               createHint="Create team"
-                              createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
+                              createFields={[
+                                { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                                { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                              ]}
                               onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: "", homeTeamName: nextValue } }))}
                               onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: option.id, homeTeamName: option.label } }))}
                               onCreate={async (query, extra) => {
                                 const team = await createTeam({
                                   name: query,
                                   shortName: extra.shortName?.trim() || undefined,
+                                  crestUrl: extra.crestUrl?.trim() || undefined,
                                   leagueId: String(draft.leagueId || "") || null,
                                 });
                                 setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: team.id, homeTeamName: team.name } }));
@@ -3054,13 +3066,17 @@ export default function JazzbaiSuperAdminPage() {
                               initialOptions={defaultTeamOptions}
                               excludeIds={draft.homeTeamId ? [String(draft.homeTeamId)] : []}
                               createHint="Create team"
-                              createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
+                              createFields={[
+                                { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                                { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                              ]}
                               onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: "", awayTeamName: nextValue } }))}
                               onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: option.id, awayTeamName: option.label } }))}
                               onCreate={async (query, extra) => {
                                 const team = await createTeam({
                                   name: query,
                                   shortName: extra.shortName?.trim() || undefined,
+                                  crestUrl: extra.crestUrl?.trim() || undefined,
                                   leagueId: String(draft.leagueId || "") || null,
                                 });
                                 setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: team.id, awayTeamName: team.name } }));

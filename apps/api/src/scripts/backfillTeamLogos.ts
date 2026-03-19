@@ -18,6 +18,7 @@ function parseArgs(argv: string[]) {
 async function main() {
     const args = parseArgs(process.argv.slice(2));
     const leagueCode = typeof args.get('league') === 'string' ? String(args.get('league')).trim().toUpperCase() : 'WC';
+    const createMissing = args.get('create-missing') === true;
     const apiKey = process.env.FOOTBALL_DATA_API_KEY;
     if (!apiKey) {
         throw new Error('FOOTBALL_DATA_API_KEY is required for logo backfill');
@@ -46,11 +47,32 @@ async function main() {
     const localByLowerName = new Map(localTeams.map((team) => [team.name.toLowerCase(), team]));
     let updated = 0;
     let skipped = 0;
+    let created = 0;
     const unmatchedRemote: string[] = [];
 
     for (const remote of remoteTeams) {
         const local = localByLowerName.get(remote.name.toLowerCase());
         if (!local) {
+            if (createMissing) {
+                const [inserted] = await db.insert(teams).values({
+                    leagueId: league.id,
+                    name: remote.name,
+                    shortName: remote.shortName || remote.name,
+                    crestUrl: remote.crest || null,
+                    externalId: String(remote.id),
+                }).onConflictDoNothing().returning({
+                    id: teams.id,
+                    name: teams.name,
+                    shortName: teams.shortName,
+                    crestUrl: teams.crestUrl,
+                });
+
+                if (inserted) {
+                    localByLowerName.set(inserted.name.toLowerCase(), inserted);
+                    created += 1;
+                    continue;
+                }
+            }
             unmatchedRemote.push(remote.name);
             continue;
         }
@@ -81,7 +103,9 @@ async function main() {
         remoteTeamCount: remoteTeams.length,
         localTeamCount: localTeams.length,
         updated,
+        created,
         skipped,
+        createMissing,
         unmatchedRemote,
         remainingWithoutLogos,
     }, null, 2));
