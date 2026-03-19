@@ -11,7 +11,7 @@ const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE_URL || 'https://v3.footb
 const THE_SPORTS_DB_BASE = process.env.THE_SPORTS_DB_BASE_URL
     || `https://www.thesportsdb.com/api/v1/json/${process.env.THE_SPORTS_DB_API_KEY?.trim() || '3'}`;
 const FOOTBALL_DATA_SUPPORTED_CODES = new Set(['WC', 'PL', 'PD', 'BL1', 'SA', 'FL1', 'CL', 'MLS']);
-const THE_SPORTS_DB_PRIORITY_LEAGUE_CODES = new Set(['MLS', 'NWSL', 'LMX', 'INTL']);
+const THE_SPORTS_DB_PRIORITY_LEAGUE_CODES = new Set(['MLS', 'NWSL', 'LMX']);
 const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
     PL: 4328,
     PD: 4335,
@@ -22,7 +22,6 @@ const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
     MLS: 4346,
     NWSL: 4521,
     LMX: 4350,
-    INTL: 4562,
 };
 
 type MatchSyncProvider = 'FOOTBALL_DATA' | 'API_FOOTBALL' | 'THE_SPORTS_DB';
@@ -574,6 +573,9 @@ async function resolveApiFootballLeague(league: LeagueRow, apiKey: string) {
         }
     };
 
+    if (externalId === 'INTL') {
+        await collect({ id: 10 });
+    }
     if (externalId && /^\d+$/.test(externalId)) {
         await collect({ id: Number(externalId) });
     }
@@ -686,7 +688,9 @@ async function syncLeagueFromApiFootball(league: LeagueRow, apiKey: string): Pro
 
     const now = new Date();
     const dateFrom = now.toISOString().split('T')[0];
-    const dateTo = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const externalCode = (league.externalId || '').trim().toUpperCase();
+    const lookaheadDays = externalCode === 'INTL' ? 90 : 14;
+    const dateTo = new Date(now.getTime() + lookaheadDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const fixtures = await fetchApiFootball<ApiFootballFixturesResponse>('/fixtures', {
         league: resolved.leagueId,
         season: resolved.season,
@@ -767,6 +771,7 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
         : provider === 'FOOTBALL_DATA'
             ? process.env.FOOTBALL_DATA_API_KEY
             : undefined;
+    const apiFootballApiKey = process.env.API_FOOTBALL_API_KEY;
     const footballDataApiKey = process.env.FOOTBALL_DATA_API_KEY;
     const sportSlug = options.sportSlug || 'soccer';
     const writeHistory = options.writeHistory ?? true;
@@ -802,6 +807,9 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
         if (THE_SPORTS_DB_PRIORITY_LEAGUE_CODES.has(externalCode)) {
             providerUsed = 'THE_SPORTS_DB';
             result = await syncLeagueFromTheSportsDb(league);
+        } else if (externalCode === 'INTL' && apiFootballApiKey) {
+            providerUsed = 'API_FOOTBALL';
+            result = await syncLeagueFromApiFootball(league, apiFootballApiKey);
         } else if (provider === 'API_FOOTBALL') {
             result = await syncLeagueFromApiFootball(league, apiKey as string);
         } else if (provider === 'FOOTBALL_DATA') {
