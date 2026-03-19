@@ -12,6 +12,7 @@
         "db:generate": "drizzle-kit generate",
         "db:migrate": "drizzle-kit migrate",
         "db:seed": "tsx src/db/seed.ts",
+        "db:ensure-leagues": "tsx src/scripts/ensureCoreLeagues.ts",
         "db:seed:anonymized": "tsx src/db/seed-anonymized.ts",
         "db:studio": "drizzle-kit studio",
         "matches:sync-upcoming": "tsx src/scripts/syncUpcomingMatches.ts",

@@ -24,6 +24,7 @@ export const CORE_LEAGUE_DATA = [
     { name: 'MLS', shortName: 'MLS', externalId: 'MLS', country: 'US/CA', sortOrder: 8 },
     { name: 'Liga MX', shortName: 'Liga MX', externalId: 'LMX', country: 'Mexico', sortOrder: 9 },
     { name: 'NWSL Women', shortName: 'NWSL', externalId: 'NWSL', country: 'USA', sortOrder: 10 },
+    { name: 'International Friendlies', shortName: 'INTL', externalId: 'INTL', country: 'Worldwide', sortOrder: 11 },
 ];
 
 export async function ensureSportsSeeded() {

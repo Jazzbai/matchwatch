@@ -8,9 +8,10 @@ import { logger } from '../lib/logger';
 const QUEUE_NAME = 'matchSync';
 const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
 const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE_URL || 'https://v3.football.api-sports.io';
-const THE_SPORTS_DB_BASE = process.env.THE_SPORTS_DB_BASE_URL || 'https://www.thesportsdb.com/api/v1/json/3';
+const THE_SPORTS_DB_BASE = process.env.THE_SPORTS_DB_BASE_URL
+    || `https://www.thesportsdb.com/api/v1/json/${process.env.THE_SPORTS_DB_API_KEY?.trim() || '3'}`;
 const FOOTBALL_DATA_SUPPORTED_CODES = new Set(['WC', 'PL', 'PD', 'BL1', 'SA', 'FL1', 'CL', 'MLS']);
-const US_PRIORITY_LEAGUE_CODES = new Set(['MLS', 'NWSL', 'LMX']);
+const THE_SPORTS_DB_PRIORITY_LEAGUE_CODES = new Set(['MLS', 'NWSL', 'LMX', 'INTL']);
 const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
     PL: 4328,
     PD: 4335,
@@ -21,6 +22,7 @@ const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
     MLS: 4346,
     NWSL: 4521,
     LMX: 4350,
+    INTL: 4562,
 };
 
 type MatchSyncProvider = 'FOOTBALL_DATA' | 'API_FOOTBALL' | 'THE_SPORTS_DB';
@@ -793,11 +795,11 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
         const startedAt = Date.now();
         const externalCode = (league.externalId || '').trim().toUpperCase();
 
-        // Keep US leagues on TheSportsDB for MLS/NWSL/LigaMX coverage.
+        // Keep leagues on TheSportsDB where its coverage is a better fit.
         // Use Football-Data for major global leagues when key exists.
         let providerUsed: MatchSyncProvider = provider;
         let result: SyncResult;
-        if (US_PRIORITY_LEAGUE_CODES.has(externalCode)) {
+        if (THE_SPORTS_DB_PRIORITY_LEAGUE_CODES.has(externalCode)) {
             providerUsed = 'THE_SPORTS_DB';
             result = await syncLeagueFromTheSportsDb(league);
         } else if (provider === 'API_FOOTBALL') {
