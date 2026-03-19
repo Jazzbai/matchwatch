@@ -76,7 +76,10 @@ async function start() {
         try {
             await migrate();
         } catch (err) {
-            logger.error({ err }, 'Migration failed - starting anyway');
+            logger.error({ err }, 'Migration failed');
+            if (process.env.NODE_ENV === 'production') {
+                process.exit(1);
+            }
         }
     } else {
         logger.warn('Startup migrations disabled via RUN_STARTUP_MIGRATIONS=false');
@@ -86,7 +89,10 @@ async function start() {
         try {
             await autoSeed();
         } catch (err) {
-            logger.error({ err }, 'Auto-seed failed - starting anyway');
+            logger.error({ err }, 'Auto-seed failed');
+            if (process.env.NODE_ENV === 'production') {
+                process.exit(1);
+            }
         }
     } else {
         logger.warn('Startup auto-seed disabled via RUN_STARTUP_SEED=false');

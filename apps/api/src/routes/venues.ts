@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db/client';
 import { venues, venueEvents, matches, posts, menuCategories, menuItems, follows, reviews, users, venueCustomEvents } from '../db/schema';
-import { eq, and, gte, lt, count, desc, asc, sql, ilike } from 'drizzle-orm';
+import { eq, and, gte, count, desc, asc, sql, ilike } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { venueQuerySchema, paginationSchema } from '@matchwatch/shared';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware';
