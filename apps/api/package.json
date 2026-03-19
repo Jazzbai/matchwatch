@@ -14,7 +14,8 @@
         "db:seed": "tsx src/db/seed.ts",
         "db:seed:anonymized": "tsx src/db/seed-anonymized.ts",
         "db:studio": "drizzle-kit studio",
-        "matches:sync-upcoming": "tsx src/scripts/syncUpcomingMatches.ts"
+        "matches:sync-upcoming": "tsx src/scripts/syncUpcomingMatches.ts",
+        "teams:backfill-logos": "tsx src/scripts/backfillTeamLogos.ts"
     },
     "dependencies": {
         "@matchwatch/shared": "*",

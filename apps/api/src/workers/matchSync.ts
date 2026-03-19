@@ -57,6 +57,17 @@ interface FootballDataResponse {
     matches: FootballDataMatch[];
 }
 
+interface FootballDataTeam {
+    id: number;
+    name: string;
+    shortName: string;
+    crest: string | null;
+}
+
+interface FootballDataTeamsResponse {
+    teams: FootballDataTeam[];
+}
+
 interface ApiFootballLeague {
     league: { id: number; name: string; logo?: string | null };
     country?: { name?: string | null };
@@ -171,6 +182,29 @@ async function getTeamIdByExternalId(externalId: string) {
     const id = row?.id ?? null;
     teamLookupCache.set(key, id);
     return id;
+}
+
+async function getTeamIdByLeagueAndName(leagueId: string, teamName: string) {
+    const [row] = await db.select({ id: teams.id })
+        .from(teams)
+        .where(and(
+            eq(teams.leagueId, leagueId),
+            sql`lower(${teams.name}) = lower(${teamName})`,
+        ))
+        .limit(1);
+    return row?.id ?? null;
+}
+
+async function applyTeamMetadata(teamId: string, input: { shortName?: string | null; crestUrl?: string | null }) {
+    const updates: Record<string, string> = {};
+    const safeShortName = trimText(input.shortName || '', 30);
+    const safeCrestUrl = trimText(input.crestUrl || '', 1000);
+
+    if (safeShortName) updates.shortName = safeShortName;
+    if (safeCrestUrl) updates.crestUrl = safeCrestUrl;
+    if (Object.keys(updates).length === 0) return;
+
+    await db.update(teams).set(updates).where(eq(teams.id, teamId));
 }
 
 function clearSyncCaches() {
@@ -368,7 +402,17 @@ async function upsertTeamRecord(input: {
     if (!safeExternalId || !input.name) return { id: null, created: false };
 
     const cached = await getTeamIdByExternalId(safeExternalId);
-    if (cached) return { id: cached, created: false };
+    if (cached) {
+        await applyTeamMetadata(cached, input);
+        return { id: cached, created: false };
+    }
+
+    const matchedByName = await getTeamIdByLeagueAndName(input.leagueId, input.name);
+    if (matchedByName) {
+        teamLookupCache.set(safeExternalId, matchedByName);
+        await applyTeamMetadata(matchedByName, input);
+        return { id: matchedByName, created: false };
+    }
 
     const inserted = await db.insert(teams).values({
         name: trimText(input.name, 150),
@@ -458,6 +502,13 @@ async function fetchFootballDataMatches(competitionCode: string, apiKey: string)
     logger.info({ competitionCode, dateFrom, dateTo }, 'Fetching matches from Football-Data');
     const data = await fetchJsonWithRetry<FootballDataResponse>(url, { 'X-Auth-Token': apiKey }, 'football-data');
     return data?.matches || [];
+}
+
+export async function fetchFootballDataCompetitionTeams(competitionCode: string, apiKey: string): Promise<FootballDataTeam[]> {
+    const url = `${FOOTBALL_DATA_BASE}/competitions/${competitionCode}/teams`;
+    logger.info({ competitionCode }, 'Fetching teams from Football-Data');
+    const data = await fetchJsonWithRetry<FootballDataTeamsResponse>(url, { 'X-Auth-Token': apiKey }, 'football-data');
+    return data?.teams || [];
 }
 
 async function fetchApiFootball<T>(
