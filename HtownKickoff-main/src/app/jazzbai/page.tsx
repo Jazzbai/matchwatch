@@ -584,6 +584,10 @@ function dedupeById<T extends { id: string }>(rows: T[]) {
   });
 }
 
+function getMultiSelectValues(select: HTMLSelectElement): string[] {
+  return Array.from(select.selectedOptions).map((option) => option.value);
+}
+
 function teamToOption(team: LookupTeam, leagueLabelById?: Map<string, string>): SearchPickerOption {
   const leagueLabel = team.leagueId ? leagueLabelById?.get(team.leagueId) : undefined;
   return {
@@ -1674,7 +1678,10 @@ export default function JazzbaiSuperAdminPage() {
                 <textarea style={{ ...textareaStyle, gridColumn: "1 / -1" }} placeholder="Description" value={newVenue.description} onChange={(e) => setNewVenue((prev) => ({ ...prev, description: e.target.value }))} />
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Amenities</span>
-                  <select multiple style={multiSelectStyle} value={newVenue.amenities} onChange={(e) => setNewVenue((prev) => ({ ...prev, amenities: Array.from(e.currentTarget.selectedOptions).map((option) => option.value) }))}>
+                  <select multiple style={multiSelectStyle} value={newVenue.amenities} onChange={(e) => {
+                    const amenities = getMultiSelectValues(e.currentTarget);
+                    setNewVenue((prev) => ({ ...prev, amenities }));
+                  }}>
                     {ensureAttributeValues("AMENITY", newVenue.amenities).map((item) => (
                       <option key={item.slug} value={item.slug}>{item.label}</option>
                     ))}
@@ -1682,7 +1689,10 @@ export default function JazzbaiSuperAdminPage() {
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Vibes</span>
-                  <select multiple style={multiSelectStyle} value={newVenue.vibes} onChange={(e) => setNewVenue((prev) => ({ ...prev, vibes: Array.from(e.currentTarget.selectedOptions).map((option) => option.value) }))}>
+                  <select multiple style={multiSelectStyle} value={newVenue.vibes} onChange={(e) => {
+                    const vibes = getMultiSelectValues(e.currentTarget);
+                    setNewVenue((prev) => ({ ...prev, vibes }));
+                  }}>
                     {ensureAttributeValues("VIBE", newVenue.vibes).map((item) => (
                       <option key={item.slug} value={item.slug}>{item.label}</option>
                     ))}
@@ -1690,7 +1700,10 @@ export default function JazzbaiSuperAdminPage() {
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cuisine</span>
-                  <select multiple style={multiSelectStyle} value={newVenue.cuisineTags} onChange={(e) => setNewVenue((prev) => ({ ...prev, cuisineTags: Array.from(e.currentTarget.selectedOptions).map((option) => option.value) }))}>
+                  <select multiple style={multiSelectStyle} value={newVenue.cuisineTags} onChange={(e) => {
+                    const cuisineTags = getMultiSelectValues(e.currentTarget);
+                    setNewVenue((prev) => ({ ...prev, cuisineTags }));
+                  }}>
                     {ensureAttributeValues("CUISINE", newVenue.cuisineTags).map((item) => (
                       <option key={item.slug} value={item.slug}>{item.label}</option>
                     ))}
@@ -1920,7 +1933,10 @@ export default function JazzbaiSuperAdminPage() {
                         <textarea style={{ ...textareaStyle, gridColumn: "1 / -1" }} value={String(draft.description ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, description: e.target.value } }))} placeholder="Description" />
                         <label style={{ display: "grid", gap: 6 }}>
                           <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Amenities</span>
-                          <select multiple style={multiSelectStyle} value={Array.isArray(draft.amenities) ? draft.amenities : []} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, amenities: Array.from(e.currentTarget.selectedOptions).map((option) => option.value) } }))}>
+                          <select multiple style={multiSelectStyle} value={Array.isArray(draft.amenities) ? draft.amenities : []} onChange={(e) => {
+                            const amenities = getMultiSelectValues(e.currentTarget);
+                            setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, amenities } }));
+                          }}>
                             {ensureAttributeValues("AMENITY", Array.isArray(draft.amenities) ? draft.amenities : []).map((item) => (
                               <option key={item.slug} value={item.slug}>{item.label}</option>
                             ))}
@@ -1928,7 +1944,10 @@ export default function JazzbaiSuperAdminPage() {
                         </label>
                         <label style={{ display: "grid", gap: 6 }}>
                           <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Vibes</span>
-                          <select multiple style={multiSelectStyle} value={Array.isArray(draft.vibes) ? draft.vibes : []} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, vibes: Array.from(e.currentTarget.selectedOptions).map((option) => option.value) } }))}>
+                          <select multiple style={multiSelectStyle} value={Array.isArray(draft.vibes) ? draft.vibes : []} onChange={(e) => {
+                            const vibes = getMultiSelectValues(e.currentTarget);
+                            setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, vibes } }));
+                          }}>
                             {ensureAttributeValues("VIBE", Array.isArray(draft.vibes) ? draft.vibes : []).map((item) => (
                               <option key={item.slug} value={item.slug}>{item.label}</option>
                             ))}
@@ -1936,7 +1955,10 @@ export default function JazzbaiSuperAdminPage() {
                         </label>
                         <label style={{ display: "grid", gap: 6 }}>
                           <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cuisine</span>
-                          <select multiple style={multiSelectStyle} value={Array.isArray(draft.cuisineTags) ? draft.cuisineTags : []} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, cuisineTags: Array.from(e.currentTarget.selectedOptions).map((option) => option.value) } }))}>
+                          <select multiple style={multiSelectStyle} value={Array.isArray(draft.cuisineTags) ? draft.cuisineTags : []} onChange={(e) => {
+                            const cuisineTags = getMultiSelectValues(e.currentTarget);
+                            setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, cuisineTags } }));
+                          }}>
                             {ensureAttributeValues("CUISINE", Array.isArray(draft.cuisineTags) ? draft.cuisineTags : []).map((item) => (
                               <option key={item.slug} value={item.slug}>{item.label}</option>
                             ))}
