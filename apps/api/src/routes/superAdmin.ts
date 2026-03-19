@@ -445,8 +445,21 @@ async function getTeamById(teamId: string) {
         name: teams.name,
         shortName: teams.shortName,
         crestUrl: teams.crestUrl,
-    }).from(teams).where(and(eq(teams.id, teamId), eq(teams.isActive, true))).limit(1);
+        sportId: leagues.sportId,
+    }).from(teams)
+        .leftJoin(leagues, eq(teams.leagueId, leagues.id))
+        .where(and(eq(teams.id, teamId), eq(teams.isActive, true)))
+        .limit(1);
     return team ?? null;
+}
+
+async function getLeagueById(leagueId: string) {
+    const [league] = await db.select({
+        id: leagues.id,
+        sportId: leagues.sportId,
+        name: leagues.name,
+    }).from(leagues).where(and(eq(leagues.id, leagueId), eq(leagues.isActive, true))).limit(1);
+    return league ?? null;
 }
 
 async function getStadiumById(stadiumId: string) {
@@ -463,6 +476,12 @@ async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.inf
     const homeTeamId = input.homeTeamId === undefined ? undefined : (input.homeTeamId || null);
     const awayTeamId = input.awayTeamId === undefined ? undefined : (input.awayTeamId || null);
     const stadiumId = input.stadiumId === undefined ? undefined : (input.stadiumId || null);
+    const leagueId = input.leagueId === undefined ? undefined : (input.leagueId || null);
+
+    const league = leagueId ? await getLeagueById(leagueId) : null;
+    if (leagueId && !league) {
+        return { error: apiError('NOT_FOUND', 'League not found'), status: 404 as const };
+    }
 
     const homeTeam = homeTeamId ? await getTeamById(homeTeamId) : null;
     if (homeTeamId && !homeTeam) {
@@ -476,6 +495,15 @@ async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.inf
 
     if (homeTeam?.id && awayTeam?.id && homeTeam.id === awayTeam.id) {
         return { error: apiError('VALIDATION_ERROR', 'Home and away teams must be different'), status: 400 as const };
+    }
+
+    if (league?.sportId) {
+        if (homeTeam?.sportId && homeTeam.sportId !== league.sportId) {
+            return { error: apiError('VALIDATION_ERROR', 'Home team does not belong to the same sport as the selected league'), status: 400 as const };
+        }
+        if (awayTeam?.sportId && awayTeam.sportId !== league.sportId) {
+            return { error: apiError('VALIDATION_ERROR', 'Away team does not belong to the same sport as the selected league'), status: 400 as const };
+        }
     }
 
     const stadium = stadiumId ? await getStadiumById(stadiumId) : null;
@@ -493,7 +521,7 @@ async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.inf
 
     return {
         values: {
-            leagueId: input.leagueId === undefined ? undefined : (input.leagueId || null),
+            leagueId,
             homeTeamId,
             awayTeamId,
             stadiumId,
