@@ -144,14 +144,29 @@ export default function HomePage() {
       .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime()),
     [MATCHES, hydrated, nowTs],
   );
-  const filteredUpcomingMatches = useMemo(
+  const thisWeekMatches = useMemo(() => {
+    if (!hydrated || nowTs === null) {
+      return upcomingMatches;
+    }
+
+    const weekAheadTs = nowTs + 7 * 24 * 60 * 60 * 1000;
+    return upcomingMatches.filter((match) => {
+      const kickoffTs = new Date(match.matchDateUTC).getTime();
+      return kickoffTs >= nowTs && kickoffTs < weekAheadTs;
+    });
+  }, [hydrated, nowTs, upcomingMatches]);
+  const weekLeagueOptions = useMemo(
+    () => leagues.filter((league) => thisWeekMatches.some((match) => match.leagueId === league.id)),
+    [leagues, thisWeekMatches],
+  );
+  const filteredWeekMatches = useMemo(
     () =>
-      upcomingMatches.filter((match) =>
+      thisWeekMatches.filter((match) =>
         homeLeagueFilter === "all" ? true : match.leagueId === homeLeagueFilter,
       ),
-    [upcomingMatches, homeLeagueFilter],
+    [thisWeekMatches, homeLeagueFilter],
   );
-  const featuredMatch = filteredUpcomingMatches[0] || upcomingMatches[0] || MATCHES[0];
+  const featuredMatch = filteredWeekMatches[0] || thisWeekMatches[0] || upcomingMatches[0] || MATCHES[0];
   const selectedVenue = venueCards[selectedVenueIdx];
   const selectedVenueEvent = featuredMatch && selectedVenue
     ? getVenueEvents(featuredMatch.id).find((event) => event.venueId === selectedVenue.id)
@@ -165,6 +180,11 @@ export default function HomePage() {
     : venueCards;
   const getVenueCardImage = (venue: (typeof VENUES)[number]) =>
     venue.coverImageUrl || venue.galleryImageUrls?.[0] || "/assets/img-3.png";
+  const featuredMatchHeading = featuredMatch
+    ? featuredMatch.eventFormat === "SINGLE_EVENT"
+      ? `${featuredMatch.eventTitle || selectedLeague?.shortName || selectedLeague?.name || "EVENT"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
+      : `${selectedHome?.shortName || "HOME"} VS ${selectedAway?.shortName || "AWAY"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
+    : "UPCOMING MATCH";
 
   return (
       <AppShell>
@@ -266,7 +286,7 @@ export default function HomePage() {
                 }} onClick={() => setHomeLeagueFilter("all")}>
                     All Matches
                 </button>
-                {leagues.slice(0, 4).map((lg) => (
+                {weekLeagueOptions.map((lg) => (
                     <button key={lg.id} style={{
                       display: "inline-flex", alignItems: "center", gap: 6,
                       padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
@@ -282,22 +302,20 @@ export default function HomePage() {
           </div>
           
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-            {filteredUpcomingMatches.length === 0 && (
+            {filteredWeekMatches.length === 0 && (
                 <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "1 / -1", minHeight: 300 }}>
                     <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", marginBottom: 16 }}>
                         <Trophy style={{ width: 32, height: 32, opacity: 0.5 }} />
                     </div>
                     <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Matches Scheduled</h3>
                     <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 400 }}>
-                        There are currently no featured matches in this category. Check back soon or select a different league to find watch parties.
+                        There are currently no matches scheduled in the next seven days for this filter. Check another league or come back later.
                     </p>
                 </div>
             )}
-            {filteredUpcomingMatches.slice(0, 8).map((m) => {
-              const home = getTeam(m.homeTeamId);
-              const away = getTeam(m.awayTeamId);
+            {filteredWeekMatches.map((m) => {
               const league = getLeague(m.leagueId);
-              if (!home || !away || !league) return null;
+              if (!league) return null;
               
               const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
               const isFinished = m.status === "FINISHED";
@@ -306,6 +324,35 @@ export default function HomePage() {
                 : isFinished
                   ? "FINISHED"
                   : "SCHEDULED";
+
+              if (m.eventFormat === "SINGLE_EVENT") {
+                return (
+                  <MatchCard
+                    key={m.id}
+                    eventFormat="SINGLE_EVENT"
+                    eventTitle={m.eventTitle || league.name}
+                    eventSubtitle={m.eventSubtitle || undefined}
+                    homeTeam=""
+                    awayTeam=""
+                    homeCrest=""
+                    awayCrest=""
+                    kickoff={formatKickoffLabel(m.matchDateUTC)}
+                    league={league.shortName || league.name}
+                    leagueLogo={league.logo}
+                    leagueImage={league.image}
+                    venueCount={m.venueCount}
+                    status={cardStatus}
+                    matchDay={m.stage || m.matchDay}
+                    isHot={m.isHot}
+                    onClick={() => { window.location.href = `/matches/${m.id}`; }}
+                    style={{ minWidth: "unset", height: "100%" }}
+                  />
+                );
+              }
+
+              const home = getTeam(m.homeTeamId);
+              const away = getTeam(m.awayTeamId);
+              if (!home || !away) return null;
               
               return (
                 <MatchCard
@@ -408,9 +455,7 @@ export default function HomePage() {
         <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "192px 24px 96px", position: "relative", zIndex: 10, backgroundColor: "var(--background)" }}>
           <div className="mb-12">
             <div className="text-primary font-bold tracking-widest text-xs mb-2">
-              {featuredMatch
-                ? `${selectedHome?.shortName || "HOME"} VS ${selectedAway?.shortName || "AWAY"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
-                : "UPCOMING MATCH"}
+              {featuredMatchHeading}
             </div>
             <h2 className="font-display text-4xl font-black text-foreground">
               FIND HOSTING VENUES
@@ -420,6 +465,10 @@ export default function HomePage() {
             <div className="bg-card rounded-3xl border border-border shadow-xl p-2 relative z-20">
               <MapListToggle
                 venues={mapVenueCards.map((v) => ({
+                  id: v.id,
+                  slug: v.slug,
+                  lat: v.lat,
+                  lng: v.lng,
                   name: v.name,
                   coverImage: getVenueCardImage(v),
                   city: v.city,
@@ -608,10 +657,18 @@ export default function HomePage() {
             address: `${venueCards[selectedVenueIdx]?.addressLine1 || ""}, ${venueCards[selectedVenueIdx]?.city || ""}`,
           }}
           match={{
-            homeTeam: selectedHome?.shortName || "HOME",
-            awayTeam: selectedAway?.shortName || "AWAY",
-            homeCrest: selectedHome?.image || selectedHome?.crest || "HOME",
-            awayCrest: selectedAway?.image || selectedAway?.crest || "AWAY",
+            homeTeam: featuredMatch?.eventFormat === "SINGLE_EVENT"
+              ? featuredMatch.eventTitle || selectedLeague?.shortName || "EVENT"
+              : selectedHome?.shortName || "HOME",
+            awayTeam: featuredMatch?.eventFormat === "SINGLE_EVENT"
+              ? featuredMatch.eventSubtitle || selectedLeague?.name || "Event"
+              : selectedAway?.shortName || "AWAY",
+            homeCrest: featuredMatch?.eventFormat === "SINGLE_EVENT"
+              ? selectedLeague?.image || selectedLeague?.logo || "EV"
+              : selectedHome?.image || selectedHome?.crest || "HOME",
+            awayCrest: featuredMatch?.eventFormat === "SINGLE_EVENT"
+              ? selectedLeague?.image || selectedLeague?.logo || "EV"
+              : selectedAway?.image || selectedAway?.crest || "AWAY",
             kickoff: featuredMatch
               ? formatKickoffLabel(featuredMatch.matchDateUTC)
               : "TBD",

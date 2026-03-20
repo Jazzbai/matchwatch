@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Search, Star, MessageSquare, Type, Coins, CircleDollarSign, Gem, Crown } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
-import { VenueCard } from "../../components/VenueCard";
+import { MapListToggle } from "../../components/MapListToggle";
 import { AMENITY_LABELS } from "../../lib/data";
 import { useData, type PriceRange } from "../../lib/data-provider";
 
@@ -240,7 +240,7 @@ export default function VenuesPage() {
                 </div>
             </section>
 
-            {/* Venue Grid */}
+            {/* Venue Explorer */}
             <section style={{ maxWidth: 1400, margin: "0 auto", padding: "20px 24px 48px" }}>
                 {filtered.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "80px 20px", borderRadius: 24, border: "1px dashed var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)" }}>
@@ -248,29 +248,35 @@ export default function VenuesPage() {
                         <p style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Try adjusting your search or filters.</p>
                     </div>
                 ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
-                        {filtered.map((v) => (
-                            <div key={v.id}>
-                                <Link href={`/venues/${v.slug}`} style={{ textDecoration: "none", color: "inherit" }}>
-                                    <VenueCard
-                                        name={v.name}
-                                        coverImage={v.coverImageUrl || "/venue-hero.webp"}
-                                        city={v.city}
-                                        address={v.addressLine1}
-                                        rating={v.rating}
-                                        reviewCount={v.reviewCount}
-                                        amenities={v.amenities}
-                                        cuisineTags={v.cuisineTags}
-                                        priceRange={v.priceRange}
-                                        isVerified={v.isVerified}
-                                        isFeatured={v.isFeatured}
-                                        spotsRemaining={null}
-                                        nextEvent={`${v.upcomingEventsCount} upcoming events`}
-                                    />
-                                </Link>
-                            </div>
-                        ))}
-                    </div>
+                    <MapListToggle
+                        venues={filtered.map((v) => ({
+                            id: v.id,
+                            slug: v.slug,
+                            lat: v.lat,
+                            lng: v.lng,
+                            name: v.name,
+                            coverImage: v.coverImageUrl || "/venue-hero.webp",
+                            city: v.city,
+                            address: v.addressLine1,
+                            rating: v.rating,
+                            reviewCount: v.reviewCount,
+                            amenities: v.amenities,
+                            cuisineTags: v.cuisineTags,
+                            priceRange: v.priceRange,
+                            isVerified: v.isVerified,
+                            isFeatured: v.isFeatured,
+                            spotsRemaining: null,
+                            nextEvent: `${v.upcomingEventsCount} upcoming events`,
+                        }))}
+                        onVenueClick={(index) => {
+                            const venue = filtered[index];
+                            if (venue) window.location.href = `/venues/${venue.slug}`;
+                        }}
+                        onBookNow={(index) => {
+                            const venue = filtered[index];
+                            if (venue) window.location.href = `/venues/${venue.slug}`;
+                        }}
+                    />
                 )}
             </section>
 

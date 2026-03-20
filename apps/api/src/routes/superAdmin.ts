@@ -6,10 +6,15 @@ import bcrypt from 'bcryptjs';
 import os from 'os';
 import { execSync } from 'child_process';
 import { timingSafeEqual } from 'crypto';
+import DOMPurify from 'isomorphic-dompurify';
 import { S3Client, HeadBucketCommand } from '@aws-sdk/client-s3';
-import { and, count, desc, eq, gte, lte, ilike, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lte, ilike, inArray, or, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
+    blogCategories,
+    blogComments,
+    blogPostCategories,
+    blogPosts,
     bookings,
     sports,
     leagues,
@@ -217,7 +222,55 @@ const updateVenueSchema = z.object({
     isFeatured: z.boolean().optional(),
     priceRange: z.enum(['BUDGET', 'MID', 'UPSCALE', 'LUXURY']).optional(),
     capacity: z.coerce.number().int().positive().nullable().optional(),
+    ratingOverride: z.coerce.number().min(0).max(5).nullable().optional(),
+    reviewCountOverride: z.coerce.number().int().min(0).nullable().optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const createBlogCategorySchema = z.object({
+    name: z.string().min(2).max(120),
+    slug: z.string().max(160).optional(),
+    description: z.string().max(500).optional(),
+    sortOrder: z.coerce.number().int().default(0),
+    isActive: z.boolean().default(true),
+});
+
+const updateBlogCategorySchema = z.object({
+    name: z.string().min(2).max(120).optional(),
+    slug: z.string().max(160).optional(),
+    description: z.string().max(500).nullable().optional(),
+    sortOrder: z.coerce.number().int().optional(),
+    isActive: z.boolean().optional(),
+}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const createBlogPostSchema = z.object({
+    title: z.string().min(3).max(200),
+    slug: z.string().max(220).optional(),
+    excerpt: z.string().max(500).optional(),
+    featuredImageUrl: z.string().url().optional(),
+    featuredImageS3Key: z.string().max(500).optional(),
+    contentJson: z.any().optional(),
+    renderedHtml: z.string().default(''),
+    status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),
+    publishedAt: z.string().datetime().nullable().optional(),
+    categoryIds: z.array(z.string().uuid()).default([]),
+});
+
+const updateBlogPostSchema = z.object({
+    title: z.string().min(3).max(200).optional(),
+    slug: z.string().max(220).optional(),
+    excerpt: z.string().max(500).nullable().optional(),
+    featuredImageUrl: z.string().url().nullable().optional(),
+    featuredImageS3Key: z.string().max(500).nullable().optional(),
+    contentJson: z.any().optional(),
+    renderedHtml: z.string().optional(),
+    status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
+    publishedAt: z.string().datetime().nullable().optional(),
+    categoryIds: z.array(z.string().uuid()).optional(),
+}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const updateBlogCommentSchema = z.object({
+    status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+});
 
 const venueAttributeQuerySchema = z.object({
     type: z.enum(['AMENITY', 'VIBE', 'CUISINE']).optional(),
@@ -286,6 +339,9 @@ const updateCustomEventSchema = z.object({
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
 const createMatchSchema = z.object({
+    eventFormat: z.enum(['HEAD_TO_HEAD', 'SINGLE_EVENT']).default('HEAD_TO_HEAD'),
+    eventTitle: z.string().max(200).nullable().optional(),
+    eventSubtitle: z.string().max(200).nullable().optional(),
     leagueId: z.string().uuid().nullable().optional(),
     homeTeamId: z.string().uuid().nullable().optional(),
     awayTeamId: z.string().uuid().nullable().optional(),
@@ -301,18 +357,27 @@ const createMatchSchema = z.object({
     venueName: z.string().max(200).nullable().optional(),
     externalMatchId: z.string().max(50).optional(),
 }).superRefine((value, ctx) => {
-    if (!value.homeTeamId && !value.homeTeamName?.trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home team is required', path: ['homeTeamName'] });
-    }
-    if (!value.awayTeamId && !value.awayTeamName?.trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Away team is required', path: ['awayTeamName'] });
-    }
-    if (value.homeTeamId && value.awayTeamId && value.homeTeamId === value.awayTeamId) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home and away teams must be different', path: ['awayTeamId'] });
+    if (value.eventFormat === 'SINGLE_EVENT') {
+        if (!value.eventTitle?.trim()) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Event title is required', path: ['eventTitle'] });
+        }
+    } else {
+        if (!value.homeTeamId && !value.homeTeamName?.trim()) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home team is required', path: ['homeTeamName'] });
+        }
+        if (!value.awayTeamId && !value.awayTeamName?.trim()) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Away team is required', path: ['awayTeamName'] });
+        }
+        if (value.homeTeamId && value.awayTeamId && value.homeTeamId === value.awayTeamId) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home and away teams must be different', path: ['awayTeamId'] });
+        }
     }
 });
 
 const updateMatchSchema = z.object({
+    eventFormat: z.enum(['HEAD_TO_HEAD', 'SINGLE_EVENT']).optional(),
+    eventTitle: z.string().max(200).nullable().optional(),
+    eventSubtitle: z.string().max(200).nullable().optional(),
     leagueId: z.string().uuid().nullable().optional(),
     homeTeamId: z.string().uuid().nullable().optional(),
     awayTeamId: z.string().uuid().nullable().optional(),
@@ -416,6 +481,19 @@ function sanitizeGalleryKeys(values?: string[] | null) {
     return (values || []).map((value) => value.trim()).filter(Boolean).slice(0, 5);
 }
 
+function sanitizeBlogHtml(value?: string | null) {
+    return DOMPurify.sanitize(value || '');
+}
+
+async function syncBlogPostCategoryIds(postId: string, categoryIds: string[]) {
+    await db.delete(blogPostCategories).where(eq(blogPostCategories.postId, postId));
+    if (categoryIds.length === 0) return;
+    await db.insert(blogPostCategories).values(categoryIds.map((categoryId) => ({
+        postId,
+        categoryId,
+    })));
+}
+
 async function resolveVenueOwner(ownerId?: string, ownerEmail?: string) {
     if (ownerId) {
         const [owner] = await db.select({
@@ -473,6 +551,7 @@ async function getStadiumById(stadiumId: string) {
 }
 
 async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.infer<typeof updateMatchSchema>) {
+    const eventFormat = input.eventFormat || 'HEAD_TO_HEAD';
     const homeTeamId = input.homeTeamId === undefined ? undefined : (input.homeTeamId || null);
     const awayTeamId = input.awayTeamId === undefined ? undefined : (input.awayTeamId || null);
     const stadiumId = input.stadiumId === undefined ? undefined : (input.stadiumId || null);
@@ -515,20 +594,27 @@ async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.inf
     const awayTeamName = awayTeam?.name ?? input.awayTeamName?.trim();
     const venueName = stadium?.name ?? (input.venueName === null ? null : input.venueName?.trim() || undefined);
 
-    if (homeTeamName && awayTeamName && homeTeamName.localeCompare(awayTeamName, undefined, { sensitivity: 'accent' }) === 0) {
+    if (eventFormat === 'HEAD_TO_HEAD' && homeTeamName && awayTeamName && homeTeamName.localeCompare(awayTeamName, undefined, { sensitivity: 'accent' }) === 0) {
         return { error: apiError('VALIDATION_ERROR', 'Home and away teams must be different'), status: 400 as const };
     }
 
     return {
         values: {
+            eventFormat,
+            eventTitle: input.eventTitle === undefined ? undefined : (input.eventTitle?.trim() || null),
+            eventSubtitle: input.eventSubtitle === undefined ? undefined : (input.eventSubtitle?.trim() || null),
             leagueId,
-            homeTeamId,
-            awayTeamId,
+            homeTeamId: eventFormat === 'HEAD_TO_HEAD' ? homeTeamId : null,
+            awayTeamId: eventFormat === 'HEAD_TO_HEAD' ? awayTeamId : null,
             stadiumId,
-            homeTeamName,
-            awayTeamName,
-            homeTeamCrestUrl: homeTeam?.crestUrl ?? (input.homeTeamCrestUrl !== undefined ? input.homeTeamCrestUrl : input.homeTeamId !== undefined || input.homeTeamName !== undefined ? null : undefined),
-            awayTeamCrestUrl: awayTeam?.crestUrl ?? (input.awayTeamCrestUrl !== undefined ? input.awayTeamCrestUrl : input.awayTeamId !== undefined || input.awayTeamName !== undefined ? null : undefined),
+            homeTeamName: eventFormat === 'HEAD_TO_HEAD' ? (homeTeamName || null) : null,
+            awayTeamName: eventFormat === 'HEAD_TO_HEAD' ? (awayTeamName || null) : null,
+            homeTeamCrestUrl: eventFormat === 'HEAD_TO_HEAD'
+                ? (homeTeam?.crestUrl ?? (input.homeTeamCrestUrl !== undefined ? input.homeTeamCrestUrl : input.homeTeamId !== undefined || input.homeTeamName !== undefined ? null : undefined))
+                : null,
+            awayTeamCrestUrl: eventFormat === 'HEAD_TO_HEAD'
+                ? (awayTeam?.crestUrl ?? (input.awayTeamCrestUrl !== undefined ? input.awayTeamCrestUrl : input.awayTeamId !== undefined || input.awayTeamName !== undefined ? null : undefined))
+                : null,
             matchDateUtc: input.matchDateUtc ? new Date(input.matchDateUtc) : undefined,
             status: input.status,
             matchDay: input.matchDay === undefined ? undefined : (input.matchDay || null),
@@ -586,6 +672,8 @@ function mapVenueRow(row: {
     isVerified: boolean;
     isActive: boolean;
     isFeatured: boolean;
+    ratingOverride?: string | number | null;
+    reviewCountOverride?: number | null;
     createdAt: Date;
     updatedAt?: Date;
     metadata?: unknown;
@@ -599,6 +687,8 @@ function mapVenueRow(row: {
         amenities: row.amenities || [],
         vibes: row.vibes || [],
         cuisineTags: row.cuisineTags || [],
+        ratingOverride: row.ratingOverride === null || row.ratingOverride === undefined ? null : Number(row.ratingOverride),
+        reviewCountOverride: row.reviewCountOverride ?? null,
     };
 }
 
@@ -1710,6 +1800,8 @@ superAdminRoutes.get('/venues', async (c) => {
             vibes: venues.vibes,
             cuisineTags: venues.cuisineTags,
             priceRange: venues.priceRange,
+            ratingOverride: venues.ratingOverride,
+            reviewCountOverride: venues.reviewCountOverride,
             metadata: venues.metadata,
             isActive: venues.isActive,
             isVerified: venues.isVerified,
@@ -1780,6 +1872,8 @@ superAdminRoutes.post('/venues', async (c) => {
         isVerified: parsed.data.isVerified,
         isActive: parsed.data.isActive,
         isFeatured: parsed.data.isFeatured,
+        ratingOverride: null,
+        reviewCountOverride: null,
         metadata: {
             galleryImageUrls: sanitizeGalleryUrls(parsed.data.galleryImageUrls),
         },
@@ -1846,6 +1940,12 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
             ...currentMetadata,
             galleryImageUrls: sanitizeGalleryUrls(parsed.data.galleryImageUrls),
         };
+    }
+    if (parsed.data.ratingOverride !== undefined) {
+        updates.ratingOverride = parsed.data.ratingOverride;
+    }
+    if (parsed.data.reviewCountOverride !== undefined) {
+        updates.reviewCountOverride = parsed.data.reviewCountOverride;
     }
 
     await db.update(venues).set(updates).where(eq(venues.id, venueId));
@@ -2141,6 +2241,7 @@ superAdminRoutes.get('/matches', async (c) => {
         ? or(
             ilike(matches.homeTeamName, `%${search}%`),
             ilike(matches.awayTeamName, `%${search}%`),
+            ilike(matches.eventTitle, `%${search}%`),
             ilike(leagues.name, `%${search}%`),
         )
         : undefined;
@@ -2150,6 +2251,9 @@ superAdminRoutes.get('/matches', async (c) => {
             id: matches.id,
             leagueId: matches.leagueId,
             leagueName: leagues.name,
+            eventFormat: matches.eventFormat,
+            eventTitle: matches.eventTitle,
+            eventSubtitle: matches.eventSubtitle,
             homeTeamId: matches.homeTeamId,
             awayTeamId: matches.awayTeamId,
             stadiumId: matches.stadiumId,
@@ -2188,11 +2292,20 @@ superAdminRoutes.post('/matches', async (c) => {
         return c.json(normalized.error, normalized.status);
     }
 
-    if (!normalized.values.homeTeamName || !normalized.values.awayTeamName || !normalized.values.matchDateUtc) {
+    if (!normalized.values.matchDateUtc) {
+        return c.json(apiError('VALIDATION_ERROR', 'Match requires kickoff time'), 400);
+    }
+    if (normalized.values.eventFormat === 'HEAD_TO_HEAD' && (!normalized.values.homeTeamName || !normalized.values.awayTeamName)) {
         return c.json(apiError('VALIDATION_ERROR', 'Match requires teams and kickoff time'), 400);
+    }
+    if (normalized.values.eventFormat === 'SINGLE_EVENT' && !normalized.values.eventTitle) {
+        return c.json(apiError('VALIDATION_ERROR', 'Single event requires an event title'), 400);
     }
 
     const [created] = await db.insert(matches).values({
+        eventFormat: normalized.values.eventFormat || 'HEAD_TO_HEAD',
+        eventTitle: normalized.values.eventTitle ?? null,
+        eventSubtitle: normalized.values.eventSubtitle ?? null,
         leagueId: normalized.values.leagueId ?? null,
         homeTeamId: normalized.values.homeTeamId ?? null,
         awayTeamId: normalized.values.awayTeamId ?? null,
@@ -2209,6 +2322,7 @@ superAdminRoutes.post('/matches', async (c) => {
         externalMatchId: normalized.values.externalMatchId ?? null,
     }).returning({
         id: matches.id,
+        eventTitle: matches.eventTitle,
         homeTeamName: matches.homeTeamName,
         awayTeamName: matches.awayTeamName,
     });
@@ -2371,6 +2485,279 @@ superAdminRoutes.delete('/matches/:matchId', async (c) => {
         message: 'Match deleted',
         mode: 'deleted',
     }));
+});
+
+superAdminRoutes.get('/blog/categories', async (c) => {
+    const rows = await db.select({
+        id: blogCategories.id,
+        name: blogCategories.name,
+        slug: blogCategories.slug,
+        description: blogCategories.description,
+        sortOrder: blogCategories.sortOrder,
+        isActive: blogCategories.isActive,
+        createdAt: blogCategories.createdAt,
+        updatedAt: blogCategories.updatedAt,
+    }).from(blogCategories).orderBy(blogCategories.sortOrder, blogCategories.name);
+
+    return c.json(apiResponse(rows));
+});
+
+superAdminRoutes.post('/blog/categories', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createBlogCategorySchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const slug = slugifyValue(parsed.data.slug?.trim() || parsed.data.name);
+    const [existing] = await db.select({ id: blogCategories.id }).from(blogCategories).where(eq(blogCategories.slug, slug)).limit(1);
+    if (existing) return c.json(apiError('CONFLICT', 'Blog category slug already exists'), 409);
+
+    const [created] = await db.insert(blogCategories).values({
+        name: parsed.data.name.trim(),
+        slug,
+        description: parsed.data.description?.trim() || null,
+        sortOrder: parsed.data.sortOrder,
+        isActive: parsed.data.isActive,
+    }).returning();
+
+    return c.json(apiResponse(created), 201);
+});
+
+superAdminRoutes.patch('/blog/categories/:categoryId', async (c) => {
+    const categoryId = c.req.param('categoryId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateBlogCategorySchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({ id: blogCategories.id }).from(blogCategories).where(eq(blogCategories.id, categoryId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Blog category not found'), 404);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
+    if (parsed.data.slug !== undefined) updates.slug = slugifyValue(parsed.data.slug);
+    if (parsed.data.description !== undefined) updates.description = parsed.data.description?.trim() || null;
+    if (parsed.data.sortOrder !== undefined) updates.sortOrder = parsed.data.sortOrder;
+    if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+
+    await db.update(blogCategories).set(updates).where(eq(blogCategories.id, categoryId));
+    return c.json(apiResponse({ message: 'Blog category updated' }));
+});
+
+superAdminRoutes.delete('/blog/categories/:categoryId', async (c) => {
+    const categoryId = c.req.param('categoryId');
+    const [existing] = await db.select({ id: blogCategories.id }).from(blogCategories).where(eq(blogCategories.id, categoryId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Blog category not found'), 404);
+
+    await db.update(blogCategories).set({ isActive: false, updatedAt: new Date() }).where(eq(blogCategories.id, categoryId));
+    return c.json(apiResponse({ message: 'Blog category archived' }));
+});
+
+superAdminRoutes.get('/blog/posts', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+
+    const { page, limit, search } = parsed.data;
+    const offset = paginationOffset(page, limit);
+    const where = search
+        ? or(
+            ilike(blogPosts.title, `%${search}%`),
+            ilike(blogPosts.slug, `%${search}%`),
+            ilike(blogPosts.excerpt, `%${search}%`),
+        )
+        : undefined;
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: blogPosts.id,
+            slug: blogPosts.slug,
+            title: blogPosts.title,
+            excerpt: blogPosts.excerpt,
+            featuredImageUrl: blogPosts.featuredImageUrl,
+            status: blogPosts.status,
+            publishedAt: blogPosts.publishedAt,
+            createdAt: blogPosts.createdAt,
+            updatedAt: blogPosts.updatedAt,
+            authorId: blogPosts.authorId,
+            authorName: users.name,
+        })
+            .from(blogPosts)
+            .leftJoin(users, eq(blogPosts.authorId, users.id))
+            .where(where)
+            .orderBy(desc(blogPosts.createdAt))
+            .limit(limit)
+            .offset(offset),
+        db.select({ count: count() }).from(blogPosts).where(where),
+    ]);
+
+    const postIds = rows.map((row) => row.id);
+    const categoriesByPost = new Map<string, Array<{ id: string; name: string; slug: string }>>();
+    if (postIds.length > 0) {
+        const categoryRows = await db.select({
+            postId: blogPostCategories.postId,
+            id: blogCategories.id,
+            name: blogCategories.name,
+            slug: blogCategories.slug,
+        })
+            .from(blogPostCategories)
+            .innerJoin(blogCategories, eq(blogPostCategories.categoryId, blogCategories.id))
+            .where(inArray(blogPostCategories.postId, postIds));
+        for (const row of categoryRows) {
+            if (!categoriesByPost.has(row.postId)) categoriesByPost.set(row.postId, []);
+            categoriesByPost.get(row.postId)?.push({ id: row.id, name: row.name, slug: row.slug });
+        }
+    }
+
+    return c.json(apiResponse(rows.map((row) => ({
+        ...row,
+        categories: categoriesByPost.get(row.id) || [],
+    })), paginationMeta(page, limit, Number(totalResult?.count || 0))));
+});
+
+superAdminRoutes.get('/blog/posts/:postId', async (c) => {
+    const postId = c.req.param('postId');
+    const [row] = await db.select().from(blogPosts).where(eq(blogPosts.id, postId)).limit(1);
+    if (!row) return c.json(apiError('NOT_FOUND', 'Blog post not found'), 404);
+
+    const categoryRows = await db.select({
+        id: blogCategories.id,
+        name: blogCategories.name,
+        slug: blogCategories.slug,
+    })
+        .from(blogPostCategories)
+        .innerJoin(blogCategories, eq(blogPostCategories.categoryId, blogCategories.id))
+        .where(eq(blogPostCategories.postId, postId));
+
+    return c.json(apiResponse({
+        ...row,
+        categories: categoryRows,
+        categoryIds: categoryRows.map((category) => category.id),
+    }));
+});
+
+superAdminRoutes.post('/blog/posts', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createBlogPostSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const categoryIds = Array.from(new Set(parsed.data.categoryIds));
+    if (categoryIds.length > 0) {
+        const found = await db.select({ id: blogCategories.id }).from(blogCategories).where(inArray(blogCategories.id, categoryIds));
+        if (found.length !== categoryIds.length) return c.json(apiError('NOT_FOUND', 'One or more categories were not found'), 404);
+    }
+
+    const title = parsed.data.title.trim();
+    const slug = slugifyValue(parsed.data.slug?.trim() || title);
+    const [existing] = await db.select({ id: blogPosts.id }).from(blogPosts).where(eq(blogPosts.slug, slug)).limit(1);
+    if (existing) return c.json(apiError('CONFLICT', 'Blog post slug already exists'), 409);
+
+    const [author] = await db.select({ id: users.id }).from(users)
+        .where(and(
+            eq(users.isActive, true),
+            inArray(users.role, ['SUPER_ADMIN', 'ADMIN']),
+        ))
+        .orderBy(users.createdAt)
+        .limit(1);
+    if (!author) return c.json(apiError('NOT_FOUND', 'No admin user found to own blog posts'), 404);
+
+    const [created] = await db.insert(blogPosts).values({
+        title,
+        slug,
+        excerpt: parsed.data.excerpt?.trim() || null,
+        featuredImageUrl: parsed.data.featuredImageUrl?.trim() || null,
+        featuredImageS3Key: parsed.data.featuredImageS3Key?.trim() || null,
+        contentJson: parsed.data.contentJson ?? null,
+        contentHtml: sanitizeBlogHtml(parsed.data.renderedHtml),
+        status: parsed.data.status,
+        publishedAt: parsed.data.publishedAt ? new Date(parsed.data.publishedAt) : parsed.data.status === 'PUBLISHED' ? new Date() : null,
+        authorId: author.id,
+    }).returning({ id: blogPosts.id });
+
+    await syncBlogPostCategoryIds(created.id, categoryIds);
+    return c.json(apiResponse({ id: created.id }), 201);
+});
+
+superAdminRoutes.patch('/blog/posts/:postId', async (c) => {
+    const postId = c.req.param('postId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateBlogPostSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({ id: blogPosts.id }).from(blogPosts).where(eq(blogPosts.id, postId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Blog post not found'), 404);
+
+    if (parsed.data.categoryIds) {
+        const found = await db.select({ id: blogCategories.id }).from(blogCategories).where(inArray(blogCategories.id, parsed.data.categoryIds));
+        if (found.length !== parsed.data.categoryIds.length) return c.json(apiError('NOT_FOUND', 'One or more categories were not found'), 404);
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.title !== undefined) updates.title = parsed.data.title.trim();
+    if (parsed.data.slug !== undefined) updates.slug = slugifyValue(parsed.data.slug);
+    if (parsed.data.excerpt !== undefined) updates.excerpt = parsed.data.excerpt?.trim() || null;
+    if (parsed.data.featuredImageUrl !== undefined) updates.featuredImageUrl = parsed.data.featuredImageUrl?.trim() || null;
+    if (parsed.data.featuredImageS3Key !== undefined) updates.featuredImageS3Key = parsed.data.featuredImageS3Key?.trim() || null;
+    if (parsed.data.contentJson !== undefined) updates.contentJson = parsed.data.contentJson ?? null;
+    if (parsed.data.renderedHtml !== undefined) updates.contentHtml = sanitizeBlogHtml(parsed.data.renderedHtml);
+    if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+    if (parsed.data.publishedAt !== undefined) updates.publishedAt = parsed.data.publishedAt ? new Date(parsed.data.publishedAt) : null;
+
+    await db.update(blogPosts).set(updates).where(eq(blogPosts.id, postId));
+    if (parsed.data.categoryIds) {
+        await syncBlogPostCategoryIds(postId, Array.from(new Set(parsed.data.categoryIds)));
+    }
+
+    return c.json(apiResponse({ message: 'Blog post updated' }));
+});
+
+superAdminRoutes.delete('/blog/posts/:postId', async (c) => {
+    const postId = c.req.param('postId');
+    const [existing] = await db.select({ id: blogPosts.id }).from(blogPosts).where(eq(blogPosts.id, postId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Blog post not found'), 404);
+
+    await db.delete(blogPostCategories).where(eq(blogPostCategories.postId, postId));
+    await db.delete(blogComments).where(eq(blogComments.postId, postId));
+    await db.delete(blogPosts).where(eq(blogPosts.id, postId));
+    return c.json(apiResponse({ message: 'Blog post deleted' }));
+});
+
+superAdminRoutes.get('/blog/comments', async (c) => {
+    const status = c.req.query('status');
+    const rows = await db.select({
+        id: blogComments.id,
+        postId: blogComments.postId,
+        postTitle: blogPosts.title,
+        userId: blogComments.userId,
+        userName: users.name,
+        content: blogComments.content,
+        status: blogComments.status,
+        createdAt: blogComments.createdAt,
+    })
+        .from(blogComments)
+        .innerJoin(blogPosts, eq(blogComments.postId, blogPosts.id))
+        .innerJoin(users, eq(blogComments.userId, users.id))
+        .where(status ? eq(blogComments.status, status as 'PENDING' | 'APPROVED' | 'REJECTED') : undefined)
+        .orderBy(desc(blogComments.createdAt))
+        .limit(200);
+
+    return c.json(apiResponse(rows));
+});
+
+superAdminRoutes.patch('/blog/comments/:commentId', async (c) => {
+    const commentId = c.req.param('commentId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateBlogCommentSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({ id: blogComments.id }).from(blogComments).where(eq(blogComments.id, commentId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Blog comment not found'), 404);
+
+    await db.update(blogComments).set({
+        status: parsed.data.status,
+        moderatedBy: null,
+        moderatedAt: new Date(),
+        updatedAt: new Date(),
+    }).where(eq(blogComments.id, commentId));
+
+    return c.json(apiResponse({ message: 'Blog comment updated' }));
 });
 
 export default superAdminRoutes;

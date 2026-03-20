@@ -10,6 +10,7 @@ const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
 const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE_URL || 'https://v3.football.api-sports.io';
 const THE_SPORTS_DB_BASE = process.env.THE_SPORTS_DB_BASE_URL
     || `https://www.thesportsdb.com/api/v1/json/${process.env.THE_SPORTS_DB_API_KEY?.trim() || '3'}`;
+const JOLPICA_BASE = process.env.JOLPICA_BASE_URL || 'https://api.jolpi.ca/ergast';
 const FOOTBALL_DATA_SUPPORTED_CODES = new Set(['WC', 'PL', 'PD', 'BL1', 'SA', 'FL1', 'CL', 'MLS']);
 const THE_SPORTS_DB_PRIORITY_LEAGUE_CODES = new Set(['MLS', 'NWSL', 'LMX']);
 const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
@@ -22,6 +23,12 @@ const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
     MLS: 4346,
     NWSL: 4521,
     LMX: 4350,
+    NFL: 4391,
+    MLB: 4424,
+    NBA: 4387,
+    NHL: 4380,
+    NASCAR: 4393,
+    INDYCAR: 4373,
 };
 
 type MatchSyncProvider = 'FOOTBALL_DATA' | 'API_FOOTBALL' | 'THE_SPORTS_DB';
@@ -118,6 +125,9 @@ interface TheSportsDbEventsSeasonResponse {
     events?: Array<{
         idEvent: string;
         strLeague?: string | null;
+        strLeagueBadge?: string | null;
+        strEvent?: string | null;
+        strEventAlternate?: string | null;
         strHomeTeam?: string | null;
         strAwayTeam?: string | null;
         idHomeTeam?: string | null;
@@ -132,7 +142,34 @@ interface TheSportsDbEventsSeasonResponse {
         intHomeScore?: string | number | null;
         intAwayScore?: string | number | null;
         strVenue?: string | null;
+        strCountry?: string | null;
+        strCity?: string | null;
     }>;
+}
+
+interface JolpicaRace {
+    season: string;
+    round: string;
+    raceName: string;
+    date: string;
+    time?: string;
+    Circuit: {
+        circuitId: string;
+        circuitName: string;
+        Location: {
+            locality: string;
+            country: string;
+        };
+    };
+}
+
+interface JolpicaRacesResponse {
+    MRData?: {
+        RaceTable?: {
+            season?: string;
+            Races?: JolpicaRace[];
+        };
+    };
 }
 
 let matchSyncQueueInstance: Queue | null = null;
@@ -224,6 +261,20 @@ function parseTheSportsDbDateTime(dateEvent?: string | null, strTime?: string | 
     return parsed;
 }
 
+function mapTheSportsDbLeagueCode(externalId: string) {
+    return externalId.trim().toUpperCase();
+}
+
+function isSingleEventLeagueCode(externalId: string) {
+    const code = mapTheSportsDbLeagueCode(externalId);
+    return code === 'NASCAR' || code === 'INDYCAR' || code === 'F1';
+}
+
+function isUnitedStatesCountry(value?: string | null) {
+    const normalized = (value || '').trim().toLowerCase();
+    return normalized === 'united states' || normalized === 'usa' || normalized === 'us';
+}
+
 function mapTheSportsDbStatus(event: NonNullable<TheSportsDbEventsSeasonResponse['events']>[number], matchDate: Date): MatchStatus {
     const now = Date.now();
     const statusText = (event.strStatus || '').toUpperCase();
@@ -256,7 +307,7 @@ async function fetchTheSportsDbSeason(leagueId: number) {
 
 async function syncLeagueFromTheSportsDb(league: LeagueRow): Promise<SyncResult> {
     const result: SyncResult = { fetched: 0, upserted: 0, errors: 0, teamsUpserted: 0 };
-    const externalId = (league.externalId || '').trim().toUpperCase();
+    const externalId = mapTheSportsDbLeagueCode(league.externalId || '');
     const sourceLeagueId = THE_SPORTS_DB_LEAGUE_IDS[externalId];
     if (!sourceLeagueId) {
         result.skipped = true;
@@ -289,59 +340,93 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow): Promise<SyncResult>
         const events = Array.from(deduped.values());
         result.fetched = events.length;
 
+        const isSingleEvent = isSingleEventLeagueCode(externalId);
         const now = Date.now();
         const minTs = now - 14 * 24 * 60 * 60 * 1000;
-        const maxTs = now + 60 * 24 * 60 * 60 * 1000;
+        const maxTs = now + (isSingleEvent ? 365 : 60) * 24 * 60 * 60 * 1000;
 
         for (const event of events) {
             try {
-                if (!event.idEvent || !event.strHomeTeam || !event.strAwayTeam) continue;
+                if (!event.idEvent) continue;
                 const matchDate = parseTheSportsDbDateTime(event.dateEvent, event.strTime, event.strTimestamp);
                 if (!matchDate) continue;
 
                 const eventTs = matchDate.getTime();
                 if (eventTs < minTs || eventTs > maxTs) continue;
 
-                // Namespace IDs by source league to avoid cross-league overwrite when
-                // provider returns duplicated event/team IDs across different league endpoints.
-                const homeExternal = `TSD-${sourceLeagueId}-${event.idHomeTeam || `HOME-${event.idEvent}`}`;
-                const awayExternal = `TSD-${sourceLeagueId}-${event.idAwayTeam || `AWAY-${event.idEvent}`}`;
+                if (isSingleEvent) {
+                    if (!isUnitedStatesCountry(event.strCountry)) continue;
 
-                const home = await upsertTeamRecord({
-                    leagueId: league.id,
-                    name: event.strHomeTeam,
-                    shortName: event.strHomeTeam,
-                    externalId: homeExternal,
-                    crestUrl: event.strHomeTeamBadge || null,
-                });
-                const away = await upsertTeamRecord({
-                    leagueId: league.id,
-                    name: event.strAwayTeam,
-                    shortName: event.strAwayTeam,
-                    externalId: awayExternal,
-                    crestUrl: event.strAwayTeamBadge || null,
-                });
+                    await upsertMatchRecord({
+                        leagueId: league.id,
+                        externalMatchId: `TSD-${sourceLeagueId}-${event.idEvent}`,
+                        homeTeamId: null,
+                        awayTeamId: null,
+                        homeTeamName: null,
+                        awayTeamName: null,
+                        homeTeamCrestUrl: null,
+                        awayTeamCrestUrl: null,
+                        matchDateUtc: matchDate,
+                        status: mapTheSportsDbStatus(event, matchDate),
+                        matchDay: event.intRound ? Number(event.intRound) || null : null,
+                        stage: null,
+                        homeScore: null,
+                        awayScore: null,
+                        venueName: trimText(event.strVenue || event.strCity || '', 200) || null,
+                        eventFormat: 'SINGLE_EVENT',
+                        eventTitle: trimText(event.strEvent || `${league.name} Event`, 200) || `${league.name} Event`,
+                        eventSubtitle: trimText([
+                            event.strCity,
+                            event.strCountry,
+                        ].filter(Boolean).join(', '), 200) || null,
+                    });
+                } else {
+                    if (!event.strHomeTeam || !event.strAwayTeam) continue;
 
-                if (home.created) result.teamsUpserted += 1;
-                if (away.created) result.teamsUpserted += 1;
+                    // Namespace IDs by source league to avoid cross-league overwrite when
+                    // provider returns duplicated event/team IDs across different league endpoints.
+                    const homeExternal = `TSD-${sourceLeagueId}-${event.idHomeTeam || `HOME-${event.idEvent}`}`;
+                    const awayExternal = `TSD-${sourceLeagueId}-${event.idAwayTeam || `AWAY-${event.idEvent}`}`;
 
-                await upsertMatchRecord({
-                    leagueId: league.id,
-                    externalMatchId: `TSD-${sourceLeagueId}-${event.idEvent}`,
-                    homeTeamId: home.id,
-                    awayTeamId: away.id,
-                    homeTeamName: event.strHomeTeam,
-                    awayTeamName: event.strAwayTeam,
-                    homeTeamCrestUrl: event.strHomeTeamBadge || null,
-                    awayTeamCrestUrl: event.strAwayTeamBadge || null,
-                    matchDateUtc: matchDate,
-                    status: mapTheSportsDbStatus(event, matchDate),
-                    matchDay: event.intRound ? Number(event.intRound) || null : null,
-                    stage: null,
-                    homeScore: event.intHomeScore !== null && event.intHomeScore !== undefined ? Number(event.intHomeScore) : null,
-                    awayScore: event.intAwayScore !== null && event.intAwayScore !== undefined ? Number(event.intAwayScore) : null,
-                    venueName: event.strVenue || null,
-                });
+                    const home = await upsertTeamRecord({
+                        leagueId: league.id,
+                        name: event.strHomeTeam,
+                        shortName: event.strHomeTeam,
+                        externalId: homeExternal,
+                        crestUrl: event.strHomeTeamBadge || null,
+                    });
+                    const away = await upsertTeamRecord({
+                        leagueId: league.id,
+                        name: event.strAwayTeam,
+                        shortName: event.strAwayTeam,
+                        externalId: awayExternal,
+                        crestUrl: event.strAwayTeamBadge || null,
+                    });
+
+                    if (home.created) result.teamsUpserted += 1;
+                    if (away.created) result.teamsUpserted += 1;
+
+                    await upsertMatchRecord({
+                        leagueId: league.id,
+                        externalMatchId: `TSD-${sourceLeagueId}-${event.idEvent}`,
+                        homeTeamId: home.id,
+                        awayTeamId: away.id,
+                        homeTeamName: event.strHomeTeam,
+                        awayTeamName: event.strAwayTeam,
+                        homeTeamCrestUrl: event.strHomeTeamBadge || null,
+                        awayTeamCrestUrl: event.strAwayTeamBadge || null,
+                        matchDateUtc: matchDate,
+                        status: mapTheSportsDbStatus(event, matchDate),
+                        matchDay: event.intRound ? Number(event.intRound) || null : null,
+                        stage: null,
+                        homeScore: event.intHomeScore !== null && event.intHomeScore !== undefined ? Number(event.intHomeScore) : null,
+                        awayScore: event.intAwayScore !== null && event.intAwayScore !== undefined ? Number(event.intAwayScore) : null,
+                        venueName: event.strVenue || null,
+                        eventFormat: 'HEAD_TO_HEAD',
+                        eventTitle: null,
+                        eventSubtitle: null,
+                    });
+                }
                 result.upserted += 1;
             } catch (err) {
                 result.errors += 1;
@@ -433,8 +518,8 @@ async function upsertMatchRecord(input: {
     externalMatchId: string;
     homeTeamId: string | null;
     awayTeamId: string | null;
-    homeTeamName: string;
-    awayTeamName: string;
+    homeTeamName: string | null;
+    awayTeamName: string | null;
     homeTeamCrestUrl?: string | null;
     awayTeamCrestUrl?: string | null;
     matchDateUtc: Date;
@@ -444,6 +529,9 @@ async function upsertMatchRecord(input: {
     homeScore: number | null;
     awayScore: number | null;
     venueName: string | null;
+    eventFormat?: 'HEAD_TO_HEAD' | 'SINGLE_EVENT';
+    eventTitle?: string | null;
+    eventSubtitle?: string | null;
 }) {
     const safeExternalMatchId = trimText(input.externalMatchId, 50);
     if (!safeExternalMatchId) return;
@@ -453,8 +541,8 @@ async function upsertMatchRecord(input: {
         externalMatchId: safeExternalMatchId,
         homeTeamId: input.homeTeamId || undefined,
         awayTeamId: input.awayTeamId || undefined,
-        homeTeamName: trimText(input.homeTeamName, 150),
-        awayTeamName: trimText(input.awayTeamName, 150),
+        homeTeamName: trimText(input.homeTeamName || '', 150) || null,
+        awayTeamName: trimText(input.awayTeamName || '', 150) || null,
         homeTeamCrestUrl: trimText(input.homeTeamCrestUrl || '', 1000) || null,
         awayTeamCrestUrl: trimText(input.awayTeamCrestUrl || '', 1000) || null,
         matchDateUtc: input.matchDateUtc,
@@ -464,6 +552,9 @@ async function upsertMatchRecord(input: {
         homeScore: input.homeScore,
         awayScore: input.awayScore,
         venueName: trimText(input.venueName || '', 200) || null,
+        eventFormat: input.eventFormat || 'HEAD_TO_HEAD',
+        eventTitle: trimText(input.eventTitle || '', 200) || null,
+        eventSubtitle: trimText(input.eventSubtitle || '', 200) || null,
         lastSyncedAt: new Date(),
     };
 
@@ -659,6 +750,9 @@ async function syncLeagueFromFootballData(league: LeagueRow, apiKey: string): Pr
                     homeScore: row.score.fullTime.home,
                     awayScore: row.score.fullTime.away,
                     venueName: row.venue || null,
+                    eventFormat: 'HEAD_TO_HEAD',
+                    eventTitle: null,
+                    eventSubtitle: null,
                 });
                 result.upserted += 1;
             } catch (err) {
@@ -738,12 +832,67 @@ async function syncLeagueFromApiFootball(league: LeagueRow, apiKey: string): Pro
                 homeScore: fixture.goals.home,
                 awayScore: fixture.goals.away,
                 venueName: fixture.fixture.venue?.name || null,
+                eventFormat: 'HEAD_TO_HEAD',
+                eventTitle: null,
+                eventSubtitle: null,
             });
             result.upserted += 1;
         } catch (err) {
             result.errors += 1;
             logger.error({ league: league.name, fixtureId: fixture.fixture.id, err }, 'Failed upserting API-Football fixture');
         }
+    }
+
+    return result;
+}
+
+async function fetchJolpicaRaces(season: number) {
+    const url = `${JOLPICA_BASE}/f1/${season}/races/`;
+    const data = await fetchJsonWithRetry<JolpicaRacesResponse>(url, {}, 'jolpica');
+    return data?.MRData?.RaceTable?.Races || [];
+}
+
+async function syncLeagueFromJolpicaF1(league: LeagueRow): Promise<SyncResult> {
+    const result: SyncResult = { fetched: 0, upserted: 0, errors: 0, teamsUpserted: 0 };
+
+    try {
+        const season = new Date().getUTCFullYear();
+        const races = await fetchJolpicaRaces(season);
+        const usRaces = races.filter((race) => isUnitedStatesCountry(race.Circuit.Location.country));
+        result.fetched = usRaces.length;
+
+        for (const race of usRaces) {
+            try {
+                const matchDate = new Date(`${race.date}T${race.time || '00:00:00Z'}`);
+                if (Number.isNaN(matchDate.getTime())) continue;
+
+                await upsertMatchRecord({
+                    leagueId: league.id,
+                    externalMatchId: `JOLPICA-F1-${season}-${race.round}`,
+                    homeTeamId: null,
+                    awayTeamId: null,
+                    homeTeamName: null,
+                    awayTeamName: null,
+                    matchDateUtc: matchDate,
+                    status: matchDate.getTime() < Date.now() ? 'FINISHED' : 'SCHEDULED',
+                    matchDay: Number(race.round) || null,
+                    stage: null,
+                    homeScore: null,
+                    awayScore: null,
+                    venueName: trimText(race.Circuit.circuitName, 200) || null,
+                    eventFormat: 'SINGLE_EVENT',
+                    eventTitle: trimText(race.raceName, 200) || 'Formula 1 Grand Prix',
+                    eventSubtitle: trimText(`${race.Circuit.Location.locality}, ${race.Circuit.Location.country}`, 200) || null,
+                });
+                result.upserted += 1;
+            } catch (err) {
+                result.errors += 1;
+                logger.error({ league: league.name, round: race.round, err }, 'Failed upserting Jolpica F1 race');
+            }
+        }
+    } catch (err) {
+        result.errors += 1;
+        logger.error({ league: league.name, err }, 'Failed syncing league from Jolpica F1');
     }
 
     return result;
@@ -782,15 +931,14 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
 
     logger.info({ provider, sportSlug }, 'Starting direct match sync run');
 
-    const leagueRows = provider === 'API_FOOTBALL'
-        ? await db.select({ league: leagues })
-            .from(leagues)
-            .innerJoin(sports, eq(leagues.sportId, sports.id))
-            .where(and(eq(leagues.isActive, true), eq(sports.slug, sportSlug)))
-        : await db.select({ league: leagues })
-            .from(leagues)
-            .innerJoin(sports, eq(leagues.sportId, sports.id))
-            .where(and(eq(leagues.isActive, true), eq(sports.slug, sportSlug), sql`${leagues.externalId} IS NOT NULL`));
+    const leagueQuery = db.select({ league: leagues, sportSlug: sports.slug })
+        .from(leagues)
+        .innerJoin(sports, eq(leagues.sportId, sports.id));
+    const leagueRows = await leagueQuery.where(and(
+        eq(leagues.isActive, true),
+        ...(sportSlug === 'all' ? [] : [eq(sports.slug, sportSlug)]),
+        ...(provider === 'API_FOOTBALL' ? [] : [sql`${leagues.externalId} IS NOT NULL`]),
+    ));
 
     const syncResults: Record<string, SyncResult> = {};
     clearSyncCaches();
@@ -804,7 +952,13 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
         // Use Football-Data for major global leagues when key exists.
         let providerUsed: MatchSyncProvider = provider;
         let result: SyncResult;
-        if (THE_SPORTS_DB_PRIORITY_LEAGUE_CODES.has(externalCode)) {
+        if (externalCode === 'F1') {
+            providerUsed = 'THE_SPORTS_DB';
+            result = await syncLeagueFromJolpicaF1(league);
+        } else if (THE_SPORTS_DB_PRIORITY_LEAGUE_CODES.has(externalCode)) {
+            providerUsed = 'THE_SPORTS_DB';
+            result = await syncLeagueFromTheSportsDb(league);
+        } else if (['NFL', 'MLB', 'NBA', 'NHL', 'NASCAR', 'INDYCAR'].includes(externalCode)) {
             providerUsed = 'THE_SPORTS_DB';
             result = await syncLeagueFromTheSportsDb(league);
         } else if (externalCode === 'INTL' && apiFootballApiKey) {

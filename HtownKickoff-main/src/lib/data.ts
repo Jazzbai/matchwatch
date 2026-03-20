@@ -117,11 +117,14 @@ export const ALL_TEAMS = [...NATIONAL_TEAMS, ...CLUB_TEAMS];
 
 // ─── Match Data ──────────────────────────────────
 export type MatchStatus = "SCHEDULED" | "TIMED" | "IN_PLAY" | "PAUSED" | "FINISHED" | "POSTPONED" | "CANCELLED";
+export type MatchEventFormat = "HEAD_TO_HEAD" | "SINGLE_EVENT";
 
 export interface Match {
     id: string;
-    homeTeamId: string;
-    awayTeamId: string;
+    homeTeamId?: string;
+    awayTeamId?: string;
+    homeTeamName?: string;
+    awayTeamName?: string;
     leagueId: string;
     matchDateUTC: string;
     status: MatchStatus;
@@ -132,6 +135,9 @@ export interface Match {
     stadiumName: string;
     venueCount: number;
     isHot: boolean;
+    eventFormat?: MatchEventFormat;
+    eventTitle?: string;
+    eventSubtitle?: string;
 }
 
 export const MATCHES: Match[] = [

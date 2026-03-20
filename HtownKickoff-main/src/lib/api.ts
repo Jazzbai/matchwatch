@@ -281,8 +281,11 @@ export interface AuthUser {
 
 export interface Match {
     id: string;
-    homeTeamName: string;
-    awayTeamName: string;
+    eventFormat?: 'HEAD_TO_HEAD' | 'SINGLE_EVENT';
+    eventTitle?: string | null;
+    eventSubtitle?: string | null;
+    homeTeamName?: string | null;
+    awayTeamName?: string | null;
     homeTeamCrestUrl?: string;
     awayTeamCrestUrl?: string;
     homeScore?: number | null;
@@ -316,12 +319,55 @@ export interface Venue {
     priceRange: string;
     averageRating?: string;
     totalReviews?: number;
+    ratingOverride?: string | null;
+    reviewCountOverride?: number | null;
     isVerified: boolean;
     isFeatured: boolean;
     capacity?: number;
     distance?: string;
     followerCount?: number;
     isFollowing?: boolean;
+}
+
+export interface BlogCategory {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+    sortOrder: number;
+    isActive: boolean;
+}
+
+export interface BlogPostSummary {
+    id: string;
+    title: string;
+    slug: string;
+    excerpt?: string | null;
+    featuredImageUrl?: string | null;
+    status: 'DRAFT' | 'PUBLISHED';
+    publishedAt?: string | null;
+    createdAt: string;
+    updatedAt?: string;
+    categoryIds?: string[];
+    categories: BlogCategory[];
+    authorName?: string | null;
+}
+
+export interface BlogPostDetail extends BlogPostSummary {
+    contentJson?: Record<string, unknown> | null;
+    contentHtml: string;
+    featuredImageS3Key?: string | null;
+}
+
+export interface BlogComment {
+    id: string;
+    postId: string;
+    content: string;
+    createdAt: string;
+    status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    userId?: string;
+    userName?: string | null;
+    userAvatarUrl?: string | null;
 }
 
 export interface PresignedUpload {
@@ -376,4 +422,14 @@ export const uploadApi = {
             method: 'POST',
             body: data,
         }),
+};
+
+export const blogApi = {
+    listCategories: () => api.get<BlogCategory[]>('/blog/categories'),
+    listPosts: (params?: { q?: string; category?: string; page?: number; limit?: number }) =>
+        api.get<BlogPostSummary[]>('/blog/posts', params),
+    getPost: (slug: string) => api.get<BlogPostDetail>(`/blog/posts/${slug}`),
+    listComments: (postId: string) => api.get<BlogComment[]>(`/blog/posts/${postId}/comments`),
+    createComment: (postId: string, content: string) =>
+        api.post<BlogComment>(`/blog/posts/${postId}/comments`, { content }),
 };

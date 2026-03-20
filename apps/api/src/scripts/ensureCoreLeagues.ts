@@ -1,10 +1,16 @@
 import 'dotenv/config';
 
-import { ensureLeaguesSeeded } from '../db/seed';
+import { ensureLeaguesSeeded, ensureSportsSeeded } from '../db/seed';
 
 async function main() {
-    const inserted = await ensureLeaguesSeeded();
-    console.log(JSON.stringify({ insertedCount: inserted.length, inserted }, null, 2));
+    const insertedSports = await ensureSportsSeeded();
+    const insertedLeagues = await ensureLeaguesSeeded();
+    console.log(JSON.stringify({
+        insertedSportsCount: insertedSports.length,
+        insertedLeaguesCount: insertedLeagues.length,
+        insertedSports,
+        insertedLeagues,
+    }, null, 2));
 }
 
 main()

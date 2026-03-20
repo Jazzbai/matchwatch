@@ -1,9 +1,5 @@
 ALTER TYPE "public"."user_role" ADD VALUE IF NOT EXISTS 'BUSINESS';
 --> statement-breakpoint
-UPDATE "users"
-SET "role" = 'BUSINESS'
-WHERE "role" = 'VENUE_OWNER';
---> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "sports" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(80) NOT NULL,

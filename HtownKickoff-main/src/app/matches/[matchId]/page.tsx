@@ -3,21 +3,16 @@
 import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
 import {
-    BadgeCheck,
     CircleX,
-    DoorOpen,
     Landmark,
     LineChart,
     MapPin,
-    Sparkles,
-    Star,
-    Ticket,
     Users,
 } from "lucide-react";
 import { AppShell } from "../../../components/AppShell";
 import { BookingDrawer } from "../../../components/BookingDrawer";
 import { MatchVenueMap } from "../../../components/MatchVenueMap";
-import { AMENITY_LABELS, PRICE_LABELS } from "../../../lib/data";
+import { VenueCard } from "../../../components/VenueCard";
 import { useData, type Venue, type VenueEvent } from "../../../lib/data-provider";
 
 /* ═══════════════════════════════════════════════════
@@ -29,136 +24,38 @@ import { useData, type Venue, type VenueEvent } from "../../../lib/data-provider
 function MatchVenueCard({
     venue,
     event,
-    matchId,
     onBook,
 }: {
     venue: Venue;
     event: VenueEvent;
-    matchId: string;
     onBook: () => void;
 }) {
     const spotsLeft = event.bookingLimit ? event.bookingLimit - event.confirmedBookings : null;
-    const pct = event.bookingLimit ? (event.confirmedBookings / event.bookingLimit) * 100 : 0;
-    const [hovered, setHovered] = React.useState(false);
+    const coverImage = venue.coverImageUrl || venue.galleryImageUrls?.[0] || "/venue-hero.webp";
+    const nextEventLabel = event.doorsOpenAt
+        ? `Doors ${event.doorsOpenAt}`
+        : event.specialNotes || `${event.confirmedBookings} booked`;
 
     return (
-        <div
-            style={{
-                backgroundColor: "var(--card)", border: "1px solid var(--border)",
-                borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column",
-                height: "100%", transition: "all 0.3s",
-                transform: hovered ? "translateY(-4px)" : "none",
-                boxShadow: hovered ? "0 8px 24px rgba(0,0,0,0.12)" : "0 1px 4px rgba(0,0,0,0.06)",
+        <VenueCard
+            name={venue.name}
+            coverImage={coverImage}
+            city={venue.city}
+            address={venue.addressLine1}
+            rating={venue.rating}
+            reviewCount={venue.reviewCount}
+            amenities={venue.amenities || []}
+            cuisineTags={venue.cuisineTags || []}
+            priceRange={venue.priceRange}
+            spotsRemaining={spotsLeft}
+            nextEvent={spotsLeft == null ? nextEventLabel : undefined}
+            isVerified={venue.isVerified}
+            isFeatured={venue.isFeatured}
+            onClick={() => {
+                window.location.href = `/venues/${venue.slug}`;
             }}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-        >
-            {/* Cover gradient */}
-            <div style={{
-                height: 80, position: "relative", padding: "12px 16px",
-                display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-                background: `linear-gradient(135deg, ${venue.coverColor}33 0%, var(--card) 100%)`,
-            }}>
-                <div>
-                    {venue.isFeatured && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.06em", padding: "3px 8px", borderRadius: 99, backgroundColor: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
-                            <Sparkles size={10} /> PROMOTED
-                        </span>
-                    )}
-                </div>
-                {venue.isVerified && (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.06em", padding: "3px 8px", borderRadius: 99, backgroundColor: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)" }}>
-                        <BadgeCheck size={10} /> VERIFIED
-                    </span>
-                )}
-            </div>
-
-            <div style={{ padding: 16, display: "flex", flexDirection: "column", flex: 1 }}>
-                {/* Name & Rating */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                    <div style={{ flex: 1, paddingRight: 8 }}>
-                        <Link href={`/venues/${venue.slug}?matchId=${matchId}`} style={{ textDecoration: "none" }}>
-                            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", lineHeight: 1.3, marginBottom: 2 }}>{venue.name}</h3>
-                        </Link>
-                        <p style={{ fontSize: 12, color: "var(--muted-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{venue.addressLine1}, {venue.city}</p>
-                    </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
-                            <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: "#f59e0b" }}>{venue.rating.toFixed(1)}</span>
-                            <Star size={12} style={{ color: "#f59e0b", fill: "#f59e0b" }} />
-                        </div>
-                        <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>({venue.reviewCount})</span>
-                    </div>
-                </div>
-
-                {/* Amenities */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                    {venue.amenities.slice(0, 5).map((a) => (
-                        <span key={a} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: "50%", backgroundColor: "var(--secondary)", color: "var(--muted-foreground)", fontSize: 12 }} title={AMENITY_LABELS[a]?.label || a}>
-                            {AMENITY_LABELS[a]?.icon || "•"}
-                        </span>
-                    ))}
-                    <span style={{ display: "flex", alignItems: "center", fontSize: 10, fontFamily: "monospace", fontWeight: 700, color: "var(--primary)", padding: "0 6px", borderRadius: 99, backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)", border: "1px solid color-mix(in oklch, var(--primary) 20%, transparent)" }}>
-                        {PRICE_LABELS[venue.priceRange]}
-                    </span>
-                </div>
-
-                {/* Event Details */}
-                <div style={{ backgroundColor: "var(--secondary)", border: "1px solid var(--border)", borderRadius: 10, padding: 12, marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <span style={{ fontSize: 12, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 6 }}>
-                            <DoorOpen size={12} />Doors: <strong style={{ color: "var(--foreground)" }}>{event.doorsOpenAt}</strong>
-                        </span>
-                        {event.entryFee && <span style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: "var(--primary)" }}>${event.entryFee}/person</span>}
-                        {!event.entryFee && <span style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)" }}>FREE ENTRY</span>}
-                    </div>
-                    {event.specialNotes && (
-                        <p style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{event.specialNotes}</p>
-                    )}
-                </div>
-
-                <div style={{ marginTop: "auto" }}>
-                    {/* Capacity Bar */}
-                    {event.bookingLimit && (
-                        <div style={{ marginBottom: 12, paddingLeft: 4 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                                <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>{event.confirmedBookings}/{event.bookingLimit} booked</span>
-                                {spotsLeft !== null && (
-                                    <span style={{ fontSize: 11, fontWeight: 700, color: spotsLeft <= 5 ? "#ef4444" : spotsLeft <= 20 ? "#f59e0b" : "var(--primary)" }}>
-                                        {spotsLeft > 0 ? `${spotsLeft} spots left` : "SOLD OUT"}
-                                    </span>
-                                )}
-                            </div>
-                            <div style={{ height: 6, backgroundColor: "var(--secondary)", borderRadius: 99, overflow: "hidden" }}>
-                                <div style={{ height: "100%", borderRadius: 99, transition: "width 0.5s", width: `${Math.min(pct, 100)}%`, backgroundColor: pct > 90 ? "#ef4444" : pct > 70 ? "#f59e0b" : "var(--primary)" }} />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Book Button */}
-                    <button
-                        style={{
-                            width: "100%", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 700,
-                            fontFamily: "inherit", border: "none", cursor: spotsLeft !== null && spotsLeft <= 0 ? "not-allowed" : "pointer",
-                            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                            transition: "all 0.2s",
-                            backgroundColor: spotsLeft !== null && spotsLeft <= 0 ? "var(--secondary)" : "var(--primary)",
-                            color: spotsLeft !== null && spotsLeft <= 0 ? "var(--muted-foreground)" : "var(--primary-foreground)",
-                            boxShadow: spotsLeft !== null && spotsLeft <= 0 ? "none" : "0 2px 8px color-mix(in oklch, var(--primary) 25%, transparent)",
-                        }}
-                        onClick={(e) => { e.stopPropagation(); onBook(); }}
-                        disabled={spotsLeft !== null && spotsLeft <= 0}
-                    >
-                        {spotsLeft !== null && spotsLeft <= 0 ? "Join Waitlist" : (
-                            <>
-                                <Ticket size={16} />
-                                Book Your Spot
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
-        </div>
+            onBookNow={onBook}
+        />
     );
 }
 
@@ -202,6 +99,100 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                         ← Back to Matches
                     </Link>
                 </div>
+            </AppShell>
+        );
+    }
+
+    if (match.eventFormat === "SINGLE_EVENT") {
+        const league = getLeague(match.leagueId)!;
+        const d = new Date(match.matchDateUTC);
+        const mappableVenueEvents = venueEvents.filter(
+            (event) =>
+                Number.isFinite(event.venue.lat) &&
+                Number.isFinite(event.venue.lng) &&
+                Math.abs(event.venue.lat) > 0 &&
+                Math.abs(event.venue.lng) > 0,
+        );
+
+        return (
+            <AppShell>
+                <section style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 24px 64px", display: "grid", gap: 24 }}>
+                    <div style={{ display: "grid", gap: 10 }}>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 999, background: "var(--secondary)", border: "1px solid var(--border)", color: "var(--secondary-foreground)", width: "fit-content" }}>
+                            {league.image ? <img src={league.image} alt="" style={{ width: 18, height: 18, objectFit: "contain" }} /> : null}
+                            <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>{league.shortName}</span>
+                        </div>
+                        <h1 style={{ margin: 0, fontSize: 44, lineHeight: 1.02, color: "var(--foreground)", fontWeight: 900 }}>{match.eventTitle || league.name}</h1>
+                        {match.eventSubtitle ? <p style={{ margin: 0, fontSize: 16, color: "var(--muted-foreground)", fontWeight: 600 }}>{match.eventSubtitle}</p> : null}
+                        <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>
+                            {d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} · {d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                        </div>
+                    </div>
+
+                    {mappableVenueEvents.length > 0 ? (
+                        <MatchVenueMap
+                            venues={mappableVenueEvents.map((event) => ({
+                                id: event.venue.id,
+                                name: event.venue.name,
+                                slug: event.venue.slug,
+                                addressLine1: event.venue.addressLine1,
+                                city: event.venue.city,
+                                lat: event.venue.lat,
+                                lng: event.venue.lng,
+                                confirmedBookings: event.confirmedBookings,
+                                bookingLimit: event.bookingLimit,
+                            }))}
+                        />
+                    ) : null}
+
+                    <div style={{ display: "grid", gap: 14 }}>
+                        <h2 style={{ margin: 0, fontSize: 24, color: "var(--foreground)", fontWeight: 900 }}>Hosting Venues</h2>
+                        {venueEvents.length === 0 ? (
+                            <div style={{ border: "1px solid var(--border)", borderRadius: 16, background: "var(--card)", padding: 20, color: "var(--muted-foreground)" }}>No venues are hosting this event yet.</div>
+                        ) : (
+                            <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                                {venueEvents.map((event, idx) => (
+                                    <MatchVenueCard
+                                        key={event.id}
+                                        venue={event.venue}
+                                        event={event}
+                                        onBook={() => {
+                                            setBookingVenueIdx(idx);
+                                            setBookingOpen(true);
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {venueEvents.length > 0 && (
+                        <BookingDrawer
+                            isOpen={bookingOpen}
+                            onClose={() => setBookingOpen(false)}
+                            venueEventId={venueEvents[Math.min(bookingVenueIdx, Math.max(venueEvents.length - 1, 0))]?.id}
+                            venue={{
+                                name: venueEvents[Math.min(bookingVenueIdx, Math.max(venueEvents.length - 1, 0))]?.venue.name || "",
+                                address: `${venueEvents[Math.min(bookingVenueIdx, Math.max(venueEvents.length - 1, 0))]?.venue.addressLine1 || ""}, ${venueEvents[Math.min(bookingVenueIdx, Math.max(venueEvents.length - 1, 0))]?.venue.city || ""}`,
+                            }}
+                            match={{
+                                homeTeam: match.eventTitle || league.shortName,
+                                awayTeam: match.eventSubtitle || "Event",
+                                homeCrest: league.image || league.logo,
+                                awayCrest: league.image || league.logo,
+                                kickoff: `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`,
+                                league: league.name,
+                            }}
+                            spotsRemaining={
+                                venueEvents[Math.min(bookingVenueIdx, Math.max(venueEvents.length - 1, 0))]?.bookingLimit
+                                    ? venueEvents[Math.min(bookingVenueIdx, Math.max(venueEvents.length - 1, 0))].bookingLimit! -
+                                      venueEvents[Math.min(bookingVenueIdx, Math.max(venueEvents.length - 1, 0))].confirmedBookings
+                                    : 50
+                            }
+                            entryFee={venueEvents[Math.min(bookingVenueIdx, Math.max(venueEvents.length - 1, 0))]?.entryFee || undefined}
+                        />
+                    )}
+                </section>
             </AppShell>
         );
     }
@@ -427,7 +418,6 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                                         <MatchVenueCard
                                             venue={ve.venue}
                                             event={ve}
-                                            matchId={match?.id || matchId}
                                             onBook={() => {
                                                 setBookingVenueIdx(i);
                                                 setBookingOpen(true);

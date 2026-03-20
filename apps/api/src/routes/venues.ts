@@ -25,6 +25,14 @@ function promotedVenueEventIdFromMetadata(metadata: unknown): string | null {
     return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : null;
 }
 
+function resolvedVenueRating(venue: typeof venues.$inferSelect) {
+    return venue.ratingOverride ?? venue.averageRating;
+}
+
+function resolvedVenueReviewCount(venue: typeof venues.$inferSelect) {
+    return venue.reviewCountOverride ?? venue.totalReviews;
+}
+
 // ─── GET / ──────────────────────────────────────
 venueRoutes.get('/', async (c) => {
     const query = venueQuerySchema.safeParse(c.req.query());
@@ -69,8 +77,8 @@ venueRoutes.get('/', async (c) => {
             vibes: v.vibes,
             cuisineTags: v.cuisineTags,
             priceRange: v.priceRange,
-            averageRating: v.averageRating,
-            totalReviews: v.totalReviews,
+            averageRating: resolvedVenueRating(v),
+            totalReviews: resolvedVenueReviewCount(v),
             isVerified: v.isVerified,
             isFeatured: v.isFeatured,
             capacity: v.capacity,
@@ -188,6 +196,8 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
 
     return c.json(apiResponse({
         ...venue,
+        averageRating: resolvedVenueRating(venue),
+        totalReviews: resolvedVenueReviewCount(venue),
         coverImageUrl: venue.coverImageUrl || galleryImageUrlsFromMetadata(venue.metadata)[0] || null,
         galleryImageUrls: galleryImageUrlsFromMetadata(venue.metadata),
         promotedVenueEventId,

@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { AppShell } from "../../components/AppShell";
+import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
 
-type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches";
+type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches" | "blog";
 
 type ApiListMeta = {
   page: number;
@@ -158,6 +159,8 @@ type VenueRow = {
   vibes: string[];
   cuisineTags: string[];
   priceRange?: "BUDGET" | "MID" | "UPSCALE" | "LUXURY" | null;
+  ratingOverride?: string | null;
+  reviewCountOverride?: number | null;
   isActive: boolean;
   isVerified: boolean;
   isFeatured: boolean;
@@ -196,10 +199,14 @@ type VenueEditorDraft = {
   vibes?: string[];
   cuisineTags?: string[];
   priceRange?: VenuePriceRange | null;
+  ratingOverride?: string | number | null;
+  reviewCountOverride?: string | number | null;
   isVerified?: boolean;
   isActive?: boolean;
   isFeatured?: boolean;
 };
+
+type MatchEventFormat = "HEAD_TO_HEAD" | "SINGLE_EVENT";
 
 type NewVenueForm = {
   ownerId: string;
@@ -229,6 +236,8 @@ type NewVenueForm = {
   amenities: string[];
   vibes: string[];
   cuisineTags: string[];
+  ratingOverride: string;
+  reviewCountOverride: string;
   isVerified: boolean;
   isActive: boolean;
   isFeatured: boolean;
@@ -302,13 +311,16 @@ type CustomEventDraft = {
 
 type MatchRow = {
   id: string;
+  eventFormat?: MatchEventFormat;
+  eventTitle?: string | null;
+  eventSubtitle?: string | null;
   leagueId?: string | null;
   leagueName?: string | null;
   homeTeamId?: string | null;
   awayTeamId?: string | null;
   stadiumId?: string | null;
-  homeTeamName: string;
-  awayTeamName: string;
+  homeTeamName: string | null;
+  awayTeamName: string | null;
   homeTeamCrestUrl?: string | null;
   awayTeamCrestUrl?: string | null;
   matchDateUtc: string;
@@ -697,6 +709,8 @@ export default function JazzbaiSuperAdminPage() {
     amenities: [] as string[],
     vibes: [] as string[],
     cuisineTags: [] as string[],
+    ratingOverride: "",
+    reviewCountOverride: "",
     isVerified: false,
     isActive: true,
     isFeatured: false,
@@ -760,6 +774,9 @@ export default function JazzbaiSuperAdminPage() {
   const [matchesLoading, setMatchesLoading] = React.useState(false);
   const [matchDrafts, setMatchDrafts] = React.useState<Record<string, Partial<MatchRow>>>({});
   const [newMatch, setNewMatch] = React.useState({
+    eventFormat: "HEAD_TO_HEAD" as MatchEventFormat,
+    eventTitle: "",
+    eventSubtitle: "",
     leagueId: "",
     homeTeamId: "",
     awayTeamId: "",
@@ -1066,6 +1083,9 @@ export default function JazzbaiSuperAdminPage() {
     }
     if (tab === "imports") {
       await loadLookups();
+      return;
+    }
+    if (tab === "blog") {
       return;
     }
     await Promise.all([loadMatches(), loadLookups()]);
@@ -1380,6 +1400,12 @@ export default function JazzbaiSuperAdminPage() {
     return !league?.externalId;
   };
 
+  const isSingleEventLeagueId = (leagueId?: string | null) => {
+    if (!leagueId) return false;
+    const league = leagueById.get(leagueId);
+    return Boolean(league?.sportId && lookupSports.some((sport) => sport.id === league.sportId && sport.slug === "motorsport"));
+  };
+
   const buildTeamPickerOptions = (leagueId?: string | null) => {
     let source = lookupTeams;
     if (leagueId) {
@@ -1477,6 +1503,7 @@ export default function JazzbaiSuperAdminPage() {
             ["leagues", "Leagues"],
             ["imports", "CSV Import"],
             ["matches", "Matches"],
+            ["blog", "Blog"],
           ] as Array<[TabId, string]>).map(([id, label]) => (
             <button
               key={id}
@@ -1721,6 +1748,8 @@ export default function JazzbaiSuperAdminPage() {
                 <input style={inputStyle} placeholder="Gallery URLs (comma separated)" value={toCsvList(newVenue.galleryImageUrls)} onChange={(e) => setNewVenue((prev) => ({ ...prev, galleryImageUrls: parseCsvList(e.target.value) }))} />
                 <input style={inputStyle} placeholder="Gallery S3 keys (comma separated)" value={toCsvList(newVenue.galleryS3Keys)} onChange={(e) => setNewVenue((prev) => ({ ...prev, galleryS3Keys: parseCsvList(e.target.value) }))} />
                 <input style={inputStyle} placeholder="Capacity" value={newVenue.capacity} onChange={(e) => setNewVenue((prev) => ({ ...prev, capacity: e.target.value }))} />
+                <input style={inputStyle} type="number" min="0" max="5" step="0.1" placeholder="Displayed rating override" value={newVenue.ratingOverride} onChange={(e) => setNewVenue((prev) => ({ ...prev, ratingOverride: e.target.value }))} />
+                <input style={inputStyle} type="number" min="0" step="1" placeholder="Displayed review count override" value={newVenue.reviewCountOverride} onChange={(e) => setNewVenue((prev) => ({ ...prev, reviewCountOverride: e.target.value }))} />
                 <select style={inputStyle} value={newVenue.priceRange} onChange={(e) => setNewVenue((prev) => ({ ...prev, priceRange: e.target.value as "BUDGET" | "MID" | "UPSCALE" | "LUXURY" }))}>
                   <option value="BUDGET">BUDGET</option>
                   <option value="MID">MID</option>
@@ -1797,6 +1826,8 @@ export default function JazzbaiSuperAdminPage() {
                         lat: Number(newVenue.lat),
                         lng: Number(newVenue.lng),
                         capacity: newVenue.capacity ? Number(newVenue.capacity) : undefined,
+                        ratingOverride: newVenue.ratingOverride ? Number(newVenue.ratingOverride) : undefined,
+                        reviewCountOverride: newVenue.reviewCountOverride ? Number(newVenue.reviewCountOverride) : undefined,
                       }),
                     });
                     setNewVenue({
@@ -1827,6 +1858,8 @@ export default function JazzbaiSuperAdminPage() {
                       amenities: [],
                       vibes: [],
                       cuisineTags: [],
+                      ratingOverride: "",
+                      reviewCountOverride: "",
                       isVerified: false,
                       isActive: true,
                       isFeatured: false,
@@ -1874,6 +1907,8 @@ export default function JazzbaiSuperAdminPage() {
                     galleryS3Keys: row.galleryS3Keys || [],
                     capacity: row.capacity == null ? "" : String(row.capacity),
                     priceRange: row.priceRange || "MID",
+                    ratingOverride: row.ratingOverride ?? "",
+                    reviewCountOverride: row.reviewCountOverride ?? "",
                     amenities: row.amenities || [],
                     vibes: row.vibes || [],
                     cuisineTags: row.cuisineTags || [],
@@ -1922,6 +1957,8 @@ export default function JazzbaiSuperAdminPage() {
                                   galleryS3Keys: Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [],
                                   capacity: draft.capacity ? Number(draft.capacity) : null,
                                   priceRange: draft.priceRange,
+                                  ratingOverride: draft.ratingOverride === "" || draft.ratingOverride == null ? null : Number(draft.ratingOverride),
+                                  reviewCountOverride: draft.reviewCountOverride === "" || draft.reviewCountOverride == null ? null : Number(draft.reviewCountOverride),
                                   amenities: Array.isArray(draft.amenities) ? draft.amenities : [],
                                   vibes: Array.isArray(draft.vibes) ? draft.vibes : [],
                                   cuisineTags: Array.isArray(draft.cuisineTags) ? draft.cuisineTags : [],
@@ -1976,6 +2013,8 @@ export default function JazzbaiSuperAdminPage() {
                         <input style={inputStyle} value={toCsvList(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [])} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, galleryImageUrls: parseCsvList(e.target.value) } }))} placeholder="Gallery URLs" />
                         <input style={inputStyle} value={toCsvList(Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [])} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, galleryS3Keys: parseCsvList(e.target.value) } }))} placeholder="Gallery S3 keys" />
                         <input style={inputStyle} value={String(draft.capacity ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, capacity: e.target.value } }))} placeholder="Capacity" />
+                        <input style={inputStyle} type="number" min="0" max="5" step="0.1" value={String(draft.ratingOverride ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, ratingOverride: e.target.value } }))} placeholder="Displayed rating override" />
+                        <input style={inputStyle} type="number" min="0" step="1" value={String(draft.reviewCountOverride ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, reviewCountOverride: e.target.value } }))} placeholder="Displayed review count override" />
                         <select style={inputStyle} value={String(draft.priceRange ?? "MID")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, priceRange: e.target.value as VenueRow["priceRange"] } }))}>
                           <option value="BUDGET">BUDGET</option>
                           <option value="MID">MID</option>
@@ -2918,69 +2957,103 @@ export default function JazzbaiSuperAdminPage() {
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Match</h2>
               </div>
-              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1.8fr 1.8fr 1.8fr 1.6fr 1.2fr auto" }}>
-                <select style={inputStyle} value={newMatch.leagueId} onChange={(e) => setNewMatch((prev) => ({ ...prev, leagueId: e.target.value }))}>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                <select
+                  style={inputStyle}
+                  value={newMatch.eventFormat}
+                  onChange={(e) => setNewMatch((prev) => ({
+                    ...prev,
+                    eventFormat: e.target.value as MatchEventFormat,
+                    ...(e.target.value === "SINGLE_EVENT"
+                      ? { homeTeamId: "", awayTeamId: "", homeTeamName: "", awayTeamName: "" }
+                      : {}),
+                  }))}
+                >
+                  <option value="HEAD_TO_HEAD">Head to Head</option>
+                  <option value="SINGLE_EVENT">Single Event</option>
+                </select>
+                <select
+                  style={inputStyle}
+                  value={newMatch.leagueId}
+                  onChange={(e) => {
+                    const nextLeagueId = e.target.value;
+                    setNewMatch((prev) => ({
+                      ...prev,
+                      leagueId: nextLeagueId,
+                      eventFormat: isSingleEventLeagueId(nextLeagueId) ? "SINGLE_EVENT" : prev.eventFormat,
+                    }));
+                  }}
+                >
                   <option value="">League</option>
                   {lookupLeagues.map((league) => (
                     <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
                   ))}
                 </select>
-                <SearchPicker
-                  placeholder="Home team"
-                  value={newMatch.homeTeamName}
-                  selectedId={newMatch.homeTeamId || null}
-                  searchKey={newMatch.leagueId || "no-league"}
-                  initialOptions={buildTeamPickerOptions(newMatch.leagueId)}
-                  excludeIds={newMatch.awayTeamId ? [newMatch.awayTeamId] : []}
-                  createHint="Create team"
-                  createFields={[
-                    { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
-                    { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
-                  ]}
-                  onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, homeTeamId: "", homeTeamName: nextValue }))}
-                  onSelect={(option) => setNewMatch((prev) => ({ ...prev, homeTeamId: option.id, homeTeamName: option.label }))}
-                  onCreate={async (query, extra) => {
-                    const team = await createTeam({
-                      name: query,
-                      shortName: extra.shortName?.trim() || undefined,
-                      crestUrl: extra.crestUrl?.trim() || undefined,
-                      leagueId: newMatch.leagueId || null,
-                    });
-                    setNewMatch((prev) => ({ ...prev, homeTeamId: team.id, homeTeamName: team.name }));
-                  }}
-                  search={async (query) => {
-                    const rows = await searchTeamsForLeague(query, newMatch.leagueId || undefined);
-                    return rows.filter((team) => team.id !== newMatch.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
-                  }}
-                />
-                <SearchPicker
-                  placeholder="Away team"
-                  value={newMatch.awayTeamName}
-                  selectedId={newMatch.awayTeamId || null}
-                  searchKey={newMatch.leagueId || "no-league"}
-                  initialOptions={buildTeamPickerOptions(newMatch.leagueId)}
-                  excludeIds={newMatch.homeTeamId ? [newMatch.homeTeamId] : []}
-                  createHint="Create team"
-                  createFields={[
-                    { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
-                    { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
-                  ]}
-                  onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, awayTeamId: "", awayTeamName: nextValue }))}
-                  onSelect={(option) => setNewMatch((prev) => ({ ...prev, awayTeamId: option.id, awayTeamName: option.label }))}
-                  onCreate={async (query, extra) => {
-                    const team = await createTeam({
-                      name: query,
-                      shortName: extra.shortName?.trim() || undefined,
-                      crestUrl: extra.crestUrl?.trim() || undefined,
-                      leagueId: newMatch.leagueId || null,
-                    });
-                    setNewMatch((prev) => ({ ...prev, awayTeamId: team.id, awayTeamName: team.name }));
-                  }}
-                  search={async (query) => {
-                    const rows = await searchTeamsForLeague(query, newMatch.leagueId || undefined);
-                    return rows.filter((team) => team.id !== newMatch.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
-                  }}
-                />
+                {newMatch.eventFormat === "HEAD_TO_HEAD" ? (
+                  <>
+                    <SearchPicker
+                      placeholder="Home team"
+                      value={newMatch.homeTeamName}
+                      selectedId={newMatch.homeTeamId || null}
+                      searchKey={newMatch.leagueId || "no-league"}
+                      initialOptions={buildTeamPickerOptions(newMatch.leagueId)}
+                      excludeIds={newMatch.awayTeamId ? [newMatch.awayTeamId] : []}
+                      createHint="Create team"
+                      createFields={[
+                        { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                        { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                      ]}
+                      onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, homeTeamId: "", homeTeamName: nextValue }))}
+                      onSelect={(option) => setNewMatch((prev) => ({ ...prev, homeTeamId: option.id, homeTeamName: option.label }))}
+                      onCreate={async (query, extra) => {
+                        const team = await createTeam({
+                          name: query,
+                          shortName: extra.shortName?.trim() || undefined,
+                          crestUrl: extra.crestUrl?.trim() || undefined,
+                          leagueId: newMatch.leagueId || null,
+                        });
+                        setNewMatch((prev) => ({ ...prev, homeTeamId: team.id, homeTeamName: team.name }));
+                      }}
+                      search={async (query) => {
+                        const rows = await searchTeamsForLeague(query, newMatch.leagueId || undefined);
+                        return rows.filter((team) => team.id !== newMatch.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
+                      }}
+                    />
+                    <SearchPicker
+                      placeholder="Away team"
+                      value={newMatch.awayTeamName}
+                      selectedId={newMatch.awayTeamId || null}
+                      searchKey={newMatch.leagueId || "no-league"}
+                      initialOptions={buildTeamPickerOptions(newMatch.leagueId)}
+                      excludeIds={newMatch.homeTeamId ? [newMatch.homeTeamId] : []}
+                      createHint="Create team"
+                      createFields={[
+                        { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                        { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                      ]}
+                      onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, awayTeamId: "", awayTeamName: nextValue }))}
+                      onSelect={(option) => setNewMatch((prev) => ({ ...prev, awayTeamId: option.id, awayTeamName: option.label }))}
+                      onCreate={async (query, extra) => {
+                        const team = await createTeam({
+                          name: query,
+                          shortName: extra.shortName?.trim() || undefined,
+                          crestUrl: extra.crestUrl?.trim() || undefined,
+                          leagueId: newMatch.leagueId || null,
+                        });
+                        setNewMatch((prev) => ({ ...prev, awayTeamId: team.id, awayTeamName: team.name }));
+                      }}
+                      search={async (query) => {
+                        const rows = await searchTeamsForLeague(query, newMatch.leagueId || undefined);
+                        return rows.filter((team) => team.id !== newMatch.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <input style={inputStyle} value={newMatch.eventTitle} onChange={(e) => setNewMatch((prev) => ({ ...prev, eventTitle: e.target.value }))} placeholder="Event title" />
+                    <input style={inputStyle} value={newMatch.eventSubtitle} onChange={(e) => setNewMatch((prev) => ({ ...prev, eventSubtitle: e.target.value }))} placeholder="Event subtitle" />
+                  </>
+                )}
                 <SearchPicker
                   placeholder="Stadium"
                   value={newMatch.venueName}
@@ -3017,18 +3090,24 @@ export default function JazzbaiSuperAdminPage() {
                     await superAdminFetch("/matches", {
                       method: "POST",
                       body: JSON.stringify({
+                        eventFormat: newMatch.eventFormat,
+                        eventTitle: newMatch.eventFormat === "SINGLE_EVENT" ? newMatch.eventTitle || null : null,
+                        eventSubtitle: newMatch.eventFormat === "SINGLE_EVENT" ? newMatch.eventSubtitle || null : null,
                         leagueId: newMatch.leagueId || null,
-                        homeTeamId: newMatch.homeTeamId || null,
-                        awayTeamId: newMatch.awayTeamId || null,
+                        homeTeamId: newMatch.eventFormat === "HEAD_TO_HEAD" ? newMatch.homeTeamId || null : null,
+                        awayTeamId: newMatch.eventFormat === "HEAD_TO_HEAD" ? newMatch.awayTeamId || null : null,
                         stadiumId: newMatch.stadiumId || null,
-                        homeTeamName: newMatch.homeTeamName,
-                        awayTeamName: newMatch.awayTeamName,
+                        homeTeamName: newMatch.eventFormat === "HEAD_TO_HEAD" ? newMatch.homeTeamName : null,
+                        awayTeamName: newMatch.eventFormat === "HEAD_TO_HEAD" ? newMatch.awayTeamName : null,
                         matchDateUtc: new Date(newMatch.matchDateUtc).toISOString(),
                         status: newMatch.status,
                         venueName: newMatch.venueName || null,
                       }),
                     });
                     setNewMatch({
+                      eventFormat: "HEAD_TO_HEAD",
+                      eventTitle: "",
+                      eventSubtitle: "",
                       leagueId: "",
                       homeTeamId: "",
                       awayTeamId: "",
@@ -3060,6 +3139,7 @@ export default function JazzbaiSuperAdminPage() {
                   <thead>
                     <tr>
                       <th style={thStyle}>League</th>
+                      <th style={thStyle}>Format</th>
                       <th style={thStyle}>Home</th>
                       <th style={thStyle}>Away</th>
                       <th style={thStyle}>Kickoff</th>
@@ -3071,6 +3151,9 @@ export default function JazzbaiSuperAdminPage() {
                   <tbody>
                     {matches.map((row) => {
                       const draft = matchDrafts[row.id] ?? {
+                        eventFormat: row.eventFormat || "HEAD_TO_HEAD",
+                        eventTitle: row.eventTitle || "",
+                        eventSubtitle: row.eventSubtitle || "",
                         leagueId: row.leagueId || "",
                         homeTeamId: row.homeTeamId || "",
                         awayTeamId: row.awayTeamId || "",
@@ -3092,64 +3175,99 @@ export default function JazzbaiSuperAdminPage() {
                             </select>
                           </td>
                           <td style={tdStyle}>
-                            <SearchPicker
-                              placeholder="Home team"
-                              value={String(draft.homeTeamName ?? "")}
-                              selectedId={String(draft.homeTeamId ?? "") || null}
-                              searchKey={String(draft.leagueId || "") || "no-league"}
-                              initialOptions={buildTeamPickerOptions(String(draft.leagueId || "") || undefined)}
-                              excludeIds={draft.awayTeamId ? [String(draft.awayTeamId)] : []}
-                              createHint="Create team"
-                              createFields={[
-                                { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
-                                { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
-                              ]}
-                              onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: "", homeTeamName: nextValue } }))}
-                              onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: option.id, homeTeamName: option.label } }))}
-                              onCreate={async (query, extra) => {
-                                const team = await createTeam({
-                                  name: query,
-                                  shortName: extra.shortName?.trim() || undefined,
-                                  crestUrl: extra.crestUrl?.trim() || undefined,
-                                  leagueId: String(draft.leagueId || "") || null,
-                                });
-                                setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: team.id, homeTeamName: team.name } }));
-                              }}
-                              search={async (query) => {
-                                const rows = await searchTeamsForLeague(query, String(draft.leagueId || "") || undefined);
-                                return rows.filter((team) => team.id !== draft.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
-                              }}
-                            />
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <select
+                                style={inputStyle}
+                                value={String(draft.eventFormat || "HEAD_TO_HEAD")}
+                                onChange={(e) => setMatchDrafts((prev) => ({
+                                  ...prev,
+                                  [row.id]: {
+                                    ...draft,
+                                    eventFormat: e.target.value as MatchEventFormat,
+                                    ...(e.target.value === "SINGLE_EVENT"
+                                      ? { homeTeamId: "", awayTeamId: "", homeTeamName: "", awayTeamName: "" }
+                                      : {}),
+                                  },
+                                }))}
+                              >
+                                <option value="HEAD_TO_HEAD">Head to Head</option>
+                                <option value="SINGLE_EVENT">Single Event</option>
+                              </select>
+                              {draft.eventFormat === "SINGLE_EVENT" && (
+                                <>
+                                  <input style={inputStyle} value={String(draft.eventTitle ?? "")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, eventTitle: e.target.value } }))} placeholder="Title" />
+                                  <input style={inputStyle} value={String(draft.eventSubtitle ?? "")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, eventSubtitle: e.target.value } }))} placeholder="Subtitle" />
+                                </>
+                              )}
+                            </div>
                           </td>
                           <td style={tdStyle}>
-                            <SearchPicker
-                              placeholder="Away team"
-                              value={String(draft.awayTeamName ?? "")}
-                              selectedId={String(draft.awayTeamId ?? "") || null}
-                              searchKey={String(draft.leagueId || "") || "no-league"}
-                              initialOptions={buildTeamPickerOptions(String(draft.leagueId || "") || undefined)}
-                              excludeIds={draft.homeTeamId ? [String(draft.homeTeamId)] : []}
-                              createHint="Create team"
-                              createFields={[
-                                { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
-                                { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
-                              ]}
-                              onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: "", awayTeamName: nextValue } }))}
-                              onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: option.id, awayTeamName: option.label } }))}
-                              onCreate={async (query, extra) => {
-                                const team = await createTeam({
-                                  name: query,
-                                  shortName: extra.shortName?.trim() || undefined,
-                                  crestUrl: extra.crestUrl?.trim() || undefined,
-                                  leagueId: String(draft.leagueId || "") || null,
-                                });
-                                setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: team.id, awayTeamName: team.name } }));
-                              }}
-                              search={async (query) => {
-                                const rows = await searchTeamsForLeague(query, String(draft.leagueId || "") || undefined);
-                                return rows.filter((team) => team.id !== draft.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
-                              }}
-                            />
+                            {draft.eventFormat === "HEAD_TO_HEAD" ? (
+                              <SearchPicker
+                                placeholder="Home team"
+                                value={String(draft.homeTeamName ?? "")}
+                                selectedId={String(draft.homeTeamId ?? "") || null}
+                                searchKey={String(draft.leagueId || "") || "no-league"}
+                                initialOptions={buildTeamPickerOptions(String(draft.leagueId || "") || undefined)}
+                                excludeIds={draft.awayTeamId ? [String(draft.awayTeamId)] : []}
+                                createHint="Create team"
+                                createFields={[
+                                  { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                                  { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                                ]}
+                                onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: "", homeTeamName: nextValue } }))}
+                                onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: option.id, homeTeamName: option.label } }))}
+                                onCreate={async (query, extra) => {
+                                  const team = await createTeam({
+                                    name: query,
+                                    shortName: extra.shortName?.trim() || undefined,
+                                    crestUrl: extra.crestUrl?.trim() || undefined,
+                                    leagueId: String(draft.leagueId || "") || null,
+                                  });
+                                  setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: team.id, homeTeamName: team.name } }));
+                                }}
+                                search={async (query) => {
+                                  const rows = await searchTeamsForLeague(query, String(draft.leagueId || "") || undefined);
+                                  return rows.filter((team) => team.id !== draft.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
+                                }}
+                              />
+                            ) : (
+                              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Single event</div>
+                            )}
+                          </td>
+                          <td style={tdStyle}>
+                            {draft.eventFormat === "HEAD_TO_HEAD" ? (
+                              <SearchPicker
+                                placeholder="Away team"
+                                value={String(draft.awayTeamName ?? "")}
+                                selectedId={String(draft.awayTeamId ?? "") || null}
+                                searchKey={String(draft.leagueId || "") || "no-league"}
+                                initialOptions={buildTeamPickerOptions(String(draft.leagueId || "") || undefined)}
+                                excludeIds={draft.homeTeamId ? [String(draft.homeTeamId)] : []}
+                                createHint="Create team"
+                                createFields={[
+                                  { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                                  { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                                ]}
+                                onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: "", awayTeamName: nextValue } }))}
+                                onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: option.id, awayTeamName: option.label } }))}
+                                onCreate={async (query, extra) => {
+                                  const team = await createTeam({
+                                    name: query,
+                                    shortName: extra.shortName?.trim() || undefined,
+                                    crestUrl: extra.crestUrl?.trim() || undefined,
+                                    leagueId: String(draft.leagueId || "") || null,
+                                  });
+                                  setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: team.id, awayTeamName: team.name } }));
+                                }}
+                                search={async (query) => {
+                                  const rows = await searchTeamsForLeague(query, String(draft.leagueId || "") || undefined);
+                                  return rows.filter((team) => team.id !== draft.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
+                                }}
+                              />
+                            ) : (
+                              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{String(draft.eventSubtitle ?? "") || "No subtitle"}</div>
+                            )}
                           </td>
                           <td style={tdStyle}><input style={inputStyle} type="datetime-local" value={String(draft.matchDateUtc ?? "")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, matchDateUtc: e.target.value } }))} /></td>
                           <td style={tdStyle}>
@@ -3193,12 +3311,15 @@ export default function JazzbaiSuperAdminPage() {
                                   await superAdminFetch(`/matches/${row.id}`, {
                                     method: "PATCH",
                                     body: JSON.stringify({
+                                      eventFormat: draft.eventFormat || "HEAD_TO_HEAD",
+                                      eventTitle: draft.eventFormat === "SINGLE_EVENT" ? draft.eventTitle || null : null,
+                                      eventSubtitle: draft.eventFormat === "SINGLE_EVENT" ? draft.eventSubtitle || null : null,
                                       leagueId: draft.leagueId || null,
-                                      homeTeamId: draft.homeTeamId || null,
-                                      awayTeamId: draft.awayTeamId || null,
+                                      homeTeamId: draft.eventFormat === "HEAD_TO_HEAD" ? draft.homeTeamId || null : null,
+                                      awayTeamId: draft.eventFormat === "HEAD_TO_HEAD" ? draft.awayTeamId || null : null,
                                       stadiumId: draft.stadiumId || null,
-                                      homeTeamName: draft.homeTeamName,
-                                      awayTeamName: draft.awayTeamName,
+                                      homeTeamName: draft.eventFormat === "HEAD_TO_HEAD" ? draft.homeTeamName : null,
+                                      awayTeamName: draft.eventFormat === "HEAD_TO_HEAD" ? draft.awayTeamName : null,
                                       matchDateUtc: draft.matchDateUtc ? new Date(String(draft.matchDateUtc)).toISOString() : undefined,
                                       status: draft.status,
                                       venueName: draft.venueName || null,
@@ -3228,6 +3349,12 @@ export default function JazzbaiSuperAdminPage() {
                 </table>
               </div>
             </div>
+          </section>
+        )}
+
+        {activeTab === "blog" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <BlogAdminPanel />
           </section>
         )}
       </main>

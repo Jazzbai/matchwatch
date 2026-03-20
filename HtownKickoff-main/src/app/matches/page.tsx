@@ -45,11 +45,11 @@ function formatDateFilterLabel(dateKey: string) {
 function toMatchRowKey(match: {
   id: string;
   leagueId: string;
-  homeTeamId: string;
-  awayTeamId: string;
+  homeTeamId?: string;
+  awayTeamId?: string;
   matchDateUTC: string;
 }) {
-  return `${match.id}:${match.leagueId}:${match.homeTeamId}:${match.awayTeamId}:${toUtcDateKey(match.matchDateUTC)}`;
+  return `${match.id}:${match.leagueId}:${match.homeTeamId || "single"}:${match.awayTeamId || "single"}:${toUtcDateKey(match.matchDateUTC)}`;
 }
 
 export default function MatchesPage() {
@@ -96,8 +96,8 @@ export default function MatchesPage() {
   const availableTeams = React.useMemo(() => {
     const ids = new Set<string>();
     for (const match of uniqueBaseMatches) {
-      ids.add(match.homeTeamId);
-      ids.add(match.awayTeamId);
+      if (match.homeTeamId) ids.add(match.homeTeamId);
+      if (match.awayTeamId) ids.add(match.awayTeamId);
     }
     return teams.filter((team) => ids.has(team.id)).sort((a, b) => a.name.localeCompare(b.name));
   }, [uniqueBaseMatches, teams]);
@@ -156,8 +156,8 @@ export default function MatchesPage() {
       const countryAllowed = !selectedCountry || league?.country === selectedCountry;
       const teamAllowed =
         selectedTeamIds.length === 0 ||
-        selectedTeamIds.includes(match.homeTeamId) ||
-        selectedTeamIds.includes(match.awayTeamId);
+        (match.homeTeamId ? selectedTeamIds.includes(match.homeTeamId) : false) ||
+        (match.awayTeamId ? selectedTeamIds.includes(match.awayTeamId) : false);
 
       const statusAllowed =
         activeStatus === "all" ||
@@ -522,10 +522,12 @@ export default function MatchesPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {filtered.map((match, i) => {
-                const home = getTeam(match.homeTeamId);
-                const away = getTeam(match.awayTeamId);
                 const league = getLeague(match.leagueId);
-                if (!home || !away || !league) return null;
+                const isSingleEvent = match.eventFormat === "SINGLE_EVENT";
+                const home = match.homeTeamId ? getTeam(match.homeTeamId) : undefined;
+                const away = match.awayTeamId ? getTeam(match.awayTeamId) : undefined;
+                if (!league) return null;
+                if (!isSingleEvent && (!home || !away)) return null;
                 const date = new Date(match.matchDateUTC);
                 const kickoffLabel =
                   match.status === "IN_PLAY" ? "LIVE" :
@@ -543,12 +545,15 @@ export default function MatchesPage() {
                   >
                     <MatchCard
                       className="h-full"
-                      homeTeam={home.shortName}
-                      awayTeam={away.shortName}
-                      homeCrest={home.crest}
-                      awayCrest={away.crest}
-                      homeImage={home.image}
-                      awayImage={away.image}
+                      eventFormat={match.eventFormat}
+                      eventTitle={match.eventTitle || undefined}
+                      eventSubtitle={match.eventSubtitle || undefined}
+                      homeTeam={home?.shortName || match.homeTeamName || ""}
+                      awayTeam={away?.shortName || match.awayTeamName || ""}
+                      homeCrest={home?.crest || ""}
+                      awayCrest={away?.crest || ""}
+                      homeImage={home?.image}
+                      awayImage={away?.image}
                       kickoff={kickoffLabel}
                       league={league.name}
                       leagueLogo={league.logo}

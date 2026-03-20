@@ -67,7 +67,7 @@ interface DataContextType {
     };
     isApiConnected: boolean;
     isLoading: boolean;
-    getTeam: (id: string) => Team | undefined;
+    getTeam: (id?: string) => Team | undefined;
     getLeague: (id: string) => League | undefined;
     getSport: (id: string) => Sport | undefined;
     getVenue: (idOrSlug: string) => Venue | undefined;
@@ -99,6 +99,9 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 type ApiMatch = {
     id: string;
+    eventFormat?: "HEAD_TO_HEAD" | "SINGLE_EVENT" | null;
+    eventTitle?: string | null;
+    eventSubtitle?: string | null;
     leagueId?: string | null;
     homeTeamId?: string | null;
     awayTeamId?: string | null;
@@ -182,17 +185,23 @@ function inferSportFromLeague(name: string): Sport {
 function resolveLeagueBranding(name: string, logoUrl?: string | null) {
     const safeName = sanitizeLegalText(name);
     const image = normalizeImageUrl(logoUrl);
+    const key = safeName.toLowerCase();
     if (image) {
-        const short = safeName
-            .split(/\s+/)
-            .map((chunk) => chunk[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 4) || "LG";
+        const short = key.includes("formula 1")
+            ? "F1"
+            : key.includes("nascar")
+                ? "NASCAR"
+                : key.includes("indycar")
+                    ? "INDY"
+                    : safeName
+                        .split(/\s+/)
+                        .map((chunk) => chunk[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 6) || "LG";
         return { logo: short, image };
     }
 
-    const key = safeName.toLowerCase();
     if (key.includes("premier league")) return { logo: "EPL", image: "/epl-logo.webp" };
     if (key.includes("la liga")) return { logo: "LL", image: "/laliga-logo.webp" };
     if (key.includes("bundesliga")) return { logo: "BL", image: "/bundesliga-logo.svg" };
@@ -203,6 +212,13 @@ function resolveLeagueBranding(name: string, logoUrl?: string | null) {
     if (key.includes("friendlies")) return { logo: "INTL" };
     if (key.includes("world cup") || key.includes("global finals")) return { logo: "WC" };
     if (key === "mls" || key.includes("major league soccer")) return { logo: "MLS" };
+    if (key === "nfl" || key.includes("national football league")) return { logo: "NFL" };
+    if (key === "nba" || key.includes("national basketball association")) return { logo: "NBA" };
+    if (key === "mlb" || key.includes("major league baseball")) return { logo: "MLB" };
+    if (key === "nhl" || key.includes("national hockey league")) return { logo: "NHL" };
+    if (key.includes("formula 1")) return { logo: "F1" };
+    if (key.includes("nascar")) return { logo: "NASCAR" };
+    if (key.includes("indycar")) return { logo: "INDY" };
     return { logo: "LG" };
 }
 
@@ -587,6 +603,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             const homeTeamId = m.homeTeamId || slugify(m.homeTeamName || `home-${m.id}`);
             const awayTeamId = m.awayTeamId || slugify(m.awayTeamName || `away-${m.id}`);
             const leagueId = m.leagueId || m.league?.id || "unknown-league";
+            const eventFormat = (m.eventFormat || "HEAD_TO_HEAD") as Match["eventFormat"];
 
             if (m.league?.id && m.league.name) {
                 if (m.league.sport?.id && m.league.sport.name && m.league.sport.slug) {
@@ -605,14 +622,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
                     logoUrl: m.league.logoUrl,
                 });
             }
-            if (m.homeTeamName) upsertTeam(homeTeamId, m.homeTeamName, leagueId, m.homeTeamCrestUrl);
-            if (m.awayTeamName) upsertTeam(awayTeamId, m.awayTeamName, leagueId, m.awayTeamCrestUrl);
+            if (eventFormat !== "SINGLE_EVENT") {
+                if (m.homeTeamName) upsertTeam(homeTeamId, m.homeTeamName, leagueId, m.homeTeamCrestUrl);
+                if (m.awayTeamName) upsertTeam(awayTeamId, m.awayTeamName, leagueId, m.awayTeamCrestUrl);
+            }
 
             const dateUtc = m.matchDateUtc || new Date().toISOString();
             return {
                 id: m.id,
-                homeTeamId,
-                awayTeamId,
+                homeTeamId: eventFormat === "SINGLE_EVENT" ? undefined : homeTeamId,
+                awayTeamId: eventFormat === "SINGLE_EVENT" ? undefined : awayTeamId,
+                homeTeamName: m.homeTeamName || undefined,
+                awayTeamName: m.awayTeamName || undefined,
                 leagueId,
                 matchDateUTC: dateUtc,
                 status: (m.status || "SCHEDULED") as MatchStatus,
@@ -623,6 +644,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 stadiumName: m.venueName || "",
                 venueCount: m.venueCount || 0,
                 isHot: (m.venueCount || 0) >= 10,
+                eventFormat,
+                eventTitle: m.eventTitle || undefined,
+                eventSubtitle: m.eventSubtitle || undefined,
             };
         });
 
@@ -727,6 +751,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 const leagueId = match?.leagueId || match?.league?.id || "unknown-league";
                 const homeTeamId = match?.homeTeamId || slugify(match?.homeTeamName || `home-${ev.id}`);
                 const awayTeamId = match?.awayTeamId || slugify(match?.awayTeamName || `away-${ev.id}`);
+                const eventFormat = ((match?.eventFormat || "HEAD_TO_HEAD") as Match["eventFormat"]);
 
                 if (match?.league?.id && match.league.name) {
                     if (match.league.sport?.id && match.league.sport.name && match.league.sport.slug) {
@@ -745,14 +770,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
                         logoUrl: match.league.logoUrl,
                     });
                 }
-                if (match?.homeTeamName) upsertTeam(homeTeamId, match.homeTeamName, leagueId, match.homeTeamCrestUrl);
-                if (match?.awayTeamName) upsertTeam(awayTeamId, match.awayTeamName, leagueId, match.awayTeamCrestUrl);
+                if (eventFormat !== "SINGLE_EVENT") {
+                    if (match?.homeTeamName) upsertTeam(homeTeamId, match.homeTeamName, leagueId, match.homeTeamCrestUrl);
+                    if (match?.awayTeamName) upsertTeam(awayTeamId, match.awayTeamName, leagueId, match.awayTeamCrestUrl);
+                }
 
                 if (eventMatchId && !mappedMatches.find((m) => String(m.id).trim().toLowerCase() === eventMatchId.toLowerCase())) {
                     mappedMatches.push({
                         id: eventMatchId,
-                        homeTeamId,
-                        awayTeamId,
+                        homeTeamId: eventFormat === "SINGLE_EVENT" ? undefined : homeTeamId,
+                        awayTeamId: eventFormat === "SINGLE_EVENT" ? undefined : awayTeamId,
+                        homeTeamName: match?.homeTeamName || undefined,
+                        awayTeamName: match?.awayTeamName || undefined,
                         leagueId,
                         matchDateUTC: match?.matchDateUtc || new Date().toISOString(),
                         status: (match?.status || "SCHEDULED") as MatchStatus,
@@ -763,6 +792,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
                         stadiumName: match?.venueName || "",
                         venueCount: 0,
                         isHot: false,
+                        eventFormat,
+                        eventTitle: match?.eventTitle || undefined,
+                        eventSubtitle: match?.eventSubtitle || undefined,
                     });
                 }
 
@@ -877,7 +909,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         };
     }, [fetchFromApi]);
 
-    const getTeam = (id: string) => teams.find((t) => t.id === id);
+    const getTeam = (id?: string) => (id ? teams.find((t) => t.id === id) : undefined);
     const getLeague = (id: string) => leagues.find((l) => l.id === id);
     const getSport = (id: string) => sports.find((s) => s.id === id);
     const getVenue = (idOrSlug: string) => venues.find((v) => v.id === idOrSlug || v.slug === idOrSlug);
