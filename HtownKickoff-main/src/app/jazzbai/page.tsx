@@ -64,7 +64,7 @@ type LookupMatch = {
   status: string;
   leagueId: string | null;
 };
-type LookupLeague = { id: string; sportId: string | null; name: string; shortName: string | null };
+type LookupLeague = { id: string; sportId: string | null; name: string; shortName: string | null; externalId?: string | null };
 type LookupSport = { id: string; name: string; slug: string; shortName: string | null };
 type LookupTeam = { id: string; leagueId?: string | null; name: string; shortName?: string | null; crestUrl?: string | null };
 type LookupStadium = { id: string; name: string; city?: string | null; country?: string | null };
@@ -601,6 +601,7 @@ function isNationalCompetitionLabel(value?: string | null) {
   const label = String(value || "").trim().toLowerCase();
   if (!label) return false;
   return label.includes("world cup")
+    || label.startsWith("wc")
     || label.includes("global finals")
     || label.includes("uefa po")
     || label.includes("play-off")
@@ -1336,6 +1337,9 @@ export default function JazzbaiSuperAdminPage() {
   const sportsCount = sportsMeta?.total ?? sportsRows.length;
   const leaguesCount = adminLeaguesMeta?.total ?? adminLeagues.length;
   const matchesCount = matchesMeta?.total ?? matches.length;
+  const leagueById = new Map(
+    lookupLeagues.map((league) => [league.id, league]),
+  );
   const leagueLabelById = new Map(
     lookupLeagues.map((league) => [league.id, league.shortName || league.name]),
   );
@@ -1350,12 +1354,30 @@ export default function JazzbaiSuperAdminPage() {
   );
   const isNationalLeagueId = (leagueId?: string | null) => {
     if (!leagueId) return false;
-    return isNationalCompetitionLabel(leagueLabelById.get(leagueId));
+    const league = leagueById.get(leagueId);
+    return isNationalCompetitionLabel(league?.externalId)
+      || isNationalCompetitionLabel(league?.shortName)
+      || isNationalCompetitionLabel(league?.name);
   };
 
   const isNationalTeamLookup = (team: LookupTeam) => {
     if (!team.leagueId) return false;
-    return isNationalCompetitionLabel(leagueLabelById.get(team.leagueId));
+    return isNationalLeagueId(team.leagueId);
+  };
+
+  const teamMatchesLeagueSport = (team: LookupTeam, leagueId?: string | null) => {
+    if (!leagueId) return true;
+    if (!team.leagueId) return false;
+    const targetLeague = leagueById.get(leagueId);
+    const teamLeague = leagueById.get(team.leagueId);
+    if (!targetLeague?.sportId || !teamLeague?.sportId) return false;
+    return targetLeague.sportId === teamLeague.sportId;
+  };
+
+  const isCustomLeagueId = (leagueId?: string | null) => {
+    if (!leagueId) return false;
+    const league = leagueById.get(leagueId);
+    return !league?.externalId;
   };
 
   const buildTeamPickerOptions = (leagueId?: string | null) => {
@@ -1363,16 +1385,20 @@ export default function JazzbaiSuperAdminPage() {
     if (leagueId) {
       source = isNationalLeagueId(leagueId)
         ? lookupTeams.filter((team) => isNationalTeamLookup(team))
-        : lookupTeams.filter((team) => team.leagueId === leagueId);
+        : isCustomLeagueId(leagueId)
+          ? lookupTeams.filter((team) => teamMatchesLeagueSport(team, leagueId))
+          : lookupTeams.filter((team) => team.leagueId === leagueId);
     }
     return source.slice(0, 12).map((team) => teamToOption(team, leagueLabelById));
   };
 
   const searchTeamsForLeague = async (query: string, leagueId?: string | null) => {
-    const scopedLeagueId = leagueId && !isNationalLeagueId(leagueId) ? leagueId : undefined;
+    const scopedLeagueId = leagueId && !isNationalLeagueId(leagueId) && !isCustomLeagueId(leagueId) ? leagueId : undefined;
     const rows = await searchTeams(query, scopedLeagueId || undefined);
     return leagueId && isNationalLeagueId(leagueId)
       ? rows.filter((team) => isNationalTeamLookup(team))
+      : leagueId && isCustomLeagueId(leagueId)
+        ? rows.filter((team) => teamMatchesLeagueSport(team, leagueId))
       : rows;
   };
 

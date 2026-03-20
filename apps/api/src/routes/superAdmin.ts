@@ -932,6 +932,7 @@ superAdminRoutes.get('/lookups', async (c) => {
             sportId: leagues.sportId,
             name: leagues.name,
             shortName: leagues.shortName,
+            externalId: leagues.externalId,
         }).from(leagues).where(eq(leagues.isActive, true)).orderBy(leagues.name),
         db.select({
             id: sports.id,
