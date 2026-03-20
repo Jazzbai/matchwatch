@@ -1348,17 +1348,17 @@ export default function JazzbaiSuperAdminPage() {
       lookupAttributes.filter((item) => item.type === type).sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)),
     ]),
   );
-  const isNationalLeagueId = React.useCallback((leagueId?: string | null) => {
+  const isNationalLeagueId = (leagueId?: string | null) => {
     if (!leagueId) return false;
     return isNationalCompetitionLabel(leagueLabelById.get(leagueId));
-  }, [leagueLabelById]);
+  };
 
-  const isNationalTeamLookup = React.useCallback((team: LookupTeam) => {
+  const isNationalTeamLookup = (team: LookupTeam) => {
     if (!team.leagueId) return false;
     return isNationalCompetitionLabel(leagueLabelById.get(team.leagueId));
-  }, [leagueLabelById]);
+  };
 
-  const buildTeamPickerOptions = React.useCallback((leagueId?: string | null) => {
+  const buildTeamPickerOptions = (leagueId?: string | null) => {
     let source = lookupTeams;
     if (leagueId) {
       source = isNationalLeagueId(leagueId)
@@ -1366,15 +1366,15 @@ export default function JazzbaiSuperAdminPage() {
         : lookupTeams.filter((team) => team.leagueId === leagueId);
     }
     return source.slice(0, 12).map((team) => teamToOption(team, leagueLabelById));
-  }, [isNationalLeagueId, isNationalTeamLookup, leagueLabelById, lookupTeams]);
+  };
 
-  const searchTeamsForLeague = React.useCallback(async (query: string, leagueId?: string | null) => {
+  const searchTeamsForLeague = async (query: string, leagueId?: string | null) => {
     const scopedLeagueId = leagueId && !isNationalLeagueId(leagueId) ? leagueId : undefined;
     const rows = await searchTeams(query, scopedLeagueId || undefined);
     return leagueId && isNationalLeagueId(leagueId)
       ? rows.filter((team) => isNationalTeamLookup(team))
       : rows;
-  }, [isNationalLeagueId, isNationalTeamLookup, searchTeams]);
+  };
 
   const defaultStadiumOptions = lookupStadiums.slice(0, 12).map(stadiumToOption);
 
