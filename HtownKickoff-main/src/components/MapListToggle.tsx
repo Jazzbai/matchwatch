@@ -170,7 +170,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
 
             marker.bindPopup(
                 `
-                <a class="venue-map-popup-card" href="${href}">
+                <div class="venue-map-popup-card">
                     <img src="${image}" alt="${title}" class="venue-map-popup-image" />
                     <div class="venue-map-popup-body">
                         <div class="venue-map-popup-kicker">Venue</div>
@@ -178,10 +178,10 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                         <div class="venue-map-popup-meta">${subtitle}</div>
                         <div class="venue-map-popup-footer">
                             <span class="venue-map-popup-rating">${rating} stars</span>
-                            <span class="venue-map-popup-link">View venue</span>
+                            <a class="venue-map-popup-link" href="${href}">View Venue</a>
                         </div>
                     </div>
-                </a>
+                </div>
                 `,
                 { className: popupClassName, closeButton: false, offset: [0, -18] },
             );
