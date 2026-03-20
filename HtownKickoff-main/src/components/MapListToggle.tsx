@@ -48,6 +48,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
     const { resolvedTheme } = useTheme();
     const [mobileView, setMobileView] = useState<"cards" | "map">("cards");
     const [isMobile, setIsMobile] = useState(false);
+    const [mapReady, setMapReady] = useState(false);
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<any>(null);
     const leafletRef = useRef<any>(null);
@@ -68,6 +69,20 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
         media.addEventListener("change", update);
         return () => media.removeEventListener("change", update);
     }, []);
+
+    const syncTileLayer = () => {
+        const L = leafletRef.current;
+        const map = mapRef.current;
+        if (!L || !map) return;
+
+        const tileConfig = getTileConfig(resolvedTheme);
+        if (tileLayerRef.current) tileLayerRef.current.remove();
+
+        tileLayerRef.current = L.tileLayer(tileConfig.url, {
+            maxZoom: 19,
+            attribution: tileConfig.attribution,
+        }).addTo(map);
+    };
 
     useEffect(() => {
         let mounted = true;
@@ -90,10 +105,14 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                 scrollWheelZoom: true,
                 zoomControl: true,
             });
+
+            syncTileLayer();
+            setMapReady(true);
         })();
 
         return () => {
             mounted = false;
+            setMapReady(false);
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
@@ -105,18 +124,10 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
     }, []);
 
     useEffect(() => {
-        const L = leafletRef.current;
-        const map = mapRef.current;
-        if (!L || !map) return;
-
-        const tileConfig = getTileConfig(resolvedTheme);
-        if (tileLayerRef.current) tileLayerRef.current.remove();
-
-        tileLayerRef.current = L.tileLayer(tileConfig.url, {
-            maxZoom: 19,
-            attribution: tileConfig.attribution,
-        }).addTo(map);
-    }, [resolvedTheme]);
+        if (!mapReady) return;
+        syncTileLayer();
+        window.setTimeout(() => mapRef.current?.invalidateSize(), 0);
+    }, [mapReady, resolvedTheme]);
 
     useEffect(() => {
         const L = leafletRef.current;

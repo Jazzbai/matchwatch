@@ -2,7 +2,7 @@ import { Queue, Worker } from 'bullmq';
 import { redis } from '../lib/redis';
 import { db } from '../db/client';
 import { sports, leagues, matches, teams, syncHistory } from '../db/schema';
-import { and, eq, lt, sql } from 'drizzle-orm';
+import { and, eq, inArray, lt, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 const QUEUE_NAME = 'matchSync';
@@ -11,8 +11,9 @@ const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE_URL || 'https://v3.footb
 const THE_SPORTS_DB_BASE = process.env.THE_SPORTS_DB_BASE_URL
     || `https://www.thesportsdb.com/api/v1/json/${process.env.THE_SPORTS_DB_API_KEY?.trim() || '3'}`;
 const JOLPICA_BASE = process.env.JOLPICA_BASE_URL || 'https://api.jolpi.ca/ergast';
+const ESPN_SCOREBOARD_BASE = process.env.ESPN_SCOREBOARD_BASE_URL || 'https://site.api.espn.com/apis/site/v2/sports';
 const FOOTBALL_DATA_SUPPORTED_CODES = new Set(['WC', 'PL', 'PD', 'BL1', 'SA', 'FL1', 'CL', 'MLS']);
-const THE_SPORTS_DB_PRIORITY_LEAGUE_CODES = new Set(['MLS', 'NWSL', 'LMX']);
+const LEGACY_THE_SPORTS_DB_SOCCER_CODES = new Set(['MLS', 'NWSL', 'LMX']);
 const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
     PL: 4328,
     PD: 4335,
@@ -30,10 +31,17 @@ const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
     NASCAR: 4393,
     INDYCAR: 4373,
 };
+const ESPN_SCOREBOARD_PATHS: Record<string, { sport: string; league: string }> = {
+    NFL: { sport: 'football', league: 'nfl' },
+    MLB: { sport: 'baseball', league: 'mlb' },
+    NBA: { sport: 'basketball', league: 'nba' },
+    NHL: { sport: 'hockey', league: 'nhl' },
+};
 
-type MatchSyncProvider = 'FOOTBALL_DATA' | 'API_FOOTBALL' | 'THE_SPORTS_DB';
+type MatchSyncProvider = 'FOOTBALL_DATA' | 'API_FOOTBALL' | 'THE_SPORTS_DB' | 'ESPN';
 type MatchStatus = 'SCHEDULED' | 'TIMED' | 'IN_PLAY' | 'PAUSED' | 'FINISHED' | 'POSTPONED' | 'CANCELLED' | 'SUSPENDED';
 type LeagueRow = typeof leagues.$inferSelect;
+type SyncMode = 'UPCOMING' | 'LIVE';
 
 type SyncResult = {
     fetched: number;
@@ -172,7 +180,55 @@ interface JolpicaRacesResponse {
     };
 }
 
+interface EspnEvent {
+    id: string;
+    date?: string;
+    season?: {
+        type?: {
+            slug?: string;
+        };
+    };
+    competitions?: Array<{
+        date?: string;
+        venue?: {
+            fullName?: string | null;
+            address?: {
+                city?: string | null;
+                state?: string | null;
+                country?: string | null;
+            } | null;
+        } | null;
+        competitors?: Array<{
+            homeAway?: 'home' | 'away';
+            score?: string | null;
+            team?: {
+                id?: string;
+                displayName?: string;
+                shortDisplayName?: string;
+                abbreviation?: string;
+                logo?: string | null;
+            } | null;
+        }>;
+    }>;
+    status?: {
+        type?: {
+            state?: string;
+            completed?: boolean;
+            description?: string;
+            detail?: string;
+            shortDetail?: string;
+        } | null;
+    } | null;
+}
+
+interface EspnScoreboardResponse {
+    events?: EspnEvent[];
+}
+
+type EspnStatusType = NonNullable<NonNullable<EspnEvent['status']>['type']>;
+
 let matchSyncQueueInstance: Queue | null = null;
+const legacyLeagueCleanupCache = new Set<string>();
 
 export function getMatchSyncQueue() {
     if (!matchSyncQueueInstance) {
@@ -195,11 +251,13 @@ function sleep(ms: number) {
 
 export function resolveMatchSyncProvider(rawProvider = process.env.MATCH_SYNC_PROVIDER || ''): MatchSyncProvider {
     const raw = rawProvider.trim().toUpperCase();
+    if (raw === 'ESPN') return 'ESPN';
     if (raw === 'API_FOOTBALL' || raw === 'API-FOOTBALL') return 'API_FOOTBALL';
     if (raw === 'FOOTBALL_DATA') return 'FOOTBALL_DATA';
     if (raw === 'THE_SPORTS_DB' || raw === 'THESPORTSDB') return 'THE_SPORTS_DB';
     if (process.env.API_FOOTBALL_API_KEY) return 'API_FOOTBALL';
     if (process.env.FOOTBALL_DATA_API_KEY) return 'FOOTBALL_DATA';
+    if (process.env.ESPN_SCOREBOARD_BASE_URL) return 'ESPN';
     return 'THE_SPORTS_DB';
 }
 
@@ -265,6 +323,54 @@ function mapTheSportsDbLeagueCode(externalId: string) {
     return externalId.trim().toUpperCase();
 }
 
+function formatEspnDate(date: Date) {
+    return date.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
+function buildDateSeries(start: Date, end: Date) {
+    const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+    const last = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
+    const dates: string[] = [];
+
+    while (cursor.getTime() <= last.getTime()) {
+        dates.push(formatEspnDate(cursor));
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+
+    return dates;
+}
+
+function parseNumericScore(value?: string | null) {
+    if (value === undefined || value === null || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function mapEspnStatus(type?: EspnStatusType | null): MatchStatus {
+    const state = (type?.state || '').trim().toLowerCase();
+    const description = `${type?.description || ''} ${type?.detail || ''} ${type?.shortDetail || ''}`.toUpperCase();
+
+    if (description.includes('POSTPONED')) return 'POSTPONED';
+    if (description.includes('CANCELLED') || description.includes('CANCELED')) return 'CANCELLED';
+    if (description.includes('SUSPENDED')) return 'SUSPENDED';
+    if (type?.completed || state === 'post') return 'FINISHED';
+    if (state === 'in') {
+        if (description.includes('HALFTIME') || description.includes('HALF TIME') || description.includes('INTERMISSION')) {
+            return 'PAUSED';
+        }
+        return 'IN_PLAY';
+    }
+    if (state === 'pre') {
+        return 'TIMED';
+    }
+    return 'SCHEDULED';
+}
+
+async function fetchEspnScoreboard<T>(sport: string, league: string, date: string) {
+    const url = `${ESPN_SCOREBOARD_BASE}/${sport}/${league}/scoreboard?dates=${date}`;
+    return fetchJsonWithRetry<T>(url, {}, 'espn');
+}
+
 function isSingleEventLeagueCode(externalId: string) {
     const code = mapTheSportsDbLeagueCode(externalId);
     return code === 'NASCAR' || code === 'INDYCAR' || code === 'F1';
@@ -273,6 +379,39 @@ function isSingleEventLeagueCode(externalId: string) {
 function isUnitedStatesCountry(value?: string | null) {
     const normalized = (value || '').trim().toLowerCase();
     return normalized === 'united states' || normalized === 'usa' || normalized === 'us';
+}
+
+async function cleanupLegacyTheSportsDbLeagueData(league: LeagueRow) {
+    const externalCode = mapTheSportsDbLeagueCode(league.externalId || '');
+    if (!LEGACY_THE_SPORTS_DB_SOCCER_CODES.has(externalCode)) return;
+    if (legacyLeagueCleanupCache.has(league.id)) return;
+
+    const sourceLeagueId = THE_SPORTS_DB_LEAGUE_IDS[externalCode];
+    if (!sourceLeagueId) return;
+
+    const matchPrefix = `TSD-${sourceLeagueId}-%`;
+    const teamPrefix = `TSD-${sourceLeagueId}-%`;
+
+    await db.execute(sql`
+        delete from matches
+        where league_id = ${league.id}
+          and external_match_id like ${matchPrefix}
+    `);
+
+    await db.execute(sql`
+        delete from teams t
+        where t.league_id = ${league.id}
+          and t.external_id like ${teamPrefix}
+          and not exists (
+              select 1
+              from matches m
+              where m.home_team_id = t.id
+                 or m.away_team_id = t.id
+          )
+    `);
+
+    legacyLeagueCleanupCache.add(league.id);
+    logger.info({ league: league.name, externalCode }, 'Removed legacy TheSportsDB data for league');
 }
 
 function mapTheSportsDbStatus(event: NonNullable<TheSportsDbEventsSeasonResponse['events']>[number], matchDate: Date): MatchStatus {
@@ -305,7 +444,7 @@ async function fetchTheSportsDbSeason(leagueId: number) {
     return { season, logoUrl };
 }
 
-async function syncLeagueFromTheSportsDb(league: LeagueRow): Promise<SyncResult> {
+async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UPCOMING'): Promise<SyncResult> {
     const result: SyncResult = { fetched: 0, upserted: 0, errors: 0, teamsUpserted: 0 };
     const externalId = mapTheSportsDbLeagueCode(league.externalId || '');
     const sourceLeagueId = THE_SPORTS_DB_LEAGUE_IDS[externalId];
@@ -342,8 +481,12 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow): Promise<SyncResult>
 
         const isSingleEvent = isSingleEventLeagueCode(externalId);
         const now = Date.now();
-        const minTs = now - 14 * 24 * 60 * 60 * 1000;
-        const maxTs = now + (isSingleEvent ? 365 : 60) * 24 * 60 * 60 * 1000;
+        const minTs = mode === 'LIVE'
+            ? now - 6 * 60 * 60 * 1000
+            : now - 14 * 24 * 60 * 60 * 1000;
+        const maxTs = mode === 'LIVE'
+            ? now + 8 * 60 * 60 * 1000
+            : now + (isSingleEvent ? 365 : 60) * 24 * 60 * 60 * 1000;
 
         for (const event of events) {
             try {
@@ -585,10 +728,107 @@ async function fetchJsonWithRetry<T>(url: string, headers: Record<string, string
     return response.json() as Promise<T>;
 }
 
-async function fetchFootballDataMatches(competitionCode: string, apiKey: string): Promise<FootballDataMatch[]> {
+async function syncLeagueFromEspn(league: LeagueRow, mode: SyncMode = 'UPCOMING'): Promise<SyncResult> {
+    const result: SyncResult = { fetched: 0, upserted: 0, errors: 0, teamsUpserted: 0 };
+    const externalCode = mapTheSportsDbLeagueCode(league.externalId || '');
+    const path = ESPN_SCOREBOARD_PATHS[externalCode];
+
+    if (!path) {
+        result.skipped = true;
+        return result;
+    }
+
     const now = new Date();
-    const dateFrom = now.toISOString().split('T')[0];
-    const dateTo = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const start = new Date(now);
+    start.setUTCDate(start.getUTCDate() + (mode === 'LIVE' ? -1 : 0));
+    const end = new Date(now);
+    end.setUTCDate(end.getUTCDate() + (mode === 'LIVE' ? 1 : 14));
+
+    const eventsById = new Map<string, EspnEvent>();
+    for (const date of buildDateSeries(start, end)) {
+        const payload = await fetchEspnScoreboard<EspnScoreboardResponse>(path.sport, path.league, date);
+        for (const event of payload?.events || []) {
+            if (event?.id && !eventsById.has(event.id)) {
+                eventsById.set(event.id, event);
+            }
+        }
+    }
+
+    const events = Array.from(eventsById.values());
+    result.fetched = events.length;
+
+    for (const event of events) {
+        try {
+            const competition = event.competitions?.[0];
+            const competitors = competition?.competitors || [];
+            const homeSide = competitors.find((entry) => entry.homeAway === 'home');
+            const awaySide = competitors.find((entry) => entry.homeAway === 'away');
+            const homeTeam = homeSide?.team;
+            const awayTeam = awaySide?.team;
+            if (!competition || !homeTeam?.id || !awayTeam?.id || !homeTeam.displayName || !awayTeam.displayName) {
+                continue;
+            }
+
+            const matchDate = new Date(event.date || competition.date || '');
+            if (Number.isNaN(matchDate.getTime())) continue;
+
+            const home = await upsertTeamRecord({
+                leagueId: league.id,
+                name: homeTeam.displayName,
+                shortName: homeTeam.abbreviation || homeTeam.shortDisplayName || homeTeam.displayName,
+                externalId: `ESPN-${homeTeam.id}`,
+                crestUrl: homeTeam.logo || null,
+            });
+            const away = await upsertTeamRecord({
+                leagueId: league.id,
+                name: awayTeam.displayName,
+                shortName: awayTeam.abbreviation || awayTeam.shortDisplayName || awayTeam.displayName,
+                externalId: `ESPN-${awayTeam.id}`,
+                crestUrl: awayTeam.logo || null,
+            });
+
+            if (home.created) result.teamsUpserted += 1;
+            if (away.created) result.teamsUpserted += 1;
+
+            await upsertMatchRecord({
+                leagueId: league.id,
+                externalMatchId: `ESPN-${event.id}`,
+                homeTeamId: home.id,
+                awayTeamId: away.id,
+                homeTeamName: homeTeam.displayName,
+                awayTeamName: awayTeam.displayName,
+                homeTeamCrestUrl: homeTeam.logo || null,
+                awayTeamCrestUrl: awayTeam.logo || null,
+                matchDateUtc: matchDate,
+                status: mapEspnStatus(event.status?.type),
+                matchDay: null,
+                stage: trimText(event.season?.type?.slug || '', 50) || null,
+                homeScore: parseNumericScore(homeSide?.score),
+                awayScore: parseNumericScore(awaySide?.score),
+                venueName: trimText(competition.venue?.fullName || '', 200) || null,
+                eventFormat: 'HEAD_TO_HEAD',
+                eventTitle: null,
+                eventSubtitle: null,
+            });
+            result.upserted += 1;
+        } catch (err) {
+            result.errors += 1;
+            logger.error({ league: league.name, eventId: event.id, err }, 'Failed upserting ESPN event');
+        }
+    }
+
+    return result;
+}
+
+async function fetchFootballDataMatches(
+    competitionCode: string,
+    apiKey: string,
+    daysBack = 0,
+    daysAhead = 14,
+): Promise<FootballDataMatch[]> {
+    const now = new Date();
+    const dateFrom = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dateTo = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const url = `${FOOTBALL_DATA_BASE}/competitions/${competitionCode}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
 
     logger.info({ competitionCode, dateFrom, dateTo }, 'Fetching matches from Football-Data');
@@ -702,7 +942,11 @@ async function resolveApiFootballLeague(league: LeagueRow, apiKey: string) {
     return resolved;
 }
 
-async function syncLeagueFromFootballData(league: LeagueRow, apiKey: string): Promise<SyncResult> {
+async function syncLeagueFromFootballData(
+    league: LeagueRow,
+    apiKey: string,
+    mode: SyncMode = 'UPCOMING',
+): Promise<SyncResult> {
     const result: SyncResult = { fetched: 0, upserted: 0, errors: 0, teamsUpserted: 0 };
     const code = (league.externalId || '').trim();
     if (!code || !FOOTBALL_DATA_SUPPORTED_CODES.has(code)) {
@@ -711,7 +955,12 @@ async function syncLeagueFromFootballData(league: LeagueRow, apiKey: string): Pr
     }
 
     try {
-        const apiMatches = await fetchFootballDataMatches(code, apiKey);
+        const apiMatches = await fetchFootballDataMatches(
+            code,
+            apiKey,
+            mode === 'LIVE' ? 1 : 0,
+            mode === 'LIVE' ? 1 : 14,
+        );
         result.fetched = apiMatches.length;
 
         for (const row of apiMatches) {
@@ -768,7 +1017,11 @@ async function syncLeagueFromFootballData(league: LeagueRow, apiKey: string): Pr
     return result;
 }
 
-async function syncLeagueFromApiFootball(league: LeagueRow, apiKey: string): Promise<SyncResult> {
+async function syncLeagueFromApiFootball(
+    league: LeagueRow,
+    apiKey: string,
+    mode: SyncMode = 'UPCOMING',
+): Promise<SyncResult> {
     const result: SyncResult = { fetched: 0, upserted: 0, errors: 0, teamsUpserted: 0 };
     const resolved = await resolveApiFootballLeague(league, apiKey);
     if (!resolved) {
@@ -781,9 +1034,13 @@ async function syncLeagueFromApiFootball(league: LeagueRow, apiKey: string): Pro
     }
 
     const now = new Date();
-    const dateFrom = now.toISOString().split('T')[0];
+    const dateFrom = new Date(
+        now.getTime() - (mode === 'LIVE' ? 24 : 0) * 24 * 60 * 60 * 1000,
+    ).toISOString().split('T')[0];
     const externalCode = (league.externalId || '').trim().toUpperCase();
-    const lookaheadDays = externalCode === 'INTL' ? 90 : 14;
+    const lookaheadDays = mode === 'LIVE'
+        ? 1
+        : externalCode === 'INTL' ? 90 : 14;
     const dateTo = new Date(now.getTime() + lookaheadDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const fixtures = await fetchApiFootball<ApiFootballFixturesResponse>('/fixtures', {
         league: resolved.leagueId,
@@ -898,6 +1155,144 @@ async function syncLeagueFromJolpicaF1(league: LeagueRow): Promise<SyncResult> {
     return result;
 }
 
+async function syncLeagueWithResolvedProvider(
+    league: LeagueRow,
+    preferredProvider: MatchSyncProvider,
+    apiFootballApiKey: string | undefined,
+    footballDataApiKey: string | undefined,
+    mode: SyncMode = 'UPCOMING',
+) {
+    const externalCode = (league.externalId || '').trim().toUpperCase();
+
+    if (externalCode === 'F1') {
+        return {
+            providerUsed: 'THE_SPORTS_DB' as MatchSyncProvider,
+            result: await syncLeagueFromJolpicaF1(league),
+        };
+    }
+
+    if (['NFL', 'MLB', 'NBA', 'NHL'].includes(externalCode)) {
+        return {
+            providerUsed: 'ESPN' as MatchSyncProvider,
+            result: await syncLeagueFromEspn(league, mode),
+        };
+    }
+
+    if (['NASCAR', 'INDYCAR'].includes(externalCode)) {
+        return {
+            providerUsed: 'THE_SPORTS_DB' as MatchSyncProvider,
+            result: await syncLeagueFromTheSportsDb(league, mode),
+        };
+    }
+
+    if (externalCode === 'MLS' && footballDataApiKey) {
+        await cleanupLegacyTheSportsDbLeagueData(league);
+        return {
+            providerUsed: 'FOOTBALL_DATA' as MatchSyncProvider,
+            result: await syncLeagueFromFootballData(league, footballDataApiKey, mode),
+        };
+    }
+
+    if ((externalCode === 'INTL' || externalCode === 'NWSL' || externalCode === 'LMX') && apiFootballApiKey) {
+        await cleanupLegacyTheSportsDbLeagueData(league);
+        return {
+            providerUsed: 'API_FOOTBALL' as MatchSyncProvider,
+            result: await syncLeagueFromApiFootball(league, apiFootballApiKey, mode),
+        };
+    }
+
+    if (preferredProvider === 'API_FOOTBALL' && apiFootballApiKey) {
+        return {
+            providerUsed: 'API_FOOTBALL' as MatchSyncProvider,
+            result: await syncLeagueFromApiFootball(league, apiFootballApiKey, mode),
+        };
+    }
+
+    if (preferredProvider === 'FOOTBALL_DATA' && footballDataApiKey && FOOTBALL_DATA_SUPPORTED_CODES.has(externalCode)) {
+        return {
+            providerUsed: 'FOOTBALL_DATA' as MatchSyncProvider,
+            result: await syncLeagueFromFootballData(league, footballDataApiKey, mode),
+        };
+    }
+
+    if (preferredProvider === 'ESPN' && ESPN_SCOREBOARD_PATHS[externalCode]) {
+        return {
+            providerUsed: 'ESPN' as MatchSyncProvider,
+            result: await syncLeagueFromEspn(league, mode),
+        };
+    }
+
+    if (footballDataApiKey && FOOTBALL_DATA_SUPPORTED_CODES.has(externalCode)) {
+        return {
+            providerUsed: 'FOOTBALL_DATA' as MatchSyncProvider,
+            result: await syncLeagueFromFootballData(league, footballDataApiKey, mode),
+        };
+    }
+
+    if (apiFootballApiKey) {
+        return {
+            providerUsed: 'API_FOOTBALL' as MatchSyncProvider,
+            result: await syncLeagueFromApiFootball(league, apiFootballApiKey, mode),
+        };
+    }
+
+    return {
+        providerUsed: 'THE_SPORTS_DB' as MatchSyncProvider,
+        result: await syncLeagueFromTheSportsDb(league, mode),
+    };
+}
+
+export async function runLiveStatusRefreshOnce() {
+    const provider = resolveProvider();
+    const apiFootballApiKey = process.env.API_FOOTBALL_API_KEY;
+    const footballDataApiKey = process.env.FOOTBALL_DATA_API_KEY;
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+    const windowEnd = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
+    const leagueIdRows = await db.select({ leagueId: matches.leagueId })
+        .from(matches)
+        .innerJoin(leagues, eq(matches.leagueId, leagues.id))
+        .where(and(
+            inArray(matches.status, ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED']),
+            sql`${matches.matchDateUtc} >= ${windowStart}`,
+            sql`${matches.matchDateUtc} <= ${windowEnd}`,
+            eq(leagues.isActive, true),
+        ))
+        .groupBy(matches.leagueId);
+
+    if (leagueIdRows.length === 0) {
+        logger.info({ provider }, 'Live status refresh skipped because no matches are in the live window');
+        return {};
+    }
+
+    const leagueIds = leagueIdRows
+        .map((row) => row.leagueId)
+        .filter((leagueId): leagueId is string => Boolean(leagueId));
+
+    const leagueRows = leagueIds.length === 0
+        ? []
+        : await db.select().from(leagues).where(inArray(leagues.id, leagueIds));
+
+    const syncResults: Record<string, SyncResult> = {};
+    clearSyncCaches();
+
+    for (const league of leagueRows) {
+        const { providerUsed, result } = await syncLeagueWithResolvedProvider(
+            league,
+            provider,
+            apiFootballApiKey,
+            footballDataApiKey,
+            'LIVE',
+        );
+        syncResults[league.name] = result;
+        await sleep(providerUsed === 'FOOTBALL_DATA' ? 1200 : providerUsed === 'API_FOOTBALL' ? 700 : 250);
+    }
+
+    logger.info({ provider, syncResults }, 'Live status refresh completed');
+    return syncResults;
+}
+
 export async function scheduleMatchSync() {
     const matchSyncQueue = getMatchSyncQueue();
     const existingJobs = await matchSyncQueue.getRepeatableJobs();
@@ -910,7 +1305,12 @@ export async function scheduleMatchSync() {
         jobId: 'nightly-match-sync',
     });
 
-    logger.info('Match sync cron scheduled: nightly at 02:00 UTC');
+    await matchSyncQueue.add('live-status-sync', {}, {
+        repeat: { pattern: '*/5 * * * *' },
+        jobId: 'live-status-refresh',
+    });
+
+    logger.info('Match sync cron scheduled: nightly at 02:00 UTC and live refresh every 5 minutes');
 }
 
 export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
@@ -919,13 +1319,15 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
         ? process.env.API_FOOTBALL_API_KEY
         : provider === 'FOOTBALL_DATA'
             ? process.env.FOOTBALL_DATA_API_KEY
-            : undefined;
+            : provider === 'ESPN'
+                ? 'ESPN'
+                : undefined;
     const apiFootballApiKey = process.env.API_FOOTBALL_API_KEY;
     const footballDataApiKey = process.env.FOOTBALL_DATA_API_KEY;
     const sportSlug = options.sportSlug || 'soccer';
     const writeHistory = options.writeHistory ?? true;
 
-    if (!apiKey && provider !== 'THE_SPORTS_DB') {
+    if (options.providerOverride && !apiKey && provider !== 'THE_SPORTS_DB') {
         throw new Error(`${provider === 'API_FOOTBALL' ? 'API_FOOTBALL_API_KEY' : 'FOOTBALL_DATA_API_KEY'} not set`);
     }
 
@@ -946,34 +1348,14 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
     for (const row of leagueRows) {
         const league = row.league;
         const startedAt = Date.now();
-        const externalCode = (league.externalId || '').trim().toUpperCase();
 
-        // Keep leagues on TheSportsDB where its coverage is a better fit.
-        // Use Football-Data for major global leagues when key exists.
-        let providerUsed: MatchSyncProvider = provider;
-        let result: SyncResult;
-        if (externalCode === 'F1') {
-            providerUsed = 'THE_SPORTS_DB';
-            result = await syncLeagueFromJolpicaF1(league);
-        } else if (THE_SPORTS_DB_PRIORITY_LEAGUE_CODES.has(externalCode)) {
-            providerUsed = 'THE_SPORTS_DB';
-            result = await syncLeagueFromTheSportsDb(league);
-        } else if (['NFL', 'MLB', 'NBA', 'NHL', 'NASCAR', 'INDYCAR'].includes(externalCode)) {
-            providerUsed = 'THE_SPORTS_DB';
-            result = await syncLeagueFromTheSportsDb(league);
-        } else if (externalCode === 'INTL' && apiFootballApiKey) {
-            providerUsed = 'API_FOOTBALL';
-            result = await syncLeagueFromApiFootball(league, apiFootballApiKey);
-        } else if (provider === 'API_FOOTBALL') {
-            result = await syncLeagueFromApiFootball(league, apiKey as string);
-        } else if (provider === 'FOOTBALL_DATA') {
-            result = await syncLeagueFromFootballData(league, apiKey as string);
-        } else if (footballDataApiKey) {
-            providerUsed = 'FOOTBALL_DATA';
-            result = await syncLeagueFromFootballData(league, footballDataApiKey);
-        } else {
-            result = await syncLeagueFromTheSportsDb(league);
-        }
+        const { providerUsed, result } = await syncLeagueWithResolvedProvider(
+            league,
+            provider,
+            apiFootballApiKey,
+            footballDataApiKey,
+            'UPCOMING',
+        );
 
         const durationMs = Date.now() - startedAt;
         syncResults[league.name] = result;
@@ -991,7 +1373,15 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
             });
         }
 
-        await sleep(providerUsed === 'FOOTBALL_DATA' ? 6200 : providerUsed === 'THE_SPORTS_DB' ? 900 : 1200);
+        await sleep(
+            providerUsed === 'FOOTBALL_DATA'
+                ? 6200
+                : providerUsed === 'API_FOOTBALL'
+                    ? 1200
+                    : providerUsed === 'THE_SPORTS_DB'
+                        ? 900
+                        : 250,
+        );
     }
 
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
@@ -1003,19 +1393,12 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
 
 export function startMatchSyncWorker() {
     const provider = resolveProvider();
-    const apiKey: string | undefined = provider === 'API_FOOTBALL'
-        ? process.env.API_FOOTBALL_API_KEY
-        : provider === 'FOOTBALL_DATA'
-            ? process.env.FOOTBALL_DATA_API_KEY
-            : undefined;
-
-    if (!apiKey && provider !== 'THE_SPORTS_DB') {
-        logger.warn(`${provider === 'API_FOOTBALL' ? 'API_FOOTBALL_API_KEY' : 'FOOTBALL_DATA_API_KEY'} not set, match sync worker disabled`);
-        return;
-    }
 
     const worker = new Worker(QUEUE_NAME, async (job) => {
-        logger.info({ jobId: job.id, provider }, 'Starting match sync job');
+        logger.info({ jobId: job.id, jobName: job.name, provider }, 'Starting match sync job');
+        if (job.name === 'live-status-sync') {
+            return runLiveStatusRefreshOnce();
+        }
         return runMatchSyncOnce({ providerOverride: provider, sportSlug: 'soccer', writeHistory: true });
     }, {
         connection: redis,
@@ -1024,11 +1407,11 @@ export function startMatchSyncWorker() {
     });
 
     worker.on('completed', (job) => {
-        logger.info({ jobId: job.id, provider }, 'Match sync job completed');
+        logger.info({ jobId: job.id, jobName: job.name, provider }, 'Match sync job completed');
     });
 
     worker.on('failed', (job, err) => {
-        logger.error({ jobId: job?.id, provider, err: err.message }, 'Match sync job failed');
+        logger.error({ jobId: job?.id, jobName: job?.name, provider, err: err.message }, 'Match sync job failed');
     });
 
     logger.info({ provider }, 'Match sync worker started');

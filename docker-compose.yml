@@ -57,6 +57,7 @@ services:
       THE_SPORTS_DB_API_KEY: ${THE_SPORTS_DB_API_KEY:-}
       THE_SPORTS_DB_BASE_URL: ${THE_SPORTS_DB_BASE_URL:-}
       JOLPICA_BASE_URL: ${JOLPICA_BASE_URL:-https://api.jolpi.ca/ergast}
+      ESPN_SCOREBOARD_BASE_URL: ${ESPN_SCOREBOARD_BASE_URL:-https://site.api.espn.com/apis/site/v2/sports}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}

@@ -5,7 +5,7 @@ import { db } from '../db/client';
 import { leagues, matches, sports } from '../db/schema';
 import { resolveMatchSyncProvider, runMatchSyncOnce } from '../workers/matchSync';
 
-type Provider = 'API_FOOTBALL' | 'FOOTBALL_DATA' | 'THE_SPORTS_DB';
+type Provider = 'API_FOOTBALL' | 'FOOTBALL_DATA' | 'THE_SPORTS_DB' | 'ESPN';
 
 function parseArgs(argv: string[]) {
     const args = new Map<string, string | boolean>();
@@ -20,7 +20,7 @@ function parseArgs(argv: string[]) {
 function asProvider(value: string | boolean | undefined): Provider | undefined {
     if (typeof value !== 'string') return undefined;
     const normalized = value.trim().toUpperCase().replace('-', '_');
-    if (normalized === 'API_FOOTBALL' || normalized === 'FOOTBALL_DATA' || normalized === 'THE_SPORTS_DB') {
+    if (normalized === 'API_FOOTBALL' || normalized === 'FOOTBALL_DATA' || normalized === 'THE_SPORTS_DB' || normalized === 'ESPN') {
         return normalized;
     }
     throw new Error(`Unsupported provider override: ${value}`);
