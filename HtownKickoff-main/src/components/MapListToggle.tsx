@@ -61,6 +61,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
             .filter((venue) => Number.isFinite(venue.lat) && Number.isFinite(venue.lng) && Math.abs(venue.lat) > 0 && Math.abs(venue.lng) > 0),
         [venues],
     );
+    const effectiveMapHeight = isMobile ? Math.min(mapHeight, 420) : mapHeight;
 
     useEffect(() => {
         const media = window.matchMedia("(max-width: 767px)");
@@ -185,8 +186,6 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                 `,
                 { className: popupClassName, closeButton: false, offset: [0, -18] },
             );
-
-            marker.on("click", () => onVenueClick?.(venue.originalIndex));
             points.push([venue.lat, venue.lng]);
         });
 
@@ -204,8 +203,12 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
         if (!map) return;
         const shouldShowMap = !isMobile || mobileView === "map";
         if (!shouldShowMap) return;
-        const timeout = window.setTimeout(() => map.invalidateSize(), 60);
-        return () => window.clearTimeout(timeout);
+        const firstPass = window.setTimeout(() => map.invalidateSize(), 60);
+        const secondPass = window.setTimeout(() => map.invalidateSize(), 220);
+        return () => {
+            window.clearTimeout(firstPass);
+            window.clearTimeout(secondPass);
+        };
     }, [isMobile, mobileView, mappedVenues.length]);
 
     const listPane = (
@@ -217,8 +220,8 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
     );
 
     const mapPane = (
-        <div style={{ minHeight: mapHeight, borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", background: "var(--secondary)" }}>
-            <div ref={mapContainerRef} style={{ width: "100%", height: mapHeight }} />
+        <div style={{ minHeight: effectiveMapHeight, borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", background: "var(--secondary)" }}>
+            <div ref={mapContainerRef} style={{ width: "100%", height: effectiveMapHeight }} />
         </div>
     );
 
@@ -267,14 +270,27 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                 </div>
             ) : null}
 
-            {isMobile ? (
-                mobileView === "cards" ? listPane : mapPane
-            ) : (
-                <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0, 1.05fr) minmax(320px, 0.95fr)", alignItems: "start" }}>
+            <div
+                style={{
+                    display: "grid",
+                    gap: 16,
+                    gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1.05fr) minmax(320px, 0.95fr)",
+                    alignItems: "start",
+                }}
+            >
+                <div style={{ display: isMobile && mobileView !== "cards" ? "none" : "block" }}>
                     {listPane}
-                    <div style={{ position: "sticky", top: 96 }}>{mapPane}</div>
                 </div>
-            )}
+                <div
+                    style={{
+                        display: isMobile && mobileView !== "map" ? "none" : "block",
+                        position: isMobile ? "relative" : "sticky",
+                        top: isMobile ? "auto" : 96,
+                    }}
+                >
+                    {mapPane}
+                </div>
+            </div>
         </div>
     );
 }

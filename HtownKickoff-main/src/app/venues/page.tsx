@@ -208,33 +208,35 @@ export default function VenuesPage() {
                     <div style={{ height: 1, backgroundColor: "var(--border)" }} />
 
                     {/* Sort + Count Row */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 10 }}>
                         <span style={{ fontSize: 13, color: "var(--muted-foreground)", fontWeight: 600 }}>
                             {filtered.length} venue{filtered.length !== 1 ? "s" : ""} found
                         </span>
-                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>Sort</span>
-                            {(["rating", "reviews", "name"] as const).map((s) => {
-                                const sel = sortBy === s;
-                                return (
-                                    <button
-                                        key={s}
-                                        onClick={() => setSortBy(s)}
-                                        style={{
-                                            display: "inline-flex", alignItems: "center", gap: 4,
-                                            padding: "6px 12px", borderRadius: 8,
-                                            fontSize: 12, fontWeight: 700, cursor: "pointer",
-                                            fontFamily: "inherit",
-                                            border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
-                                            backgroundColor: sel ? "var(--primary)" : "transparent",
-                                            color: sel ? "var(--primary-foreground)" : "var(--muted-foreground)",
-                                            transition: "all 0.2s",
-                                        }}
-                                    >
-                                        {s === "rating" ? <><Star size={12} /> Rating</> : s === "reviews" ? <><MessageSquare size={12} /> Reviews</> : <><Type size={12} /> Name</>}
-                                    </button>
-                                );
-                            })}
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Sort</span>
+                            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                                {(["rating", "reviews", "name"] as const).map((s) => {
+                                    const sel = sortBy === s;
+                                    return (
+                                        <button
+                                            key={s}
+                                            onClick={() => setSortBy(s)}
+                                            style={{
+                                                display: "inline-flex", alignItems: "center", gap: 4,
+                                                padding: "7px 14px", borderRadius: 99,
+                                                fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                                fontFamily: "inherit", whiteSpace: "nowrap",
+                                                border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
+                                                backgroundColor: sel ? "var(--primary)" : "transparent",
+                                                color: sel ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                                                transition: "all 0.2s",
+                                            }}
+                                        >
+                                            {s === "rating" ? <><Star size={12} /> Rating</> : s === "reviews" ? <><MessageSquare size={12} /> Reviews</> : <><Type size={12} /> Name</>}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>

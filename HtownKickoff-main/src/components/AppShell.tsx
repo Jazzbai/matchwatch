@@ -15,12 +15,32 @@ export function FloatingNav() {
     const { isAuthenticated, user, logout } = useAuth();
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
+
+    useEffect(() => {
+        const media = window.matchMedia("(max-width: 767px)");
+        const update = () => {
+            const mobile = media.matches;
+            setIsMobile(mobile);
+            if (!mobile) {
+                setMobileMenuOpen(false);
+            }
+        };
+
+        update();
+        media.addEventListener("change", update);
+        return () => media.removeEventListener("change", update);
+    }, []);
+
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [pathname]);
 
     const dashboardHref =
         user?.role === "BUSINESS" || user?.role === "VENUE_OWNER" ? "/admin"
@@ -55,8 +75,8 @@ export function FloatingNav() {
                     pointerEvents: "auto",
                     borderRadius: 999,
                     width: "100%",
-                    maxWidth: 900,
-                    padding: "12px 24px",
+                    maxWidth: isMobile ? "calc(100vw - 16px)" : 900,
+                    padding: isMobile ? "10px 16px" : "12px 24px",
                     transition: "all 0.5s",
                     backgroundColor: scrolled ? "color-mix(in oklch, var(--background) 70%, transparent)" : "color-mix(in oklch, var(--background) 40%, transparent)",
                     backdropFilter: scrolled ? "blur(24px)" : "blur(16px)",
@@ -65,17 +85,26 @@ export function FloatingNav() {
                 }}
             >
                 {/* Logo */}
-                <Link href="/" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                    <span style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 900, fontSize: 20, letterSpacing: "-0.02em", color: "var(--foreground)", lineHeight: 1.1 }}>
+                <Link href="/" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "flex-start", minWidth: 0 }}>
+                    <span style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 900, fontSize: isMobile ? 16 : 20, letterSpacing: "-0.02em", color: "var(--foreground)", lineHeight: 1.1 }}>
                         matchwatch
                     </span>
-                    <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: "0.25em", color: "var(--primary)", fontWeight: 700, textTransform: "uppercase", marginTop: -2, opacity: 0.8 }}>
+                    <span style={{ fontFamily: "monospace", fontSize: isMobile ? 8 : 9, letterSpacing: isMobile ? "0.18em" : "0.25em", color: "var(--primary)", fontWeight: 700, textTransform: "uppercase", marginTop: -2, opacity: 0.8 }}>
                         Watchparty Hub
                     </span>
                 </Link>
 
                 {/* Desktop Links — centered absolutely */}
-                <div style={{ display: "flex", alignItems: "center", gap: 4, position: "absolute", left: "50%", transform: "translateX(-50%)" }} className="hidden md:flex">
+                <div
+                    style={{
+                        display: isMobile ? "none" : "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        position: "absolute",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                    }}
+                >
                     {navLinks.map((link) => {
                         const isActive = pathname.startsWith(link.href);
                         return (
@@ -105,16 +134,16 @@ export function FloatingNav() {
                 </div>
 
                 {/* Right Side */}
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div className="hidden sm:block">
+                <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12 }}>
+                    <div style={{ display: isMobile ? "none" : "block" }}>
                         <ThemeToggle />
                     </div>
 
                     {isAuthenticated ? (
                         <Link
                             href={dashboardHref}
-                            className="hidden sm:flex"
                             style={{
+                                display: isMobile ? "none" : "flex",
                                 alignItems: "center", gap: 8, padding: "6px 16px 6px 8px",
                                 borderRadius: 999, fontSize: 12, fontWeight: 700, textDecoration: "none",
                                 backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)",
@@ -131,8 +160,8 @@ export function FloatingNav() {
                     ) : (
                         <Link
                             href="/login"
-                            className="hidden sm:flex"
                             style={{
+                                display: isMobile ? "none" : "flex",
                                 alignItems: "center", gap: 6, padding: "8px 20px",
                                 borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: "none",
                                 backgroundColor: "var(--primary)", color: "var(--primary-foreground)",
@@ -145,10 +174,13 @@ export function FloatingNav() {
 
                     {/* Mobile Menu Toggle */}
                     <button
-                        className="md:hidden"
+                        type="button"
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                         style={{
-                            padding: 8, marginRight: -8, borderRadius: 999,
+                            display: isMobile ? "inline-flex" : "none",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 8, marginRight: -4, borderRadius: 999,
                             border: "none", backgroundColor: "transparent", color: "var(--foreground)",
                             cursor: "pointer",
                         }}
