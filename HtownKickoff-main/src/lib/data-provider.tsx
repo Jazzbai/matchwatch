@@ -912,7 +912,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
         };
     }, [fetchFromApi]);
 
-    const getTeam = (id?: string) => (id ? teams.find((t) => t.id === id) : undefined);
+    const getTeam = (id?: string) => {
+        if (!id) return undefined;
+
+        const existing = teams.find((t) => t.id === id);
+        if (existing) return existing;
+
+        const sourceMatch = matches.find((match) => match.homeTeamId === id || match.awayTeamId === id);
+        if (!sourceMatch) return undefined;
+
+        const isHome = sourceMatch.homeTeamId === id;
+        const fallbackName = isHome
+            ? sourceMatch.homeTeamName || "Home Team"
+            : sourceMatch.awayTeamName || "Away Team";
+
+        return {
+            id,
+            name: fallbackName,
+            shortName: toShortName(fallbackName),
+            crest: toFlagOrBall(fallbackName),
+            color: hashColor(id),
+            leagueId: sourceMatch.leagueId,
+            country: toCountry(fallbackName),
+            image: "",
+        } satisfies Team;
+    };
     const getLeague = (id: string) => leagues.find((l) => l.id === id);
     const getSport = (id: string) => sports.find((s) => s.id === id);
     const getVenue = (idOrSlug: string) => venues.find((v) => v.id === idOrSlug || v.slug === idOrSlug);

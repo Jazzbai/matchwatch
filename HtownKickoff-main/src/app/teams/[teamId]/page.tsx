@@ -10,7 +10,7 @@ import { CircleDot, ShieldOff } from "lucide-react";
 export default function TeamPage({ params }: { params: Promise<{ teamId: string }> }) {
     const { teamId } = use(params);
     const { teams: ALL_TEAMS, matches: MATCHES, getTeam, getLeague } = useData();
-    const team = ALL_TEAMS.find((t: any) => t.id === teamId);
+    const team = getTeam(teamId) || ALL_TEAMS.find((t: any) => t.id === teamId);
 
     if (!team) {
         return (
@@ -92,7 +92,26 @@ export default function TeamPage({ params }: { params: Promise<{ teamId: string 
                     ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                             {teamMatches.map((m, i) => {
-                                const home = getTeam(m.homeTeamId)!, away = getTeam(m.awayTeamId)!;
+                                const home = getTeam(m.homeTeamId) || {
+                                    id: m.homeTeamId || `${m.id}-home`,
+                                    name: m.homeTeamName || "Home Team",
+                                    shortName: m.homeTeamName || "Home Team",
+                                    crest: "TEAM",
+                                    color: "var(--primary)",
+                                    leagueId: m.leagueId,
+                                    country: "INT",
+                                    image: "",
+                                };
+                                const away = getTeam(m.awayTeamId) || {
+                                    id: m.awayTeamId || `${m.id}-away`,
+                                    name: m.awayTeamName || "Away Team",
+                                    shortName: m.awayTeamName || "Away Team",
+                                    crest: "TEAM",
+                                    color: "var(--primary)",
+                                    leagueId: m.leagueId,
+                                    country: "INT",
+                                    image: "",
+                                };
                                 const lg = getLeague(m.leagueId);
                                 const d = new Date(m.matchDateUTC);
                                 const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";

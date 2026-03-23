@@ -207,9 +207,36 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
     }
 
 
-    const home = getTeam(match.homeTeamId)!;
-    const away = getTeam(match.awayTeamId)!;
-    const league = getLeague(match.leagueId)!;
+    const home = getTeam(match.homeTeamId) || {
+        id: match.homeTeamId || "home-team",
+        name: match.homeTeamName || "Home Team",
+        shortName: match.homeTeamName || "Home Team",
+        crest: "TEAM",
+        color: "var(--primary)",
+        leagueId: match.leagueId,
+        country: "INT",
+        image: "",
+    };
+    const away = getTeam(match.awayTeamId) || {
+        id: match.awayTeamId || "away-team",
+        name: match.awayTeamName || "Away Team",
+        shortName: match.awayTeamName || "Away Team",
+        crest: "TEAM",
+        color: "var(--primary)",
+        leagueId: match.leagueId,
+        country: "INT",
+        image: "",
+    };
+    const league = getLeague(match.leagueId) || {
+        id: match.leagueId,
+        sportId: undefined,
+        name: "League",
+        shortName: "League",
+        logo: "LG",
+        image: undefined,
+        country: "International",
+        externalId: match.leagueId,
+    };
     const d = new Date(match.matchDateUTC);
 
     const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
@@ -488,7 +515,26 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                     <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 24, fontWeight: 900, color: "var(--foreground)", marginBottom: 24 }}>Related Matches</h2>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
                         {relatedMatches.map((rm) => {
-                            const rh = getTeam(rm.homeTeamId)!, ra = getTeam(rm.awayTeamId)!;
+                            const rh = getTeam(rm.homeTeamId) || {
+                                id: rm.homeTeamId || `${rm.id}-home`,
+                                name: rm.homeTeamName || "Home Team",
+                                shortName: rm.homeTeamName || "Home Team",
+                                crest: "TEAM",
+                                color: "var(--primary)",
+                                leagueId: rm.leagueId,
+                                country: "INT",
+                                image: "",
+                            };
+                            const ra = getTeam(rm.awayTeamId) || {
+                                id: rm.awayTeamId || `${rm.id}-away`,
+                                name: rm.awayTeamName || "Away Team",
+                                shortName: rm.awayTeamName || "Away Team",
+                                crest: "TEAM",
+                                color: "var(--primary)",
+                                leagueId: rm.leagueId,
+                                country: "INT",
+                                image: "",
+                            };
                             const rd = new Date(rm.matchDateUTC);
                             return (
                                 <Link href={`/matches/${rm.id}`} key={rm.id} style={{ textDecoration: "none" }}>
