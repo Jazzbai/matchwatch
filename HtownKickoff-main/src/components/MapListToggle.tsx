@@ -1,318 +1,296 @@
-"use client";
+﻿"use client";
 
-import React, { useState } from "react";
-import { List, Map, Navigation } from "lucide-react";
-import { VenueCard, VenueCardProps } from "./VenueCard";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { List, Map } from "lucide-react";
+import { useTheme } from "next-themes";
+import { VenueCard, type VenueCardProps } from "./VenueCard";
 
-/* ═══════════════════════════════════════════════════
-   MAP / LIST TOGGLE VIEW
-   Interactive toggle between a map view (mock) and
-   a scrollable venue card list. Used on Match Detail
-   and Browse Venues pages.
-   ═══════════════════════════════════════════════════ */
+export type VenueMapListItem = VenueCardProps & {
+    id: string;
+    slug: string;
+    lat: number;
+    lng: number;
+};
 
 interface MapListToggleProps {
-    venues: VenueCardProps[];
+    venues: VenueMapListItem[];
     onVenueClick?: (index: number) => void;
     onBookNow?: (index: number) => void;
+    mapHeight?: number;
 }
 
-function MockMapView({ venues }: { venues: VenueCardProps[] }) {
-    return (
-        <div
-            className="map-container animate-fade-in"
-            style={{
-                height: "400px",
-                background: "var(--secondary)",
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-            }}
-        >
-            {/* Grid pattern simulating map */}
-            <div
-                style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: `
-            linear-gradient(var(--border) 1px, transparent 1px),
-            linear-gradient(90deg, var(--border) 1px, transparent 1px)
-          `,
-                    backgroundSize: "50px 50px",
-                    opacity: 0.4,
-                }}
-            />
+const HOUSTON_CENTER: [number, number] = [29.7604, -95.3698];
 
-            {/* Simulated Houston roads */}
-            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
-                <div style={{
-                    position: "absolute", top: "45%", left: 0, right: 0,
-                    height: "3px", background: "var(--muted-foreground)", opacity: 0.2,
-                    transform: "rotate(-5deg)"
-                }} />
-                <div style={{
-                    position: "absolute", top: 0, bottom: 0, left: "35%",
-                    width: "3px", background: "var(--muted-foreground)", opacity: 0.2,
-                    transform: "rotate(3deg)"
-                }} />
-                <div style={{
-                    position: "absolute", top: "20%", left: "10%", right: "30%",
-                    height: "2px", background: "var(--muted-foreground)", opacity: 0.15,
-                    transform: "rotate(15deg)"
-                }} />
-                <div style={{
-                    position: "absolute", top: 0, bottom: 0, left: "65%",
-                    width: "2px", background: "var(--muted-foreground)", opacity: 0.15,
-                    transform: "rotate(-8deg)"
-                }} />
-            </div>
+function escapeHtml(value: string) {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
-            {/* Venue Pins */}
-            {venues.map((v, i) => {
-                const positions = [
-                    { top: "25%", left: "30%" },
-                    { top: "40%", left: "55%" },
-                    { top: "60%", left: "25%" },
-                    { top: "35%", left: "72%" },
-                    { top: "70%", left: "60%" },
-                    { top: "20%", left: "50%" },
-                ];
-                const pos = positions[i % positions.length];
-                return (
-                    <div
-                        key={i}
-                        className="animate-scale-in"
-                        style={{
-                            position: "absolute",
-                            ...pos,
-                            animationDelay: `${i * 0.08}s`,
-                            zIndex: 5,
-                            cursor: "pointer",
-                        }}
-                        title={v.name}
-                    >
-                        {/* Pin */}
-                        <div
-                            style={{
-                                width: "40px",
-                                height: "40px",
-                                borderRadius: "50% 50% 50% 0",
-                                transform: "rotate(-45deg)",
-                                background: v.isFeatured
-                                    ? "var(--accent-hot)"
-                                    : "var(--primary)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                boxShadow: `0 3px 12px ${v.isFeatured
-                                        ? "rgba(251,191,36,0.3)"
-                                        : "rgba(34,197,94,0.3)"
-                                    }`,
-                                border: "2px solid var(--card)",
-                                transition: "transform 0.2s ease",
-                            }}
-                        >
-                            <span
-                                style={{
-                                    transform: "rotate(45deg)",
-                                    fontSize: "0.85rem",
-                                    fontWeight: 700,
-                                    color: "var(--primary-foreground)",
-                                }}
-                            >
-                                {i + 1}
-                            </span>
-                        </div>
-                        {/* Label */}
-                        <div
-                            className="text-xs font-body"
-                            style={{
-                                position: "absolute",
-                                top: "calc(100% + 4px)",
-                                left: "50%",
-                                transform: "translateX(-50%)",
-                                whiteSpace: "nowrap",
-                                background: "var(--card)",
-                                padding: "2px 6px",
-                                borderRadius: "4px",
-                                border: "1px solid var(--border)",
-                                color: "var(--foreground)",
-                                fontWeight: 600,
-                                fontSize: "0.6rem",
-                            }}
-                        >
-                            {v.name.length > 14 ? v.name.slice(0, 14) + "…" : v.name}
+function getTileConfig(theme: string | undefined) {
+    if (theme === "dark") {
+        return {
+            url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        };
+    }
+
+    return {
+        url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    };
+}
+
+export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560 }: MapListToggleProps) {
+    const { resolvedTheme } = useTheme();
+    const [mobileView, setMobileView] = useState<"cards" | "map">("cards");
+    const [isMobile, setIsMobile] = useState(false);
+    const [mapReady, setMapReady] = useState(false);
+    const mapContainerRef = useRef<HTMLDivElement | null>(null);
+    const mapRef = useRef<any>(null);
+    const leafletRef = useRef<any>(null);
+    const markerLayerRef = useRef<any>(null);
+    const tileLayerRef = useRef<any>(null);
+
+    const mappedVenues = useMemo(
+        () => venues
+            .map((venue, index) => ({ ...venue, originalIndex: index }))
+            .filter((venue) => Number.isFinite(venue.lat) && Number.isFinite(venue.lng) && Math.abs(venue.lat) > 0 && Math.abs(venue.lng) > 0),
+        [venues],
+    );
+    const effectiveMapHeight = isMobile ? Math.min(mapHeight, 420) : mapHeight;
+
+    useEffect(() => {
+        const media = window.matchMedia("(max-width: 767px)");
+        const update = () => setIsMobile(media.matches);
+        update();
+        media.addEventListener("change", update);
+        return () => media.removeEventListener("change", update);
+    }, []);
+
+    const syncTileLayer = () => {
+        const L = leafletRef.current;
+        const map = mapRef.current;
+        if (!L || !map) return;
+
+        const tileConfig = getTileConfig(resolvedTheme);
+        if (tileLayerRef.current) tileLayerRef.current.remove();
+
+        tileLayerRef.current = L.tileLayer(tileConfig.url, {
+            maxZoom: 19,
+            attribution: tileConfig.attribution,
+        }).addTo(map);
+    };
+
+    useEffect(() => {
+        let mounted = true;
+
+        void (async () => {
+            const L = await import("leaflet");
+            if (!mounted || !mapContainerRef.current || mapRef.current) return;
+
+            leafletRef.current = L;
+            delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
+            L.Icon.Default.mergeOptions({
+                iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+                iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+                shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+            });
+
+            mapRef.current = L.map(mapContainerRef.current, {
+                center: HOUSTON_CENTER,
+                zoom: 11,
+                scrollWheelZoom: true,
+                zoomControl: true,
+            });
+
+            syncTileLayer();
+            setMapReady(true);
+        })();
+
+        return () => {
+            mounted = false;
+            setMapReady(false);
+            if (mapRef.current) {
+                mapRef.current.remove();
+                mapRef.current = null;
+            }
+            markerLayerRef.current = null;
+            tileLayerRef.current = null;
+            leafletRef.current = null;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!mapReady) return;
+        syncTileLayer();
+        window.setTimeout(() => mapRef.current?.invalidateSize(), 0);
+    }, [mapReady, resolvedTheme]);
+
+    useEffect(() => {
+        const L = leafletRef.current;
+        const map = mapRef.current;
+        if (!L || !map) return;
+
+        if (markerLayerRef.current) {
+            markerLayerRef.current.remove();
+            markerLayerRef.current = null;
+        }
+
+        const layer = L.layerGroup();
+        markerLayerRef.current = layer;
+        layer.addTo(map);
+
+        if (mappedVenues.length === 0) {
+            map.setView(HOUSTON_CENTER, 11, { animate: false });
+            return;
+        }
+
+        const points: [number, number][] = [];
+
+        mappedVenues.forEach((venue, index) => {
+            const marker = L.marker([venue.lat, venue.lng], {
+                icon: L.divIcon({
+                    className: "venue-map-pin",
+                    html: `<span>${index + 1}</span>`,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 36],
+                    popupAnchor: [0, -28],
+                }),
+            }).addTo(layer);
+
+            const image = escapeHtml(venue.coverImage || "/venue-hero.webp");
+            const title = escapeHtml(venue.name);
+            const subtitle = escapeHtml([venue.city, venue.address].filter(Boolean).join(" | "));
+            const rating = Number(venue.rating || 0).toFixed(1);
+            const href = `/venues/${venue.slug}`;
+            const popupClassName = resolvedTheme === "dark" ? "venue-map-popup-dark" : "venue-map-popup-light";
+
+            marker.bindPopup(
+                `
+                <div class="venue-map-popup-card">
+                    <img src="${image}" alt="${title}" class="venue-map-popup-image" />
+                    <div class="venue-map-popup-body">
+                        <div class="venue-map-popup-kicker">Venue</div>
+                        <div class="venue-map-popup-title">${title}</div>
+                        <div class="venue-map-popup-meta">${subtitle}</div>
+                        <div class="venue-map-popup-footer">
+                            <span class="venue-map-popup-rating">${rating} stars</span>
+                            <a class="venue-map-popup-link" href="${href}">View Venue</a>
                         </div>
                     </div>
-                );
-            })}
+                </div>
+                `,
+                { className: popupClassName, closeButton: false, offset: [0, -18] },
+            );
+            points.push([venue.lat, venue.lng]);
+        });
 
-            {/* User Location Dot */}
-            <div
-                style={{
-                    position: "absolute",
-                    top: "48%",
-                    left: "45%",
-                    zIndex: 10,
-                }}
-            >
-                <div
-                    style={{
-                        width: "14px",
-                        height: "14px",
-                        borderRadius: "50%",
-                        background: "var(--accent-secondary)",
-                        border: "3px solid var(--card)",
-                        boxShadow: "0 0 0 4px rgba(59,130,246,0.3)",
-                    }}
-                />
-            </div>
+        if (points.length === 1) {
+            map.setView(points[0], 13, { animate: false });
+        } else {
+            map.fitBounds(L.latLngBounds(points), { padding: [28, 28] });
+        }
 
-            {/* Map Controls */}
-            <div
-                style={{
-                    position: "absolute",
-                    bottom: "16px",
-                    right: "16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "4px",
-                    zIndex: 10,
-                }}
-            >
-                <button
-                    className="btn-ghost"
-                    style={{
-                        width: "36px",
-                        height: "36px",
-                        padding: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "1rem",
-                    }}
-                >
-                    +
-                </button>
-                <button
-                    className="btn-ghost"
-                    style={{
-                        width: "36px",
-                        height: "36px",
-                        padding: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "1rem",
-                    }}
-                >
-                    −
-                </button>
-            </div>
+        setTimeout(() => map.invalidateSize(), 0);
+    }, [mappedVenues, onVenueClick, resolvedTheme]);
 
-            {/* Mapbox Placeholder Text */}
-            <div
-                style={{
-                    position: "absolute",
-                    bottom: "16px",
-                    left: "16px",
-                    zIndex: 10,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                }}
-            >
-                <span
-                    className="text-xs"
-                    style={{ color: "var(--muted-foreground)", opacity: 0.5, display: "inline-flex", alignItems: "center", gap: "4px" }}
-                >
-                    <Navigation size={12} />
-                    Mapbox GL JS
-                </span>
-            </div>
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+        const shouldShowMap = !isMobile || mobileView === "map";
+        if (!shouldShowMap) return;
+        const firstPass = window.setTimeout(() => map.invalidateSize(), 60);
+        const secondPass = window.setTimeout(() => map.invalidateSize(), 220);
+        return () => {
+            window.clearTimeout(firstPass);
+            window.clearTimeout(secondPass);
+        };
+    }, [isMobile, mobileView, mappedVenues.length]);
+
+    const listPane = (
+        <div style={{ display: "grid", gap: 16, gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", alignContent: "start" }}>
+            {venues.map((venue, index) => (
+                <VenueCard key={venue.id} {...venue} onClick={() => onVenueClick?.(index)} onBookNow={() => onBookNow?.(index)} />
+            ))}
         </div>
     );
-}
 
-export function MapListToggle({
-    venues,
-    onVenueClick,
-    onBookNow,
-}: MapListToggleProps) {
-    const [view, setView] = useState<"list" | "map">("list");
+    const mapPane = (
+        <div style={{ minHeight: effectiveMapHeight, borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", background: "var(--secondary)" }}>
+            <div ref={mapContainerRef} style={{ width: "100%", height: effectiveMapHeight }} />
+        </div>
+    );
 
     return (
-        <div>
-            {/* Sticky Toggle Bar */}
+        <div style={{ display: "grid", gap: 16 }}>
+            {isMobile ? (
+                <div style={{ display: "inline-flex", gap: 6, padding: 4, borderRadius: 999, border: "1px solid var(--border)", background: "var(--secondary)", alignSelf: "start" }}>
+                    <button
+                        type="button"
+                        onClick={() => setMobileView("cards")}
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            border: "none",
+                            padding: "10px 14px",
+                            borderRadius: 999,
+                            background: mobileView === "cards" ? "var(--primary)" : "transparent",
+                            color: mobileView === "cards" ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                        }}
+                    >
+                        <List size={16} />
+                        Card View
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMobileView("map")}
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            border: "none",
+                            padding: "10px 14px",
+                            borderRadius: 999,
+                            background: mobileView === "map" ? "var(--primary)" : "transparent",
+                            color: mobileView === "map" ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                        }}
+                    >
+                        <Map size={16} />
+                        Map View
+                    </button>
+                </div>
+            ) : null}
+
             <div
-                className="glass-panel"
                 style={{
-                    position: "sticky",
-                    top: "56px",
-                    zIndex: 30,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "10px 20px",
-                    borderBottom: "1px solid var(--border)",
+                    display: "grid",
+                    gap: 16,
+                    gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1.05fr) minmax(320px, 0.95fr)",
+                    alignItems: "start",
                 }}
             >
-                <span
-                    className="text-sm font-body"
-                    style={{ color: "var(--muted-foreground)", fontWeight: 500 }}
-                >
-                    {venues.length} venues nearby
-                </span>
-                <div className="toggle-track">
-                    <button
-                        className={`toggle-option ${view === "list" ? "active" : ""}`}
-                        onClick={() => setView("list")}
-                        style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-                    >
-                        <List size={14} />
-                        List
-                    </button>
-                    <button
-                        className={`toggle-option ${view === "map" ? "active" : ""}`}
-                        onClick={() => setView("map")}
-                        style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-                    >
-                        <Map size={14} />
-                        Map
-                    </button>
+                <div style={{ display: isMobile && mobileView !== "cards" ? "none" : "block" }}>
+                    {listPane}
                 </div>
-            </div>
-
-            {/* View Content */}
-            {view === "map" ? (
-                <div style={{ padding: "16px 20px" }}>
-                    <MockMapView venues={venues} />
-                </div>
-            ) : (
                 <div
                     style={{
-                        padding: "16px 20px",
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-                        gap: "16px",
+                        display: isMobile && mobileView !== "map" ? "none" : "block",
+                        position: isMobile ? "relative" : "sticky",
+                        top: isMobile ? "auto" : 96,
                     }}
                 >
-                    {venues.map((v, i) => (
-                        <div
-                            key={i}
-                            className="animate-fade-up"
-                            style={{ animationDelay: `${i * 0.06}s` }}
-                        >
-                            <VenueCard
-                                {...v}
-                                onClick={() => onVenueClick?.(i)}
-                                onBookNow={() => onBookNow?.(i)}
-                            />
-                        </div>
-                    ))}
+                    {mapPane}
                 </div>
-            )}
+            </div>
         </div>
     );
 }
