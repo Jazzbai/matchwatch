@@ -4,7 +4,7 @@ import * as React from "react";
 import { AppShell } from "../../components/AppShell";
 import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
 
-type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches" | "blog";
+type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches" | "motorsportEntries" | "blog";
 
 type ApiListMeta = {
   page: number;
@@ -59,8 +59,11 @@ type SuperAdminSystem = {
 type LookupVenue = { id: string; name: string; city: string; ownerId: string };
 type LookupMatch = {
   id: string;
-  homeTeamName: string;
-  awayTeamName: string;
+  eventFormat?: MatchEventFormat | null;
+  eventTitle?: string | null;
+  eventSubtitle?: string | null;
+  homeTeamName: string | null;
+  awayTeamName: string | null;
   matchDateUtc: string;
   status: string;
   leagueId: string | null;
@@ -329,6 +332,46 @@ type MatchRow = {
   stage?: string | null;
   venueName?: string | null;
   createdAt: string;
+};
+
+type MotorsportEntryStatus = "ENTERED" | "ACTIVE" | "FINISHED" | "DNF" | "DNS" | "DSQ" | "WITHDRAWN";
+
+type MotorsportEntryRow = {
+  id: string;
+  matchId: string;
+  matchLabel?: string | null;
+  matchSubtitle?: string | null;
+  externalId?: string | null;
+  carNumber?: string | null;
+  displayName?: string | null;
+  gridPosition?: number | null;
+  startPosition?: number | null;
+  finishPosition?: number | null;
+  status: MotorsportEntryStatus;
+  points?: string | number | null;
+  metadata?: Record<string, unknown> | null;
+  driverId?: string | null;
+  driverName?: string | null;
+  driverShortName?: string | null;
+  driverNationality?: string | null;
+  driverCountryCode?: string | null;
+  driverHeadshotUrl?: string | null;
+  entrantId?: string | null;
+  entrantName?: string | null;
+  entrantShortName?: string | null;
+  entrantBrandColor?: string | null;
+  entrantLogoUrl?: string | null;
+  manufacturerId?: string | null;
+  manufacturerName?: string | null;
+  manufacturerShortName?: string | null;
+  manufacturerLogoUrl?: string | null;
+};
+
+type MotorsportEntryDraft = Omit<Partial<MotorsportEntryRow>, "gridPosition" | "startPosition" | "finishPosition" | "points"> & {
+  gridPosition?: string | number | null;
+  startPosition?: string | number | null;
+  finishPosition?: string | number | null;
+  points?: string | number | null;
 };
 
 type ListResponse<T> = {
@@ -630,6 +673,25 @@ function stadiumToOption(stadium: LookupStadium): SearchPickerOption {
   };
 }
 
+function formatLookupMatchLabel(match: LookupMatch) {
+  if (match.eventFormat === "SINGLE_EVENT") {
+    return match.eventTitle?.trim() || "Untitled event";
+  }
+  return [match.homeTeamName, match.awayTeamName].filter(Boolean).join(" vs ") || "Unnamed match";
+}
+
+function formatLookupMatchSubtitle(match: LookupMatch) {
+  const kickoff = formatDateTime(match.matchDateUtc);
+  const secondary = match.eventFormat === "SINGLE_EVENT" ? match.eventSubtitle : match.status;
+  return [secondary, kickoff].filter(Boolean).join(" • ");
+}
+
+function parseOptionalNumber(value: string | number | null | undefined) {
+  if (value === "" || value === null || value === undefined) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
 const MATCH_STATUSES: Array<MatchRow["status"]> = [
   "SCHEDULED",
   "TIMED",
@@ -639,6 +701,16 @@ const MATCH_STATUSES: Array<MatchRow["status"]> = [
   "POSTPONED",
   "CANCELLED",
   "SUSPENDED",
+];
+
+const MOTORSPORT_ENTRY_STATUSES: MotorsportEntryStatus[] = [
+  "ENTERED",
+  "ACTIVE",
+  "FINISHED",
+  "DNF",
+  "DNS",
+  "DSQ",
+  "WITHDRAWN",
 ];
 
 export default function JazzbaiSuperAdminPage() {
@@ -664,6 +736,10 @@ export default function JazzbaiSuperAdminPage() {
   const [lookupStadiums, setLookupStadiums] = React.useState<LookupStadium[]>([]);
   const [lookupOwners, setLookupOwners] = React.useState<LookupOwner[]>([]);
   const [lookupAttributes, setLookupAttributes] = React.useState<LookupAttribute[]>([]);
+  const motorsportLookupMatches = React.useMemo(
+    () => lookupMatches.filter((match) => match.eventFormat === "SINGLE_EVENT"),
+    [lookupMatches],
+  );
 
   const [users, setUsers] = React.useState<UserRow[]>([]);
   const [usersMeta, setUsersMeta] = React.useState<ApiListMeta | null>(null);
@@ -788,6 +864,31 @@ export default function JazzbaiSuperAdminPage() {
     matchDateUtc: "",
     status: "SCHEDULED" as MatchRow["status"],
     venueName: "",
+  });
+  const [motorsportEntries, setMotorsportEntries] = React.useState<MotorsportEntryRow[]>([]);
+  const [motorsportEntriesMeta, setMotorsportEntriesMeta] = React.useState<ApiListMeta | null>(null);
+  const [motorsportEntriesSearch, setMotorsportEntriesSearch] = React.useState("");
+  const [motorsportEntriesLoading, setMotorsportEntriesLoading] = React.useState(false);
+  const [motorsportEntriesMatchId, setMotorsportEntriesMatchId] = React.useState("");
+  const [motorsportEntryDrafts, setMotorsportEntryDrafts] = React.useState<Record<string, MotorsportEntryDraft>>({});
+  const [newMotorsportEntry, setNewMotorsportEntry] = React.useState({
+    matchId: "",
+    carNumber: "",
+    driverName: "",
+    driverShortName: "",
+    driverNationality: "",
+    driverCountryCode: "",
+    entrantName: "",
+    entrantShortName: "",
+    entrantBrandColor: "",
+    manufacturerName: "",
+    manufacturerShortName: "",
+    displayName: "",
+    gridPosition: "",
+    startPosition: "",
+    finishPosition: "",
+    status: "ENTERED" as MotorsportEntryStatus,
+    points: "",
   });
 
   const [sportsRows, setSportsRows] = React.useState<SportRow[]>([]);
@@ -971,6 +1072,27 @@ export default function JazzbaiSuperAdminPage() {
     }
   }, [matchesSearch]);
 
+  const loadMotorsportEntries = React.useCallback(async () => {
+    setMotorsportEntriesLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "150",
+      });
+      if (motorsportEntriesSearch.trim()) params.set("search", motorsportEntriesSearch.trim());
+      if (motorsportEntriesMatchId) params.set("matchId", motorsportEntriesMatchId);
+      const response = await fetch(`/api/v1/super-admin/motorsport-entries?${params.toString()}`, {
+        credentials: "include",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load motorsport entries"));
+      setMotorsportEntries(payload.data || []);
+      setMotorsportEntriesMeta(payload.meta || null);
+    } finally {
+      setMotorsportEntriesLoading(false);
+    }
+  }, [motorsportEntriesMatchId, motorsportEntriesSearch]);
+
   const loadSportsAdmin = React.useCallback(async () => {
     setSportsLoading(true);
     try {
@@ -1087,11 +1209,15 @@ export default function JazzbaiSuperAdminPage() {
       await loadLookups();
       return;
     }
+    if (tab === "motorsportEntries") {
+      await Promise.all([loadMotorsportEntries(), loadLookups()]);
+      return;
+    }
     if (tab === "blog") {
       return;
     }
     await Promise.all([loadMatches(), loadLookups()]);
-  }, [loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
+  }, [loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadMotorsportEntries, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
 
   React.useEffect(() => {
     async function checkSession() {
@@ -1119,6 +1245,16 @@ export default function JazzbaiSuperAdminPage() {
     if (newLeague.sportId || lookupSports.length === 0) return;
     setNewLeague((prev) => ({ ...prev, sportId: lookupSports[0].id }));
   }, [lookupSports, newLeague.sportId]);
+
+  React.useEffect(() => {
+    if (motorsportLookupMatches.length === 0) return;
+    if (!newMotorsportEntry.matchId) {
+      setNewMotorsportEntry((prev) => ({ ...prev, matchId: motorsportLookupMatches[0].id }));
+    }
+    if (!motorsportEntriesMatchId) {
+      setMotorsportEntriesMatchId(motorsportLookupMatches[0].id);
+    }
+  }, [motorsportEntriesMatchId, motorsportLookupMatches, newMotorsportEntry.matchId]);
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1359,6 +1495,7 @@ export default function JazzbaiSuperAdminPage() {
   const sportsCount = sportsMeta?.total ?? sportsRows.length;
   const leaguesCount = adminLeaguesMeta?.total ?? adminLeagues.length;
   const matchesCount = matchesMeta?.total ?? matches.length;
+  const motorsportEntriesCount = motorsportEntriesMeta?.total ?? motorsportEntries.length;
   const leagueById = new Map(
     lookupLeagues.map((league) => [league.id, league]),
   );
@@ -1505,6 +1642,7 @@ export default function JazzbaiSuperAdminPage() {
             ["leagues", "Leagues"],
             ["imports", "CSV Import"],
             ["matches", "Matches"],
+            ["motorsportEntries", "Motorsport Entries"],
             ["blog", "Blog"],
           ] as Array<[TabId, string]>).map(([id, label]) => (
             <button
@@ -2361,7 +2499,7 @@ export default function JazzbaiSuperAdminPage() {
                   <option value="">Select match</option>
                   {lookupMatches.map((match) => (
                     <option key={match.id} value={match.id}>
-                      {match.homeTeamName} vs {match.awayTeamName} - {formatDateTime(match.matchDateUtc)}
+                      {formatLookupMatchLabel(match)} - {formatDateTime(match.matchDateUtc)}
                     </option>
                   ))}
                 </select>
@@ -3370,6 +3508,260 @@ export default function JazzbaiSuperAdminPage() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "motorsportEntries" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={{ ...cardStyle, overflow: "visible", position: "relative", zIndex: 20 }}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Motorsport Entry</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                <select style={inputStyle} value={newMotorsportEntry.matchId} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, matchId: e.target.value }))}>
+                  <option value="">Motorsport event</option>
+                  {motorsportLookupMatches.map((match) => (
+                    <option key={match.id} value={match.id}>{formatLookupMatchLabel(match)}</option>
+                  ))}
+                </select>
+                <input style={inputStyle} value={newMotorsportEntry.carNumber} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, carNumber: e.target.value }))} placeholder="Car number" />
+                <input style={inputStyle} value={newMotorsportEntry.driverName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverName: e.target.value }))} placeholder="Driver name" />
+                <input style={inputStyle} value={newMotorsportEntry.driverShortName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverShortName: e.target.value }))} placeholder="Driver short name" />
+                <input style={inputStyle} value={newMotorsportEntry.driverNationality} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverNationality: e.target.value }))} placeholder="Nationality" />
+                <input style={inputStyle} value={newMotorsportEntry.driverCountryCode} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverCountryCode: e.target.value.toUpperCase() }))} placeholder="Country code" />
+                <input style={inputStyle} value={newMotorsportEntry.entrantName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, entrantName: e.target.value }))} placeholder="Entrant / team" />
+                <input style={inputStyle} value={newMotorsportEntry.entrantShortName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, entrantShortName: e.target.value }))} placeholder="Team short name" />
+                <input style={inputStyle} value={newMotorsportEntry.entrantBrandColor} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, entrantBrandColor: e.target.value }))} placeholder="Brand color" />
+                <input style={inputStyle} value={newMotorsportEntry.manufacturerName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, manufacturerName: e.target.value }))} placeholder="Manufacturer" />
+                <input style={inputStyle} value={newMotorsportEntry.manufacturerShortName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, manufacturerShortName: e.target.value }))} placeholder="Manufacturer short name" />
+                <input style={inputStyle} value={newMotorsportEntry.displayName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, displayName: e.target.value }))} placeholder="Display name (optional)" />
+                <input style={inputStyle} value={newMotorsportEntry.gridPosition} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, gridPosition: e.target.value }))} placeholder="Grid" />
+                <input style={inputStyle} value={newMotorsportEntry.startPosition} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, startPosition: e.target.value }))} placeholder="Start" />
+                <input style={inputStyle} value={newMotorsportEntry.finishPosition} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, finishPosition: e.target.value }))} placeholder="Finish" />
+                <select style={inputStyle} value={newMotorsportEntry.status} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, status: e.target.value as MotorsportEntryStatus }))}>
+                  {MOTORSPORT_ENTRY_STATUSES.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+                <input style={inputStyle} value={newMotorsportEntry.points} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, points: e.target.value }))} placeholder="Points" />
+                <button
+                  style={smallBtn("primary", submittingAction === "create-motorsport-entry")}
+                  disabled={submittingAction === "create-motorsport-entry"}
+                  onClick={() => void runAction("create-motorsport-entry", async () => {
+                    await superAdminFetch("/motorsport-entries", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        matchId: newMotorsportEntry.matchId,
+                        carNumber: newMotorsportEntry.carNumber || undefined,
+                        driverName: newMotorsportEntry.driverName || undefined,
+                        driverShortName: newMotorsportEntry.driverShortName || undefined,
+                        driverNationality: newMotorsportEntry.driverNationality || undefined,
+                        driverCountryCode: newMotorsportEntry.driverCountryCode || undefined,
+                        entrantName: newMotorsportEntry.entrantName || undefined,
+                        entrantShortName: newMotorsportEntry.entrantShortName || undefined,
+                        entrantBrandColor: newMotorsportEntry.entrantBrandColor || undefined,
+                        manufacturerName: newMotorsportEntry.manufacturerName || undefined,
+                        manufacturerShortName: newMotorsportEntry.manufacturerShortName || undefined,
+                        displayName: newMotorsportEntry.displayName || undefined,
+                        gridPosition: parseOptionalNumber(newMotorsportEntry.gridPosition),
+                        startPosition: parseOptionalNumber(newMotorsportEntry.startPosition),
+                        finishPosition: parseOptionalNumber(newMotorsportEntry.finishPosition),
+                        status: newMotorsportEntry.status,
+                        points: parseOptionalNumber(newMotorsportEntry.points),
+                      }),
+                    });
+                    setNewMotorsportEntry({
+                      matchId: newMotorsportEntry.matchId,
+                      carNumber: "",
+                      driverName: "",
+                      driverShortName: "",
+                      driverNationality: "",
+                      driverCountryCode: "",
+                      entrantName: "",
+                      entrantShortName: "",
+                      entrantBrandColor: "",
+                      manufacturerName: "",
+                      manufacturerShortName: "",
+                      displayName: "",
+                      gridPosition: "",
+                      startPosition: "",
+                      finishPosition: "",
+                      status: "ENTERED",
+                      points: "",
+                    });
+                    setMotorsportEntriesMatchId((prev) => prev || newMotorsportEntry.matchId);
+                    await Promise.all([loadMotorsportEntries(), loadLookups()]);
+                  })}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Motorsport Entries ({motorsportEntriesCount})</h2>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <select style={{ ...inputStyle, minWidth: 240 }} value={motorsportEntriesMatchId} onChange={(e) => setMotorsportEntriesMatchId(e.target.value)}>
+                    <option value="">All motorsport events</option>
+                    {motorsportLookupMatches.map((match) => (
+                      <option key={match.id} value={match.id}>{formatLookupMatchLabel(match)}</option>
+                    ))}
+                  </select>
+                  <input value={motorsportEntriesSearch} onChange={(e) => setMotorsportEntriesSearch(e.target.value)} placeholder="Search entries" style={{ ...inputStyle, minWidth: 220 }} />
+                  <button style={smallBtn("outline", motorsportEntriesLoading)} onClick={() => void loadMotorsportEntries()} disabled={motorsportEntriesLoading}>Search</button>
+                </div>
+              </div>
+              <div style={tableWrapStyle}>
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Event</th>
+                      <th style={thStyle}>Car</th>
+                      <th style={thStyle}>Driver</th>
+                      <th style={thStyle}>Entrant</th>
+                      <th style={thStyle}>Manufacturer</th>
+                      <th style={thStyle}>Grid</th>
+                      <th style={thStyle}>Start</th>
+                      <th style={thStyle}>Finish</th>
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Points</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {motorsportEntries.map((row) => {
+                      const draft = motorsportEntryDrafts[row.id] ?? {
+                        matchId: row.matchId,
+                        carNumber: row.carNumber || "",
+                        displayName: row.displayName || "",
+                        driverName: row.driverName || "",
+                        driverShortName: row.driverShortName || "",
+                        driverNationality: row.driverNationality || "",
+                        driverCountryCode: row.driverCountryCode || "",
+                        entrantName: row.entrantName || "",
+                        entrantShortName: row.entrantShortName || "",
+                        entrantBrandColor: row.entrantBrandColor || "",
+                        manufacturerName: row.manufacturerName || "",
+                        manufacturerShortName: row.manufacturerShortName || "",
+                        gridPosition: row.gridPosition ?? "",
+                        startPosition: row.startPosition ?? "",
+                        finishPosition: row.finishPosition ?? "",
+                        status: row.status,
+                        points: row.points ?? "",
+                      };
+                      return (
+                        <tr key={row.id}>
+                          <td style={tdStyle}>
+                            <select style={{ ...inputStyle, minWidth: 220 }} value={String(draft.matchId ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, matchId: e.target.value } }))}>
+                              <option value="">Motorsport event</option>
+                              {motorsportLookupMatches.map((match) => (
+                                <option key={match.id} value={match.id}>{formatLookupMatchLabel(match)}</option>
+                              ))}
+                            </select>
+                            <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted-foreground)" }}>
+                              {row.matchSubtitle || formatLookupMatchSubtitle(lookupMatches.find((match) => match.id === (draft.matchId || row.matchId)) || {
+                                id: row.matchId,
+                                eventFormat: "SINGLE_EVENT",
+                                eventTitle: row.matchLabel || "",
+                                eventSubtitle: row.matchSubtitle || "",
+                                homeTeamName: null,
+                                awayTeamName: null,
+                                matchDateUtc: "",
+                                status: "",
+                                leagueId: null,
+                              })}
+                            </div>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.carNumber ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, carNumber: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String(draft.driverName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, driverName: e.target.value } }))} />
+                              <input style={inputStyle} value={String(draft.driverShortName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, driverShortName: e.target.value } }))} placeholder="Short" />
+                            </div>
+                          </td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String(draft.entrantName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, entrantName: e.target.value } }))} />
+                              <input style={inputStyle} value={String(draft.entrantShortName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, entrantShortName: e.target.value } }))} placeholder="Short" />
+                            </div>
+                          </td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String(draft.manufacturerName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, manufacturerName: e.target.value } }))} />
+                              <input style={inputStyle} value={String(draft.manufacturerShortName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, manufacturerShortName: e.target.value } }))} placeholder="Short" />
+                            </div>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.gridPosition ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, gridPosition: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.startPosition ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, startPosition: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.finishPosition ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, finishPosition: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <select style={inputStyle} value={String(draft.status ?? "ENTERED")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, status: e.target.value as MotorsportEntryStatus } }))}>
+                              {MOTORSPORT_ENTRY_STATUSES.map((status) => (
+                                <option key={status} value={status}>{status}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.points ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, points: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                style={smallBtn("primary", submittingAction === `save-entry-${row.id}`)}
+                                disabled={submittingAction === `save-entry-${row.id}`}
+                                onClick={() => void runAction(`save-entry-${row.id}`, async () => {
+                                  await superAdminFetch(`/motorsport-entries/${row.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({
+                                      matchId: draft.matchId || row.matchId,
+                                      carNumber: draft.carNumber || null,
+                                      displayName: draft.displayName || null,
+                                      driverName: draft.driverName || undefined,
+                                      driverShortName: draft.driverShortName || null,
+                                      driverNationality: draft.driverNationality || null,
+                                      driverCountryCode: draft.driverCountryCode || null,
+                                      entrantName: draft.entrantName || undefined,
+                                      entrantShortName: draft.entrantShortName || null,
+                                      entrantBrandColor: draft.entrantBrandColor || null,
+                                      manufacturerName: draft.manufacturerName || undefined,
+                                      manufacturerShortName: draft.manufacturerShortName || null,
+                                      gridPosition: parseOptionalNumber(draft.gridPosition as string | number | null | undefined),
+                                      startPosition: parseOptionalNumber(draft.startPosition as string | number | null | undefined),
+                                      finishPosition: parseOptionalNumber(draft.finishPosition as string | number | null | undefined),
+                                      status: draft.status,
+                                      points: parseOptionalNumber(draft.points as string | number | null | undefined),
+                                    }),
+                                  });
+                                  await loadMotorsportEntries();
+                                })}
+                              >
+                                Save
+                              </button>
+                              <button
+                                style={smallBtn("danger", submittingAction === `delete-entry-${row.id}`)}
+                                disabled={submittingAction === `delete-entry-${row.id}`}
+                                onClick={() => void runAction(`delete-entry-${row.id}`, async () => {
+                                  await superAdminFetch(`/motorsport-entries/${row.id}`, { method: "DELETE" });
+                                  await loadMotorsportEntries();
+                                })}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {motorsportEntries.length === 0 && !motorsportEntriesLoading && (
+                      <tr>
+                        <td style={{ ...tdStyle, textAlign: "center", color: "var(--muted-foreground)" }} colSpan={11}>
+                          No motorsport entries found.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

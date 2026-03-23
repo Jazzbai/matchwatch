@@ -21,6 +21,7 @@ export const venueAttributeTypeEnum = pgEnum('venue_attribute_type', ['AMENITY',
 export const claimStatusEnum = pgEnum('claim_status', ['PENDING', 'APPROVED', 'REJECTED']);
 export const discountTypeEnum = pgEnum('discount_type', ['PERCENTAGE', 'FIXED', 'FREE_ITEM']);
 export const matchEventFormatEnum = pgEnum('match_event_format', ['HEAD_TO_HEAD', 'SINGLE_EVENT']);
+export const motorsportEntryStatusEnum = pgEnum('motorsport_entry_status', ['ENTERED', 'ACTIVE', 'FINISHED', 'DNF', 'DNS', 'DSQ', 'WITHDRAWN']);
 export const blogPublishStatusEnum = pgEnum('blog_publish_status', ['DRAFT', 'PUBLISHED']);
 export const blogCommentStatusEnum = pgEnum('blog_comment_status', ['PENDING', 'APPROVED', 'REJECTED']);
 
@@ -180,6 +181,78 @@ export const matches = pgTable('matches', {
     index('matches_league_idx').on(table.leagueId),
     index('matches_date_idx').on(table.matchDateUtc),
     index('matches_status_idx').on(table.status),
+]);
+
+// ─── Motorsport Participants ────────────────────────────────────────
+
+export const drivers = pgTable('drivers', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    externalId: varchar('external_id', { length: 80 }).unique(),
+    name: varchar('name', { length: 150 }).notNull(),
+    shortName: varchar('short_name', { length: 60 }),
+    nationality: varchar('nationality', { length: 80 }),
+    countryCode: varchar('country_code', { length: 3 }),
+    headshotUrl: varchar('headshot_url'),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('drivers_name_idx').on(table.name),
+]);
+
+export const entrants = pgTable('entrants', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    externalId: varchar('external_id', { length: 80 }).unique(),
+    leagueId: uuid('league_id').references(() => leagues.id),
+    name: varchar('name', { length: 150 }).notNull(),
+    shortName: varchar('short_name', { length: 60 }),
+    brandColor: varchar('brand_color', { length: 20 }),
+    logoUrl: varchar('logo_url'),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('entrants_league_idx').on(table.leagueId),
+    index('entrants_name_idx').on(table.name),
+]);
+
+export const manufacturers = pgTable('manufacturers', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    externalId: varchar('external_id', { length: 80 }).unique(),
+    leagueId: uuid('league_id').references(() => leagues.id),
+    name: varchar('name', { length: 150 }).notNull(),
+    shortName: varchar('short_name', { length: 60 }),
+    logoUrl: varchar('logo_url'),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('manufacturers_league_idx').on(table.leagueId),
+    index('manufacturers_name_idx').on(table.name),
+]);
+
+export const eventEntries = pgTable('event_entries', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    matchId: uuid('match_id').notNull().references(() => matches.id, { onDelete: 'cascade' }),
+    externalId: varchar('external_id', { length: 120 }).unique(),
+    carNumber: varchar('car_number', { length: 20 }),
+    driverId: uuid('driver_id').references(() => drivers.id),
+    entrantId: uuid('entrant_id').references(() => entrants.id),
+    manufacturerId: uuid('manufacturer_id').references(() => manufacturers.id),
+    displayName: varchar('display_name', { length: 200 }),
+    gridPosition: integer('grid_position'),
+    startPosition: integer('start_position'),
+    finishPosition: integer('finish_position'),
+    status: motorsportEntryStatusEnum('status').default('ENTERED').notNull(),
+    points: decimal('points', { precision: 8, scale: 2 }),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('event_entries_match_idx').on(table.matchId),
+    index('event_entries_driver_idx').on(table.driverId),
+    index('event_entries_entrant_idx').on(table.entrantId),
+    index('event_entries_manufacturer_idx').on(table.manufacturerId),
 ]);
 
 // ─── Venues ─────────────────────────────────────
@@ -588,6 +661,7 @@ export const matchesRelations = relations(matches, ({ one, many }) => ({
     homeTeam: one(teams, { fields: [matches.homeTeamId], references: [teams.id], relationName: 'homeTeam' }),
     awayTeam: one(teams, { fields: [matches.awayTeamId], references: [teams.id], relationName: 'awayTeam' }),
     stadium: one(stadiums, { fields: [matches.stadiumId], references: [stadiums.id] }),
+    eventEntries: many(eventEntries),
     venueEvents: many(venueEvents),
 }));
 
@@ -618,6 +692,27 @@ export const leaguesRelations = relations(leagues, ({ one, many }) => ({
 
 export const teamsRelations = relations(teams, ({ one }) => ({
     league: one(leagues, { fields: [teams.leagueId], references: [leagues.id] }),
+}));
+
+export const driversRelations = relations(drivers, ({ many }) => ({
+    eventEntries: many(eventEntries),
+}));
+
+export const entrantsRelations = relations(entrants, ({ one, many }) => ({
+    league: one(leagues, { fields: [entrants.leagueId], references: [leagues.id] }),
+    eventEntries: many(eventEntries),
+}));
+
+export const manufacturersRelations = relations(manufacturers, ({ one, many }) => ({
+    league: one(leagues, { fields: [manufacturers.leagueId], references: [leagues.id] }),
+    eventEntries: many(eventEntries),
+}));
+
+export const eventEntriesRelations = relations(eventEntries, ({ one }) => ({
+    match: one(matches, { fields: [eventEntries.matchId], references: [matches.id] }),
+    driver: one(drivers, { fields: [eventEntries.driverId], references: [drivers.id] }),
+    entrant: one(entrants, { fields: [eventEntries.entrantId], references: [entrants.id] }),
+    manufacturer: one(manufacturers, { fields: [eventEntries.manufacturerId], references: [manufacturers.id] }),
 }));
 
 export const stadiumsRelations = relations(stadiums, ({ many }) => ({

@@ -8,7 +8,7 @@ import { execSync } from 'child_process';
 import { timingSafeEqual } from 'crypto';
 import DOMPurify from 'isomorphic-dompurify';
 import { S3Client, HeadBucketCommand } from '@aws-sdk/client-s3';
-import { and, count, desc, eq, gte, lte, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, lte, ilike, inArray, or, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
     blogCategories,
@@ -16,8 +16,12 @@ import {
     blogPostCategories,
     blogPosts,
     bookings,
+    drivers,
+    entrants,
+    eventEntries,
     sports,
     leagues,
+    manufacturers,
     stadiums,
     matches,
     menuCategories,
@@ -403,6 +407,72 @@ const updateMatchSchema = z.object({
     }
 });
 
+const motorsportEntryStatusSchema = z.enum(['ENTERED', 'ACTIVE', 'FINISHED', 'DNF', 'DNS', 'DSQ', 'WITHDRAWN']);
+
+const motorsportEntryQuerySchema = paginationQuerySchema.extend({
+    matchId: z.string().uuid().optional(),
+});
+
+const createMotorsportEntrySchema = z.object({
+    matchId: z.string().uuid(),
+    externalId: z.string().max(120).optional(),
+    carNumber: z.string().max(20).optional(),
+    driverId: z.string().uuid().nullable().optional(),
+    driverName: z.string().min(2).max(150).optional(),
+    driverShortName: z.string().max(60).optional(),
+    driverNationality: z.string().max(80).optional(),
+    driverCountryCode: z.string().max(3).optional(),
+    driverHeadshotUrl: z.string().url().optional(),
+    entrantId: z.string().uuid().nullable().optional(),
+    entrantName: z.string().min(2).max(150).optional(),
+    entrantShortName: z.string().max(60).optional(),
+    entrantBrandColor: z.string().max(20).optional(),
+    entrantLogoUrl: z.string().url().optional(),
+    manufacturerId: z.string().uuid().nullable().optional(),
+    manufacturerName: z.string().min(2).max(150).optional(),
+    manufacturerShortName: z.string().max(60).optional(),
+    manufacturerLogoUrl: z.string().url().optional(),
+    displayName: z.string().max(200).optional(),
+    gridPosition: z.coerce.number().int().nullable().optional(),
+    startPosition: z.coerce.number().int().nullable().optional(),
+    finishPosition: z.coerce.number().int().nullable().optional(),
+    status: motorsportEntryStatusSchema.default('ENTERED'),
+    points: z.union([z.coerce.number(), z.string()]).nullable().optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+}).superRefine((value, ctx) => {
+    if (!value.driverId && !value.driverName?.trim() && !value.displayName?.trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Driver name or display name is required', path: ['driverName'] });
+    }
+});
+
+const updateMotorsportEntrySchema = z.object({
+    matchId: z.string().uuid().optional(),
+    externalId: z.string().max(120).nullable().optional(),
+    carNumber: z.string().max(20).nullable().optional(),
+    driverId: z.string().uuid().nullable().optional(),
+    driverName: z.string().min(2).max(150).optional(),
+    driverShortName: z.string().max(60).nullable().optional(),
+    driverNationality: z.string().max(80).nullable().optional(),
+    driverCountryCode: z.string().max(3).nullable().optional(),
+    driverHeadshotUrl: z.string().url().nullable().optional(),
+    entrantId: z.string().uuid().nullable().optional(),
+    entrantName: z.string().min(2).max(150).optional(),
+    entrantShortName: z.string().max(60).nullable().optional(),
+    entrantBrandColor: z.string().max(20).nullable().optional(),
+    entrantLogoUrl: z.string().url().nullable().optional(),
+    manufacturerId: z.string().uuid().nullable().optional(),
+    manufacturerName: z.string().min(2).max(150).optional(),
+    manufacturerShortName: z.string().max(60).nullable().optional(),
+    manufacturerLogoUrl: z.string().url().nullable().optional(),
+    displayName: z.string().max(200).nullable().optional(),
+    gridPosition: z.coerce.number().int().nullable().optional(),
+    startPosition: z.coerce.number().int().nullable().optional(),
+    finishPosition: z.coerce.number().int().nullable().optional(),
+    status: motorsportEntryStatusSchema.optional(),
+    points: z.union([z.coerce.number(), z.string()]).nullable().optional(),
+    metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
 const matchImportSchema = z.object({
     csv: z.string().min(1),
     dryRun: z.boolean().default(false),
@@ -626,6 +696,224 @@ async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.inf
             externalMatchId: input.externalMatchId === undefined ? undefined : (input.externalMatchId || null),
         },
     };
+}
+
+async function getMatchById(matchId: string) {
+    const [match] = await db.select({
+        id: matches.id,
+        leagueId: matches.leagueId,
+        eventFormat: matches.eventFormat,
+    }).from(matches).where(eq(matches.id, matchId)).limit(1);
+    return match ?? null;
+}
+
+async function resolveDriver(values: {
+    driverId?: string | null;
+    driverName?: string | null;
+    driverShortName?: string | null;
+    driverNationality?: string | null;
+    driverCountryCode?: string | null;
+    driverHeadshotUrl?: string | null;
+}) {
+    if (values.driverId) {
+        const [driver] = await db.select({ id: drivers.id }).from(drivers).where(eq(drivers.id, values.driverId)).limit(1);
+        return driver?.id ?? null;
+    }
+
+    const driverName = values.driverName?.trim();
+    if (!driverName) return null;
+
+    const [existing] = await db.select({ id: drivers.id })
+        .from(drivers)
+        .where(ilike(drivers.name, driverName))
+        .limit(1);
+    if (existing) return existing.id;
+
+    const [created] = await db.insert(drivers).values({
+        name: driverName,
+        shortName: values.driverShortName?.trim() || null,
+        nationality: values.driverNationality?.trim() || null,
+        countryCode: values.driverCountryCode?.trim().toUpperCase() || null,
+        headshotUrl: values.driverHeadshotUrl?.trim() || null,
+    }).returning({ id: drivers.id });
+    return created?.id ?? null;
+}
+
+async function resolveEntrant(leagueId: string | null | undefined, values: {
+    entrantId?: string | null;
+    entrantName?: string | null;
+    entrantShortName?: string | null;
+    entrantBrandColor?: string | null;
+    entrantLogoUrl?: string | null;
+}) {
+    if (values.entrantId) {
+        const [entrant] = await db.select({ id: entrants.id }).from(entrants).where(eq(entrants.id, values.entrantId)).limit(1);
+        return entrant?.id ?? null;
+    }
+
+    const entrantName = values.entrantName?.trim();
+    if (!entrantName) return null;
+
+    const [existing] = await db.select({ id: entrants.id })
+        .from(entrants)
+        .where(and(
+            ilike(entrants.name, entrantName),
+            leagueId ? eq(entrants.leagueId, leagueId) : sql`true`,
+        ))
+        .limit(1);
+    if (existing) return existing.id;
+
+    const [created] = await db.insert(entrants).values({
+        leagueId: leagueId ?? null,
+        name: entrantName,
+        shortName: values.entrantShortName?.trim() || null,
+        brandColor: values.entrantBrandColor?.trim() || null,
+        logoUrl: values.entrantLogoUrl?.trim() || null,
+    }).returning({ id: entrants.id });
+    return created?.id ?? null;
+}
+
+async function resolveManufacturer(leagueId: string | null | undefined, values: {
+    manufacturerId?: string | null;
+    manufacturerName?: string | null;
+    manufacturerShortName?: string | null;
+    manufacturerLogoUrl?: string | null;
+}) {
+    if (values.manufacturerId) {
+        const [manufacturer] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, values.manufacturerId)).limit(1);
+        return manufacturer?.id ?? null;
+    }
+
+    const manufacturerName = values.manufacturerName?.trim();
+    if (!manufacturerName) return null;
+
+    const [existing] = await db.select({ id: manufacturers.id })
+        .from(manufacturers)
+        .where(and(
+            ilike(manufacturers.name, manufacturerName),
+            leagueId ? eq(manufacturers.leagueId, leagueId) : sql`true`,
+        ))
+        .limit(1);
+    if (existing) return existing.id;
+
+    const [created] = await db.insert(manufacturers).values({
+        leagueId: leagueId ?? null,
+        name: manufacturerName,
+        shortName: values.manufacturerShortName?.trim() || null,
+        logoUrl: values.manufacturerLogoUrl?.trim() || null,
+    }).returning({ id: manufacturers.id });
+    return created?.id ?? null;
+}
+
+function normalizeEntryPoints(points: string | number | null | undefined) {
+    if (points === undefined) return undefined;
+    if (points === null || points === '') return null;
+    const numeric = typeof points === 'number' ? points : Number(points);
+    return Number.isFinite(numeric) ? numeric.toFixed(2) : null;
+}
+
+async function buildMotorsportEntryValues(input: z.infer<typeof createMotorsportEntrySchema> | z.infer<typeof updateMotorsportEntrySchema>, existingMatchId?: string) {
+    const matchId = input.matchId ?? existingMatchId;
+    if (!matchId) {
+        return { error: apiError('VALIDATION_ERROR', 'Match is required'), status: 400 as const };
+    }
+
+    const match = await getMatchById(matchId);
+    if (!match) {
+        return { error: apiError('NOT_FOUND', 'Match not found'), status: 404 as const };
+    }
+    if (match.eventFormat !== 'SINGLE_EVENT') {
+        return { error: apiError('VALIDATION_ERROR', 'Motorsport entries can only be attached to SINGLE_EVENT matches'), status: 400 as const };
+    }
+
+    const [driverId, entrantId, manufacturerId] = await Promise.all([
+        resolveDriver({
+            driverId: input.driverId ?? null,
+            driverName: 'driverName' in input ? input.driverName ?? null : null,
+            driverShortName: 'driverShortName' in input ? input.driverShortName ?? null : null,
+            driverNationality: 'driverNationality' in input ? input.driverNationality ?? null : null,
+            driverCountryCode: 'driverCountryCode' in input ? input.driverCountryCode ?? null : null,
+            driverHeadshotUrl: 'driverHeadshotUrl' in input ? input.driverHeadshotUrl ?? null : null,
+        }),
+        resolveEntrant(match.leagueId, {
+            entrantId: input.entrantId ?? null,
+            entrantName: 'entrantName' in input ? input.entrantName ?? null : null,
+            entrantShortName: 'entrantShortName' in input ? input.entrantShortName ?? null : null,
+            entrantBrandColor: 'entrantBrandColor' in input ? input.entrantBrandColor ?? null : null,
+            entrantLogoUrl: 'entrantLogoUrl' in input ? input.entrantLogoUrl ?? null : null,
+        }),
+        resolveManufacturer(match.leagueId, {
+            manufacturerId: input.manufacturerId ?? null,
+            manufacturerName: 'manufacturerName' in input ? input.manufacturerName ?? null : null,
+            manufacturerShortName: 'manufacturerShortName' in input ? input.manufacturerShortName ?? null : null,
+            manufacturerLogoUrl: 'manufacturerLogoUrl' in input ? input.manufacturerLogoUrl ?? null : null,
+        }),
+    ]);
+
+    return {
+        values: {
+            matchId: match.id,
+            externalId: input.externalId === undefined ? undefined : (input.externalId?.trim() || null),
+            carNumber: input.carNumber === undefined ? undefined : (input.carNumber?.trim() || null),
+            driverId,
+            entrantId,
+            manufacturerId,
+            displayName: input.displayName === undefined ? undefined : (input.displayName?.trim() || null),
+            gridPosition: input.gridPosition === undefined ? undefined : (input.gridPosition ?? null),
+            startPosition: input.startPosition === undefined ? undefined : (input.startPosition ?? null),
+            finishPosition: input.finishPosition === undefined ? undefined : (input.finishPosition ?? null),
+            status: input.status,
+            points: normalizeEntryPoints(input.points),
+            metadata: input.metadata === undefined ? undefined : (input.metadata ?? null),
+        },
+    };
+}
+
+async function listMotorsportEntries(where?: ReturnType<typeof and> | ReturnType<typeof eq>) {
+    return db.select({
+        id: eventEntries.id,
+        matchId: eventEntries.matchId,
+        externalId: eventEntries.externalId,
+        carNumber: eventEntries.carNumber,
+        displayName: eventEntries.displayName,
+        gridPosition: eventEntries.gridPosition,
+        startPosition: eventEntries.startPosition,
+        finishPosition: eventEntries.finishPosition,
+        status: eventEntries.status,
+        points: eventEntries.points,
+        metadata: eventEntries.metadata,
+        matchEventTitle: matches.eventTitle,
+        matchEventSubtitle: matches.eventSubtitle,
+        matchHomeTeamName: matches.homeTeamName,
+        matchAwayTeamName: matches.awayTeamName,
+        driverId: drivers.id,
+        driverName: drivers.name,
+        driverShortName: drivers.shortName,
+        driverNationality: drivers.nationality,
+        driverCountryCode: drivers.countryCode,
+        driverHeadshotUrl: drivers.headshotUrl,
+        entrantId: entrants.id,
+        entrantName: entrants.name,
+        entrantShortName: entrants.shortName,
+        entrantBrandColor: entrants.brandColor,
+        entrantLogoUrl: entrants.logoUrl,
+        manufacturerId: manufacturers.id,
+        manufacturerName: manufacturers.name,
+        manufacturerShortName: manufacturers.shortName,
+        manufacturerLogoUrl: manufacturers.logoUrl,
+    })
+        .from(eventEntries)
+        .innerJoin(matches, eq(eventEntries.matchId, matches.id))
+        .leftJoin(drivers, eq(eventEntries.driverId, drivers.id))
+        .leftJoin(entrants, eq(eventEntries.entrantId, entrants.id))
+        .leftJoin(manufacturers, eq(eventEntries.manufacturerId, manufacturers.id))
+        .where(where)
+        .orderBy(
+            desc(matches.matchDateUtc),
+            sql`coalesce(${eventEntries.startPosition}, ${eventEntries.gridPosition}, 9999)`,
+            asc(eventEntries.carNumber),
+            asc(drivers.name),
+        );
 }
 
 function galleryImageUrlsFromMetadata(metadata: unknown): string[] {
@@ -1010,6 +1298,9 @@ superAdminRoutes.get('/lookups', async (c) => {
         }).from(venues).where(eq(venues.isActive, true)).orderBy(desc(venues.createdAt)).limit(300),
         db.select({
             id: matches.id,
+            eventFormat: matches.eventFormat,
+            eventTitle: matches.eventTitle,
+            eventSubtitle: matches.eventSubtitle,
             homeTeamName: matches.homeTeamName,
             awayTeamName: matches.awayTeamName,
             matchDateUtc: matches.matchDateUtc,
@@ -2490,6 +2781,136 @@ superAdminRoutes.delete('/matches/:matchId', async (c) => {
         message: 'Match deleted',
         mode: 'deleted',
     }));
+});
+
+superAdminRoutes.get('/motorsport-entries', async (c) => {
+    const parsed = motorsportEntryQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+    }
+
+    const { page, limit, search, matchId } = parsed.data;
+    const offset = paginationOffset(page, limit);
+
+    const conditions = [];
+    if (matchId) conditions.push(eq(eventEntries.matchId, matchId));
+    if (search?.trim()) {
+        conditions.push(or(
+            ilike(drivers.name, `%${search.trim()}%`),
+            ilike(entrants.name, `%${search.trim()}%`),
+            ilike(manufacturers.name, `%${search.trim()}%`),
+            ilike(eventEntries.displayName, `%${search.trim()}%`),
+            ilike(eventEntries.carNumber, `%${search.trim()}%`),
+        ));
+    }
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [rows, [totalResult]] = await Promise.all([
+        listMotorsportEntries(where).then((data) => data.slice(offset, offset + limit)),
+        db.select({ count: count() })
+            .from(eventEntries)
+            .innerJoin(matches, eq(eventEntries.matchId, matches.id))
+            .leftJoin(drivers, eq(eventEntries.driverId, drivers.id))
+            .leftJoin(entrants, eq(eventEntries.entrantId, entrants.id))
+            .leftJoin(manufacturers, eq(eventEntries.manufacturerId, manufacturers.id))
+            .where(where),
+    ]);
+
+    return c.json(apiResponse(rows.map((row) => ({
+        id: row.id,
+        matchId: row.matchId,
+        matchLabel: row.matchEventTitle || [row.matchHomeTeamName, row.matchAwayTeamName].filter(Boolean).join(' vs '),
+        matchSubtitle: row.matchEventSubtitle,
+        externalId: row.externalId,
+        carNumber: row.carNumber,
+        displayName: row.displayName,
+        gridPosition: row.gridPosition,
+        startPosition: row.startPosition,
+        finishPosition: row.finishPosition,
+        status: row.status,
+        points: row.points,
+        metadata: row.metadata,
+        driverId: row.driverId,
+        driverName: row.driverName,
+        driverShortName: row.driverShortName,
+        driverNationality: row.driverNationality,
+        driverCountryCode: row.driverCountryCode,
+        driverHeadshotUrl: row.driverHeadshotUrl,
+        entrantId: row.entrantId,
+        entrantName: row.entrantName,
+        entrantShortName: row.entrantShortName,
+        entrantBrandColor: row.entrantBrandColor,
+        entrantLogoUrl: row.entrantLogoUrl,
+        manufacturerId: row.manufacturerId,
+        manufacturerName: row.manufacturerName,
+        manufacturerShortName: row.manufacturerShortName,
+        manufacturerLogoUrl: row.manufacturerLogoUrl,
+    })), paginationMeta(page, limit, Number(totalResult?.count || 0))));
+});
+
+superAdminRoutes.post('/motorsport-entries', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createMotorsportEntrySchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const normalized = await buildMotorsportEntryValues(parsed.data);
+    if ('error' in normalized) {
+        return c.json(normalized.error, normalized.status);
+    }
+
+    const [created] = await db.insert(eventEntries).values({
+        matchId: normalized.values.matchId,
+        externalId: normalized.values.externalId ?? null,
+        carNumber: normalized.values.carNumber ?? null,
+        driverId: normalized.values.driverId ?? null,
+        entrantId: normalized.values.entrantId ?? null,
+        manufacturerId: normalized.values.manufacturerId ?? null,
+        displayName: normalized.values.displayName ?? null,
+        gridPosition: normalized.values.gridPosition ?? null,
+        startPosition: normalized.values.startPosition ?? null,
+        finishPosition: normalized.values.finishPosition ?? null,
+        status: normalized.values.status ?? 'ENTERED',
+        points: normalized.values.points ?? null,
+        metadata: normalized.values.metadata ?? null,
+    }).returning({ id: eventEntries.id });
+
+    return c.json(apiResponse(created), 201);
+});
+
+superAdminRoutes.patch('/motorsport-entries/:entryId', async (c) => {
+    const entryId = c.req.param('entryId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateMotorsportEntrySchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({
+        id: eventEntries.id,
+        matchId: eventEntries.matchId,
+    }).from(eventEntries).where(eq(eventEntries.id, entryId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Motorsport entry not found'), 404);
+
+    const normalized = await buildMotorsportEntryValues(parsed.data, existing.matchId);
+    if ('error' in normalized) {
+        return c.json(normalized.error, normalized.status);
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    for (const [key, value] of Object.entries(normalized.values)) {
+        if (value === undefined) continue;
+        updates[key] = value;
+    }
+
+    await db.update(eventEntries).set(updates).where(eq(eventEntries.id, entryId));
+    return c.json(apiResponse({ message: 'Motorsport entry updated' }));
+});
+
+superAdminRoutes.delete('/motorsport-entries/:entryId', async (c) => {
+    const entryId = c.req.param('entryId');
+    const [existing] = await db.select({ id: eventEntries.id }).from(eventEntries).where(eq(eventEntries.id, entryId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Motorsport entry not found'), 404);
+
+    await db.delete(eventEntries).where(eq(eventEntries.id, entryId));
+    return c.json(apiResponse({ message: 'Motorsport entry deleted' }));
 });
 
 superAdminRoutes.get('/blog/categories', async (c) => {

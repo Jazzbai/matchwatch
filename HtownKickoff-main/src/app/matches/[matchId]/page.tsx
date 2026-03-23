@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
@@ -17,15 +17,48 @@ import {
 import { AppShell } from "../../../components/AppShell";
 import { BookingDrawer } from "../../../components/BookingDrawer";
 import { MatchVenueMap } from "../../../components/MatchVenueMap";
+import { api } from "../../../lib/api";
 import { AMENITY_LABELS, PRICE_LABELS } from "../../../lib/data";
 import { getLeagueVisual, getMatchDisplay, getSingleEventSubtitle, getSingleEventTitle, isSingleEventMatch } from "../../../lib/match-display";
 import { useData, type Venue, type VenueEvent } from "../../../lib/data-provider";
 
-/* ═══════════════════════════════════════════════════
-   MATCH DETAIL — Single page template
+type MotorsportEntry = {
+    id: string;
+    carNumber?: string | null;
+    displayName?: string | null;
+    gridPosition?: number | null;
+    startPosition?: number | null;
+    finishPosition?: number | null;
+    status: string;
+    points?: string | number | null;
+    driver?: {
+        id: string;
+        name?: string | null;
+        shortName?: string | null;
+        nationality?: string | null;
+        countryCode?: string | null;
+        headshotUrl?: string | null;
+    } | null;
+    entrant?: {
+        id: string;
+        name?: string | null;
+        shortName?: string | null;
+        brandColor?: string | null;
+        logoUrl?: string | null;
+    } | null;
+    manufacturer?: {
+        id: string;
+        name?: string | null;
+        shortName?: string | null;
+        logoUrl?: string | null;
+    } | null;
+};
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MATCH DETAIL â€” Single page template
    Fully informative: teams, scores, lineups, stats,
    venue events with booking CTA, related matches.
-   ═══════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 function MatchVenueCard({
     venue,
@@ -96,7 +129,7 @@ function MatchVenueCard({
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
                     {venue.amenities.slice(0, 5).map((a) => (
                         <span key={a} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: "50%", backgroundColor: "var(--secondary)", color: "var(--muted-foreground)", fontSize: 12 }} title={AMENITY_LABELS[a]?.label || a}>
-                            {AMENITY_LABELS[a]?.icon || "•"}
+                            {AMENITY_LABELS[a]?.icon || "â€¢"}
                         </span>
                     ))}
                     <span style={{ display: "flex", alignItems: "center", fontSize: 10, fontFamily: "monospace", fontWeight: 700, color: "var(--primary)", padding: "0 6px", borderRadius: 99, backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)", border: "1px solid color-mix(in oklch, var(--primary) 20%, transparent)" }}>
@@ -171,6 +204,9 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
     const [bookingOpen, setBookingOpen] = useState(false);
     const [bookingVenueIdx, setBookingVenueIdx] = useState(0);
     const [activeTab, setActiveTab] = useState<"venues" | "lineups" | "stats">("venues");
+    const [motorsportEntries, setMotorsportEntries] = useState<MotorsportEntry[]>([]);
+    const [motorsportEntriesLoading, setMotorsportEntriesLoading] = useState(false);
+    const [motorsportEntriesError, setMotorsportEntriesError] = useState<string | null>(null);
 
     useEffect(() => {
         void refetch();
@@ -181,6 +217,44 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
             setBookingVenueIdx(0);
         }
     }, [bookingVenueIdx, venueEvents.length]);
+
+    const isSingleEvent = match ? isSingleEventMatch(match) : false;
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadEntries() {
+            if (!match || !isSingleEvent) {
+                setMotorsportEntries([]);
+                setMotorsportEntriesError(null);
+                setMotorsportEntriesLoading(false);
+                return;
+            }
+
+            setMotorsportEntriesLoading(true);
+            setMotorsportEntriesError(null);
+            try {
+                const response = await api.get<MotorsportEntry[]>(`/matches/${match.id}/entries`);
+                if (!cancelled) {
+                    setMotorsportEntries(response.data || []);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setMotorsportEntries([]);
+                    setMotorsportEntriesError(error instanceof Error ? error.message : "Failed to load event entries.");
+                }
+            } finally {
+                if (!cancelled) {
+                    setMotorsportEntriesLoading(false);
+                }
+            }
+        }
+
+        void loadEntries();
+        return () => {
+            cancelled = true;
+        };
+    }, [isSingleEvent, match]);
 
     if (isLoading && !match) {
         return (
@@ -200,7 +274,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                     <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 32, fontWeight: 900, color: "var(--foreground)", marginBottom: 16 }}>MATCH NOT FOUND</h1>
                     <p style={{ fontSize: 15, color: "var(--muted-foreground)", marginBottom: 32, maxWidth: 360 }}>This match doesn't exist or has been removed.</p>
                     <Link href="/matches" style={{ padding: "12px 24px", backgroundColor: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, borderRadius: 12, textDecoration: "none", fontSize: 14, boxShadow: "0 4px 12px color-mix(in oklch, var(--primary) 30%, transparent)" }}>
-                        ← Back to Matches
+                        â† Back to Matches
                     </Link>
                 </div>
             </AppShell>
@@ -220,7 +294,6 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
         externalId: match.leagueId,
     };
     const d = new Date(match.matchDateUTC);
-    const isSingleEvent = isSingleEventMatch(match);
     const display = getMatchDisplay(match, { homeTeam: home, awayTeam: away, league });
     const eventTitle = getSingleEventTitle(match, league);
     const eventSubtitle = getSingleEventSubtitle(match, league);
@@ -240,10 +313,12 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
             Math.abs(event.venue.lat) > 0 &&
             Math.abs(event.venue.lng) > 0,
     );
+    const entrantCount = new Set(motorsportEntries.map((entry) => entry.entrant?.id || entry.entrant?.name).filter(Boolean)).size;
+    const manufacturerCount = new Set(motorsportEntries.map((entry) => entry.manufacturer?.id || entry.manufacturer?.name).filter(Boolean)).size;
 
     return (
         <AppShell>
-            {/* ── Match Hero ─────────────────────────── */}
+            {/* â”€â”€ Match Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <section style={{ position: "relative", overflow: "hidden", paddingTop: 40, paddingBottom: 48, paddingLeft: 20, paddingRight: 20, textAlign: "center", backgroundColor: "var(--background)", borderBottom: "1px solid var(--border)" }}>
                 {/* Decorative background */}
                 <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
@@ -264,7 +339,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                         </span>
                         {(match?.stage || match?.matchDay) ? (
                             <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, backgroundColor: "color-mix(in oklch, var(--background) 50%, transparent)", padding: "4px 8px", borderRadius: 99, border: "1px solid var(--border)" }}>
-                                {[match?.stage, match?.matchDay].filter(Boolean).join(" · ")}
+                                {[match?.stage, match?.matchDay].filter(Boolean).join(" Â· ")}
                             </span>
                         ) : null}
                     </div>
@@ -415,12 +490,12 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                 </div>
             </section>
 
-            {/* ── Tab Navigation ─────────────────────── */}
+            {/* â”€â”€ Tab Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div style={{ position: "sticky", top: 56, zIndex: 30, padding: "8px 20px 16px", borderBottom: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--background) 90%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
                 <div style={{ display: "inline-flex", padding: 4, backgroundColor: "var(--secondary)", borderRadius: 12, border: "1px solid var(--border)", maxWidth: "100%", overflowX: "auto" }}>
                     {[
                         { id: "venues", label: `Venues (${venueEvents.length})`, icon: MapPin },
-                        { id: "lineups", label: isSingleEvent ? "Event Info" : "Lineups", icon: Users },
+                        { id: "lineups", label: isSingleEvent ? `Entries (${motorsportEntries.length})` : "Lineups", icon: Users },
                         { id: "stats", label: isSingleEvent ? "Event Stats" : "Stats", icon: LineChart },
                     ].map((t) => (
                         <button
@@ -444,7 +519,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                 </div>
             </div>
 
-            {/* ── Tab Content ────────────────────────── */}
+            {/* â”€â”€ Tab Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div style={{ backgroundColor: "color-mix(in oklch, var(--secondary) 10%, transparent)", minHeight: "40vh" }}>
                 {activeTab === "venues" && (
                     <section style={{ padding: "32px 20px" }}>
@@ -482,21 +557,89 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                 {activeTab === "lineups" && (
                     <section style={{ padding: "32px 20px", maxWidth: 640, margin: "0 auto" }}>
                         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 24, textAlign: "center" }}>
-                            {isSingleEvent ? "Event Information" : isLive || isFinished ? "Match Timeline" : "Pre-Match Info"}
+                            {isSingleEvent ? "Event Entries" : isLive || isFinished ? "Match Timeline" : "Pre-Match Info"}
                         </div>
-                        <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, textAlign: "center" }}>
-                            <Users size={32} style={{ margin: "0 auto 16px", color: "var(--muted-foreground)", opacity: 0.6 }} />
-                            <p style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500, marginBottom: 16 }}>
-                                {isSingleEvent
-                                    ? "Detailed entrant and session data are not provided by the current motorsport feed yet."
-                                    : isLive || isFinished
-                                    ? "Detailed lineups and minute-by-minute events are not provided by the current match feed."
-                                    : "Lineups are published closer to kickoff and will appear here when available."}
-                            </p>
-                            <div style={{ display: "inline-block", padding: "8px 16px", backgroundColor: "var(--secondary)", borderRadius: 10, fontSize: 12, fontFamily: "monospace", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
-                                Kickoff: {d.toLocaleString("en-US")} · Venue: {match?.stadiumName || eventSubtitle || "TBD"}
+                        {isSingleEvent ? (
+                            motorsportEntriesLoading ? (
+                                <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted-foreground)" }}>
+                                    Loading entries...
+                                </div>
+                            ) : motorsportEntriesError ? (
+                                <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, textAlign: "center" }}>
+                                    <Users size={32} style={{ margin: "0 auto 16px", color: "var(--muted-foreground)", opacity: 0.6 }} />
+                                    <p style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 600, marginBottom: 8 }}>Entries unavailable</p>
+                                    <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>{motorsportEntriesError}</p>
+                                </div>
+                            ) : motorsportEntries.length === 0 ? (
+                                <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, textAlign: "center" }}>
+                                    <Users size={32} style={{ margin: "0 auto 16px", color: "var(--muted-foreground)", opacity: 0.6 }} />
+                                    <p style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500, marginBottom: 16 }}>
+                                        Entry list not available yet.
+                                    </p>
+                                    <div style={{ display: "inline-block", padding: "8px 16px", backgroundColor: "var(--secondary)", borderRadius: 10, fontSize: 12, fontFamily: "monospace", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+                                        Kickoff: {d.toLocaleString("en-US")} · Venue: {match?.stadiumName || eventSubtitle || "TBD"}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ display: "grid", gap: 14 }}>
+                                    {motorsportEntries.map((entry) => {
+                                        const entryTitle = entry.displayName || entry.driver?.name || `Car ${entry.carNumber || "TBA"}`;
+                                        return (
+                                            <div key={entry.id} style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 18, display: "grid", gap: 12 }}>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                                                    <div style={{ display: "grid", gap: 4 }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                                            {entry.carNumber ? (
+                                                                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 40, height: 28, padding: "0 10px", borderRadius: 999, backgroundColor: "color-mix(in oklch, var(--primary) 12%, transparent)", color: "var(--primary)", fontFamily: "monospace", fontSize: 12, fontWeight: 800, border: "1px solid color-mix(in oklch, var(--primary) 24%, transparent)" }}>
+                                                                    #{entry.carNumber}
+                                                                </span>
+                                                            ) : null}
+                                                            <span style={{ fontSize: 17, fontWeight: 800, color: "var(--foreground)" }}>{entryTitle}</span>
+                                                        </div>
+                                                        <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+                                                            {[entry.entrant?.name, entry.manufacturer?.name].filter(Boolean).join(" · ") || "Team information pending"}
+                                                        </div>
+                                                        {entry.driver?.nationality ? (
+                                                            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                                                                {entry.driver.nationality}
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+                                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, backgroundColor: "var(--secondary)", border: "1px solid var(--border)", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+                                                        {entry.status}
+                                                    </span>
+                                                </div>
+                                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+                                                    {[
+                                                        { label: "Grid", value: entry.gridPosition ?? "TBD" },
+                                                        { label: "Start", value: entry.startPosition ?? "TBD" },
+                                                        { label: "Finish", value: entry.finishPosition ?? "TBD" },
+                                                        { label: "Points", value: entry.points ?? "0" },
+                                                    ].map((stat) => (
+                                                        <div key={stat.label} style={{ padding: 12, borderRadius: 12, backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)", border: "1px solid var(--border)" }}>
+                                                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 6 }}>{stat.label}</div>
+                                                            <div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, color: "var(--foreground)" }}>{stat.value}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )
+                        ) : (
+                            <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, textAlign: "center" }}>
+                                <Users size={32} style={{ margin: "0 auto 16px", color: "var(--muted-foreground)", opacity: 0.6 }} />
+                                <p style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500, marginBottom: 16 }}>
+                                    {isLive || isFinished
+                                        ? "Detailed lineups and minute-by-minute events are not provided by the current match feed."
+                                        : "Lineups are published closer to kickoff and will appear here when available."}
+                                </p>
+                                <div style={{ display: "inline-block", padding: "8px 16px", backgroundColor: "var(--secondary)", borderRadius: 10, fontSize: 12, fontFamily: "monospace", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+                                    Kickoff: {d.toLocaleString("en-US")} · Venue: {match?.stadiumName || eventSubtitle || "TBD"}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </section>
                 )}
 
@@ -509,7 +652,11 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                                     { label: "Status", value: match?.status, mono: false, color: "var(--foreground)" },
                                     { label: isSingleEvent ? "Format" : "Score", value: isSingleEvent ? "Single Event" : `${match?.homeScore ?? "-"} : ${match?.awayScore ?? "-"}`, mono: true, color: "var(--foreground)" },
                                     { label: "Hosting Venues", value: venueEvents.length, mono: true, color: "var(--primary)" },
-                                    { label: "Booked Spots", value: `${bookedSpots.toLocaleString()}${averageFillRate != null ? ` (${averageFillRate}% fill)` : ""}`, mono: true, color: "var(--foreground)" },
+                                    { label: isSingleEvent ? "Entries" : "Booked Spots", value: isSingleEvent ? motorsportEntries.length : `${bookedSpots.toLocaleString()}${averageFillRate != null ? ` (${averageFillRate}% fill)` : ""}`, mono: true, color: "var(--foreground)" },
+                                    ...(isSingleEvent ? [
+                                        { label: "Entrants", value: entrantCount || "TBD", mono: true, color: "var(--foreground)" },
+                                        { label: "Manufacturers", value: manufacturerCount || "TBD", mono: true, color: "var(--foreground)" },
+                                    ] : []),
                                 ].map((stat) => (
                                     <div key={stat.label} style={{ padding: 16, backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)", border: "1px solid var(--border)", borderRadius: 12 }}>
                                         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 8 }}>{stat.label}</div>
@@ -522,7 +669,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                 )}
             </div>
 
-            {/* ── Related Matches ────────────────────── */}
+            {/* â”€â”€ Related Matches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {relatedMatches.length > 0 && (
                 <section style={{ padding: "40px 20px 80px", borderTop: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
                     <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 8 }}>More in {league.shortName}</div>
@@ -573,7 +720,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                 </section>
             )}
 
-                {/* ── Booking Drawer ─────────────────────── */}
+                {/* â”€â”€ Booking Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 {venueEvents.length > 0 && (
                     <BookingDrawer
                         isOpen={bookingOpen}
@@ -592,7 +739,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                             homeCrest: home?.image || home?.crest || "",
                             awayCrest: away?.image || away?.crest || "",
                             eventBadge: leagueVisual.image || leagueVisual.logo,
-                            kickoff: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " · " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+                            kickoff: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " Â· " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
                             league: league.name,
                         }}
                         spotsRemaining={venueEvents[bookingVenueIdx]?.bookingLimit ? venueEvents[bookingVenueIdx].bookingLimit! - venueEvents[bookingVenueIdx].confirmedBookings : 50}
@@ -602,3 +749,5 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
         </AppShell>
     );
 }
+
+
