@@ -289,7 +289,15 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                     alignItems: "start",
                 }}
             >
-                <div style={{ display: isMobile && mobileView !== "cards" ? "none" : "block" }}>
+                <div
+                    style={{
+                        display: isMobile && mobileView !== "cards" ? "none" : "block",
+                        minHeight: 0,
+                        maxHeight: isMobile ? "none" : effectiveMapHeight,
+                        overflowY: isMobile ? "visible" : "auto",
+                        paddingRight: isMobile ? 0 : 8,
+                    }}
+                >
                     {listPane}
                 </div>
                 <div
@@ -298,6 +306,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                         alignSelf: "start",
                         position: isMobile ? "relative" : "sticky",
                         top: isMobile ? "auto" : stickyTop,
+                        height: isMobile ? "auto" : effectiveMapHeight,
                     }}
                 >
                     {mapPane}
