@@ -21,6 +21,7 @@ import { MapListToggle } from "../components/MapListToggle";
 import { BookingDrawer } from "../components/BookingDrawer";
 import { PaginationControls } from "../components/PaginationControls";
 import { useData } from "../lib/data-provider";
+import { getLeagueVisual, getMatchDisplay } from "../lib/match-display";
 import { paginateItems } from "../lib/pagination";
 
 /* ═══════════════════════════════════════════════════
@@ -218,6 +219,13 @@ export default function HomePage() {
   const selectedHome = featuredMatch ? getTeam(featuredMatch.homeTeamId) : undefined;
   const selectedAway = featuredMatch ? getTeam(featuredMatch.awayTeamId) : undefined;
   const selectedLeague = featuredMatch ? getLeague(featuredMatch.leagueId) : undefined;
+  const featuredMatchDisplay = featuredMatch
+    ? getMatchDisplay(featuredMatch, {
+        homeTeam: selectedHome,
+        awayTeam: selectedAway,
+        league: selectedLeague,
+      })
+    : null;
   const featuredVenueEvents = featuredMatch ? getVenueEvents(featuredMatch.id) : [];
   const mapVenueCards = useMemo(() => {
     if (featuredVenueEvents.length === 0) return allActiveVenues;
@@ -239,9 +247,7 @@ export default function HomePage() {
   const getVenueCardImage = (venue: (typeof VENUES)[number]) =>
     venue.coverImageUrl || venue.galleryImageUrls?.[0] || "/assets/img-3.png";
   const featuredMatchHeading = featuredMatch
-    ? featuredMatch.eventFormat === "SINGLE_EVENT"
-      ? `${featuredMatch.eventTitle || selectedLeague?.shortName || selectedLeague?.name || "EVENT"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
-      : `${selectedHome?.shortName || "HOME"} VS ${selectedAway?.shortName || "AWAY"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
+    ? `${featuredMatchDisplay?.label || "Match"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
     : "UPCOMING MATCH";
 
   useEffect(() => {
@@ -325,7 +331,8 @@ export default function HomePage() {
               (m, i) => {
                 const home = getTeam(m.homeTeamId);
                 const away = getTeam(m.awayTeamId);
-                if (!home || !away) return null;
+                const league = getLeague(m.leagueId);
+                const display = getMatchDisplay(m, { homeTeam: home, awayTeam: away, league });
                 return (
                   <Link
                     key={i}
@@ -333,15 +340,29 @@ export default function HomePage() {
                     className="inline-flex items-center gap-3 text-foreground hover:text-primary transition-colors"
                   >
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="font-body font-bold text-sm">
-                      {home.crest} {home.shortName}
-                    </span>
-                    <span className="font-mono text-sm font-black text-red-500">
-                      {m.homeScore}-{m.awayScore}
-                    </span>
-                    <span className="font-body font-bold text-sm">
-                      {away.shortName} {away.crest}
-                    </span>
+                    {display.isSingleEvent ? (
+                      <>
+                        <span className="font-body font-bold text-sm">{display.title}</span>
+                        {display.subtitle ? (
+                          <span className="font-body text-sm text-muted-foreground">{display.subtitle}</span>
+                        ) : null}
+                        <span className="font-mono text-sm font-black text-red-500">
+                          {league?.shortName || league?.name || "LIVE"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-body font-bold text-sm">
+                          {home?.crest ? `${home.crest} ` : ""}{display.homeName}
+                        </span>
+                        <span className="font-mono text-sm font-black text-red-500">
+                          {m.homeScore}-{m.awayScore}
+                        </span>
+                        <span className="font-body font-bold text-sm">
+                          {display.awayName}{away?.crest ? ` ${away.crest}` : ""}
+                        </span>
+                      </>
+                    )}
                     <span className="text-border mx-2">│</span>
                   </Link>
                 );
@@ -433,17 +454,17 @@ export default function HomePage() {
 
               const home = getTeam(m.homeTeamId);
               const away = getTeam(m.awayTeamId);
-              if (!home || !away) return null;
+              const display = getMatchDisplay(m, { homeTeam: home, awayTeam: away, league });
               
               return (
                 <MatchCard
                   key={m.id}
-                  homeTeam={home.shortName || home.name}
-                  awayTeam={away.shortName || away.name}
-                  homeCrest={home.crest}
-                  awayCrest={away.crest}
-                  homeImage={home.image}
-                  awayImage={away.image}
+                  homeTeam={display.homeName}
+                  awayTeam={display.awayName}
+                  homeCrest={home?.crest || ""}
+                  awayCrest={away?.crest || ""}
+                  homeImage={home?.image}
+                  awayImage={away?.image}
                   kickoff={formatKickoffLabel(m.matchDateUTC)}
                   league={league.shortName || league.name}
                   leagueLogo={league.logo}
@@ -739,18 +760,17 @@ export default function HomePage() {
             address: `${selectedVenue?.addressLine1 || ""}, ${selectedVenue?.city || ""}`,
           }}
           match={{
-            homeTeam: featuredMatch?.eventFormat === "SINGLE_EVENT"
-              ? featuredMatch.eventTitle || selectedLeague?.shortName || "EVENT"
-              : selectedHome?.shortName || "HOME",
-            awayTeam: featuredMatch?.eventFormat === "SINGLE_EVENT"
-              ? featuredMatch.eventSubtitle || selectedLeague?.name || "Event"
-              : selectedAway?.shortName || "AWAY",
-            homeCrest: featuredMatch?.eventFormat === "SINGLE_EVENT"
-              ? selectedLeague?.image || selectedLeague?.logo || "EV"
-              : selectedHome?.image || selectedHome?.crest || "HOME",
-            awayCrest: featuredMatch?.eventFormat === "SINGLE_EVENT"
-              ? selectedLeague?.image || selectedLeague?.logo || "EV"
-              : selectedAway?.image || selectedAway?.crest || "AWAY",
+            eventFormat: featuredMatch?.eventFormat,
+            title: featuredMatchDisplay?.title || "Match",
+            subtitle: featuredMatchDisplay?.subtitle,
+            homeTeam: featuredMatchDisplay?.homeName,
+            awayTeam: featuredMatchDisplay?.awayName,
+            homeCrest: selectedHome?.image || selectedHome?.crest || "",
+            awayCrest: selectedAway?.image || selectedAway?.crest || "",
+            eventBadge: (() => {
+              const visual = getLeagueVisual(selectedLeague);
+              return visual.image || visual.logo;
+            })(),
             kickoff: featuredMatch
               ? formatKickoffLabel(featuredMatch.matchDateUTC)
               : "TBD",

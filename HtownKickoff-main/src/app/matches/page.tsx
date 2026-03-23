@@ -8,6 +8,7 @@ import { AppShell } from "../../components/AppShell";
 import { MatchCard } from "../../components/MatchCard";
 import { PaginationControls } from "../../components/PaginationControls";
 import { useData } from "../../lib/data-provider";
+import { getMatchDisplay } from "../../lib/match-display";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
 
 function asTimestamp(value: string) {
@@ -568,11 +569,10 @@ function MatchesPageContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {paginatedMatches.map((match, i) => {
                 const league = getLeague(match.leagueId);
-                const isSingleEvent = match.eventFormat === "SINGLE_EVENT";
                 const home = match.homeTeamId ? getTeam(match.homeTeamId) : undefined;
                 const away = match.awayTeamId ? getTeam(match.awayTeamId) : undefined;
+                const display = getMatchDisplay(match, { homeTeam: home, awayTeam: away, league });
                 if (!league) return null;
-                if (!isSingleEvent && (!home || !away)) return null;
                 const date = new Date(match.matchDateUTC);
                 const kickoffLabel =
                   match.status === "IN_PLAY" ? "LIVE" :
@@ -593,8 +593,8 @@ function MatchesPageContent() {
                       eventFormat={match.eventFormat}
                       eventTitle={match.eventTitle || undefined}
                       eventSubtitle={match.eventSubtitle || undefined}
-                      homeTeam={home?.shortName || match.homeTeamName || ""}
-                      awayTeam={away?.shortName || match.awayTeamName || ""}
+                      homeTeam={display.homeName}
+                      awayTeam={display.awayName}
                       homeCrest={home?.crest || ""}
                       awayCrest={away?.crest || ""}
                       homeImage={home?.image}
