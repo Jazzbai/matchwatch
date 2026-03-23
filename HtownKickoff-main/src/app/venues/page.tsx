@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, Star, MessageSquare, Type, Coins, CircleDollarSign, Gem, Crown } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
-import { VenueCard } from "../../components/VenueCard";
+import { MapListToggle } from "../../components/MapListToggle";
+import { PaginationControls } from "../../components/PaginationControls";
 import { AMENITY_LABELS } from "../../lib/data";
 import { useData, type PriceRange } from "../../lib/data-provider";
+import { paginateItems, parsePageParam } from "../../lib/pagination";
 
 const PRICE_OPTIONS: { value: PriceRange | "all"; label: string; icon: React.ReactNode }[] = [
     { value: "all", label: "All", icon: null },
@@ -16,14 +19,20 @@ const PRICE_OPTIONS: { value: PriceRange | "all"; label: string; icon: React.Rea
     { value: "LUXURY", label: "Luxury", icon: <Crown size={14} /> },
 ];
 
-export default function VenuesPage() {
+function VenuesPageContent() {
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
     const [activePrice, setActivePrice] = useState<PriceRange | "all">("all");
     const [activeCity, setActiveCity] = useState("all");
     const [activeAmenity, setActiveAmenity] = useState("all");
     const [sortBy, setSortBy] = useState<"rating" | "reviews" | "name">("rating");
     const { venues: VENUES } = useData();
-    const cityOptions = React.useMemo(
+    const requestedPage = parsePageParam(searchParams.get("page"));
+    const syncArchivePageRef = useRef<(nextPage: number) => void>(() => {});
+    const hasInitializedPageReset = useRef(false);
+    const cityOptions = useMemo(
         () => Array.from(new Set(
             VENUES
                 .filter((venue) => venue.isActive)
@@ -33,7 +42,18 @@ export default function VenuesPage() {
         [VENUES],
     );
 
-    const filtered = VENUES
+    syncArchivePageRef.current = (nextPage: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (nextPage <= 1) {
+            params.delete("page");
+        } else {
+            params.set("page", String(nextPage));
+        }
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    };
+
+    const filtered = useMemo(() => VENUES
         .filter((v) => {
             const searchOK =
                 searchQuery === "" ||
@@ -50,7 +70,27 @@ export default function VenuesPage() {
             if (sortBy === "rating") return b.rating - a.rating;
             if (sortBy === "reviews") return b.reviewCount - a.reviewCount;
             return a.name.localeCompare(b.name);
-        });
+        }), [VENUES, searchQuery, activePrice, activeCity, activeAmenity, sortBy]);
+
+    const { currentPage, totalPages, pageItems: paginatedVenues } = useMemo(
+        () => paginateItems(filtered, requestedPage),
+        [filtered, requestedPage],
+    );
+
+    useEffect(() => {
+        if (requestedPage !== currentPage) {
+            syncArchivePageRef.current(currentPage);
+        }
+    }, [requestedPage, currentPage]);
+
+    useEffect(() => {
+        if (!hasInitializedPageReset.current) {
+            hasInitializedPageReset.current = true;
+            return;
+        }
+
+        syncArchivePageRef.current(1);
+    }, [searchQuery, activePrice, activeCity, activeAmenity, sortBy]);
 
 
 
@@ -208,39 +248,41 @@ export default function VenuesPage() {
                     <div style={{ height: 1, backgroundColor: "var(--border)" }} />
 
                     {/* Sort + Count Row */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 10 }}>
                         <span style={{ fontSize: 13, color: "var(--muted-foreground)", fontWeight: 600 }}>
                             {filtered.length} venue{filtered.length !== 1 ? "s" : ""} found
                         </span>
-                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>Sort</span>
-                            {(["rating", "reviews", "name"] as const).map((s) => {
-                                const sel = sortBy === s;
-                                return (
-                                    <button
-                                        key={s}
-                                        onClick={() => setSortBy(s)}
-                                        style={{
-                                            display: "inline-flex", alignItems: "center", gap: 4,
-                                            padding: "6px 12px", borderRadius: 8,
-                                            fontSize: 12, fontWeight: 700, cursor: "pointer",
-                                            fontFamily: "inherit",
-                                            border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
-                                            backgroundColor: sel ? "var(--primary)" : "transparent",
-                                            color: sel ? "var(--primary-foreground)" : "var(--muted-foreground)",
-                                            transition: "all 0.2s",
-                                        }}
-                                    >
-                                        {s === "rating" ? <><Star size={12} /> Rating</> : s === "reviews" ? <><MessageSquare size={12} /> Reviews</> : <><Type size={12} /> Name</>}
-                                    </button>
-                                );
-                            })}
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Sort</span>
+                            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                                {(["rating", "reviews", "name"] as const).map((s) => {
+                                    const sel = sortBy === s;
+                                    return (
+                                        <button
+                                            key={s}
+                                            onClick={() => setSortBy(s)}
+                                            style={{
+                                                display: "inline-flex", alignItems: "center", gap: 4,
+                                                padding: "7px 14px", borderRadius: 99,
+                                                fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                                fontFamily: "inherit", whiteSpace: "nowrap",
+                                                border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
+                                                backgroundColor: sel ? "var(--primary)" : "transparent",
+                                                color: sel ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                                                transition: "all 0.2s",
+                                            }}
+                                        >
+                                            {s === "rating" ? <><Star size={12} /> Rating</> : s === "reviews" ? <><MessageSquare size={12} /> Reviews</> : <><Type size={12} /> Name</>}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Venue Grid */}
+            {/* Venue Explorer */}
             <section style={{ maxWidth: 1400, margin: "0 auto", padding: "20px 24px 48px" }}>
                 {filtered.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "80px 20px", borderRadius: 24, border: "1px dashed var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)" }}>
@@ -248,30 +290,37 @@ export default function VenuesPage() {
                         <p style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Try adjusting your search or filters.</p>
                     </div>
                 ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
-                        {filtered.map((v) => (
-                            <div key={v.id}>
-                                <Link href={`/venues/${v.slug}`} style={{ textDecoration: "none", color: "inherit" }}>
-                                    <VenueCard
-                                        name={v.name}
-                                        coverImage={v.coverImageUrl || "/venue-hero.webp"}
-                                        city={v.city}
-                                        address={v.addressLine1}
-                                        rating={v.rating}
-                                        reviewCount={v.reviewCount}
-                                        amenities={v.amenities}
-                                        cuisineTags={v.cuisineTags}
-                                        priceRange={v.priceRange}
-                                        isVerified={v.isVerified}
-                                        isFeatured={v.isFeatured}
-                                        spotsRemaining={null}
-                                        nextEvent={`${v.upcomingEventsCount} upcoming events`}
-                                    />
-                                </Link>
-                            </div>
-                        ))}
-                    </div>
+                    <MapListToggle
+                        venues={paginatedVenues.map((v) => ({
+                            id: v.id,
+                            slug: v.slug,
+                            lat: v.lat,
+                            lng: v.lng,
+                            name: v.name,
+                            coverImage: v.coverImageUrl || "/venue-hero.webp",
+                            city: v.city,
+                            address: v.addressLine1,
+                            rating: v.rating,
+                            reviewCount: v.reviewCount,
+                            amenities: v.amenities,
+                            cuisineTags: v.cuisineTags,
+                            priceRange: v.priceRange,
+                            isVerified: v.isVerified,
+                            isFeatured: v.isFeatured,
+                            spotsRemaining: null,
+                            nextEvent: `${v.upcomingEventsCount} upcoming events`,
+                        }))}
+                        onVenueClick={(index) => {
+                            const venue = paginatedVenues[index];
+                            if (venue) window.location.href = `/venues/${venue.slug}`;
+                        }}
+                        onBookNow={(index) => {
+                            const venue = paginatedVenues[index];
+                            if (venue) window.location.href = `/venues/${venue.slug}`;
+                        }}
+                    />
                 )}
+                <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={(page) => syncArchivePageRef.current(page)} />
             </section>
 
             {/* CTA Banner */}
@@ -296,5 +345,13 @@ export default function VenuesPage() {
                 </div>
             </section>
         </AppShell>
+    );
+}
+
+export default function VenuesPage() {
+    return (
+        <React.Suspense fallback={<AppShell><section style={{ minHeight: "50vh" }} /></AppShell>}>
+            <VenuesPageContent />
+        </React.Suspense>
     );
 }

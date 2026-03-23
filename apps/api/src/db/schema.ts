@@ -20,6 +20,9 @@ export const priceRangeEnum = pgEnum('price_range', ['BUDGET', 'MID', 'UPSCALE',
 export const venueAttributeTypeEnum = pgEnum('venue_attribute_type', ['AMENITY', 'VIBE', 'CUISINE']);
 export const claimStatusEnum = pgEnum('claim_status', ['PENDING', 'APPROVED', 'REJECTED']);
 export const discountTypeEnum = pgEnum('discount_type', ['PERCENTAGE', 'FIXED', 'FREE_ITEM']);
+export const matchEventFormatEnum = pgEnum('match_event_format', ['HEAD_TO_HEAD', 'SINGLE_EVENT']);
+export const blogPublishStatusEnum = pgEnum('blog_publish_status', ['DRAFT', 'PUBLISHED']);
+export const blogCommentStatusEnum = pgEnum('blog_comment_status', ['PENDING', 'APPROVED', 'REJECTED']);
 
 // ─── Users ──────────────────────────────────────
 
@@ -152,6 +155,10 @@ export const matches = pgTable('matches', {
     id: uuid('id').primaryKey().defaultRandom(),
     externalMatchId: varchar('external_match_id', { length: 50 }).unique(),
     leagueId: uuid('league_id').references(() => leagues.id),
+    isFeatured: boolean('is_featured').default(false).notNull(),
+    eventFormat: matchEventFormatEnum('event_format').default('HEAD_TO_HEAD').notNull(),
+    eventTitle: varchar('event_title', { length: 200 }),
+    eventSubtitle: varchar('event_subtitle', { length: 200 }),
     homeTeamId: uuid('home_team_id').references(() => teams.id),
     awayTeamId: uuid('away_team_id').references(() => teams.id),
     stadiumId: uuid('stadium_id').references(() => stadiums.id),
@@ -203,6 +210,8 @@ export const venues = pgTable('venues', {
     capacity: integer('capacity'),
     averageRating: decimal('average_rating', { precision: 3, scale: 2 }).default('0'),
     totalReviews: integer('total_reviews').default(0),
+    ratingOverride: decimal('rating_override', { precision: 3, scale: 2 }),
+    reviewCountOverride: integer('review_count_override'),
     amenities: text('amenities').array().notNull().default([]),
     vibes: text('vibes').array().notNull().default([]),
     cuisineTags: text('cuisine_tags').array().notNull().default([]),
@@ -365,6 +374,65 @@ export const posts = pgTable('posts', {
     index('posts_author_idx').on(table.authorId),
 ]);
 
+export const blogCategories = pgTable('blog_categories', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: varchar('name', { length: 120 }).notNull(),
+    slug: varchar('slug', { length: 160 }).notNull().unique(),
+    description: text('description'),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('blog_categories_active_idx').on(table.isActive),
+    index('blog_categories_sort_idx').on(table.sortOrder),
+]);
+
+export const blogPosts = pgTable('blog_posts', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    authorId: uuid('author_id').notNull().references(() => users.id),
+    title: varchar('title', { length: 200 }).notNull(),
+    slug: varchar('slug', { length: 220 }).notNull().unique(),
+    excerpt: varchar('excerpt', { length: 500 }),
+    featuredImageUrl: varchar('featured_image_url'),
+    featuredImageS3Key: varchar('featured_image_s3_key'),
+    contentJson: jsonb('content_json').default({}).notNull(),
+    contentHtml: text('content_html').default('').notNull(),
+    status: blogPublishStatusEnum('status').default('DRAFT').notNull(),
+    publishedAt: timestamp('published_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    deletedAt: timestamp('deleted_at'),
+}, (table) => [
+    index('blog_posts_status_idx').on(table.status),
+    index('blog_posts_published_at_idx').on(table.publishedAt),
+    index('blog_posts_author_idx').on(table.authorId),
+]);
+
+export const blogPostCategories = pgTable('blog_post_categories', {
+    postId: uuid('post_id').notNull().references(() => blogPosts.id, { onDelete: 'cascade' }),
+    categoryId: uuid('category_id').notNull().references(() => blogCategories.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+    primaryKey({ columns: [table.postId, table.categoryId] }),
+]);
+
+export const blogComments = pgTable('blog_comments', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    postId: uuid('post_id').notNull().references(() => blogPosts.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    status: blogCommentStatusEnum('status').default('PENDING').notNull(),
+    moderatedBy: uuid('moderated_by').references(() => users.id),
+    moderatedAt: timestamp('moderated_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('blog_comments_post_idx').on(table.postId),
+    index('blog_comments_status_idx').on(table.status),
+    index('blog_comments_user_idx').on(table.userId),
+]);
+
 // ─── Follows ────────────────────────────────────
 
 export const follows = pgTable('follows', {
@@ -501,6 +569,8 @@ export const usersRelations = relations(users, ({ many }) => ({
     notifications: many(notifications),
     teamInterests: many(userTeamInterests),
     venues: many(venues),
+    blogPosts: many(blogPosts),
+    blogComments: many(blogComments),
 }));
 
 export const venuesRelations = relations(venues, ({ one, many }) => ({
@@ -555,3 +625,24 @@ export const stadiumsRelations = relations(stadiums, ({ many }) => ({
 }));
 
 export const venueAttributesRelations = relations(venueAttributes, () => ({}));
+
+export const blogCategoriesRelations = relations(blogCategories, ({ many }) => ({
+    postCategories: many(blogPostCategories),
+}));
+
+export const blogPostsRelations = relations(blogPosts, ({ one, many }) => ({
+    author: one(users, { fields: [blogPosts.authorId], references: [users.id] }),
+    categories: many(blogPostCategories),
+    comments: many(blogComments),
+}));
+
+export const blogPostCategoriesRelations = relations(blogPostCategories, ({ one }) => ({
+    post: one(blogPosts, { fields: [blogPostCategories.postId], references: [blogPosts.id] }),
+    category: one(blogCategories, { fields: [blogPostCategories.categoryId], references: [blogCategories.id] }),
+}));
+
+export const blogCommentsRelations = relations(blogComments, ({ one }) => ({
+    post: one(blogPosts, { fields: [blogComments.postId], references: [blogPosts.id] }),
+    user: one(users, { fields: [blogComments.userId], references: [users.id], relationName: 'blogCommentAuthor' }),
+    moderator: one(users, { fields: [blogComments.moderatedBy], references: [users.id], relationName: 'blogCommentModerator' }),
+}));

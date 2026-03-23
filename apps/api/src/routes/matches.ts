@@ -55,7 +55,7 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
             .leftJoin(sports, eq(leagues.sportId, sports.id))
             .leftJoin(teams, eq(matches.homeTeamId, teams.id))
             .where(whereClause)
-            .orderBy(orderBy)
+            .orderBy(desc(matches.isFeatured), orderBy)
             .limit(limit)
             .offset(offset),
 
@@ -100,6 +100,10 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
         .map((r) => ({
             id: r.match.id,
             leagueId: r.match.leagueId,
+            isFeatured: r.match.isFeatured,
+            eventFormat: r.match.eventFormat,
+            eventTitle: r.match.eventTitle,
+            eventSubtitle: r.match.eventSubtitle,
             homeTeamId: r.match.homeTeamId,
             awayTeamId: r.match.awayTeamId,
             homeTeamName: r.match.homeTeamName || (r.match.homeTeamId ? teamMap.get(r.match.homeTeamId)?.name : null),
@@ -226,7 +230,7 @@ matchRoutes.get('/upcoming', async (c) => {
             inArray(matches.status, ['SCHEDULED', 'TIMED']),
             ...(leagueId ? [eq(matches.leagueId, leagueId)] : []),
         ))
-        .orderBy(asc(matches.matchDateUtc))
+        .orderBy(desc(matches.isFeatured), asc(matches.matchDateUtc))
         .limit(100);
 
     const teamIds = new Set<string>();
@@ -247,6 +251,10 @@ matchRoutes.get('/upcoming', async (c) => {
         grouped[dateKey].push({
             id: row.match.id,
             leagueId: row.match.leagueId,
+            isFeatured: row.match.isFeatured,
+            eventFormat: row.match.eventFormat,
+            eventTitle: row.match.eventTitle,
+            eventSubtitle: row.match.eventSubtitle,
             homeTeamId: row.match.homeTeamId,
             awayTeamId: row.match.awayTeamId,
             homeTeamName: row.match.homeTeamName || (row.match.homeTeamId ? teamMap.get(row.match.homeTeamId)?.name : null),
@@ -294,6 +302,7 @@ matchRoutes.get('/:matchId', async (c) => {
 
     return c.json(apiResponse({
         ...row.match,
+        isFeatured: row.match.isFeatured,
         homeTeamName: row.match.homeTeamName || row.homeTeam?.name,
         awayTeamName: row.match.awayTeamName || awayTeam?.name,
         homeTeamCrestUrl: row.match.homeTeamCrestUrl || row.homeTeam?.crestUrl || null,
@@ -360,8 +369,8 @@ matchRoutes.get('/:matchId/venues', async (c) => {
                 vibes: r.venue.vibes,
                 cuisineTags: r.venue.cuisineTags,
                 priceRange: r.venue.priceRange,
-                averageRating: r.venue.averageRating,
-                totalReviews: r.venue.totalReviews,
+                averageRating: r.venue.ratingOverride ?? r.venue.averageRating,
+                totalReviews: r.venue.reviewCountOverride ?? r.venue.totalReviews,
                 isVerified: r.venue.isVerified,
                 distance: distance ? `${distance.toFixed(1)} km` : null,
             },

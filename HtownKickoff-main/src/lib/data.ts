@@ -117,11 +117,15 @@ export const ALL_TEAMS = [...NATIONAL_TEAMS, ...CLUB_TEAMS];
 
 // ─── Match Data ──────────────────────────────────
 export type MatchStatus = "SCHEDULED" | "TIMED" | "IN_PLAY" | "PAUSED" | "FINISHED" | "POSTPONED" | "CANCELLED";
+export type MatchEventFormat = "HEAD_TO_HEAD" | "SINGLE_EVENT";
 
 export interface Match {
     id: string;
-    homeTeamId: string;
-    awayTeamId: string;
+    isFeatured: boolean;
+    homeTeamId?: string;
+    awayTeamId?: string;
+    homeTeamName?: string;
+    awayTeamName?: string;
     leagueId: string;
     matchDateUTC: string;
     status: MatchStatus;
@@ -132,9 +136,12 @@ export interface Match {
     stadiumName: string;
     venueCount: number;
     isHot: boolean;
+    eventFormat?: MatchEventFormat;
+    eventTitle?: string;
+    eventSubtitle?: string;
 }
 
-export const MATCHES: Match[] = [
+const RAW_MATCHES: Omit<Match, "isFeatured">[] = [
     // Global Finals 2026 — Group Stage
     { id: "wc-1", homeTeamId: "usa", awayTeamId: "england", leagueId: "wc-2026", matchDateUTC: "2026-06-14T00:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group A", stadiumName: "NRG Stadium, Houston", venueCount: 24, isHot: true },
     { id: "wc-2", homeTeamId: "mexico", awayTeamId: "brazil", leagueId: "wc-2026", matchDateUTC: "2026-06-15T21:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group B", stadiumName: "NRG Stadium, Houston", venueCount: 18, isHot: true },
@@ -155,6 +162,11 @@ export const MATCHES: Match[] = [
     { id: "ligamx-1", homeTeamId: "america", awayTeamId: "chivas", leagueId: "ligamx", matchDateUTC: "2026-03-02T01:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Jornada 10", stage: "Clásico Nacional", stadiumName: "Estadio Azteca", venueCount: 14, isHot: true },
     { id: "mls-3", homeTeamId: "dynamo", awayTeamId: "fc-dallas", leagueId: "mls", matchDateUTC: "2026-03-07T01:30:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Week 6", stage: "Texas Derby", stadiumName: "Shell Energy Stadium", venueCount: 15, isHot: true },
 ];
+
+export const MATCHES: Match[] = RAW_MATCHES.map((match) => ({
+    ...match,
+    isFeatured: false,
+}));
 
 // ─── Venue Data ──────────────────────────────────
 export type PriceRange = "BUDGET" | "MID" | "UPSCALE" | "LUXURY";

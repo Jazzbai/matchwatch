@@ -19,7 +19,9 @@ import { AppShell } from "../components/AppShell";
 import { MatchCard } from "../components/MatchCard";
 import { MapListToggle } from "../components/MapListToggle";
 import { BookingDrawer } from "../components/BookingDrawer";
+import { PaginationControls } from "../components/PaginationControls";
 import { useData } from "../lib/data-provider";
+import { paginateItems } from "../lib/pagination";
 
 /* ═══════════════════════════════════════════════════
    AD PLACEMENT — Non-intrusive monetization slot
@@ -91,14 +93,28 @@ function LeagueFilterPills({
   );
 }
 
+function compareHomeMatches(a: { isFeatured: boolean; matchDateUTC: string }, b: { isFeatured: boolean; matchDateUTC: string }) {
+  if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+  return new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime();
+}
+
+function compareHomeVenues(a: { isFeatured: boolean; rating: number; name: string }, b: { isFeatured: boolean; rating: number; name: string }) {
+  if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+  if (b.rating !== a.rating) return b.rating - a.rating;
+  return a.name.localeCompare(b.name);
+}
+
 /* ═══════════════════════════════════════════════════
    HOME PAGE — Assembles all critical components
    Fully linked: every match, venue, team → single page
    ═══════════════════════════════════════════════════ */
 export default function HomePage() {
   const [bookingOpen, setBookingOpen] = useState(false);
-  const [selectedVenueIdx, setSelectedVenueIdx] = useState(0);
+  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [homeLeagueFilter, setHomeLeagueFilter] = useState("all");
+  const [homeMatchesPage, setHomeMatchesPage] = useState(1);
+  const [featuredVenuesPage, setFeaturedVenuesPage] = useState(1);
+  const [hostingVenuesPage, setHostingVenuesPage] = useState(1);
   const [hydrated, setHydrated] = useState(false);
   const [nowTs, setNowTs] = useState<number | null>(null);
   const { matches: MATCHES, venues: VENUES, leagues, venueEvents, bookings, posts, getTeam, getLeague, getVenueEvents, isApiConnected } = useData();
@@ -130,8 +146,10 @@ export default function HomePage() {
     })}`;
   };
 
-  // Prepare venue data for VenueCard display
-  const venueCards = VENUES.filter((v) => v.isActive).slice(0, 6);
+  const allActiveVenues = useMemo(
+    () => [...VENUES.filter((v) => v.isActive)].sort(compareHomeVenues),
+    [VENUES],
+  );
   const liveMatches = MATCHES.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED");
   const upcomingMatches = useMemo(
     () => MATCHES
@@ -144,15 +162,56 @@ export default function HomePage() {
       .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime()),
     [MATCHES, hydrated, nowTs],
   );
-  const filteredUpcomingMatches = useMemo(
+  const thisWeekMatches = useMemo(() => {
+    if (!hydrated || nowTs === null) {
+      return upcomingMatches;
+    }
+
+    const weekAheadTs = nowTs + 7 * 24 * 60 * 60 * 1000;
+    return upcomingMatches.filter((match) => {
+      const kickoffTs = new Date(match.matchDateUTC).getTime();
+      return kickoffTs >= nowTs && kickoffTs < weekAheadTs;
+    });
+  }, [hydrated, nowTs, upcomingMatches]);
+  const weekLeagueOptions = useMemo(
+    () => leagues.filter((league) => thisWeekMatches.some((match) => match.leagueId === league.id)),
+    [leagues, thisWeekMatches],
+  );
+  const filteredWeekMatches = useMemo(
     () =>
-      upcomingMatches.filter((match) =>
+      thisWeekMatches.filter((match) =>
         homeLeagueFilter === "all" ? true : match.leagueId === homeLeagueFilter,
       ),
-    [upcomingMatches, homeLeagueFilter],
+    [thisWeekMatches, homeLeagueFilter],
   );
-  const featuredMatch = filteredUpcomingMatches[0] || upcomingMatches[0] || MATCHES[0];
-  const selectedVenue = venueCards[selectedVenueIdx];
+  const orderedWeekMatches = useMemo(
+    () => [...filteredWeekMatches].sort(compareHomeMatches),
+    [filteredWeekMatches],
+  );
+  const orderedThisWeekMatches = useMemo(
+    () => [...thisWeekMatches].sort(compareHomeMatches),
+    [thisWeekMatches],
+  );
+  const orderedUpcomingMatches = useMemo(
+    () => [...upcomingMatches].sort(compareHomeMatches),
+    [upcomingMatches],
+  );
+  const featuredMatch = orderedWeekMatches[0] || orderedThisWeekMatches[0] || orderedUpcomingMatches[0] || MATCHES[0];
+  const { currentPage: currentHomeMatchesPage, totalPages: homeMatchesTotalPages, pageItems: paginatedWeekMatches } = useMemo(
+    () => paginateItems(orderedWeekMatches, homeMatchesPage),
+    [orderedWeekMatches, homeMatchesPage],
+  );
+  const { currentPage: currentFeaturedVenuesPage, totalPages: featuredVenuesTotalPages, pageItems: paginatedFeaturedVenues } = useMemo(
+    () => paginateItems(allActiveVenues, featuredVenuesPage),
+    [allActiveVenues, featuredVenuesPage],
+  );
+  const selectedVenue = useMemo(
+    () => {
+      if (!selectedVenueId) return allActiveVenues[0];
+      return allActiveVenues.find((venue) => venue.id === selectedVenueId) || allActiveVenues[0];
+    },
+    [allActiveVenues, selectedVenueId],
+  );
   const selectedVenueEvent = featuredMatch && selectedVenue
     ? getVenueEvents(featuredMatch.id).find((event) => event.venueId === selectedVenue.id)
     : undefined;
@@ -160,11 +219,53 @@ export default function HomePage() {
   const selectedAway = featuredMatch ? getTeam(featuredMatch.awayTeamId) : undefined;
   const selectedLeague = featuredMatch ? getLeague(featuredMatch.leagueId) : undefined;
   const featuredVenueEvents = featuredMatch ? getVenueEvents(featuredMatch.id) : [];
-  const mapVenueCards = featuredVenueEvents.length > 0
-    ? featuredVenueEvents.map((event) => event.venue).slice(0, 6)
-    : venueCards;
+  const mapVenueCards = useMemo(() => {
+    if (featuredVenueEvents.length === 0) return allActiveVenues;
+
+    const seen = new Set<string>();
+    return featuredVenueEvents
+      .map((event) => event.venue)
+      .filter((venue) => {
+        if (seen.has(venue.id)) return false;
+        seen.add(venue.id);
+        return true;
+      })
+      .sort(compareHomeVenues);
+  }, [allActiveVenues, featuredVenueEvents]);
+  const { currentPage: currentHostingVenuesPage, totalPages: hostingVenuesTotalPages, pageItems: paginatedHostingVenues } = useMemo(
+    () => paginateItems(mapVenueCards, hostingVenuesPage),
+    [mapVenueCards, hostingVenuesPage],
+  );
   const getVenueCardImage = (venue: (typeof VENUES)[number]) =>
     venue.coverImageUrl || venue.galleryImageUrls?.[0] || "/assets/img-3.png";
+  const featuredMatchHeading = featuredMatch
+    ? featuredMatch.eventFormat === "SINGLE_EVENT"
+      ? `${featuredMatch.eventTitle || selectedLeague?.shortName || selectedLeague?.name || "EVENT"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
+      : `${selectedHome?.shortName || "HOME"} VS ${selectedAway?.shortName || "AWAY"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
+    : "UPCOMING MATCH";
+
+  useEffect(() => {
+    setHomeMatchesPage(1);
+  }, [homeLeagueFilter, orderedWeekMatches.length]);
+
+  useEffect(() => {
+    setFeaturedVenuesPage(1);
+  }, [allActiveVenues.length]);
+
+  useEffect(() => {
+    setHostingVenuesPage(1);
+  }, [featuredMatch?.id, mapVenueCards.length]);
+
+  useEffect(() => {
+    if (!selectedVenueId && allActiveVenues[0]?.id) {
+      setSelectedVenueId(allActiveVenues[0].id);
+      return;
+    }
+
+    if (selectedVenueId && !allActiveVenues.some((venue) => venue.id === selectedVenueId) && allActiveVenues[0]?.id) {
+      setSelectedVenueId(allActiveVenues[0].id);
+    }
+  }, [allActiveVenues, selectedVenueId]);
 
   return (
       <AppShell>
@@ -266,7 +367,7 @@ export default function HomePage() {
                 }} onClick={() => setHomeLeagueFilter("all")}>
                     All Matches
                 </button>
-                {leagues.slice(0, 4).map((lg) => (
+                {weekLeagueOptions.map((lg) => (
                     <button key={lg.id} style={{
                       display: "inline-flex", alignItems: "center", gap: 6,
                       padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
@@ -282,22 +383,20 @@ export default function HomePage() {
           </div>
           
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-            {filteredUpcomingMatches.length === 0 && (
+            {orderedWeekMatches.length === 0 && (
                 <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "1 / -1", minHeight: 300 }}>
                     <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", marginBottom: 16 }}>
                         <Trophy style={{ width: 32, height: 32, opacity: 0.5 }} />
                     </div>
                     <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Matches Scheduled</h3>
                     <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 400 }}>
-                        There are currently no featured matches in this category. Check back soon or select a different league to find watch parties.
+                        There are currently no matches scheduled in the next seven days for this filter. Check another league or come back later.
                     </p>
                 </div>
             )}
-            {filteredUpcomingMatches.slice(0, 8).map((m) => {
-              const home = getTeam(m.homeTeamId);
-              const away = getTeam(m.awayTeamId);
+            {paginatedWeekMatches.map((m) => {
               const league = getLeague(m.leagueId);
-              if (!home || !away || !league) return null;
+              if (!league) return null;
               
               const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
               const isFinished = m.status === "FINISHED";
@@ -306,6 +405,35 @@ export default function HomePage() {
                 : isFinished
                   ? "FINISHED"
                   : "SCHEDULED";
+
+              if (m.eventFormat === "SINGLE_EVENT") {
+                return (
+                  <MatchCard
+                    key={m.id}
+                    eventFormat="SINGLE_EVENT"
+                    eventTitle={m.eventTitle || league.name}
+                    eventSubtitle={m.eventSubtitle || undefined}
+                    homeTeam=""
+                    awayTeam=""
+                    homeCrest=""
+                    awayCrest=""
+                    kickoff={formatKickoffLabel(m.matchDateUTC)}
+                    league={league.shortName || league.name}
+                    leagueLogo={league.logo}
+                    leagueImage={league.image}
+                    venueCount={m.venueCount}
+                    status={cardStatus}
+                    matchDay={m.stage || m.matchDay}
+                    isHot={m.isHot}
+                    onClick={() => { window.location.href = `/matches/${m.id}`; }}
+                    style={{ minWidth: "unset", height: "100%" }}
+                  />
+                );
+              }
+
+              const home = getTeam(m.homeTeamId);
+              const away = getTeam(m.awayTeamId);
+              if (!home || !away) return null;
               
               return (
                 <MatchCard
@@ -331,14 +459,12 @@ export default function HomePage() {
                 />
               );
             })}
-
-            {/* View All Tile */}
-            <Link href="/matches" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 24, border: "1px dashed var(--border)", padding: 32, minHeight: 280, textDecoration: "none", transition: "background-color 0.2s", color: "inherit" }}>
-                <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)", marginBottom: 16 }}>
-                    <CalendarDays style={{ width: 32, height: 32 }} />
-                </div>
-                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 20, color: "var(--foreground)", marginBottom: 8 }}>View Calendar</h3>
-                <p style={{ fontSize: 14, color: "var(--muted-foreground)", textAlign: "center" }}>See all upcoming fixtures and find parties.</p>
+          </div>
+          <PaginationControls currentPage={currentHomeMatchesPage} totalPages={homeMatchesTotalPages} onPageChange={setHomeMatchesPage} />
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
+            <Link href="/matches" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 24px", borderRadius: 999, border: "1px solid var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)", textDecoration: "none", fontWeight: 700 }}>
+              <CalendarDays style={{ width: 18, height: 18 }} />
+              View Calendar
             </Link>
           </div>
         </section>
@@ -355,7 +481,7 @@ export default function HomePage() {
             </Link>
           </div>
           <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, position: "relative", zIndex: 10 }}>
-            {venueCards.map((v, i) => {
+            {paginatedFeaturedVenues.map((v) => {
               const venueImage = getVenueCardImage(v);
               return (
                 <div key={v.id} style={{ borderRadius: 28, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "0 12px 32px rgba(0,0,0,0.12)" }}>
@@ -389,7 +515,7 @@ export default function HomePage() {
                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)" }}>{v.upcomingEventsCount} Events</span>
                     <button
                       onClick={() => {
-                        setSelectedVenueIdx(i);
+                        setSelectedVenueId(v.id);
                         setBookingOpen(true);
                       }}
                       className="btn-primary"
@@ -402,15 +528,16 @@ export default function HomePage() {
               );
             })}
           </div>
+          <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px" }}>
+            <PaginationControls currentPage={currentFeaturedVenuesPage} totalPages={featuredVenuesTotalPages} onPageChange={setFeaturedVenuesPage} />
+          </div>
         </section>
 
         {/* ─── Map / List Toggle View ────────────── */}
         <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "192px 24px 96px", position: "relative", zIndex: 10, backgroundColor: "var(--background)" }}>
           <div className="mb-12">
             <div className="text-primary font-bold tracking-widest text-xs mb-2">
-              {featuredMatch
-                ? `${selectedHome?.shortName || "HOME"} VS ${selectedAway?.shortName || "AWAY"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
-                : "UPCOMING MATCH"}
+              {featuredMatchHeading}
             </div>
             <h2 className="font-display text-4xl font-black text-foreground">
               FIND HOSTING VENUES
@@ -419,7 +546,11 @@ export default function HomePage() {
           
             <div className="bg-card rounded-3xl border border-border shadow-xl p-2 relative z-20">
               <MapListToggle
-                venues={mapVenueCards.map((v) => ({
+                venues={paginatedHostingVenues.map((v) => ({
+                  id: v.id,
+                  slug: v.slug,
+                  lat: v.lat,
+                  lng: v.lng,
                   name: v.name,
                   coverImage: getVenueCardImage(v),
                   city: v.city,
@@ -435,13 +566,12 @@ export default function HomePage() {
                   nextEvent: `${v.upcomingEventsCount} upcoming events`,
                 }))}
                 onVenueClick={(i) => {
-                  window.location.href = `/venues/${mapVenueCards[i]?.slug || ""}`;
+                  window.location.href = `/venues/${paginatedHostingVenues[i]?.slug || ""}`;
                 }}
                 onBookNow={(i) => {
-                  const venue = mapVenueCards[i];
-                  const venueIdx = venueCards.findIndex((v) => v.id === venue?.id);
-                  if (venueIdx !== -1) {
-                    setSelectedVenueIdx(venueIdx);
+                  const venue = paginatedHostingVenues[i];
+                  if (venue?.id) {
+                    setSelectedVenueId(venue.id);
                     setBookingOpen(true);
                   } else if (venue?.slug) {
                     window.location.href = `/venues/${venue.slug}`;
@@ -449,6 +579,7 @@ export default function HomePage() {
                 }}
               />
           </div>
+          <PaginationControls currentPage={currentHostingVenuesPage} totalPages={hostingVenuesTotalPages} onPageChange={setHostingVenuesPage} />
         </section>
 
         {/* ─── How It Works Section ──────────────── */}
@@ -604,14 +735,22 @@ export default function HomePage() {
           onClose={() => setBookingOpen(false)}
           venueEventId={selectedVenueEvent?.id}
           venue={{
-            name: venueCards[selectedVenueIdx]?.name || "",
-            address: `${venueCards[selectedVenueIdx]?.addressLine1 || ""}, ${venueCards[selectedVenueIdx]?.city || ""}`,
+            name: selectedVenue?.name || "",
+            address: `${selectedVenue?.addressLine1 || ""}, ${selectedVenue?.city || ""}`,
           }}
           match={{
-            homeTeam: selectedHome?.shortName || "HOME",
-            awayTeam: selectedAway?.shortName || "AWAY",
-            homeCrest: selectedHome?.image || selectedHome?.crest || "HOME",
-            awayCrest: selectedAway?.image || selectedAway?.crest || "AWAY",
+            homeTeam: featuredMatch?.eventFormat === "SINGLE_EVENT"
+              ? featuredMatch.eventTitle || selectedLeague?.shortName || "EVENT"
+              : selectedHome?.shortName || "HOME",
+            awayTeam: featuredMatch?.eventFormat === "SINGLE_EVENT"
+              ? featuredMatch.eventSubtitle || selectedLeague?.name || "Event"
+              : selectedAway?.shortName || "AWAY",
+            homeCrest: featuredMatch?.eventFormat === "SINGLE_EVENT"
+              ? selectedLeague?.image || selectedLeague?.logo || "EV"
+              : selectedHome?.image || selectedHome?.crest || "HOME",
+            awayCrest: featuredMatch?.eventFormat === "SINGLE_EVENT"
+              ? selectedLeague?.image || selectedLeague?.logo || "EV"
+              : selectedAway?.image || selectedAway?.crest || "AWAY",
             kickoff: featuredMatch
               ? formatKickoffLabel(featuredMatch.matchDateUTC)
               : "TBD",
