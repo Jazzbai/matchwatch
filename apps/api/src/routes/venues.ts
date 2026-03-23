@@ -43,7 +43,15 @@ venueRoutes.get('/', async (c) => {
     const whereClause = and(...conditions);
 
     const [rows, [totalResult]] = await Promise.all([
-        db.select().from(venues).where(whereClause).orderBy(desc(venues.isFeatured), desc(venues.averageRating)).limit(limit).offset(offset),
+        db.select()
+            .from(venues)
+            .where(whereClause)
+            .orderBy(
+                desc(venues.isFeatured),
+                desc(sql`coalesce(${venues.ratingOverride}, ${venues.averageRating})`),
+            )
+            .limit(limit)
+            .offset(offset),
         db.select({ count: count() }).from(venues).where(whereClause),
     ]);
 
@@ -71,6 +79,8 @@ venueRoutes.get('/', async (c) => {
             priceRange: v.priceRange,
             averageRating: v.averageRating,
             totalReviews: v.totalReviews,
+            ratingOverride: v.ratingOverride,
+            reviewCountOverride: v.reviewCountOverride,
             isVerified: v.isVerified,
             isFeatured: v.isFeatured,
             capacity: v.capacity,
