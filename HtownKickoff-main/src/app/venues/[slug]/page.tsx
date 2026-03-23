@@ -38,7 +38,7 @@ type VenueCustomEvent = {
     bookingNotes?: string | null;
 };
 
-type ActiveTab = "overview" | "events" | "menu" | "reviews" | "posts";
+type ActiveTab = "overview" | "menu" | "reviews" | "posts";
 
 function normalizeImage(value?: string | null) {
     const raw = (value || "").trim();
@@ -143,7 +143,6 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
         }
         const eventIdx = matchEvents.findIndex((event) => event.match.id === preselectedMatchId);
         if (eventIdx !== -1) {
-            setActiveTab("events");
             setBookingEventIdx(eventIdx);
             setBookingOpen(true);
         }
@@ -403,7 +402,6 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                     <nav className={styles.tabRail}>
                         {[
                             { id: "overview", label: "Overview" },
-                            { id: "events", label: `Events (${matchEvents.length})` },
                             { id: "menu", label: "Menu" },
                             { id: "reviews", label: `Reviews (${reviews.length})` },
                             { id: "posts", label: `Posts (${posts.length})` },
@@ -488,128 +486,6 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                                     </section>
                                 </div>
                             )}
-
-                            {activeTab === "events" && (
-                                <div className={styles.eventGrid}>
-                                    {matchEvents.length === 0 && (
-                                        <div className={styles.emptyState}>No upcoming watch events for this venue yet.</div>
-                                    )}
-                                    {matchEvents.map((row, idx) => {
-                                        const home = getTeam(row.match.homeTeamId);
-                                        const away = getTeam(row.match.awayTeamId);
-                                        const league = getLeague(row.match.leagueId);
-                                        const display = getMatchDisplay(row.match, { homeTeam: home, awayTeam: away, league });
-                                        const kickoff = formatMatchDate(row.match.matchDateUTC);
-                                        const spotsLeft = row.bookingLimit ? row.bookingLimit - row.confirmedBookings : null;
-                                        const occupancy = row.bookingLimit
-                                            ? Math.min((row.confirmedBookings / row.bookingLimit) * 100, 100)
-                                            : 0;
-
-                                        return (
-                                            <article key={row.id} className={styles.eventCard}>
-                                                <header className={styles.eventTop}>
-                                                    <div className={styles.teamsWrap}>
-                                                        {display.isSingleEvent ? (
-                                                            <div className={styles.sideMeta}>
-                                                                <strong>{display.title}</strong>
-                                                                {display.subtitle ? <span>{display.subtitle}</span> : null}
-                                                            </div>
-                                                        ) : (
-                                                            <>
-                                                                <div className={styles.teamBlock}>
-                                                                    <TeamCrest src={home?.image} fallback={home?.crest || "H"} alt={display.homeName} />
-                                                                    <span className={styles.teamName}>{display.homeName}</span>
-                                                                </div>
-                                                                <span className={styles.vsText}>vs</span>
-                                                                <div className={styles.teamBlock}>
-                                                                    <TeamCrest src={away?.image} fallback={away?.crest || "A"} alt={display.awayName} />
-                                                                    <span className={styles.teamName}>{display.awayName}</span>
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                    </div>
-
-                                                    <div className={styles.teamMeta}>
-                                                        <span>{kickoff.date}</span>
-                                                        <span>{kickoff.time}</span>
-                                                    </div>
-                                                </header>
-
-                                                <div className={styles.leagueMeta}>
-                                                    <LeagueCrest
-                                                        src={league?.image}
-                                                        fallback={league?.logo || "L"}
-                                                        alt={league?.name || "League"}
-                                                    />
-                                                    <span>{league?.name || "League"}</span>
-                                                </div>
-
-                                                {row.specialNotes && <p className={styles.eventNotes}>{row.specialNotes}</p>}
-
-                                                {row.bookingLimit && (
-                                                    <div className={styles.progressWrap}>
-                                                        <div className={styles.progressBar}>
-                                                            <div className={styles.progressFill} style={{ width: `${occupancy}%` }} />
-                                                        </div>
-                                                        <span className={styles.panelSubtle}>
-                                                            {row.confirmedBookings}/{row.bookingLimit} booked
-                                                            {spotsLeft !== null ? ` · ${Math.max(spotsLeft, 0)} left` : ""}
-                                                        </span>
-                                                    </div>
-                                                )}
-
-                                                <footer className={styles.eventFooter}>
-                                                    <Link href={`/matches/${row.match.id}`} className="btn-ghost">
-                                                        View Match
-                                                    </Link>
-                                                    <button
-                                                        className="btn-primary"
-                                                        onClick={() => {
-                                                            setBookingEventIdx(idx);
-                                                            setBookingOpen(true);
-                                                        }}
-                                                    >
-                                                        Book Spot
-                                                    </button>
-                                                </footer>
-                                            </article>
-                                        );
-                                    })}
-
-                                    {customEvents.length > 0 && (
-                                        <section className={styles.panel} style={{ gridColumn: "1 / -1" }}>
-                                            <h2 className={styles.panelTitle}>Custom Events</h2>
-                                            <div className={styles.overviewGrid}>
-                                                {customEvents.map((event) => (
-                                                    <article key={event.id} className={styles.postCard}>
-                                                        <header className={styles.eventTop}>
-                                                            <h3 className={styles.panelTitle}>{event.title}</h3>
-                                                            <span className={styles.panelSubtle}>
-                                                                {formatMatchDate(event.startsAt).date} · {formatMatchDate(event.startsAt).time}
-                                                            </span>
-                                                        </header>
-                                                        {event.imageUrl ? (
-                                                            <img
-                                                                src={normalizeImage(event.imageUrl)}
-                                                                alt={event.title}
-                                                                style={{ width: "100%", borderRadius: "10px", marginBottom: "10px", maxHeight: "180px", objectFit: "cover" }}
-                                                            />
-                                                        ) : null}
-                                                        {event.description ? <p className={styles.panelSubtle}>{event.description}</p> : null}
-                                                        <div className={styles.chipRow}>
-                                                            {event.eventTypeTags.map((tag) => (
-                                                                <span key={tag} className={styles.chip}>{tag}</span>
-                                                            ))}
-                                                        </div>
-                                                        {event.bookingNotes ? <p className={styles.ownerReply}>{event.bookingNotes}</p> : null}
-                                                    </article>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-                                </div>
-                            )}
-
                             {activeTab === "menu" && (
                                 <section className={styles.panel}>
                                     <h2 className={styles.panelTitle}>Food and Drinks</h2>
@@ -775,7 +651,6 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                                                 <button
                                                     className="btn-ghost"
                                                     onClick={() => {
-                                                        setActiveTab("events");
                                                         setBookingEventIdx(idx);
                                                         setBookingOpen(true);
                                                     }}
@@ -823,3 +698,4 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
             </AppShell>
     );
 }
+
