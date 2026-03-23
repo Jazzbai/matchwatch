@@ -198,7 +198,7 @@ export function BlogAdminPanel() {
   const loadPostDetail = React.useCallback(async (postId: string | null) => {
     if (!postId) {
       setPostDraft({ title: "", slug: "", excerpt: "", featuredImageUrl: "", featuredImageS3Key: "", status: "DRAFT", publishedAt: "", categoryIds: [] });
-      editor?.commands.setContent("", false);
+      editor?.commands.setContent("", { emitUpdate: false });
       return;
     }
 
@@ -214,7 +214,7 @@ export function BlogAdminPanel() {
       publishedAt: toDatetimeLocal(row.publishedAt),
       categoryIds: row.categoryIds || [],
     });
-    if (editor) editor.commands.setContent((row.contentJson as object) || row.contentHtml || "", false);
+    if (editor) editor.commands.setContent((row.contentJson as object) || row.contentHtml || "", { emitUpdate: false });
   }, [editor]);
 
   const reloadAll = React.useCallback(async () => {
@@ -241,7 +241,7 @@ export function BlogAdminPanel() {
   const beginNewPost = React.useCallback(() => {
     setSelectedPostId(null);
     setPostDraft({ title: "", slug: "", excerpt: "", featuredImageUrl: "", featuredImageS3Key: "", status: "DRAFT", publishedAt: "", categoryIds: [] });
-    editor?.commands.setContent("", false);
+    editor?.commands.setContent("", { emitUpdate: false });
   }, [editor]);
 
   const saveCategory = async (categoryId?: string) => {
