@@ -281,6 +281,7 @@ export interface AuthUser {
 
 export interface Match {
     id: string;
+    isFeatured?: boolean;
     eventFormat?: 'HEAD_TO_HEAD' | 'SINGLE_EVENT';
     eventTitle?: string | null;
     eventSubtitle?: string | null;

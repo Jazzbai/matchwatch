@@ -155,6 +155,7 @@ export const matches = pgTable('matches', {
     id: uuid('id').primaryKey().defaultRandom(),
     externalMatchId: varchar('external_match_id', { length: 50 }).unique(),
     leagueId: uuid('league_id').references(() => leagues.id),
+    isFeatured: boolean('is_featured').default(false).notNull(),
     eventFormat: matchEventFormatEnum('event_format').default('HEAD_TO_HEAD').notNull(),
     eventTitle: varchar('event_title', { length: 200 }),
     eventSubtitle: varchar('event_subtitle', { length: 200 }),

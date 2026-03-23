@@ -55,7 +55,7 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
             .leftJoin(sports, eq(leagues.sportId, sports.id))
             .leftJoin(teams, eq(matches.homeTeamId, teams.id))
             .where(whereClause)
-            .orderBy(orderBy)
+            .orderBy(desc(matches.isFeatured), orderBy)
             .limit(limit)
             .offset(offset),
 
@@ -100,6 +100,7 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
         .map((r) => ({
             id: r.match.id,
             leagueId: r.match.leagueId,
+            isFeatured: r.match.isFeatured,
             eventFormat: r.match.eventFormat,
             eventTitle: r.match.eventTitle,
             eventSubtitle: r.match.eventSubtitle,
@@ -229,7 +230,7 @@ matchRoutes.get('/upcoming', async (c) => {
             inArray(matches.status, ['SCHEDULED', 'TIMED']),
             ...(leagueId ? [eq(matches.leagueId, leagueId)] : []),
         ))
-        .orderBy(asc(matches.matchDateUtc))
+        .orderBy(desc(matches.isFeatured), asc(matches.matchDateUtc))
         .limit(100);
 
     const teamIds = new Set<string>();
@@ -250,6 +251,7 @@ matchRoutes.get('/upcoming', async (c) => {
         grouped[dateKey].push({
             id: row.match.id,
             leagueId: row.match.leagueId,
+            isFeatured: row.match.isFeatured,
             eventFormat: row.match.eventFormat,
             eventTitle: row.match.eventTitle,
             eventSubtitle: row.match.eventSubtitle,
@@ -300,6 +302,7 @@ matchRoutes.get('/:matchId', async (c) => {
 
     return c.json(apiResponse({
         ...row.match,
+        isFeatured: row.match.isFeatured,
         homeTeamName: row.match.homeTeamName || row.homeTeam?.name,
         awayTeamName: row.match.awayTeamName || awayTeam?.name,
         homeTeamCrestUrl: row.match.homeTeamCrestUrl || row.homeTeam?.crestUrl || null,

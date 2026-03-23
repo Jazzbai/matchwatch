@@ -311,6 +311,7 @@ type CustomEventDraft = {
 
 type MatchRow = {
   id: string;
+  isFeatured: boolean;
   eventFormat?: MatchEventFormat;
   eventTitle?: string | null;
   eventSubtitle?: string | null;
@@ -775,6 +776,7 @@ export default function JazzbaiSuperAdminPage() {
   const [matchDrafts, setMatchDrafts] = React.useState<Record<string, Partial<MatchRow>>>({});
   const [newMatch, setNewMatch] = React.useState({
     eventFormat: "HEAD_TO_HEAD" as MatchEventFormat,
+    isFeatured: false,
     eventTitle: "",
     eventSubtitle: "",
     leagueId: "",
@@ -3083,6 +3085,14 @@ export default function JazzbaiSuperAdminPage() {
                     <option key={status} value={status}>{status}</option>
                   ))}
                 </select>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px", fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+                  <input
+                    type="checkbox"
+                    checked={newMatch.isFeatured}
+                    onChange={(e) => setNewMatch((prev) => ({ ...prev, isFeatured: e.target.checked }))}
+                  />
+                  Featured match
+                </label>
                 <button
                   style={smallBtn("primary", submittingAction === "create-match")}
                   disabled={submittingAction === "create-match"}
@@ -3101,11 +3111,13 @@ export default function JazzbaiSuperAdminPage() {
                         awayTeamName: newMatch.eventFormat === "HEAD_TO_HEAD" ? newMatch.awayTeamName : null,
                         matchDateUtc: new Date(newMatch.matchDateUtc).toISOString(),
                         status: newMatch.status,
+                        isFeatured: newMatch.isFeatured,
                         venueName: newMatch.venueName || null,
                       }),
                     });
                     setNewMatch({
                       eventFormat: "HEAD_TO_HEAD",
+                      isFeatured: false,
                       eventTitle: "",
                       eventSubtitle: "",
                       leagueId: "",
@@ -3144,6 +3156,7 @@ export default function JazzbaiSuperAdminPage() {
                       <th style={thStyle}>Away</th>
                       <th style={thStyle}>Kickoff</th>
                       <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Featured</th>
                       <th style={thStyle}>Venue</th>
                       <th style={thStyle}>Actions</th>
                     </tr>
@@ -3162,6 +3175,7 @@ export default function JazzbaiSuperAdminPage() {
                         awayTeamName: row.awayTeamName,
                         matchDateUtc: toDatetimeLocal(row.matchDateUtc),
                         status: row.status,
+                        isFeatured: row.isFeatured,
                         venueName: row.venueName || "",
                       };
                       return (
@@ -3278,6 +3292,16 @@ export default function JazzbaiSuperAdminPage() {
                             </select>
                           </td>
                           <td style={tdStyle}>
+                            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(draft.isFeatured)}
+                                onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isFeatured: e.target.checked } }))}
+                              />
+                              Featured
+                            </label>
+                          </td>
+                          <td style={tdStyle}>
                             <SearchPicker
                               placeholder="Stadium"
                               value={String(draft.venueName ?? "")}
@@ -3322,6 +3346,7 @@ export default function JazzbaiSuperAdminPage() {
                                       awayTeamName: draft.eventFormat === "HEAD_TO_HEAD" ? draft.awayTeamName : null,
                                       matchDateUtc: draft.matchDateUtc ? new Date(String(draft.matchDateUtc)).toISOString() : undefined,
                                       status: draft.status,
+                                      isFeatured: Boolean(draft.isFeatured),
                                       venueName: draft.venueName || null,
                                     }),
                                   });

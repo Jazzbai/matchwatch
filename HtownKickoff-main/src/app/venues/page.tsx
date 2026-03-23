@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, Star, MessageSquare, Type, Coins, CircleDollarSign, Gem, Crown } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { MapListToggle } from "../../components/MapListToggle";
+import { PaginationControls } from "../../components/PaginationControls";
 import { AMENITY_LABELS } from "../../lib/data";
 import { useData, type PriceRange } from "../../lib/data-provider";
+import { paginateItems, parsePageParam } from "../../lib/pagination";
 
 const PRICE_OPTIONS: { value: PriceRange | "all"; label: string; icon: React.ReactNode }[] = [
     { value: "all", label: "All", icon: null },
@@ -16,14 +19,20 @@ const PRICE_OPTIONS: { value: PriceRange | "all"; label: string; icon: React.Rea
     { value: "LUXURY", label: "Luxury", icon: <Crown size={14} /> },
 ];
 
-export default function VenuesPage() {
+function VenuesPageContent() {
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
     const [activePrice, setActivePrice] = useState<PriceRange | "all">("all");
     const [activeCity, setActiveCity] = useState("all");
     const [activeAmenity, setActiveAmenity] = useState("all");
     const [sortBy, setSortBy] = useState<"rating" | "reviews" | "name">("rating");
     const { venues: VENUES } = useData();
-    const cityOptions = React.useMemo(
+    const requestedPage = parsePageParam(searchParams.get("page"));
+    const syncArchivePageRef = useRef<(nextPage: number) => void>(() => {});
+    const hasInitializedPageReset = useRef(false);
+    const cityOptions = useMemo(
         () => Array.from(new Set(
             VENUES
                 .filter((venue) => venue.isActive)
@@ -33,7 +42,18 @@ export default function VenuesPage() {
         [VENUES],
     );
 
-    const filtered = VENUES
+    syncArchivePageRef.current = (nextPage: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (nextPage <= 1) {
+            params.delete("page");
+        } else {
+            params.set("page", String(nextPage));
+        }
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    };
+
+    const filtered = useMemo(() => VENUES
         .filter((v) => {
             const searchOK =
                 searchQuery === "" ||
@@ -50,7 +70,27 @@ export default function VenuesPage() {
             if (sortBy === "rating") return b.rating - a.rating;
             if (sortBy === "reviews") return b.reviewCount - a.reviewCount;
             return a.name.localeCompare(b.name);
-        });
+        }), [VENUES, searchQuery, activePrice, activeCity, activeAmenity, sortBy]);
+
+    const { currentPage, totalPages, pageItems: paginatedVenues } = useMemo(
+        () => paginateItems(filtered, requestedPage),
+        [filtered, requestedPage],
+    );
+
+    useEffect(() => {
+        if (requestedPage !== currentPage) {
+            syncArchivePageRef.current(currentPage);
+        }
+    }, [requestedPage, currentPage]);
+
+    useEffect(() => {
+        if (!hasInitializedPageReset.current) {
+            hasInitializedPageReset.current = true;
+            return;
+        }
+
+        syncArchivePageRef.current(1);
+    }, [searchQuery, activePrice, activeCity, activeAmenity, sortBy]);
 
 
 
@@ -251,7 +291,7 @@ export default function VenuesPage() {
                     </div>
                 ) : (
                     <MapListToggle
-                        venues={filtered.map((v) => ({
+                        venues={paginatedVenues.map((v) => ({
                             id: v.id,
                             slug: v.slug,
                             lat: v.lat,
@@ -271,15 +311,16 @@ export default function VenuesPage() {
                             nextEvent: `${v.upcomingEventsCount} upcoming events`,
                         }))}
                         onVenueClick={(index) => {
-                            const venue = filtered[index];
+                            const venue = paginatedVenues[index];
                             if (venue) window.location.href = `/venues/${venue.slug}`;
                         }}
                         onBookNow={(index) => {
-                            const venue = filtered[index];
+                            const venue = paginatedVenues[index];
                             if (venue) window.location.href = `/venues/${venue.slug}`;
                         }}
                     />
                 )}
+                <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={(page) => syncArchivePageRef.current(page)} />
             </section>
 
             {/* CTA Banner */}
@@ -304,5 +345,13 @@ export default function VenuesPage() {
                 </div>
             </section>
         </AppShell>
+    );
+}
+
+export default function VenuesPage() {
+    return (
+        <React.Suspense fallback={<AppShell><section style={{ minHeight: "50vh" }} /></AppShell>}>
+            <VenuesPageContent />
+        </React.Suspense>
     );
 }

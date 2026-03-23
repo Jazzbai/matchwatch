@@ -43,6 +43,13 @@
                         "when":  1773964800000,
                         "tag":  "0005_multisport_blog_cms",
                         "breakpoints":  true
+                    },
+                    {
+                        "idx":  6,
+                        "version":  "7",
+                        "when":  1774224000000,
+                        "tag":  "0006_featured_matches",
+                        "breakpoints":  true
                     }
                 ]
 }

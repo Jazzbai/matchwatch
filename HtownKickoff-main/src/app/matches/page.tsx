@@ -2,10 +2,13 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, CircleDot, Globe, Timer, Trophy, X } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { MatchCard } from "../../components/MatchCard";
+import { PaginationControls } from "../../components/PaginationControls";
 import { useData } from "../../lib/data-provider";
+import { paginateItems, parsePageParam } from "../../lib/pagination";
 
 function asTimestamp(value: string) {
   const ts = new Date(value).getTime();
@@ -52,7 +55,26 @@ function toMatchRowKey(match: {
   return `${match.id}:${match.leagueId}:${match.homeTeamId || "single"}:${match.awayTeamId || "single"}:${toUtcDateKey(match.matchDateUTC)}`;
 }
 
-export default function MatchesPage() {
+function compareMatchesWithFeaturedPriority(a: { isFeatured: boolean; status: string; matchDateUTC: string }, b: { isFeatured: boolean; status: string; matchDateUTC: string }) {
+  if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+
+  const aLive = a.status === "IN_PLAY" || a.status === "PAUSED";
+  const bLive = b.status === "IN_PLAY" || b.status === "PAUSED";
+  if (aLive && !bLive) return -1;
+  if (!aLive && bLive) return 1;
+
+  const aFinished = a.status === "FINISHED";
+  const bFinished = b.status === "FINISHED";
+  const ta = asTimestamp(a.matchDateUTC);
+  const tb = asTimestamp(b.matchDateUTC);
+  if (aFinished && bFinished) return tb - ta;
+  return ta - tb;
+}
+
+function MatchesPageContent() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeStatus, setActiveStatus] = React.useState<"all" | "live" | "upcoming" | "finished">("upcoming");
   const [includePast, setIncludePast] = React.useState(false);
   const [onlyWithHosting, setOnlyWithHosting] = React.useState(false);
@@ -63,6 +85,20 @@ export default function MatchesPage() {
   const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
   const [selectedTeamIds, setSelectedTeamIds] = React.useState<string[]>([]);
   const { matches: MATCHES, leagues, sports, teams, venueEvents, getTeam, getLeague } = useData();
+  const requestedPage = parsePageParam(searchParams.get("page"));
+  const syncArchivePageRef = React.useRef<(nextPage: number) => void>(() => {});
+  const hasInitializedPageReset = React.useRef(false);
+
+  syncArchivePageRef.current = (nextPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextPage <= 1) {
+      params.delete("page");
+    } else {
+      params.set("page", String(nextPage));
+    }
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  };
 
   React.useEffect(() => {
     if (!includePast && activeStatus === "finished") {
@@ -217,20 +253,28 @@ export default function MatchesPage() {
       return toUtcDateKey(match.matchDateUTC) === selectedDateKey;
     });
 
-    return rows.sort((a, b) => {
-      const aLive = a.status === "IN_PLAY" || a.status === "PAUSED";
-      const bLive = b.status === "IN_PLAY" || b.status === "PAUSED";
-      if (aLive && !bLive) return -1;
-      if (!aLive && bLive) return 1;
-
-      const aFinished = a.status === "FINISHED";
-      const bFinished = b.status === "FINISHED";
-      const ta = asTimestamp(a.matchDateUTC);
-      const tb = asTimestamp(b.matchDateUTC);
-      if (aFinished && bFinished) return tb - ta;
-      return ta - tb;
-    });
+    return [...rows].sort(compareMatchesWithFeaturedPriority);
   }, [rowsBeforeDate, selectedDateKey]);
+
+  const { currentPage, totalPages, pageItems: paginatedMatches } = React.useMemo(
+    () => paginateItems(filtered, requestedPage),
+    [filtered, requestedPage],
+  );
+
+  React.useEffect(() => {
+    if (requestedPage !== currentPage) {
+      syncArchivePageRef.current(currentPage);
+    }
+  }, [requestedPage, currentPage]);
+
+  React.useEffect(() => {
+    if (!hasInitializedPageReset.current) {
+      hasInitializedPageReset.current = true;
+      return;
+    }
+
+    syncArchivePageRef.current(1);
+  }, [activeStatus, includePast, onlyWithHosting, selectedSportId, selectedLeagueId, selectedCountry, selectedDateKey, selectedTeamIds]);
 
   const liveCount = MATCHES.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED").length;
 
@@ -520,8 +564,9 @@ export default function MatchesPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {filtered.map((match, i) => {
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {paginatedMatches.map((match, i) => {
                 const league = getLeague(match.leagueId);
                 const isSingleEvent = match.eventFormat === "SINGLE_EVENT";
                 const home = match.homeTeamId ? getTeam(match.homeTeamId) : undefined;
@@ -568,7 +613,9 @@ export default function MatchesPage() {
                   </Link>
                 );
               })}
-            </div>
+              </div>
+              <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={(page) => syncArchivePageRef.current(page)} />
+            </>
           )}
         </section>
 
@@ -700,5 +747,13 @@ export default function MatchesPage() {
           </div>
         )}
       </AppShell>
+  );
+}
+
+export default function MatchesPage() {
+  return (
+    <React.Suspense fallback={<AppShell><section style={{ minHeight: "50vh" }} /></AppShell>}>
+      <MatchesPageContent />
+    </React.Suspense>
   );
 }

@@ -339,6 +339,7 @@ const updateCustomEventSchema = z.object({
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
 const createMatchSchema = z.object({
+    isFeatured: z.boolean().default(false),
     eventFormat: z.enum(['HEAD_TO_HEAD', 'SINGLE_EVENT']).default('HEAD_TO_HEAD'),
     eventTitle: z.string().max(200).nullable().optional(),
     eventSubtitle: z.string().max(200).nullable().optional(),
@@ -375,6 +376,7 @@ const createMatchSchema = z.object({
 });
 
 const updateMatchSchema = z.object({
+    isFeatured: z.boolean().optional(),
     eventFormat: z.enum(['HEAD_TO_HEAD', 'SINGLE_EVENT']).optional(),
     eventTitle: z.string().max(200).nullable().optional(),
     eventSubtitle: z.string().max(200).nullable().optional(),
@@ -600,6 +602,7 @@ async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.inf
 
     return {
         values: {
+            isFeatured: input.isFeatured,
             eventFormat,
             eventTitle: input.eventTitle === undefined ? undefined : (input.eventTitle?.trim() || null),
             eventSubtitle: input.eventSubtitle === undefined ? undefined : (input.eventSubtitle?.trim() || null),
@@ -2251,6 +2254,7 @@ superAdminRoutes.get('/matches', async (c) => {
             id: matches.id,
             leagueId: matches.leagueId,
             leagueName: leagues.name,
+            isFeatured: matches.isFeatured,
             eventFormat: matches.eventFormat,
             eventTitle: matches.eventTitle,
             eventSubtitle: matches.eventSubtitle,
@@ -2303,6 +2307,7 @@ superAdminRoutes.post('/matches', async (c) => {
     }
 
     const [created] = await db.insert(matches).values({
+        isFeatured: normalized.values.isFeatured ?? false,
         eventFormat: normalized.values.eventFormat || 'HEAD_TO_HEAD',
         eventTitle: normalized.values.eventTitle ?? null,
         eventSubtitle: normalized.values.eventSubtitle ?? null,

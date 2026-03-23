@@ -99,6 +99,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 type ApiMatch = {
     id: string;
+    isFeatured?: boolean | null;
     eventFormat?: "HEAD_TO_HEAD" | "SINGLE_EVENT" | null;
     eventTitle?: string | null;
     eventSubtitle?: string | null;
@@ -630,6 +631,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             const dateUtc = m.matchDateUtc || new Date().toISOString();
             return {
                 id: m.id,
+                isFeatured: Boolean(m.isFeatured),
                 homeTeamId: eventFormat === "SINGLE_EVENT" ? undefined : homeTeamId,
                 awayTeamId: eventFormat === "SINGLE_EVENT" ? undefined : awayTeamId,
                 homeTeamName: m.homeTeamName || undefined,
@@ -778,6 +780,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 if (eventMatchId && !mappedMatches.find((m) => String(m.id).trim().toLowerCase() === eventMatchId.toLowerCase())) {
                     mappedMatches.push({
                         id: eventMatchId,
+                        isFeatured: Boolean(match?.isFeatured),
                         homeTeamId: eventFormat === "SINGLE_EVENT" ? undefined : homeTeamId,
                         awayTeamId: eventFormat === "SINGLE_EVENT" ? undefined : awayTeamId,
                         homeTeamName: match?.homeTeamName || undefined,
