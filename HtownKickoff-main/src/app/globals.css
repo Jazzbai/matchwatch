@@ -424,8 +424,15 @@ body {
 }
 
 .venue-map-pin {
+  position: relative;
+  display: block;
+  width: 28px !important;
+  height: 28px !important;
   background: transparent;
   border: none;
+  margin: 0;
+  overflow: visible;
+  pointer-events: auto;
 }
 
 .venue-map-pin__pulse,
