@@ -44,6 +44,20 @@ function getTileConfig(theme: string | undefined) {
     };
 }
 
+function createVenuePulseIcon(L: any) {
+    return L.divIcon({
+        className: "venue-map-pin",
+        html: `
+            <span class="venue-map-pin__pulse"></span>
+            <span class="venue-map-pin__ring"></span>
+            <span class="venue-map-pin__dot"></span>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -16],
+    });
+}
+
 export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560 }: MapListToggleProps) {
     const { resolvedTheme } = useTheme();
     const [mobileView, setMobileView] = useState<"cards" | "map">("cards");
@@ -61,7 +75,10 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
             .filter((venue) => Number.isFinite(venue.lat) && Number.isFinite(venue.lng) && Math.abs(venue.lat) > 0 && Math.abs(venue.lng) > 0),
         [venues],
     );
-    const effectiveMapHeight = isMobile ? Math.min(mapHeight, 420) : mapHeight;
+    const stickyTop = 96;
+    const effectiveMapHeight: number | string = isMobile
+        ? Math.min(mapHeight, 420)
+        : `min(${mapHeight}px, calc(100vh - ${stickyTop + 24}px))`;
 
     useEffect(() => {
         const media = window.matchMedia("(max-width: 767px)");
@@ -151,15 +168,9 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
 
         const points: [number, number][] = [];
 
-        mappedVenues.forEach((venue, index) => {
+        mappedVenues.forEach((venue) => {
             const marker = L.marker([venue.lat, venue.lng], {
-                icon: L.divIcon({
-                    className: "venue-map-pin",
-                    html: `<span>${index + 1}</span>`,
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 36],
-                    popupAnchor: [0, -28],
-                }),
+                icon: createVenuePulseIcon(L),
             }).addTo(layer);
 
             const image = escapeHtml(venue.coverImage || "/venue-hero.webp");
@@ -220,7 +231,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
     );
 
     const mapPane = (
-        <div style={{ minHeight: effectiveMapHeight, borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", background: "var(--secondary)" }}>
+        <div style={{ minHeight: effectiveMapHeight, height: effectiveMapHeight, borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", background: "var(--secondary)" }}>
             <div ref={mapContainerRef} style={{ width: "100%", height: effectiveMapHeight }} />
         </div>
     );
@@ -284,8 +295,9 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                 <div
                     style={{
                         display: isMobile && mobileView !== "map" ? "none" : "block",
+                        alignSelf: "start",
                         position: isMobile ? "relative" : "sticky",
-                        top: isMobile ? "auto" : 96,
+                        top: isMobile ? "auto" : stickyTop,
                     }}
                 >
                     {mapPane}

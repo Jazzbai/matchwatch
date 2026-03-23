@@ -216,6 +216,21 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes venue-pin-pulse {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+}
+
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
@@ -406,6 +421,43 @@ body {
 .btn-ghost:hover {
   background-color: var(--secondary);
   color: var(--foreground);
+}
+
+.venue-map-pin {
+  background: transparent;
+  border: none;
+}
+
+.venue-map-pin__pulse,
+.venue-map-pin__ring,
+.venue-map-pin__dot {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+}
+
+.venue-map-pin__pulse {
+  width: 28px;
+  height: 28px;
+  background: color-mix(in oklch, var(--primary) 28%, transparent);
+  animation: venue-pin-pulse 1.8s ease-out infinite;
+}
+
+.venue-map-pin__ring {
+  width: 18px;
+  height: 18px;
+  background: color-mix(in oklch, var(--card) 72%, transparent);
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 12%, transparent),
+    0 4px 16px color-mix(in oklch, var(--primary) 28%, transparent);
+}
+
+.venue-map-pin__dot {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--primary) 18%, transparent);
 }
 
 /* Typography */
