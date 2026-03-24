@@ -231,6 +231,10 @@
   background: var(--primary);
 }
 
+.tabButtonActive:hover {
+  color: var(--primary-foreground);
+}
+
 .contentGrid {
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.95fr);

@@ -26,6 +26,16 @@ const VENUE_MAX_PAGES = 4;
 const MATCH_MAX_PAGES = 20;
 const BOOKING_FETCH_LIMIT = 50;
 const FLAG_CDN_BASE = "https://flagcdn.com";
+const HOME_PRIORITY_SOCCER_LEAGUE_MATCHERS = [
+    (name: string) => name === "mls" || name.includes("major league soccer"),
+    (name: string) => name.includes("premier league"),
+    (name: string) => name.includes("la liga"),
+    (name: string) => name.includes("bundesliga"),
+    (name: string) => name.includes("serie a"),
+    (name: string) => name.includes("ligue 1"),
+    (name: string) => name.includes("champions league") || name.includes("ucl"),
+    (name: string) => name.includes("fifa european qualifiers") || name.includes("wc-qualifiers"),
+];
 
 type ApiMeta = {
     page: number;
@@ -37,6 +47,22 @@ type ApiMeta = {
 type ApiEnvelope<T> = {
     data: T | null;
     meta?: ApiMeta;
+};
+
+type ApiMatchFacets = {
+    sports: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        shortName?: string | null;
+    }>;
+    leagues: Array<{
+        id: string;
+        sportId?: string | null;
+        name: string;
+        shortName?: string | null;
+        logoUrl?: string | null;
+    }>;
 };
 
 interface DataContextType {
@@ -465,6 +491,39 @@ async function safeFetchPaginated<T>(
     return rows;
 }
 
+async function fetchPrioritySoccerMatches(): Promise<{ matches: ApiMatch[]; facets: ApiMatchFacets | null }> {
+    const facets = await safeFetch<ApiMatchFacets>("/matches/facets");
+    if (!facets) {
+        return { matches: [], facets: null };
+    }
+
+    const targetLeagues = facets.leagues.filter((league) => {
+        const candidates = [league.name, league.shortName]
+            .map((value) => sanitizeLegalText(value || "").trim().toLowerCase())
+            .filter(Boolean);
+        return HOME_PRIORITY_SOCCER_LEAGUE_MATCHERS.some((matcher) => candidates.some((candidate) => matcher(candidate)));
+    });
+
+    if (targetLeagues.length === 0) {
+        return { matches: [], facets };
+    }
+
+    const matchGroups = await Promise.all(
+        targetLeagues.map((league) =>
+            safeFetchPaginated<ApiMatch>(`/matches?sort=date_asc&upcoming_only=true&league_id=${league.id}`, MATCH_FETCH_LIMIT, 1),
+        ),
+    );
+
+    const merged = new Map<string, ApiMatch>();
+    for (const rows of matchGroups) {
+        for (const match of rows || []) {
+            merged.set(match.id, match);
+        }
+    }
+
+    return { matches: Array.from(merged.values()), facets };
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
     const [matches, setMatches] = useState<Match[]>([]);
     const [venues, setVenues] = useState<Venue[]>([]);
@@ -491,10 +550,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
 
         const hasToken = typeof window !== "undefined" && Boolean(localStorage.getItem("accessToken"));
-        const [apiMatches, apiVenues, apiBookings] = await Promise.all([
+        const [apiMatches, apiVenues, apiBookings, prioritySoccerPayload] = await Promise.all([
             safeFetchPaginated<ApiMatch>("/matches?sort=date_asc", MATCH_FETCH_LIMIT, MATCH_MAX_PAGES),
             safeFetchPaginated<any>("/venues?sort=featured", VENUE_FETCH_LIMIT, VENUE_MAX_PAGES),
             hasToken ? safeFetch<any[]>(`/bookings?page=1&limit=${BOOKING_FETCH_LIMIT}`) : Promise.resolve([] as any[]),
+            fetchPrioritySoccerMatches(),
         ]);
 
         if (!apiMatches || !apiVenues) {
@@ -502,6 +562,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
             return;
         }
+
+        const mergedApiMatchMap = new Map<string, ApiMatch>();
+        for (const match of apiMatches) {
+            mergedApiMatchMap.set(match.id, match);
+        }
+        for (const match of prioritySoccerPayload.matches) {
+            mergedApiMatchMap.set(match.id, match);
+        }
+        const allApiMatches = Array.from(mergedApiMatchMap.values()).sort((a, b) => {
+            const aTs = new Date(a.matchDateUtc || "").getTime();
+            const bTs = new Date(b.matchDateUtc || "").getTime();
+            return aTs - bTs;
+        });
 
         const teamMap = new Map<string, Team>();
         const leagueMap = new Map<string, League>();
@@ -571,6 +644,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
             });
         };
 
+        for (const sport of prioritySoccerPayload.facets?.sports || []) {
+            upsertSport({
+                id: sport.id,
+                name: sport.name,
+                slug: sport.slug,
+                shortName: sport.shortName,
+            });
+        }
+
+        for (const league of prioritySoccerPayload.facets?.leagues || []) {
+            upsertLeague({
+                id: league.id,
+                sportId: league.sportId || undefined,
+                name: league.name,
+                shortName: league.shortName,
+                logoUrl: league.logoUrl,
+            });
+        }
+
         const upsertTeam = (
             teamId: string,
             teamName: string,
@@ -600,7 +692,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             });
         };
 
-        const mappedMatches: Match[] = apiMatches.map((m) => {
+        const mappedMatches: Match[] = allApiMatches.map((m) => {
             const homeTeamId = m.homeTeamId || slugify(m.homeTeamName || `home-${m.id}`);
             const awayTeamId = m.awayTeamId || slugify(m.awayTeamName || `away-${m.id}`);
             const leagueId = m.leagueId || m.league?.id || "unknown-league";
