@@ -34,6 +34,7 @@ type SyncResult = {
     errors: number;
     teamsUpserted: number;
     skipped?: boolean;
+    restricted?: boolean;
 };
 
 type MatchSyncRunOptions = {
@@ -668,6 +669,10 @@ async function syncLeagueFromFootballData(league: LeagueRow, apiKey: string): Pr
         }
     } catch (err) {
         result.errors += 1;
+        const status = typeof err === 'object' && err !== null && 'status' in err ? Number((err as { status?: number }).status) : null;
+        if (status === 401 || status === 403) {
+            result.restricted = true;
+        }
         logger.error({ league: league.name, code, err }, 'Failed syncing league from Football-Data');
     }
 
@@ -819,6 +824,17 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
             result = await syncLeagueFromFootballData(league, footballDataApiKey);
         } else {
             result = await syncLeagueFromTheSportsDb(league);
+        }
+
+        if (
+            providerUsed === 'FOOTBALL_DATA'
+            && result.restricted
+            && apiFootballApiKey
+            && !THE_SPORTS_DB_PRIORITY_LEAGUE_CODES.has(externalCode)
+        ) {
+            logger.warn({ league: league.name, externalCode }, 'Football-Data access restricted, falling back to API-Football');
+            providerUsed = 'API_FOOTBALL';
+            result = await syncLeagueFromApiFootball(league, apiFootballApiKey);
         }
 
         const durationMs = Date.now() - startedAt;
