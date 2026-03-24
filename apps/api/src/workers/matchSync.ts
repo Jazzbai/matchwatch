@@ -497,7 +497,7 @@ async function fetchJsonWithRetry<T>(url: string, headers: Record<string, string
 async function fetchFootballDataMatches(competitionCode: string, apiKey: string): Promise<FootballDataMatch[]> {
     const now = new Date();
     const dateFrom = now.toISOString().split('T')[0];
-    const dateTo = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dateTo = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const url = `${FOOTBALL_DATA_BASE}/competitions/${competitionCode}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
 
     logger.info({ competitionCode, dateFrom, dateTo }, 'Fetching matches from Football-Data');
@@ -689,7 +689,7 @@ async function syncLeagueFromApiFootball(league: LeagueRow, apiKey: string): Pro
     const now = new Date();
     const dateFrom = now.toISOString().split('T')[0];
     const externalCode = (league.externalId || '').trim().toUpperCase();
-    const lookaheadDays = externalCode === 'INTL' ? 90 : 14;
+    const lookaheadDays = externalCode === 'INTL' ? 90 : FOOTBALL_DATA_SUPPORTED_CODES.has(externalCode) ? 30 : 14;
     const dateTo = new Date(now.getTime() + lookaheadDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const fixtures = await fetchApiFootball<ApiFootballFixturesResponse>('/fixtures', {
         league: resolved.leagueId,

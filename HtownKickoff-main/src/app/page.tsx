@@ -201,13 +201,22 @@ export default function HomePage() {
       return kickoffTs >= nowTs && kickoffTs < weekAheadTs;
     });
   }, [hydrated, nowTs, upcomingMatches]);
-  const prioritySoccerMatches = useMemo(
+  const prioritySoccerUpcomingMatches = useMemo(
     () =>
-      thisWeekMatches.filter((match) => {
+      upcomingMatches.filter((match) => {
         const league = getLeague(match.leagueId);
         return Boolean(getPrioritySoccerLeagueKey(league));
       }),
-    [thisWeekMatches, getLeague],
+    [upcomingMatches, getLeague],
+  );
+  const prioritySoccerMatches = useMemo(
+    () =>
+      prioritySoccerUpcomingMatches.filter((match) => {
+        if (!hydrated || nowTs === null) return true;
+        const kickoffTs = new Date(match.matchDateUTC).getTime();
+        return kickoffTs < nowTs + 30 * 24 * 60 * 60 * 1000;
+      }),
+    [prioritySoccerUpcomingMatches, hydrated, nowTs],
   );
   const soccerLeagueOptions = useMemo(
     () =>
@@ -246,11 +255,11 @@ export default function HomePage() {
   );
   const otherSportsMatches = useMemo(
     () =>
-      thisWeekMatches.filter((match) => {
+      upcomingMatches.filter((match) => {
         const league = getLeague(match.leagueId);
         return !isSoccerLeague(league);
       }),
-    [thisWeekMatches, getLeague],
+    [upcomingMatches, getLeague],
   );
   const otherSportsOptions = useMemo(
     () => {
@@ -541,7 +550,7 @@ export default function HomePage() {
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 48, gap: 16 }}>
             <div>
               <div style={{ color: "var(--primary)", fontWeight: 700, letterSpacing: "0.16em", fontSize: 12, marginBottom: 8, textTransform: "uppercase" }}>SOCCER ONLY</div>
-              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>TOP LEAGUES THIS WEEK</h2>
+              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>TOP SOCCER MATCHES</h2>
             </div>
             <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
               <button style={{
@@ -575,7 +584,7 @@ export default function HomePage() {
                 </div>
                 <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Soccer Matches Scheduled</h3>
                 <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 440 }}>
-                  No MLS, Premier League, La Liga, Bundesliga, Serie A, or Ligue 1 matches are currently scheduled in the next seven days for this filter.
+                  No MLS, Premier League, La Liga, Bundesliga, Serie A, or Ligue 1 matches are currently available in the upcoming schedule for this filter.
                 </p>
               </div>
             )}
@@ -658,7 +667,7 @@ export default function HomePage() {
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 40, gap: 16 }}>
             <div>
               <div style={{ color: "var(--primary)", fontWeight: 700, letterSpacing: "0.16em", fontSize: 12, marginBottom: 8, textTransform: "uppercase" }}>OTHER SPORTS</div>
-              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>THIS WEEK BEYOND SOCCER</h2>
+              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>UPCOMING OTHER SPORTS</h2>
             </div>
             <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
               <button style={{
@@ -692,7 +701,7 @@ export default function HomePage() {
                 </div>
                 <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Other Sports Scheduled</h3>
                 <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 420 }}>
-                  There are no upcoming non-soccer matches scheduled in the next seven days for this filter.
+                  There are no upcoming non-soccer matches available for this filter.
                 </p>
               </div>
             )}
