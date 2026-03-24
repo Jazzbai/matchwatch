@@ -54,6 +54,8 @@ const ESPN_SCOREBOARD_PATHS: Record<string, { sport: string; league: string }> =
     MLB: { sport: 'baseball', league: 'mlb' },
     NBA: { sport: 'basketball', league: 'nba' },
     NHL: { sport: 'hockey', league: 'nhl' },
+    MLS: { sport: 'soccer', league: 'usa.1' },
+    LMX: { sport: 'soccer', league: 'mex.1' },
 };
 
 type MatchSyncProvider = 'FOOTBALL_DATA' | 'API_FOOTBALL' | 'THE_SPORTS_DB' | 'ESPN';
@@ -766,7 +768,12 @@ async function syncLeagueFromEspn(league: LeagueRow, mode: SyncMode = 'UPCOMING'
     const start = new Date(now);
     start.setUTCDate(start.getUTCDate() + (mode === 'LIVE' ? -1 : 0));
     const end = new Date(now);
-    end.setUTCDate(end.getUTCDate() + (mode === 'LIVE' ? 1 : 14));
+    const lookaheadDays = mode === 'LIVE'
+        ? 1
+        : externalCode === 'MLS' || externalCode === 'LMX'
+            ? 30
+            : 14;
+    end.setUTCDate(end.getUTCDate() + lookaheadDays);
 
     const eventsById = new Map<string, EspnEvent>();
     for (const date of buildDateSeries(start, end)) {
@@ -1259,26 +1266,11 @@ async function syncLeagueWithResolvedProvider(
         };
     }
 
-    if (externalCode === 'MLS' && apiFootballApiKey) {
+    if (externalCode === 'MLS') {
         await cleanupLegacyTheSportsDbLeagueData(league);
         return {
-            providerUsed: 'API_FOOTBALL' as MatchSyncProvider,
-            result: await syncLeagueFromApiFootball(league, apiFootballApiKey, mode),
-        };
-    }
-
-    if (externalCode === 'MLS' && footballDataApiKey) {
-        await cleanupLegacyTheSportsDbLeagueData(league);
-        const result = await syncLeagueFromFootballData(league, footballDataApiKey, mode);
-        if (result.restricted && apiFootballApiKey) {
-            return {
-                providerUsed: 'API_FOOTBALL' as MatchSyncProvider,
-                result: await syncLeagueFromApiFootball(league, apiFootballApiKey, mode),
-            };
-        }
-        return {
-            providerUsed: 'FOOTBALL_DATA' as MatchSyncProvider,
-            result,
+            providerUsed: 'ESPN' as MatchSyncProvider,
+            result: await syncLeagueFromEspn(league, mode),
         };
     }
 
