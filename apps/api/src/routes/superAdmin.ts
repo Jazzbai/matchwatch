@@ -35,6 +35,8 @@ import {
 import { apiError, apiResponse, generateUniqueSlug, paginationMeta, paginationOffset } from '../lib/utils';
 import { hashPassword } from '../lib/auth';
 import { authRateLimit } from '../middleware';
+import { createPresignedUpload as createStoragePresignedUpload, deleteStorageObjects, STORAGE_MAX_FILE_SIZE } from '../lib/storage';
+import { presignedUploadSchema } from '@matchwatch/shared';
 
 declare module 'hono' {
     interface ContextVariableMap {
@@ -930,6 +932,51 @@ function metadataRecord(metadata: unknown): Record<string, unknown> {
     return metadata as Record<string, unknown>;
 }
 
+const deleteUploadSchema = z.object({
+    keys: z.array(z.string().min(1).max(500)).min(1).max(20),
+});
+
+function normalizeStorageKey(value: unknown) {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function normalizeStorageKeys(values: unknown) {
+    if (!Array.isArray(values)) return [] as string[];
+    return values
+        .map((value) => normalizeStorageKey(value))
+        .filter((value): value is string => Boolean(value));
+}
+
+async function cleanupRemovedVenueMedia(params: {
+    previousCoverKey?: string | null;
+    previousGalleryKeys?: string[] | null;
+    nextCoverKey?: string | null;
+    nextGalleryKeys?: string[] | null;
+}) {
+    const removedKeys = new Set<string>();
+    const previousCoverKey = normalizeStorageKey(params.previousCoverKey);
+    const nextCoverKey = normalizeStorageKey(params.nextCoverKey);
+
+    if (previousCoverKey && previousCoverKey !== nextCoverKey) {
+        removedKeys.add(previousCoverKey);
+    }
+
+    const nextGalleryKeySet = new Set(normalizeStorageKeys(params.nextGalleryKeys));
+    for (const key of normalizeStorageKeys(params.previousGalleryKeys)) {
+        if (!nextGalleryKeySet.has(key)) {
+            removedKeys.add(key);
+        }
+    }
+
+    if (removedKeys.size === 0) return;
+
+    try {
+        await deleteStorageObjects(Array.from(removedKeys));
+    } catch {
+        // Best effort cleanup only. Keep DB update successful even if object deletion fails.
+    }
+}
+
 function mapVenueRow(row: {
     id: string;
     ownerId: string;
@@ -1132,6 +1179,47 @@ superAdminRoutes.get('/session', async (c) => {
 });
 
 superAdminRoutes.use('*', superAdminAuthMiddleware);
+
+superAdminRoutes.post('/uploads/presigned-url', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = presignedUploadSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const { filename, contentType, purpose, fileSize } = parsed.data;
+    if (fileSize > STORAGE_MAX_FILE_SIZE) {
+        return c.json(apiError('VALIDATION_ERROR', 'File too large. Max size is 4MB.'), 400);
+    }
+
+    try {
+        const actorId = `super-admin-${c.get('superAdmin').username}`;
+        return c.json(apiResponse(await createStoragePresignedUpload({
+            actorId,
+            filename,
+            contentType,
+            purpose,
+            fileSize,
+        })));
+    } catch {
+        return c.json(apiError('INTERNAL_ERROR', 'Failed to generate upload URL'), 500);
+    }
+});
+
+superAdminRoutes.post('/uploads/delete-objects', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = deleteUploadSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    try {
+        const result = await deleteStorageObjects(parsed.data.keys);
+        return c.json(apiResponse(result));
+    } catch {
+        return c.json(apiError('INTERNAL_ERROR', 'Failed to delete upload objects'), 500);
+    }
+});
 
 superAdminRoutes.get('/stats', async (c) => {
     const now = new Date();
@@ -2192,6 +2280,8 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
         id: venues.id,
         slug: venues.slug,
         metadata: venues.metadata,
+        coverImageS3Key: venues.coverImageS3Key,
+        galleryS3Keys: venues.galleryS3Keys,
     }).from(venues).where(eq(venues.id, venueId)).limit(1);
     if (!existingVenue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
 
@@ -2243,6 +2333,12 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
     }
 
     await db.update(venues).set(updates).where(eq(venues.id, venueId));
+    await cleanupRemovedVenueMedia({
+        previousCoverKey: existingVenue.coverImageS3Key,
+        previousGalleryKeys: existingVenue.galleryS3Keys,
+        nextCoverKey: parsed.data.coverImageS3Key !== undefined ? parsed.data.coverImageS3Key : existingVenue.coverImageS3Key,
+        nextGalleryKeys: parsed.data.galleryS3Keys !== undefined ? sanitizeGalleryKeys(parsed.data.galleryS3Keys) : existingVenue.galleryS3Keys,
+    });
     return c.json(apiResponse({ message: 'Venue updated' }));
 });
 

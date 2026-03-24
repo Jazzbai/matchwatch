@@ -13,6 +13,27 @@ type ApiListMeta = {
   totalPages: number;
 };
 
+type VenueGalleryItem = {
+  url: string;
+  key: string;
+};
+
+type SuperAdminPresignedUpload = {
+  uploadUrl: string;
+  publicUrl: string;
+  key: string;
+  expiresIn: number;
+};
+
+const MAX_GALLERY_IMAGES = 5;
+const MAX_IMAGE_FILE_SIZE = 4 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
 type SuperAdminStats = {
   users: { total: number; active: number };
   venues: { total: number; active: number };
@@ -692,6 +713,84 @@ function parseOptionalNumber(value: string | number | null | undefined) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function normalizeImageUrl(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("/")) return raw;
+  return `https://${raw}`;
+}
+
+function parseVenueGalleryItems(urls?: string[] | null, keys?: string[] | null): VenueGalleryItem[] {
+  const urlList = Array.isArray(urls) ? urls : [];
+  const keyList = Array.isArray(keys) ? keys : [];
+  return urlList
+    .map((url, idx) => ({
+      url: normalizeImageUrl(url),
+      key: String(keyList[idx] || "").trim(),
+    }))
+    .filter((item) => item.url)
+    .slice(0, MAX_GALLERY_IMAGES);
+}
+
+function galleryFieldsFromItems(items: VenueGalleryItem[]) {
+  return {
+    galleryImageUrls: items.map((item) => item.url),
+    galleryS3Keys: items.map((item) => item.key).filter(Boolean),
+  };
+}
+
+async function createSuperAdminPresignedUpload(data: {
+  filename: string;
+  contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  purpose: "venue_cover" | "venue_gallery";
+  fileSize: number;
+}) {
+  return superAdminFetch<SuperAdminPresignedUpload>("/uploads/presigned-url", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+async function deleteSuperAdminStorageKeys(keys: string[]) {
+  const normalized = keys.map((key) => key.trim()).filter(Boolean);
+  if (normalized.length === 0) return;
+  await superAdminFetch<{ deletedCount: number }>("/uploads/delete-objects", {
+    method: "POST",
+    body: JSON.stringify({ keys: normalized }),
+  });
+}
+
+async function uploadSuperAdminVenueImage(file: File, purpose: "venue_cover" | "venue_gallery") {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    throw new Error("Only JPG, PNG, WEBP, and GIF files are allowed.");
+  }
+  if (file.size > MAX_IMAGE_FILE_SIZE) {
+    throw new Error("Image is too large. Maximum file size is 4MB.");
+  }
+
+  const presigned = await createSuperAdminPresignedUpload({
+    filename: file.name,
+    contentType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+    purpose,
+    fileSize: file.size,
+  });
+
+  const putRes = await fetch(presigned.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+
+  if (!putRes.ok) {
+    throw new Error("Image upload failed. Check S3 configuration and try again.");
+  }
+
+  return {
+    url: normalizeImageUrl(presigned.publicUrl),
+    key: presigned.key,
+  };
+}
+
 const MATCH_STATUSES: Array<MatchRow["status"]> = [
   "SCHEDULED",
   "TIMED",
@@ -792,6 +891,14 @@ export default function JazzbaiSuperAdminPage() {
     isActive: true,
     isFeatured: false,
   });
+  const [uploadingNewVenueCover, setUploadingNewVenueCover] = React.useState(false);
+  const [uploadingNewVenueGallery, setUploadingNewVenueGallery] = React.useState(false);
+  const [uploadingVenueCoverId, setUploadingVenueCoverId] = React.useState<string | null>(null);
+  const [uploadingVenueGalleryId, setUploadingVenueGalleryId] = React.useState<string | null>(null);
+  const newVenueCoverInputRef = React.useRef<HTMLInputElement | null>(null);
+  const newVenueGalleryInputRef = React.useRef<HTMLInputElement | null>(null);
+  const venueCoverInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
+  const venueGalleryInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
   const [attributesRows, setAttributesRows] = React.useState<VenueAttributeRow[]>([]);
   const [attributesLoading, setAttributesLoading] = React.useState(false);
@@ -1593,6 +1700,200 @@ export default function JazzbaiSuperAdminPage() {
     return options.sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
   };
 
+  const uploadNewVenueCover = async (file: File) => {
+    setUploadingNewVenueCover(true);
+    setError(null);
+    try {
+      if (newVenue.coverImageS3Key) {
+        await deleteSuperAdminStorageKeys([newVenue.coverImageS3Key]);
+      }
+      const uploaded = await uploadSuperAdminVenueImage(file, "venue_cover");
+      setNewVenue((prev) => ({
+        ...prev,
+        coverImageUrl: uploaded.url,
+        coverImageS3Key: uploaded.key,
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cover upload failed");
+    } finally {
+      setUploadingNewVenueCover(false);
+    }
+  };
+
+  const uploadNewVenueGallery = async (files: File[]) => {
+    const existingItems = parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys);
+    const slots = MAX_GALLERY_IMAGES - existingItems.length;
+    if (slots <= 0) {
+      setError(`Maximum ${MAX_GALLERY_IMAGES} gallery images allowed.`);
+      return;
+    }
+
+    setUploadingNewVenueGallery(true);
+    setError(null);
+    try {
+      const uploaded: VenueGalleryItem[] = [];
+      for (const file of files.slice(0, slots)) {
+        uploaded.push(await uploadSuperAdminVenueImage(file, "venue_gallery"));
+      }
+      setNewVenue((prev) => {
+        const nextItems = [...parseVenueGalleryItems(prev.galleryImageUrls, prev.galleryS3Keys), ...uploaded].slice(0, MAX_GALLERY_IMAGES);
+        return { ...prev, ...galleryFieldsFromItems(nextItems) };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gallery upload failed");
+    } finally {
+      setUploadingNewVenueGallery(false);
+    }
+  };
+
+  const removeNewVenueCover = async () => {
+    if (newVenue.coverImageS3Key) {
+      try {
+        await deleteSuperAdminStorageKeys([newVenue.coverImageS3Key]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove cover image");
+        return;
+      }
+    }
+    setNewVenue((prev) => ({ ...prev, coverImageUrl: "", coverImageS3Key: "" }));
+  };
+
+  const removeNewVenueGalleryImage = async (idx: number) => {
+    const items = parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys);
+    const item = items[idx];
+    if (!item) return;
+    if (item.key) {
+      try {
+        await deleteSuperAdminStorageKeys([item.key]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove gallery image");
+        return;
+      }
+    }
+    const nextItems = items.filter((_, index) => index !== idx);
+    setNewVenue((prev) => ({ ...prev, ...galleryFieldsFromItems(nextItems) }));
+  };
+
+  const uploadVenueDraftCover = async (venueId: string, file: File) => {
+    const row = venues.find((item) => item.id === venueId);
+    const draft = venueDrafts[venueId];
+    if (!row || !draft) return;
+
+    setUploadingVenueCoverId(venueId);
+    setError(null);
+    try {
+      const currentUnsavedKey = String(draft.coverImageS3Key || "").trim();
+      if (currentUnsavedKey && currentUnsavedKey !== String(row.coverImageS3Key || "").trim()) {
+        await deleteSuperAdminStorageKeys([currentUnsavedKey]);
+      }
+
+      const uploaded = await uploadSuperAdminVenueImage(file, "venue_cover");
+      setVenueDrafts((prev) => ({
+        ...prev,
+        [venueId]: {
+          ...prev[venueId],
+          coverImageUrl: uploaded.url,
+          coverImageS3Key: uploaded.key,
+        },
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cover upload failed");
+    } finally {
+      setUploadingVenueCoverId((current) => (current === venueId ? null : current));
+    }
+  };
+
+  const uploadVenueDraftGallery = async (venueId: string, files: File[]) => {
+    const draft = venueDrafts[venueId];
+    if (!draft) return;
+    const existingItems = parseVenueGalleryItems(draft.galleryImageUrls, draft.galleryS3Keys);
+    const slots = MAX_GALLERY_IMAGES - existingItems.length;
+    if (slots <= 0) {
+      setError(`Maximum ${MAX_GALLERY_IMAGES} gallery images allowed.`);
+      return;
+    }
+
+    setUploadingVenueGalleryId(venueId);
+    setError(null);
+    try {
+      const uploaded: VenueGalleryItem[] = [];
+      for (const file of files.slice(0, slots)) {
+        uploaded.push(await uploadSuperAdminVenueImage(file, "venue_gallery"));
+      }
+      setVenueDrafts((prev) => {
+        const baseDraft = prev[venueId];
+        if (!baseDraft) return prev;
+        const nextItems = [...parseVenueGalleryItems(baseDraft.galleryImageUrls, baseDraft.galleryS3Keys), ...uploaded].slice(0, MAX_GALLERY_IMAGES);
+        return {
+          ...prev,
+          [venueId]: {
+            ...baseDraft,
+            ...galleryFieldsFromItems(nextItems),
+          },
+        };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gallery upload failed");
+    } finally {
+      setUploadingVenueGalleryId((current) => (current === venueId ? null : current));
+    }
+  };
+
+  const removeVenueDraftCover = async (venueId: string) => {
+    const row = venues.find((item) => item.id === venueId);
+    const draft = venueDrafts[venueId];
+    if (!row || !draft) return;
+
+    const draftKey = String(draft.coverImageS3Key || "").trim();
+    const persistedKey = String(row.coverImageS3Key || "").trim();
+    if (draftKey && draftKey !== persistedKey) {
+      try {
+        await deleteSuperAdminStorageKeys([draftKey]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove cover image");
+        return;
+      }
+    }
+
+    setVenueDrafts((prev) => ({
+      ...prev,
+      [venueId]: {
+        ...prev[venueId],
+        coverImageUrl: "",
+        coverImageS3Key: "",
+      },
+    }));
+  };
+
+  const removeVenueDraftGalleryImage = async (venueId: string, idx: number) => {
+    const row = venues.find((item) => item.id === venueId);
+    const draft = venueDrafts[venueId];
+    if (!row || !draft) return;
+
+    const items = parseVenueGalleryItems(draft.galleryImageUrls, draft.galleryS3Keys);
+    const item = items[idx];
+    if (!item) return;
+
+    const persistedKeys = new Set((row.galleryS3Keys || []).map((key) => key.trim()).filter(Boolean));
+    if (item.key && !persistedKeys.has(item.key)) {
+      try {
+        await deleteSuperAdminStorageKeys([item.key]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove gallery image");
+        return;
+      }
+    }
+
+    const nextItems = items.filter((_, index) => index !== idx);
+    setVenueDrafts((prev) => ({
+      ...prev,
+      [venueId]: {
+        ...prev[venueId],
+        ...galleryFieldsFromItems(nextItems),
+      },
+    }));
+  };
+
   return (
     <AppShell>
       <main style={pageStyle}>
@@ -1883,10 +2184,90 @@ export default function JazzbaiSuperAdminPage() {
                 <input style={inputStyle} placeholder="Website" value={newVenue.website} onChange={(e) => setNewVenue((prev) => ({ ...prev, website: e.target.value }))} />
                 <input style={inputStyle} placeholder="Instagram handle" value={newVenue.instagramHandle} onChange={(e) => setNewVenue((prev) => ({ ...prev, instagramHandle: e.target.value }))} />
                 <input style={inputStyle} placeholder="Google Maps URL" value={newVenue.googleMapsUrl} onChange={(e) => setNewVenue((prev) => ({ ...prev, googleMapsUrl: e.target.value }))} />
-                <input style={inputStyle} placeholder="Cover image URL" value={newVenue.coverImageUrl} onChange={(e) => setNewVenue((prev) => ({ ...prev, coverImageUrl: e.target.value }))} />
-                <input style={inputStyle} placeholder="Cover image S3 key" value={newVenue.coverImageS3Key} onChange={(e) => setNewVenue((prev) => ({ ...prev, coverImageS3Key: e.target.value }))} />
-                <input style={inputStyle} placeholder="Gallery URLs (comma separated)" value={toCsvList(newVenue.galleryImageUrls)} onChange={(e) => setNewVenue((prev) => ({ ...prev, galleryImageUrls: parseCsvList(e.target.value) }))} />
-                <input style={inputStyle} placeholder="Gallery S3 keys (comma separated)" value={toCsvList(newVenue.galleryS3Keys)} onChange={(e) => setNewVenue((prev) => ({ ...prev, galleryS3Keys: parseCsvList(e.target.value) }))} />
+                <div style={{ gridColumn: "1 / -1", display: "grid", gap: 14 }}>
+                  <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cover image</span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          {newVenue.coverImageUrl ? (
+                            <button type="button" style={smallBtn("danger")} onClick={() => void removeNewVenueCover()}>
+                              Remove
+                            </button>
+                          ) : null}
+                          <button type="button" style={smallBtn("outline", uploadingNewVenueCover)} disabled={uploadingNewVenueCover} onClick={() => newVenueCoverInputRef.current?.click()}>
+                            {uploadingNewVenueCover ? "Uploading..." : "Upload Cover"}
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        ref={newVenueCoverInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void uploadNewVenueCover(file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                      <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", overflow: "hidden", minHeight: 160 }}>
+                        {newVenue.coverImageUrl ? (
+                          <img src={newVenue.coverImageUrl} alt="Venue cover" style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                        ) : (
+                          <div style={{ minHeight: 160, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted-foreground)" }}>
+                            No cover image
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Gallery images ({parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length}/{MAX_GALLERY_IMAGES})</span>
+                        <button
+                          type="button"
+                          style={smallBtn("outline", uploadingNewVenueGallery || parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length >= MAX_GALLERY_IMAGES)}
+                          disabled={uploadingNewVenueGallery || parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length >= MAX_GALLERY_IMAGES}
+                          onClick={() => newVenueGalleryInputRef.current?.click()}
+                        >
+                          {uploadingNewVenueGallery ? "Uploading..." : "Add Images"}
+                        </button>
+                      </div>
+                      <input
+                        ref={newVenueGalleryInputRef}
+                        type="file"
+                        multiple
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length) void uploadNewVenueGallery(files);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                      <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
+                        {parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).map((item, idx) => (
+                          <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", background: "var(--secondary)" }}>
+                            <img src={item.url} alt={`Gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
+                            <button
+                              type="button"
+                              style={{ position: "absolute", top: 6, right: 6, border: "none", borderRadius: 6, padding: "4px 6px", background: "rgba(239,68,68,0.92)", color: "#fff", cursor: "pointer", fontSize: 11 }}
+                              onClick={() => void removeNewVenueGalleryImage(idx)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length) }).map((_, idx) => (
+                          <div key={`new-venue-empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 96, borderRadius: 10, border: "1px dashed var(--border)", color: "var(--muted-foreground)", fontSize: 11 }}>
+                            Empty slot
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <input style={inputStyle} placeholder="Capacity" value={newVenue.capacity} onChange={(e) => setNewVenue((prev) => ({ ...prev, capacity: e.target.value }))} />
                 <input style={inputStyle} type="number" min="0" max="5" step="0.1" placeholder="Displayed rating override" value={newVenue.ratingOverride} onChange={(e) => setNewVenue((prev) => ({ ...prev, ratingOverride: e.target.value }))} />
                 <input style={inputStyle} type="number" min="0" step="1" placeholder="Displayed review count override" value={newVenue.reviewCountOverride} onChange={(e) => setNewVenue((prev) => ({ ...prev, reviewCountOverride: e.target.value }))} />
@@ -2148,10 +2529,95 @@ export default function JazzbaiSuperAdminPage() {
                         <input style={inputStyle} value={String(draft.website ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, website: e.target.value } }))} placeholder="Website" />
                         <input style={inputStyle} value={String(draft.instagramHandle ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, instagramHandle: e.target.value } }))} placeholder="Instagram handle" />
                         <input style={inputStyle} value={String(draft.googleMapsUrl ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, googleMapsUrl: e.target.value } }))} placeholder="Google Maps URL" />
-                        <input style={inputStyle} value={String(draft.coverImageUrl ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, coverImageUrl: e.target.value } }))} placeholder="Cover image URL" />
-                        <input style={inputStyle} value={String(draft.coverImageS3Key ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, coverImageS3Key: e.target.value } }))} placeholder="Cover image S3 key" />
-                        <input style={inputStyle} value={toCsvList(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [])} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, galleryImageUrls: parseCsvList(e.target.value) } }))} placeholder="Gallery URLs" />
-                        <input style={inputStyle} value={toCsvList(Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [])} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, galleryS3Keys: parseCsvList(e.target.value) } }))} placeholder="Gallery S3 keys" />
+                        <div style={{ gridColumn: "1 / -1", display: "grid", gap: 14 }}>
+                          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                            <div style={{ display: "grid", gap: 10 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cover image</span>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  {draft.coverImageUrl ? (
+                                    <button type="button" style={smallBtn("danger")} onClick={() => void removeVenueDraftCover(row.id)}>
+                                      Remove
+                                    </button>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    style={smallBtn("outline", uploadingVenueCoverId === row.id)}
+                                    disabled={uploadingVenueCoverId === row.id}
+                                    onClick={() => venueCoverInputRefs.current[row.id]?.click()}
+                                  >
+                                    {uploadingVenueCoverId === row.id ? "Uploading..." : "Upload Cover"}
+                                  </button>
+                                </div>
+                              </div>
+                              <input
+                                ref={(node) => { venueCoverInputRefs.current[row.id] = node; }}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) void uploadVenueDraftCover(row.id, file);
+                                  e.currentTarget.value = "";
+                                }}
+                              />
+                              <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", overflow: "hidden", minHeight: 160 }}>
+                                {draft.coverImageUrl ? (
+                                  <img src={String(draft.coverImageUrl)} alt={`${row.name} cover`} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                                ) : (
+                                  <div style={{ minHeight: 160, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted-foreground)" }}>
+                                    No cover image
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div style={{ display: "grid", gap: 10 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Gallery images ({parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length}/{MAX_GALLERY_IMAGES})</span>
+                                <button
+                                  type="button"
+                                  style={smallBtn("outline", uploadingVenueGalleryId === row.id || parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length >= MAX_GALLERY_IMAGES)}
+                                  disabled={uploadingVenueGalleryId === row.id || parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length >= MAX_GALLERY_IMAGES}
+                                  onClick={() => venueGalleryInputRefs.current[row.id]?.click()}
+                                >
+                                  {uploadingVenueGalleryId === row.id ? "Uploading..." : "Add Images"}
+                                </button>
+                              </div>
+                              <input
+                                ref={(node) => { venueGalleryInputRefs.current[row.id] = node; }}
+                                type="file"
+                                multiple
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const files = Array.from(e.target.files || []);
+                                  if (files.length) void uploadVenueDraftGallery(row.id, files);
+                                  e.currentTarget.value = "";
+                                }}
+                              />
+                              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
+                                {parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).map((item, idx) => (
+                                  <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", background: "var(--secondary)" }}>
+                                    <img src={item.url} alt={`${row.name} gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
+                                    <button
+                                      type="button"
+                                      style={{ position: "absolute", top: 6, right: 6, border: "none", borderRadius: 6, padding: "4px 6px", background: "rgba(239,68,68,0.92)", color: "#fff", cursor: "pointer", fontSize: 11 }}
+                                      onClick={() => void removeVenueDraftGalleryImage(row.id, idx)}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                ))}
+                                {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length) }).map((_, idx) => (
+                                  <div key={`${row.id}-gallery-empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 96, borderRadius: 10, border: "1px dashed var(--border)", color: "var(--muted-foreground)", fontSize: 11 }}>
+                                    Empty slot
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                         <input style={inputStyle} value={String(draft.capacity ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, capacity: e.target.value } }))} placeholder="Capacity" />
                         <input style={inputStyle} type="number" min="0" max="5" step="0.1" value={String(draft.ratingOverride ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, ratingOverride: e.target.value } }))} placeholder="Displayed rating override" />
                         <input style={inputStyle} type="number" min="0" step="1" value={String(draft.reviewCountOverride ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, reviewCountOverride: e.target.value } }))} placeholder="Displayed review count override" />
