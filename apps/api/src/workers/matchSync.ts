@@ -914,6 +914,23 @@ function pickSeason(c: ApiFootballLeague) {
     return Math.max(...c.seasons.map((s) => s.year));
 }
 
+function buildApiFootballSeasonCandidates(
+    externalCode: string,
+    resolvedSeason: number,
+    dateFrom: string,
+    dateTo: string,
+) {
+    const fromYear = Number.parseInt(dateFrom.slice(0, 4), 10);
+    const toYear = Number.parseInt(dateTo.slice(0, 4), 10);
+    const currentYear = new Date().getUTCFullYear();
+    const ordered = externalCode === 'MLS' || externalCode === 'NWSL' || externalCode === 'LMX'
+        ? [fromYear, resolvedSeason, currentYear, toYear, fromYear - 1, toYear + 1]
+        : [resolvedSeason, fromYear, toYear, currentYear, fromYear - 1];
+
+    const seen = new Set<number>();
+    return ordered.filter((year) => Number.isFinite(year) && !seen.has(year) && seen.add(year));
+}
+
 const apiFootballLeagueCache = new Map<string, { leagueId: number; season: number; logoUrl?: string | null } | null>();
 
 async function resolveApiFootballLeague(league: LeagueRow, apiKey: string) {
@@ -1078,15 +1095,36 @@ async function syncLeagueFromApiFootball(
         ? 1
         : externalCode === 'INTL' ? 90 : FOOTBALL_DATA_SUPPORTED_CODES.has(externalCode) ? 30 : 14;
     const dateTo = new Date(now.getTime() + lookaheadDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const fixtures = await fetchApiFootball<ApiFootballFixturesResponse>('/fixtures', {
-        league: resolved.leagueId,
-        season: resolved.season,
-        from: dateFrom,
-        to: dateTo,
-        timezone: 'UTC',
-    }, apiKey);
+    const seasonCandidates = buildApiFootballSeasonCandidates(externalCode, resolved.season, dateFrom, dateTo);
+    let rows: ApiFootballFixturesResponse['response'] = [];
+    let selectedSeason = resolved.season;
 
-    const rows = fixtures?.response || [];
+    for (const season of seasonCandidates) {
+        const fixtures = await fetchApiFootball<ApiFootballFixturesResponse>('/fixtures', {
+            league: resolved.leagueId,
+            season,
+            from: dateFrom,
+            to: dateTo,
+            timezone: 'UTC',
+        }, apiKey);
+
+        const candidateRows = fixtures?.response || [];
+        if (candidateRows.length > 0) {
+            rows = candidateRows;
+            selectedSeason = season;
+            break;
+        }
+    }
+
+    logger.info({
+        league: league.name,
+        externalCode,
+        apiFootballLeagueId: resolved.leagueId,
+        season: selectedSeason,
+        seasonCandidates,
+        fixtureCount: rows.length,
+    }, 'Fetched API-Football fixtures');
+
     result.fetched = rows.length;
 
     for (const fixture of rows) {
