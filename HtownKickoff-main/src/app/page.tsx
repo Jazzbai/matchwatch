@@ -113,7 +113,10 @@ const PRIORITY_SOCCER_LEAGUES = [
   { key: "serie-a", label: "Serie A", match: (name: string) => name.includes("serie a") },
   { key: "ligue-1", label: "Ligue 1", match: (name: string) => name.includes("ligue 1") },
   { key: "ucl", label: "Champions League", match: (name: string) => name.includes("champions league") || name.includes("ucl") },
+  { key: "wc-qualifiers", label: "WC-Qualifiers", match: (name: string) => name.includes("fifa european qualifiers") || name.includes("wc-qualifiers") },
 ] as const;
+
+const PRIORITY_SOCCER_LEAGUE_INDEX = new Map(PRIORITY_SOCCER_LEAGUES.map((entry, index) => [entry.key, index]));
 
 function normalizeLeagueName(value?: string | null) {
   return (value || "").trim().toLowerCase();
@@ -123,12 +126,6 @@ function getPrioritySoccerLeagueKey(league?: { name?: string; shortName?: string
   const candidates = [normalizeLeagueName(league?.name), normalizeLeagueName(league?.shortName)].filter(Boolean);
   const match = PRIORITY_SOCCER_LEAGUES.find((entry) => candidates.some((candidate) => entry.match(candidate)));
   return match?.key ?? null;
-}
-
-function isSoccerLeague(league?: { sportId?: string; name?: string; shortName?: string } | null) {
-  if (!league) return false;
-  if (league.sportId === "soccer") return true;
-  return getPrioritySoccerLeagueKey(league) !== null;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -147,6 +144,35 @@ export default function HomePage() {
   const [hydrated, setHydrated] = useState(false);
   const [nowTs, setNowTs] = useState<number | null>(null);
   const { matches: MATCHES, venues: VENUES, leagues, sports, venueEvents, bookings, posts, getTeam, getLeague, getVenueEvents, isApiConnected } = useData();
+
+  const soccerSportIds = useMemo(
+    () =>
+      new Set(
+        sports
+          .filter((sport) => sport.slug === "soccer" || sport.id === "soccer")
+          .map((sport) => sport.id),
+      ),
+    [sports],
+  );
+
+  const isLeagueSoccer = (league?: { sportId?: string; name?: string; shortName?: string } | null) => {
+    if (!league) return false;
+    if (league.sportId && soccerSportIds.has(league.sportId)) return true;
+
+    const candidates = [normalizeLeagueName(league.name), normalizeLeagueName(league.shortName)].filter(Boolean);
+    if (getPrioritySoccerLeagueKey(league)) return true;
+
+    return candidates.some((candidate) =>
+      candidate.includes("qualifiers")
+      || candidate.includes("champions league")
+      || candidate.includes("friendlies")
+      || candidate.includes("play-off")
+      || candidate.includes("liga mx")
+      || candidate.includes("nwsl")
+      || candidate.includes("major league soccer")
+      || candidate === "mls",
+    );
+  };
 
   useEffect(() => {
     setHydrated(true);
@@ -224,8 +250,7 @@ export default function HomePage() {
       PRIORITY_SOCCER_LEAGUES
         .map((entry) => {
           const league = leagues.find((candidate) => getPrioritySoccerLeagueKey(candidate) === entry.key);
-          const hasMatches = prioritySoccerMatches.some((match) => getPrioritySoccerLeagueKey(getLeague(match.leagueId)) === entry.key);
-          if (!league || !hasMatches) return null;
+          if (!league) return null;
           return {
             id: entry.key,
             shortName: league.shortName || entry.label,
@@ -247,8 +272,16 @@ export default function HomePage() {
     [prioritySoccerMatches, soccerLeagueFilter, getLeague],
   );
   const orderedSoccerMatches = useMemo(
-    () => [...filteredSoccerMatches].sort(compareHomeMatches),
-    [filteredSoccerMatches],
+    () =>
+      [...filteredSoccerMatches].sort((a, b) => {
+        const aKey = getPrioritySoccerLeagueKey(getLeague(a.leagueId));
+        const bKey = getPrioritySoccerLeagueKey(getLeague(b.leagueId));
+        const aIndex = aKey ? PRIORITY_SOCCER_LEAGUE_INDEX.get(aKey) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+        const bIndex = bKey ? PRIORITY_SOCCER_LEAGUE_INDEX.get(bKey) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        return compareHomeMatches(a, b);
+      }),
+    [filteredSoccerMatches, getLeague],
   );
   const orderedPrioritySoccerMatches = useMemo(
     () => [...prioritySoccerMatches].sort(compareHomeMatches),
@@ -258,9 +291,10 @@ export default function HomePage() {
     () =>
       upcomingMatches.filter((match) => {
         const league = getLeague(match.leagueId);
-        return !isSoccerLeague(league);
+        if (!league) return false;
+        return !isLeagueSoccer(league);
       }),
-    [upcomingMatches, getLeague],
+    [upcomingMatches, getLeague, sports],
   );
   const otherSportsOptions = useMemo(
     () => {
@@ -764,21 +798,20 @@ export default function HomePage() {
         {/* ─── How It Works Section ──────────────── */}
         <section style={{ width: "100%", backgroundColor: "var(--secondary)", padding: "96px 0", marginTop: 48 }}>
             <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px" }}>
-                <div className="text-center mb-16">
+                <div className="text-center mb-20">
                     <div className="text-primary font-bold tracking-widest text-xs mb-2">HOW IT WORKS</div>
                     <h2 className="font-display text-4xl md:text-5xl font-black text-foreground">THREE EASY STEPS</h2>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative" style={{ marginTop: 24 }}>
                     <div className="hidden md:block absolute top-[40px] left-[15%] right-[15%] h-px bg-border z-0" />
                     {[
-                    { step: "01", icon: Trophy, title: "FIND A MATCH", desc: "Browse upcoming matches and find the one you want to watch", link: "/matches" },
-                    { step: "02", icon: MapPin, title: "PICK A VENUE", desc: "Explore nearby bars, lounges, and restaurants hosting watch parties", link: "/venues" },
-                    { step: "03", icon: Ticket, title: "RESERVE A SPOT", desc: "Book your spot with your group and show up ready to cheer", link: "/matches" },
-                    ].map((s: { step: string; icon: LucideIcon; title: string; desc: string; link: string }, i) => (
-                    <Link
+                    { step: "01", icon: Trophy, title: "FIND A MATCH", desc: "Browse upcoming matches and find the one you want to watch" },
+                    { step: "02", icon: MapPin, title: "PICK A VENUE", desc: "Explore nearby bars, lounges, and restaurants hosting watch parties" },
+                    { step: "03", icon: Ticket, title: "RESERVE A SPOT", desc: "Book your spot with your group and show up ready to cheer" },
+                    ].map((s: { step: string; icon: LucideIcon; title: string; desc: string }, i) => (
+                    <div
                         key={i}
-                        href={s.link}
                         className="relative z-10 flex flex-col items-center text-center group"
                     >
                         <div className="w-20 h-20 rounded-2xl bg-background border border-border shadow-md flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-background transition-colors duration-300 mb-6 group-hover:-translate-y-2 group-hover:shadow-xl">
@@ -787,8 +820,26 @@ export default function HomePage() {
                         <div className="font-mono text-xs text-primary font-bold mb-2 tracking-widest">STEP {s.step}</div>
                         <h3 className="font-display font-bold text-xl text-foreground mb-3">{s.title}</h3>
                         <p className="text-muted-foreground text-sm font-medium">{s.desc}</p>
-                    </Link>
+                    </div>
                     ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", marginTop: 40 }}>
+                    <Link
+                        href="/matches"
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "14px 28px",
+                            borderRadius: 999,
+                            backgroundColor: "var(--primary)",
+                            color: "var(--background)",
+                            fontWeight: 700,
+                            textDecoration: "none",
+                        }}
+                    >
+                        Get started
+                    </Link>
                 </div>
             </div>
         </section>
