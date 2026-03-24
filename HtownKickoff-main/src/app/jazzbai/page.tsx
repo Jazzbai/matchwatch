@@ -4,7 +4,7 @@ import * as React from "react";
 import { AppShell } from "../../components/AppShell";
 import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
 
-type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches" | "blog";
+type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches" | "motorsportEntries" | "blog";
 
 type ApiListMeta = {
   page: number;
@@ -12,6 +12,27 @@ type ApiListMeta = {
   total: number;
   totalPages: number;
 };
+
+type VenueGalleryItem = {
+  url: string;
+  key: string;
+};
+
+type SuperAdminPresignedUpload = {
+  uploadUrl: string;
+  publicUrl: string;
+  key: string;
+  expiresIn: number;
+};
+
+const MAX_GALLERY_IMAGES = 5;
+const MAX_IMAGE_FILE_SIZE = 4 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
 
 type SuperAdminStats = {
   users: { total: number; active: number };
@@ -59,8 +80,11 @@ type SuperAdminSystem = {
 type LookupVenue = { id: string; name: string; city: string; ownerId: string };
 type LookupMatch = {
   id: string;
-  homeTeamName: string;
-  awayTeamName: string;
+  eventFormat?: MatchEventFormat | null;
+  eventTitle?: string | null;
+  eventSubtitle?: string | null;
+  homeTeamName: string | null;
+  awayTeamName: string | null;
   matchDateUtc: string;
   status: string;
   leagueId: string | null;
@@ -329,6 +353,46 @@ type MatchRow = {
   stage?: string | null;
   venueName?: string | null;
   createdAt: string;
+};
+
+type MotorsportEntryStatus = "ENTERED" | "ACTIVE" | "FINISHED" | "DNF" | "DNS" | "DSQ" | "WITHDRAWN";
+
+type MotorsportEntryRow = {
+  id: string;
+  matchId: string;
+  matchLabel?: string | null;
+  matchSubtitle?: string | null;
+  externalId?: string | null;
+  carNumber?: string | null;
+  displayName?: string | null;
+  gridPosition?: number | null;
+  startPosition?: number | null;
+  finishPosition?: number | null;
+  status: MotorsportEntryStatus;
+  points?: string | number | null;
+  metadata?: Record<string, unknown> | null;
+  driverId?: string | null;
+  driverName?: string | null;
+  driverShortName?: string | null;
+  driverNationality?: string | null;
+  driverCountryCode?: string | null;
+  driverHeadshotUrl?: string | null;
+  entrantId?: string | null;
+  entrantName?: string | null;
+  entrantShortName?: string | null;
+  entrantBrandColor?: string | null;
+  entrantLogoUrl?: string | null;
+  manufacturerId?: string | null;
+  manufacturerName?: string | null;
+  manufacturerShortName?: string | null;
+  manufacturerLogoUrl?: string | null;
+};
+
+type MotorsportEntryDraft = Omit<Partial<MotorsportEntryRow>, "gridPosition" | "startPosition" | "finishPosition" | "points"> & {
+  gridPosition?: string | number | null;
+  startPosition?: string | number | null;
+  finishPosition?: string | number | null;
+  points?: string | number | null;
 };
 
 type ListResponse<T> = {
@@ -630,6 +694,103 @@ function stadiumToOption(stadium: LookupStadium): SearchPickerOption {
   };
 }
 
+function formatLookupMatchLabel(match: LookupMatch) {
+  if (match.eventFormat === "SINGLE_EVENT") {
+    return match.eventTitle?.trim() || "Untitled event";
+  }
+  return [match.homeTeamName, match.awayTeamName].filter(Boolean).join(" vs ") || "Unnamed match";
+}
+
+function formatLookupMatchSubtitle(match: LookupMatch) {
+  const kickoff = formatDateTime(match.matchDateUtc);
+  const secondary = match.eventFormat === "SINGLE_EVENT" ? match.eventSubtitle : match.status;
+  return [secondary, kickoff].filter(Boolean).join(" • ");
+}
+
+function parseOptionalNumber(value: string | number | null | undefined) {
+  if (value === "" || value === null || value === undefined) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeImageUrl(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("/")) return raw;
+  return `https://${raw}`;
+}
+
+function parseVenueGalleryItems(urls?: string[] | null, keys?: string[] | null): VenueGalleryItem[] {
+  const urlList = Array.isArray(urls) ? urls : [];
+  const keyList = Array.isArray(keys) ? keys : [];
+  return urlList
+    .map((url, idx) => ({
+      url: normalizeImageUrl(url),
+      key: String(keyList[idx] || "").trim(),
+    }))
+    .filter((item) => item.url)
+    .slice(0, MAX_GALLERY_IMAGES);
+}
+
+function galleryFieldsFromItems(items: VenueGalleryItem[]) {
+  return {
+    galleryImageUrls: items.map((item) => item.url),
+    galleryS3Keys: items.map((item) => item.key).filter(Boolean),
+  };
+}
+
+async function createSuperAdminPresignedUpload(data: {
+  filename: string;
+  contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  purpose: "venue_cover" | "venue_gallery";
+  fileSize: number;
+}) {
+  return superAdminFetch<SuperAdminPresignedUpload>("/uploads/presigned-url", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+async function deleteSuperAdminStorageKeys(keys: string[]) {
+  const normalized = keys.map((key) => key.trim()).filter(Boolean);
+  if (normalized.length === 0) return;
+  await superAdminFetch<{ deletedCount: number }>("/uploads/delete-objects", {
+    method: "POST",
+    body: JSON.stringify({ keys: normalized }),
+  });
+}
+
+async function uploadSuperAdminVenueImage(file: File, purpose: "venue_cover" | "venue_gallery") {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    throw new Error("Only JPG, PNG, WEBP, and GIF files are allowed.");
+  }
+  if (file.size > MAX_IMAGE_FILE_SIZE) {
+    throw new Error("Image is too large. Maximum file size is 4MB.");
+  }
+
+  const presigned = await createSuperAdminPresignedUpload({
+    filename: file.name,
+    contentType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+    purpose,
+    fileSize: file.size,
+  });
+
+  const putRes = await fetch(presigned.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+
+  if (!putRes.ok) {
+    throw new Error("Image upload failed. Check S3 configuration and try again.");
+  }
+
+  return {
+    url: normalizeImageUrl(presigned.publicUrl),
+    key: presigned.key,
+  };
+}
+
 const MATCH_STATUSES: Array<MatchRow["status"]> = [
   "SCHEDULED",
   "TIMED",
@@ -639,6 +800,16 @@ const MATCH_STATUSES: Array<MatchRow["status"]> = [
   "POSTPONED",
   "CANCELLED",
   "SUSPENDED",
+];
+
+const MOTORSPORT_ENTRY_STATUSES: MotorsportEntryStatus[] = [
+  "ENTERED",
+  "ACTIVE",
+  "FINISHED",
+  "DNF",
+  "DNS",
+  "DSQ",
+  "WITHDRAWN",
 ];
 
 export default function JazzbaiSuperAdminPage() {
@@ -664,6 +835,10 @@ export default function JazzbaiSuperAdminPage() {
   const [lookupStadiums, setLookupStadiums] = React.useState<LookupStadium[]>([]);
   const [lookupOwners, setLookupOwners] = React.useState<LookupOwner[]>([]);
   const [lookupAttributes, setLookupAttributes] = React.useState<LookupAttribute[]>([]);
+  const motorsportLookupMatches = React.useMemo(
+    () => lookupMatches.filter((match) => match.eventFormat === "SINGLE_EVENT"),
+    [lookupMatches],
+  );
 
   const [users, setUsers] = React.useState<UserRow[]>([]);
   const [usersMeta, setUsersMeta] = React.useState<ApiListMeta | null>(null);
@@ -716,6 +891,14 @@ export default function JazzbaiSuperAdminPage() {
     isActive: true,
     isFeatured: false,
   });
+  const [uploadingNewVenueCover, setUploadingNewVenueCover] = React.useState(false);
+  const [uploadingNewVenueGallery, setUploadingNewVenueGallery] = React.useState(false);
+  const [uploadingVenueCoverId, setUploadingVenueCoverId] = React.useState<string | null>(null);
+  const [uploadingVenueGalleryId, setUploadingVenueGalleryId] = React.useState<string | null>(null);
+  const newVenueCoverInputRef = React.useRef<HTMLInputElement | null>(null);
+  const newVenueGalleryInputRef = React.useRef<HTMLInputElement | null>(null);
+  const venueCoverInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
+  const venueGalleryInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
   const [attributesRows, setAttributesRows] = React.useState<VenueAttributeRow[]>([]);
   const [attributesLoading, setAttributesLoading] = React.useState(false);
@@ -788,6 +971,31 @@ export default function JazzbaiSuperAdminPage() {
     matchDateUtc: "",
     status: "SCHEDULED" as MatchRow["status"],
     venueName: "",
+  });
+  const [motorsportEntries, setMotorsportEntries] = React.useState<MotorsportEntryRow[]>([]);
+  const [motorsportEntriesMeta, setMotorsportEntriesMeta] = React.useState<ApiListMeta | null>(null);
+  const [motorsportEntriesSearch, setMotorsportEntriesSearch] = React.useState("");
+  const [motorsportEntriesLoading, setMotorsportEntriesLoading] = React.useState(false);
+  const [motorsportEntriesMatchId, setMotorsportEntriesMatchId] = React.useState("");
+  const [motorsportEntryDrafts, setMotorsportEntryDrafts] = React.useState<Record<string, MotorsportEntryDraft>>({});
+  const [newMotorsportEntry, setNewMotorsportEntry] = React.useState({
+    matchId: "",
+    carNumber: "",
+    driverName: "",
+    driverShortName: "",
+    driverNationality: "",
+    driverCountryCode: "",
+    entrantName: "",
+    entrantShortName: "",
+    entrantBrandColor: "",
+    manufacturerName: "",
+    manufacturerShortName: "",
+    displayName: "",
+    gridPosition: "",
+    startPosition: "",
+    finishPosition: "",
+    status: "ENTERED" as MotorsportEntryStatus,
+    points: "",
   });
 
   const [sportsRows, setSportsRows] = React.useState<SportRow[]>([]);
@@ -971,6 +1179,27 @@ export default function JazzbaiSuperAdminPage() {
     }
   }, [matchesSearch]);
 
+  const loadMotorsportEntries = React.useCallback(async () => {
+    setMotorsportEntriesLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "150",
+      });
+      if (motorsportEntriesSearch.trim()) params.set("search", motorsportEntriesSearch.trim());
+      if (motorsportEntriesMatchId) params.set("matchId", motorsportEntriesMatchId);
+      const response = await fetch(`/api/v1/super-admin/motorsport-entries?${params.toString()}`, {
+        credentials: "include",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load motorsport entries"));
+      setMotorsportEntries(payload.data || []);
+      setMotorsportEntriesMeta(payload.meta || null);
+    } finally {
+      setMotorsportEntriesLoading(false);
+    }
+  }, [motorsportEntriesMatchId, motorsportEntriesSearch]);
+
   const loadSportsAdmin = React.useCallback(async () => {
     setSportsLoading(true);
     try {
@@ -1087,11 +1316,15 @@ export default function JazzbaiSuperAdminPage() {
       await loadLookups();
       return;
     }
+    if (tab === "motorsportEntries") {
+      await Promise.all([loadMotorsportEntries(), loadLookups()]);
+      return;
+    }
     if (tab === "blog") {
       return;
     }
     await Promise.all([loadMatches(), loadLookups()]);
-  }, [loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
+  }, [loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadMotorsportEntries, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
 
   React.useEffect(() => {
     async function checkSession() {
@@ -1119,6 +1352,16 @@ export default function JazzbaiSuperAdminPage() {
     if (newLeague.sportId || lookupSports.length === 0) return;
     setNewLeague((prev) => ({ ...prev, sportId: lookupSports[0].id }));
   }, [lookupSports, newLeague.sportId]);
+
+  React.useEffect(() => {
+    if (motorsportLookupMatches.length === 0) return;
+    if (!newMotorsportEntry.matchId) {
+      setNewMotorsportEntry((prev) => ({ ...prev, matchId: motorsportLookupMatches[0].id }));
+    }
+    if (!motorsportEntriesMatchId) {
+      setMotorsportEntriesMatchId(motorsportLookupMatches[0].id);
+    }
+  }, [motorsportEntriesMatchId, motorsportLookupMatches, newMotorsportEntry.matchId]);
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1359,6 +1602,7 @@ export default function JazzbaiSuperAdminPage() {
   const sportsCount = sportsMeta?.total ?? sportsRows.length;
   const leaguesCount = adminLeaguesMeta?.total ?? adminLeagues.length;
   const matchesCount = matchesMeta?.total ?? matches.length;
+  const motorsportEntriesCount = motorsportEntriesMeta?.total ?? motorsportEntries.length;
   const leagueById = new Map(
     lookupLeagues.map((league) => [league.id, league]),
   );
@@ -1456,6 +1700,200 @@ export default function JazzbaiSuperAdminPage() {
     return options.sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
   };
 
+  const uploadNewVenueCover = async (file: File) => {
+    setUploadingNewVenueCover(true);
+    setError(null);
+    try {
+      if (newVenue.coverImageS3Key) {
+        await deleteSuperAdminStorageKeys([newVenue.coverImageS3Key]);
+      }
+      const uploaded = await uploadSuperAdminVenueImage(file, "venue_cover");
+      setNewVenue((prev) => ({
+        ...prev,
+        coverImageUrl: uploaded.url,
+        coverImageS3Key: uploaded.key,
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cover upload failed");
+    } finally {
+      setUploadingNewVenueCover(false);
+    }
+  };
+
+  const uploadNewVenueGallery = async (files: File[]) => {
+    const existingItems = parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys);
+    const slots = MAX_GALLERY_IMAGES - existingItems.length;
+    if (slots <= 0) {
+      setError(`Maximum ${MAX_GALLERY_IMAGES} gallery images allowed.`);
+      return;
+    }
+
+    setUploadingNewVenueGallery(true);
+    setError(null);
+    try {
+      const uploaded: VenueGalleryItem[] = [];
+      for (const file of files.slice(0, slots)) {
+        uploaded.push(await uploadSuperAdminVenueImage(file, "venue_gallery"));
+      }
+      setNewVenue((prev) => {
+        const nextItems = [...parseVenueGalleryItems(prev.galleryImageUrls, prev.galleryS3Keys), ...uploaded].slice(0, MAX_GALLERY_IMAGES);
+        return { ...prev, ...galleryFieldsFromItems(nextItems) };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gallery upload failed");
+    } finally {
+      setUploadingNewVenueGallery(false);
+    }
+  };
+
+  const removeNewVenueCover = async () => {
+    if (newVenue.coverImageS3Key) {
+      try {
+        await deleteSuperAdminStorageKeys([newVenue.coverImageS3Key]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove cover image");
+        return;
+      }
+    }
+    setNewVenue((prev) => ({ ...prev, coverImageUrl: "", coverImageS3Key: "" }));
+  };
+
+  const removeNewVenueGalleryImage = async (idx: number) => {
+    const items = parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys);
+    const item = items[idx];
+    if (!item) return;
+    if (item.key) {
+      try {
+        await deleteSuperAdminStorageKeys([item.key]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove gallery image");
+        return;
+      }
+    }
+    const nextItems = items.filter((_, index) => index !== idx);
+    setNewVenue((prev) => ({ ...prev, ...galleryFieldsFromItems(nextItems) }));
+  };
+
+  const uploadVenueDraftCover = async (venueId: string, file: File) => {
+    const row = venues.find((item) => item.id === venueId);
+    const draft = venueDrafts[venueId];
+    if (!row || !draft) return;
+
+    setUploadingVenueCoverId(venueId);
+    setError(null);
+    try {
+      const currentUnsavedKey = String(draft.coverImageS3Key || "").trim();
+      if (currentUnsavedKey && currentUnsavedKey !== String(row.coverImageS3Key || "").trim()) {
+        await deleteSuperAdminStorageKeys([currentUnsavedKey]);
+      }
+
+      const uploaded = await uploadSuperAdminVenueImage(file, "venue_cover");
+      setVenueDrafts((prev) => ({
+        ...prev,
+        [venueId]: {
+          ...prev[venueId],
+          coverImageUrl: uploaded.url,
+          coverImageS3Key: uploaded.key,
+        },
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cover upload failed");
+    } finally {
+      setUploadingVenueCoverId((current) => (current === venueId ? null : current));
+    }
+  };
+
+  const uploadVenueDraftGallery = async (venueId: string, files: File[]) => {
+    const draft = venueDrafts[venueId];
+    if (!draft) return;
+    const existingItems = parseVenueGalleryItems(draft.galleryImageUrls, draft.galleryS3Keys);
+    const slots = MAX_GALLERY_IMAGES - existingItems.length;
+    if (slots <= 0) {
+      setError(`Maximum ${MAX_GALLERY_IMAGES} gallery images allowed.`);
+      return;
+    }
+
+    setUploadingVenueGalleryId(venueId);
+    setError(null);
+    try {
+      const uploaded: VenueGalleryItem[] = [];
+      for (const file of files.slice(0, slots)) {
+        uploaded.push(await uploadSuperAdminVenueImage(file, "venue_gallery"));
+      }
+      setVenueDrafts((prev) => {
+        const baseDraft = prev[venueId];
+        if (!baseDraft) return prev;
+        const nextItems = [...parseVenueGalleryItems(baseDraft.galleryImageUrls, baseDraft.galleryS3Keys), ...uploaded].slice(0, MAX_GALLERY_IMAGES);
+        return {
+          ...prev,
+          [venueId]: {
+            ...baseDraft,
+            ...galleryFieldsFromItems(nextItems),
+          },
+        };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gallery upload failed");
+    } finally {
+      setUploadingVenueGalleryId((current) => (current === venueId ? null : current));
+    }
+  };
+
+  const removeVenueDraftCover = async (venueId: string) => {
+    const row = venues.find((item) => item.id === venueId);
+    const draft = venueDrafts[venueId];
+    if (!row || !draft) return;
+
+    const draftKey = String(draft.coverImageS3Key || "").trim();
+    const persistedKey = String(row.coverImageS3Key || "").trim();
+    if (draftKey && draftKey !== persistedKey) {
+      try {
+        await deleteSuperAdminStorageKeys([draftKey]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove cover image");
+        return;
+      }
+    }
+
+    setVenueDrafts((prev) => ({
+      ...prev,
+      [venueId]: {
+        ...prev[venueId],
+        coverImageUrl: "",
+        coverImageS3Key: "",
+      },
+    }));
+  };
+
+  const removeVenueDraftGalleryImage = async (venueId: string, idx: number) => {
+    const row = venues.find((item) => item.id === venueId);
+    const draft = venueDrafts[venueId];
+    if (!row || !draft) return;
+
+    const items = parseVenueGalleryItems(draft.galleryImageUrls, draft.galleryS3Keys);
+    const item = items[idx];
+    if (!item) return;
+
+    const persistedKeys = new Set((row.galleryS3Keys || []).map((key) => key.trim()).filter(Boolean));
+    if (item.key && !persistedKeys.has(item.key)) {
+      try {
+        await deleteSuperAdminStorageKeys([item.key]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove gallery image");
+        return;
+      }
+    }
+
+    const nextItems = items.filter((_, index) => index !== idx);
+    setVenueDrafts((prev) => ({
+      ...prev,
+      [venueId]: {
+        ...prev[venueId],
+        ...galleryFieldsFromItems(nextItems),
+      },
+    }));
+  };
+
   return (
     <AppShell>
       <main style={pageStyle}>
@@ -1505,6 +1943,7 @@ export default function JazzbaiSuperAdminPage() {
             ["leagues", "Leagues"],
             ["imports", "CSV Import"],
             ["matches", "Matches"],
+            ["motorsportEntries", "Motorsport Entries"],
             ["blog", "Blog"],
           ] as Array<[TabId, string]>).map(([id, label]) => (
             <button
@@ -1745,10 +2184,90 @@ export default function JazzbaiSuperAdminPage() {
                 <input style={inputStyle} placeholder="Website" value={newVenue.website} onChange={(e) => setNewVenue((prev) => ({ ...prev, website: e.target.value }))} />
                 <input style={inputStyle} placeholder="Instagram handle" value={newVenue.instagramHandle} onChange={(e) => setNewVenue((prev) => ({ ...prev, instagramHandle: e.target.value }))} />
                 <input style={inputStyle} placeholder="Google Maps URL" value={newVenue.googleMapsUrl} onChange={(e) => setNewVenue((prev) => ({ ...prev, googleMapsUrl: e.target.value }))} />
-                <input style={inputStyle} placeholder="Cover image URL" value={newVenue.coverImageUrl} onChange={(e) => setNewVenue((prev) => ({ ...prev, coverImageUrl: e.target.value }))} />
-                <input style={inputStyle} placeholder="Cover image S3 key" value={newVenue.coverImageS3Key} onChange={(e) => setNewVenue((prev) => ({ ...prev, coverImageS3Key: e.target.value }))} />
-                <input style={inputStyle} placeholder="Gallery URLs (comma separated)" value={toCsvList(newVenue.galleryImageUrls)} onChange={(e) => setNewVenue((prev) => ({ ...prev, galleryImageUrls: parseCsvList(e.target.value) }))} />
-                <input style={inputStyle} placeholder="Gallery S3 keys (comma separated)" value={toCsvList(newVenue.galleryS3Keys)} onChange={(e) => setNewVenue((prev) => ({ ...prev, galleryS3Keys: parseCsvList(e.target.value) }))} />
+                <div style={{ gridColumn: "1 / -1", display: "grid", gap: 14 }}>
+                  <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cover image</span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          {newVenue.coverImageUrl ? (
+                            <button type="button" style={smallBtn("danger")} onClick={() => void removeNewVenueCover()}>
+                              Remove
+                            </button>
+                          ) : null}
+                          <button type="button" style={smallBtn("outline", uploadingNewVenueCover)} disabled={uploadingNewVenueCover} onClick={() => newVenueCoverInputRef.current?.click()}>
+                            {uploadingNewVenueCover ? "Uploading..." : "Upload Cover"}
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        ref={newVenueCoverInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void uploadNewVenueCover(file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                      <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", overflow: "hidden", minHeight: 160 }}>
+                        {newVenue.coverImageUrl ? (
+                          <img src={newVenue.coverImageUrl} alt="Venue cover" style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                        ) : (
+                          <div style={{ minHeight: 160, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted-foreground)" }}>
+                            No cover image
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Gallery images ({parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length}/{MAX_GALLERY_IMAGES})</span>
+                        <button
+                          type="button"
+                          style={smallBtn("outline", uploadingNewVenueGallery || parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length >= MAX_GALLERY_IMAGES)}
+                          disabled={uploadingNewVenueGallery || parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length >= MAX_GALLERY_IMAGES}
+                          onClick={() => newVenueGalleryInputRef.current?.click()}
+                        >
+                          {uploadingNewVenueGallery ? "Uploading..." : "Add Images"}
+                        </button>
+                      </div>
+                      <input
+                        ref={newVenueGalleryInputRef}
+                        type="file"
+                        multiple
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length) void uploadNewVenueGallery(files);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                      <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
+                        {parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).map((item, idx) => (
+                          <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", background: "var(--secondary)" }}>
+                            <img src={item.url} alt={`Gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
+                            <button
+                              type="button"
+                              style={{ position: "absolute", top: 6, right: 6, border: "none", borderRadius: 6, padding: "4px 6px", background: "rgba(239,68,68,0.92)", color: "#fff", cursor: "pointer", fontSize: 11 }}
+                              onClick={() => void removeNewVenueGalleryImage(idx)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length) }).map((_, idx) => (
+                          <div key={`new-venue-empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 96, borderRadius: 10, border: "1px dashed var(--border)", color: "var(--muted-foreground)", fontSize: 11 }}>
+                            Empty slot
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <input style={inputStyle} placeholder="Capacity" value={newVenue.capacity} onChange={(e) => setNewVenue((prev) => ({ ...prev, capacity: e.target.value }))} />
                 <input style={inputStyle} type="number" min="0" max="5" step="0.1" placeholder="Displayed rating override" value={newVenue.ratingOverride} onChange={(e) => setNewVenue((prev) => ({ ...prev, ratingOverride: e.target.value }))} />
                 <input style={inputStyle} type="number" min="0" step="1" placeholder="Displayed review count override" value={newVenue.reviewCountOverride} onChange={(e) => setNewVenue((prev) => ({ ...prev, reviewCountOverride: e.target.value }))} />
@@ -2010,10 +2529,95 @@ export default function JazzbaiSuperAdminPage() {
                         <input style={inputStyle} value={String(draft.website ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, website: e.target.value } }))} placeholder="Website" />
                         <input style={inputStyle} value={String(draft.instagramHandle ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, instagramHandle: e.target.value } }))} placeholder="Instagram handle" />
                         <input style={inputStyle} value={String(draft.googleMapsUrl ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, googleMapsUrl: e.target.value } }))} placeholder="Google Maps URL" />
-                        <input style={inputStyle} value={String(draft.coverImageUrl ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, coverImageUrl: e.target.value } }))} placeholder="Cover image URL" />
-                        <input style={inputStyle} value={String(draft.coverImageS3Key ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, coverImageS3Key: e.target.value } }))} placeholder="Cover image S3 key" />
-                        <input style={inputStyle} value={toCsvList(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [])} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, galleryImageUrls: parseCsvList(e.target.value) } }))} placeholder="Gallery URLs" />
-                        <input style={inputStyle} value={toCsvList(Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [])} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, galleryS3Keys: parseCsvList(e.target.value) } }))} placeholder="Gallery S3 keys" />
+                        <div style={{ gridColumn: "1 / -1", display: "grid", gap: 14 }}>
+                          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                            <div style={{ display: "grid", gap: 10 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cover image</span>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  {draft.coverImageUrl ? (
+                                    <button type="button" style={smallBtn("danger")} onClick={() => void removeVenueDraftCover(row.id)}>
+                                      Remove
+                                    </button>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    style={smallBtn("outline", uploadingVenueCoverId === row.id)}
+                                    disabled={uploadingVenueCoverId === row.id}
+                                    onClick={() => venueCoverInputRefs.current[row.id]?.click()}
+                                  >
+                                    {uploadingVenueCoverId === row.id ? "Uploading..." : "Upload Cover"}
+                                  </button>
+                                </div>
+                              </div>
+                              <input
+                                ref={(node) => { venueCoverInputRefs.current[row.id] = node; }}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) void uploadVenueDraftCover(row.id, file);
+                                  e.currentTarget.value = "";
+                                }}
+                              />
+                              <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", overflow: "hidden", minHeight: 160 }}>
+                                {draft.coverImageUrl ? (
+                                  <img src={String(draft.coverImageUrl)} alt={`${row.name} cover`} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                                ) : (
+                                  <div style={{ minHeight: 160, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted-foreground)" }}>
+                                    No cover image
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div style={{ display: "grid", gap: 10 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Gallery images ({parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length}/{MAX_GALLERY_IMAGES})</span>
+                                <button
+                                  type="button"
+                                  style={smallBtn("outline", uploadingVenueGalleryId === row.id || parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length >= MAX_GALLERY_IMAGES)}
+                                  disabled={uploadingVenueGalleryId === row.id || parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length >= MAX_GALLERY_IMAGES}
+                                  onClick={() => venueGalleryInputRefs.current[row.id]?.click()}
+                                >
+                                  {uploadingVenueGalleryId === row.id ? "Uploading..." : "Add Images"}
+                                </button>
+                              </div>
+                              <input
+                                ref={(node) => { venueGalleryInputRefs.current[row.id] = node; }}
+                                type="file"
+                                multiple
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const files = Array.from(e.target.files || []);
+                                  if (files.length) void uploadVenueDraftGallery(row.id, files);
+                                  e.currentTarget.value = "";
+                                }}
+                              />
+                              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
+                                {parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).map((item, idx) => (
+                                  <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", background: "var(--secondary)" }}>
+                                    <img src={item.url} alt={`${row.name} gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
+                                    <button
+                                      type="button"
+                                      style={{ position: "absolute", top: 6, right: 6, border: "none", borderRadius: 6, padding: "4px 6px", background: "rgba(239,68,68,0.92)", color: "#fff", cursor: "pointer", fontSize: 11 }}
+                                      onClick={() => void removeVenueDraftGalleryImage(row.id, idx)}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                ))}
+                                {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length) }).map((_, idx) => (
+                                  <div key={`${row.id}-gallery-empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 96, borderRadius: 10, border: "1px dashed var(--border)", color: "var(--muted-foreground)", fontSize: 11 }}>
+                                    Empty slot
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                         <input style={inputStyle} value={String(draft.capacity ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, capacity: e.target.value } }))} placeholder="Capacity" />
                         <input style={inputStyle} type="number" min="0" max="5" step="0.1" value={String(draft.ratingOverride ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, ratingOverride: e.target.value } }))} placeholder="Displayed rating override" />
                         <input style={inputStyle} type="number" min="0" step="1" value={String(draft.reviewCountOverride ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, reviewCountOverride: e.target.value } }))} placeholder="Displayed review count override" />
@@ -2361,7 +2965,7 @@ export default function JazzbaiSuperAdminPage() {
                   <option value="">Select match</option>
                   {lookupMatches.map((match) => (
                     <option key={match.id} value={match.id}>
-                      {match.homeTeamName} vs {match.awayTeamName} - {formatDateTime(match.matchDateUtc)}
+                      {formatLookupMatchLabel(match)} - {formatDateTime(match.matchDateUtc)}
                     </option>
                   ))}
                 </select>
@@ -3370,6 +3974,260 @@ export default function JazzbaiSuperAdminPage() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "motorsportEntries" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={{ ...cardStyle, overflow: "visible", position: "relative", zIndex: 20 }}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Motorsport Entry</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                <select style={inputStyle} value={newMotorsportEntry.matchId} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, matchId: e.target.value }))}>
+                  <option value="">Motorsport event</option>
+                  {motorsportLookupMatches.map((match) => (
+                    <option key={match.id} value={match.id}>{formatLookupMatchLabel(match)}</option>
+                  ))}
+                </select>
+                <input style={inputStyle} value={newMotorsportEntry.carNumber} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, carNumber: e.target.value }))} placeholder="Car number" />
+                <input style={inputStyle} value={newMotorsportEntry.driverName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverName: e.target.value }))} placeholder="Driver name" />
+                <input style={inputStyle} value={newMotorsportEntry.driverShortName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverShortName: e.target.value }))} placeholder="Driver short name" />
+                <input style={inputStyle} value={newMotorsportEntry.driverNationality} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverNationality: e.target.value }))} placeholder="Nationality" />
+                <input style={inputStyle} value={newMotorsportEntry.driverCountryCode} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverCountryCode: e.target.value.toUpperCase() }))} placeholder="Country code" />
+                <input style={inputStyle} value={newMotorsportEntry.entrantName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, entrantName: e.target.value }))} placeholder="Entrant / team" />
+                <input style={inputStyle} value={newMotorsportEntry.entrantShortName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, entrantShortName: e.target.value }))} placeholder="Team short name" />
+                <input style={inputStyle} value={newMotorsportEntry.entrantBrandColor} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, entrantBrandColor: e.target.value }))} placeholder="Brand color" />
+                <input style={inputStyle} value={newMotorsportEntry.manufacturerName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, manufacturerName: e.target.value }))} placeholder="Manufacturer" />
+                <input style={inputStyle} value={newMotorsportEntry.manufacturerShortName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, manufacturerShortName: e.target.value }))} placeholder="Manufacturer short name" />
+                <input style={inputStyle} value={newMotorsportEntry.displayName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, displayName: e.target.value }))} placeholder="Display name (optional)" />
+                <input style={inputStyle} value={newMotorsportEntry.gridPosition} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, gridPosition: e.target.value }))} placeholder="Grid" />
+                <input style={inputStyle} value={newMotorsportEntry.startPosition} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, startPosition: e.target.value }))} placeholder="Start" />
+                <input style={inputStyle} value={newMotorsportEntry.finishPosition} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, finishPosition: e.target.value }))} placeholder="Finish" />
+                <select style={inputStyle} value={newMotorsportEntry.status} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, status: e.target.value as MotorsportEntryStatus }))}>
+                  {MOTORSPORT_ENTRY_STATUSES.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+                <input style={inputStyle} value={newMotorsportEntry.points} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, points: e.target.value }))} placeholder="Points" />
+                <button
+                  style={smallBtn("primary", submittingAction === "create-motorsport-entry")}
+                  disabled={submittingAction === "create-motorsport-entry"}
+                  onClick={() => void runAction("create-motorsport-entry", async () => {
+                    await superAdminFetch("/motorsport-entries", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        matchId: newMotorsportEntry.matchId,
+                        carNumber: newMotorsportEntry.carNumber || undefined,
+                        driverName: newMotorsportEntry.driverName || undefined,
+                        driverShortName: newMotorsportEntry.driverShortName || undefined,
+                        driverNationality: newMotorsportEntry.driverNationality || undefined,
+                        driverCountryCode: newMotorsportEntry.driverCountryCode || undefined,
+                        entrantName: newMotorsportEntry.entrantName || undefined,
+                        entrantShortName: newMotorsportEntry.entrantShortName || undefined,
+                        entrantBrandColor: newMotorsportEntry.entrantBrandColor || undefined,
+                        manufacturerName: newMotorsportEntry.manufacturerName || undefined,
+                        manufacturerShortName: newMotorsportEntry.manufacturerShortName || undefined,
+                        displayName: newMotorsportEntry.displayName || undefined,
+                        gridPosition: parseOptionalNumber(newMotorsportEntry.gridPosition),
+                        startPosition: parseOptionalNumber(newMotorsportEntry.startPosition),
+                        finishPosition: parseOptionalNumber(newMotorsportEntry.finishPosition),
+                        status: newMotorsportEntry.status,
+                        points: parseOptionalNumber(newMotorsportEntry.points),
+                      }),
+                    });
+                    setNewMotorsportEntry({
+                      matchId: newMotorsportEntry.matchId,
+                      carNumber: "",
+                      driverName: "",
+                      driverShortName: "",
+                      driverNationality: "",
+                      driverCountryCode: "",
+                      entrantName: "",
+                      entrantShortName: "",
+                      entrantBrandColor: "",
+                      manufacturerName: "",
+                      manufacturerShortName: "",
+                      displayName: "",
+                      gridPosition: "",
+                      startPosition: "",
+                      finishPosition: "",
+                      status: "ENTERED",
+                      points: "",
+                    });
+                    setMotorsportEntriesMatchId((prev) => prev || newMotorsportEntry.matchId);
+                    await Promise.all([loadMotorsportEntries(), loadLookups()]);
+                  })}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Motorsport Entries ({motorsportEntriesCount})</h2>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <select style={{ ...inputStyle, minWidth: 240 }} value={motorsportEntriesMatchId} onChange={(e) => setMotorsportEntriesMatchId(e.target.value)}>
+                    <option value="">All motorsport events</option>
+                    {motorsportLookupMatches.map((match) => (
+                      <option key={match.id} value={match.id}>{formatLookupMatchLabel(match)}</option>
+                    ))}
+                  </select>
+                  <input value={motorsportEntriesSearch} onChange={(e) => setMotorsportEntriesSearch(e.target.value)} placeholder="Search entries" style={{ ...inputStyle, minWidth: 220 }} />
+                  <button style={smallBtn("outline", motorsportEntriesLoading)} onClick={() => void loadMotorsportEntries()} disabled={motorsportEntriesLoading}>Search</button>
+                </div>
+              </div>
+              <div style={tableWrapStyle}>
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Event</th>
+                      <th style={thStyle}>Car</th>
+                      <th style={thStyle}>Driver</th>
+                      <th style={thStyle}>Entrant</th>
+                      <th style={thStyle}>Manufacturer</th>
+                      <th style={thStyle}>Grid</th>
+                      <th style={thStyle}>Start</th>
+                      <th style={thStyle}>Finish</th>
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Points</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {motorsportEntries.map((row) => {
+                      const draft = motorsportEntryDrafts[row.id] ?? {
+                        matchId: row.matchId,
+                        carNumber: row.carNumber || "",
+                        displayName: row.displayName || "",
+                        driverName: row.driverName || "",
+                        driverShortName: row.driverShortName || "",
+                        driverNationality: row.driverNationality || "",
+                        driverCountryCode: row.driverCountryCode || "",
+                        entrantName: row.entrantName || "",
+                        entrantShortName: row.entrantShortName || "",
+                        entrantBrandColor: row.entrantBrandColor || "",
+                        manufacturerName: row.manufacturerName || "",
+                        manufacturerShortName: row.manufacturerShortName || "",
+                        gridPosition: row.gridPosition ?? "",
+                        startPosition: row.startPosition ?? "",
+                        finishPosition: row.finishPosition ?? "",
+                        status: row.status,
+                        points: row.points ?? "",
+                      };
+                      return (
+                        <tr key={row.id}>
+                          <td style={tdStyle}>
+                            <select style={{ ...inputStyle, minWidth: 220 }} value={String(draft.matchId ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, matchId: e.target.value } }))}>
+                              <option value="">Motorsport event</option>
+                              {motorsportLookupMatches.map((match) => (
+                                <option key={match.id} value={match.id}>{formatLookupMatchLabel(match)}</option>
+                              ))}
+                            </select>
+                            <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted-foreground)" }}>
+                              {row.matchSubtitle || formatLookupMatchSubtitle(lookupMatches.find((match) => match.id === (draft.matchId || row.matchId)) || {
+                                id: row.matchId,
+                                eventFormat: "SINGLE_EVENT",
+                                eventTitle: row.matchLabel || "",
+                                eventSubtitle: row.matchSubtitle || "",
+                                homeTeamName: null,
+                                awayTeamName: null,
+                                matchDateUtc: "",
+                                status: "",
+                                leagueId: null,
+                              })}
+                            </div>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.carNumber ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, carNumber: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String(draft.driverName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, driverName: e.target.value } }))} />
+                              <input style={inputStyle} value={String(draft.driverShortName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, driverShortName: e.target.value } }))} placeholder="Short" />
+                            </div>
+                          </td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String(draft.entrantName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, entrantName: e.target.value } }))} />
+                              <input style={inputStyle} value={String(draft.entrantShortName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, entrantShortName: e.target.value } }))} placeholder="Short" />
+                            </div>
+                          </td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String(draft.manufacturerName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, manufacturerName: e.target.value } }))} />
+                              <input style={inputStyle} value={String(draft.manufacturerShortName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, manufacturerShortName: e.target.value } }))} placeholder="Short" />
+                            </div>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.gridPosition ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, gridPosition: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.startPosition ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, startPosition: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.finishPosition ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, finishPosition: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <select style={inputStyle} value={String(draft.status ?? "ENTERED")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, status: e.target.value as MotorsportEntryStatus } }))}>
+                              {MOTORSPORT_ENTRY_STATUSES.map((status) => (
+                                <option key={status} value={status}>{status}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.points ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, points: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                style={smallBtn("primary", submittingAction === `save-entry-${row.id}`)}
+                                disabled={submittingAction === `save-entry-${row.id}`}
+                                onClick={() => void runAction(`save-entry-${row.id}`, async () => {
+                                  await superAdminFetch(`/motorsport-entries/${row.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({
+                                      matchId: draft.matchId || row.matchId,
+                                      carNumber: draft.carNumber || null,
+                                      displayName: draft.displayName || null,
+                                      driverName: draft.driverName || undefined,
+                                      driverShortName: draft.driverShortName || null,
+                                      driverNationality: draft.driverNationality || null,
+                                      driverCountryCode: draft.driverCountryCode || null,
+                                      entrantName: draft.entrantName || undefined,
+                                      entrantShortName: draft.entrantShortName || null,
+                                      entrantBrandColor: draft.entrantBrandColor || null,
+                                      manufacturerName: draft.manufacturerName || undefined,
+                                      manufacturerShortName: draft.manufacturerShortName || null,
+                                      gridPosition: parseOptionalNumber(draft.gridPosition as string | number | null | undefined),
+                                      startPosition: parseOptionalNumber(draft.startPosition as string | number | null | undefined),
+                                      finishPosition: parseOptionalNumber(draft.finishPosition as string | number | null | undefined),
+                                      status: draft.status,
+                                      points: parseOptionalNumber(draft.points as string | number | null | undefined),
+                                    }),
+                                  });
+                                  await loadMotorsportEntries();
+                                })}
+                              >
+                                Save
+                              </button>
+                              <button
+                                style={smallBtn("danger", submittingAction === `delete-entry-${row.id}`)}
+                                disabled={submittingAction === `delete-entry-${row.id}`}
+                                onClick={() => void runAction(`delete-entry-${row.id}`, async () => {
+                                  await superAdminFetch(`/motorsport-entries/${row.id}`, { method: "DELETE" });
+                                  await loadMotorsportEntries();
+                                })}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {motorsportEntries.length === 0 && !motorsportEntriesLoading && (
+                      <tr>
+                        <td style={{ ...tdStyle, textAlign: "center", color: "var(--muted-foreground)" }} colSpan={11}>
+                          No motorsport entries found.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

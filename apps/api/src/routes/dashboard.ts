@@ -14,6 +14,7 @@ import {
 } from '@matchwatch/shared';
 import { authMiddleware, requireRole } from '../middleware';
 import { z } from 'zod';
+import { deleteStorageObjects } from '../lib/storage';
 
 const dashboardRoutes = new Hono();
 
@@ -71,6 +72,47 @@ function venueMetadataRecord(metadata: unknown): Record<string, unknown> {
 function promotedVenueEventIdFromMetadata(metadata: unknown): string | null {
     const raw = venueMetadataRecord(metadata).promotedVenueEventId;
     return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : null;
+}
+
+function normalizeStorageKey(value: unknown) {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function normalizeStorageKeys(values: unknown) {
+    if (!Array.isArray(values)) return [] as string[];
+    return values
+        .map((value) => normalizeStorageKey(value))
+        .filter((value): value is string => Boolean(value));
+}
+
+async function cleanupRemovedVenueMedia(params: {
+    previousCoverKey?: string | null;
+    previousGalleryKeys?: string[] | null;
+    nextCoverKey?: string | null;
+    nextGalleryKeys?: string[] | null;
+}) {
+    const removedKeys = new Set<string>();
+    const previousCoverKey = normalizeStorageKey(params.previousCoverKey);
+    const nextCoverKey = normalizeStorageKey(params.nextCoverKey);
+
+    if (previousCoverKey && previousCoverKey !== nextCoverKey) {
+        removedKeys.add(previousCoverKey);
+    }
+
+    const nextGalleryKeySet = new Set(normalizeStorageKeys(params.nextGalleryKeys));
+    for (const key of normalizeStorageKeys(params.previousGalleryKeys)) {
+        if (!nextGalleryKeySet.has(key)) {
+            removedKeys.add(key);
+        }
+    }
+
+    if (removedKeys.size === 0) return;
+
+    try {
+        await deleteStorageObjects(Array.from(removedKeys));
+    } catch {
+        // Best effort cleanup only. Keep DB update successful even if object deletion fails.
+    }
 }
 
 async function getVenueOr404(c: any) {
@@ -241,7 +283,12 @@ dashboardRoutes.post('/venues', async (c) => {
 dashboardRoutes.patch('/venues/:venueId', async (c) => {
     const user = c.get('user');
     const venueId = c.req.param('venueId');
-    const [ownedVenue] = await db.select({ id: venues.id, metadata: venues.metadata }).from(venues)
+    const [ownedVenue] = await db.select({
+        id: venues.id,
+        metadata: venues.metadata,
+        coverImageS3Key: venues.coverImageS3Key,
+        galleryS3Keys: venues.galleryS3Keys,
+    }).from(venues)
         .where(and(eq(venues.id, venueId), eq(venues.ownerId, user.id), eq(venues.isActive, true)))
         .limit(1);
 
@@ -289,6 +336,12 @@ dashboardRoutes.patch('/venues/:venueId', async (c) => {
     }
 
     await db.update(venues).set(updates).where(eq(venues.id, venueId));
+    await cleanupRemovedVenueMedia({
+        previousCoverKey: ownedVenue.coverImageS3Key,
+        previousGalleryKeys: ownedVenue.galleryS3Keys,
+        nextCoverKey: parsed.data.coverImageS3Key !== undefined ? parsed.data.coverImageS3Key : ownedVenue.coverImageS3Key,
+        nextGalleryKeys: parsed.data.galleryS3Keys !== undefined ? parsed.data.galleryS3Keys.slice(0, 5) : ownedVenue.galleryS3Keys,
+    });
     return c.json(apiResponse({ message: 'Venue updated' }));
 });
 
@@ -400,6 +453,12 @@ async function updateVenueHandler(c: any) {
     }
 
     await db.update(venues).set(updates).where(eq(venues.id, venue.id));
+    await cleanupRemovedVenueMedia({
+        previousCoverKey: venue.coverImageS3Key,
+        previousGalleryKeys: venue.galleryS3Keys,
+        nextCoverKey: parsed.data.coverImageS3Key !== undefined ? parsed.data.coverImageS3Key : venue.coverImageS3Key,
+        nextGalleryKeys: parsed.data.galleryS3Keys !== undefined ? parsed.data.galleryS3Keys.slice(0, 5) : venue.galleryS3Keys,
+    });
 
     await db.insert(auditLogs).values({
         userId: user.id,

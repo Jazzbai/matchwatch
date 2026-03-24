@@ -25,14 +25,6 @@ function promotedVenueEventIdFromMetadata(metadata: unknown): string | null {
     return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : null;
 }
 
-function resolvedVenueRating(venue: typeof venues.$inferSelect) {
-    return venue.ratingOverride ?? venue.averageRating;
-}
-
-function resolvedVenueReviewCount(venue: typeof venues.$inferSelect) {
-    return venue.reviewCountOverride ?? venue.totalReviews;
-}
-
 // ─── GET / ──────────────────────────────────────
 venueRoutes.get('/', async (c) => {
     const query = venueQuerySchema.safeParse(c.req.query());
@@ -51,7 +43,15 @@ venueRoutes.get('/', async (c) => {
     const whereClause = and(...conditions);
 
     const [rows, [totalResult]] = await Promise.all([
-        db.select().from(venues).where(whereClause).orderBy(desc(venues.isFeatured), desc(venues.averageRating)).limit(limit).offset(offset),
+        db.select()
+            .from(venues)
+            .where(whereClause)
+            .orderBy(
+                desc(venues.isFeatured),
+                desc(sql`coalesce(${venues.ratingOverride}, ${venues.averageRating})`),
+            )
+            .limit(limit)
+            .offset(offset),
         db.select({ count: count() }).from(venues).where(whereClause),
     ]);
 
@@ -77,8 +77,10 @@ venueRoutes.get('/', async (c) => {
             vibes: v.vibes,
             cuisineTags: v.cuisineTags,
             priceRange: v.priceRange,
-            averageRating: resolvedVenueRating(v),
-            totalReviews: resolvedVenueReviewCount(v),
+            averageRating: v.averageRating,
+            totalReviews: v.totalReviews,
+            ratingOverride: v.ratingOverride,
+            reviewCountOverride: v.reviewCountOverride,
             isVerified: v.isVerified,
             isFeatured: v.isFeatured,
             capacity: v.capacity,
@@ -196,8 +198,6 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
 
     return c.json(apiResponse({
         ...venue,
-        averageRating: resolvedVenueRating(venue),
-        totalReviews: resolvedVenueReviewCount(venue),
         coverImageUrl: venue.coverImageUrl || galleryImageUrlsFromMetadata(venue.metadata)[0] || null,
         galleryImageUrls: galleryImageUrlsFromMetadata(venue.metadata),
         promotedVenueEventId,

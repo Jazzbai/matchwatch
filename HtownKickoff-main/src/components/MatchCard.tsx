@@ -317,6 +317,7 @@ export function MatchCard({
                                 alignItems: "center",
                                 gap: 10,
                                 flex: 1,
+                                minWidth: 0,
                             }}
                         >
                             <div
@@ -351,14 +352,18 @@ export function MatchCard({
                             </div>
                             <span
                                 style={{
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: 700,
                                     color: "var(--foreground)",
                                     textAlign: "center",
-                                    maxWidth: 90,
+                                    maxWidth: 120,
+                                    lineHeight: 1.25,
+                                    minHeight: 30,
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical",
                                     overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
+                                    overflowWrap: "anywhere",
                                 }}
                             >
                                 {homeTeam}
@@ -429,6 +434,7 @@ export function MatchCard({
                                 alignItems: "center",
                                 gap: 10,
                                 flex: 1,
+                                minWidth: 0,
                             }}
                         >
                             <div
@@ -463,14 +469,18 @@ export function MatchCard({
                             </div>
                             <span
                                 style={{
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: 700,
                                     color: "var(--foreground)",
                                     textAlign: "center",
-                                    maxWidth: 90,
+                                    maxWidth: 120,
+                                    lineHeight: 1.25,
+                                    minHeight: 30,
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical",
                                     overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
+                                    overflowWrap: "anywhere",
                                 }}
                             >
                                 {awayTeam}

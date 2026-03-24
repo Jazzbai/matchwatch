@@ -23,7 +23,7 @@ const MATCH_FETCH_LIMIT = 50;
 const VENUE_FETCH_LIMIT = 50;
 const VENUE_CHILD_LIMIT = 50;
 const VENUE_MAX_PAGES = 4;
-const MATCH_MAX_PAGES = 8;
+const MATCH_MAX_PAGES = 12;
 const BOOKING_FETCH_LIMIT = 50;
 const FLAG_CDN_BASE = "https://flagcdn.com";
 
@@ -675,8 +675,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             website: "",
             instagram: "",
             capacity: v.capacity || 0,
-            rating: Number(v.averageRating || 0),
-            reviewCount: Number(v.totalReviews || 0),
+            rating: Number(v.ratingOverride ?? v.averageRating ?? 0),
+            reviewCount: Number(v.reviewCountOverride ?? v.totalReviews ?? 0),
             amenities: Array.isArray(v.amenities) ? v.amenities : [],
             cuisineTags: Array.isArray(v.cuisineTags) ? v.cuisineTags : [],
             priceRange: (v.priceRange || "MID") as PriceRange,
@@ -732,8 +732,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 website: detail?.website || "",
                 instagram: detail?.instagramHandle || "",
                 capacity: Number(detail?.capacity || row.venue.capacity || 0),
-                rating: Number(detail?.averageRating || row.venue.rating || 0),
-                reviewCount: Number(detail?.totalReviews || row.venue.reviewCount || 0),
+                rating: Number(detail?.ratingOverride ?? detail?.averageRating ?? row.venue.rating ?? 0),
+                reviewCount: Number(detail?.reviewCountOverride ?? detail?.totalReviews ?? row.venue.reviewCount ?? 0),
                 amenities: Array.isArray(detail?.amenities) ? detail.amenities : row.venue.amenities,
                 cuisineTags: Array.isArray(detail?.cuisineTags) ? detail.cuisineTags : row.venue.cuisineTags,
                 isVerified: detail?.isVerified ?? row.venue.isVerified,
@@ -912,7 +912,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
         };
     }, [fetchFromApi]);
 
-    const getTeam = (id?: string) => (id ? teams.find((t) => t.id === id) : undefined);
+    const getTeam = (id?: string) => {
+        if (!id) return undefined;
+
+        const existing = teams.find((t) => t.id === id);
+        if (existing) return existing;
+
+        const sourceMatch = matches.find((match) => match.homeTeamId === id || match.awayTeamId === id);
+        if (!sourceMatch) return undefined;
+
+        const isHome = sourceMatch.homeTeamId === id;
+        const fallbackName = isHome
+            ? sourceMatch.homeTeamName || "Home Team"
+            : sourceMatch.awayTeamName || "Away Team";
+
+        return {
+            id,
+            name: fallbackName,
+            shortName: toShortName(fallbackName),
+            crest: toFlagOrBall(fallbackName),
+            color: hashColor(id),
+            leagueId: sourceMatch.leagueId,
+            country: toCountry(fallbackName),
+            image: "",
+        } satisfies Team;
+    };
     const getLeague = (id: string) => leagues.find((l) => l.id === id);
     const getSport = (id: string) => sports.find((s) => s.id === id);
     const getVenue = (idOrSlug: string) => venues.find((v) => v.id === idOrSlug || v.slug === idOrSlug);

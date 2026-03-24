@@ -11,7 +11,9 @@ type PaginationControlsProps = {
 export function PaginationControls({ currentPage, totalPages, onPageChange }: PaginationControlsProps) {
   if (totalPages <= 1) return null;
 
-  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+  const startPage = Math.max(1, currentPage - 2);
+  const endPage = Math.min(totalPages, currentPage + 2);
+  const pageNumbers = Array.from({ length: endPage - startPage + 1 }, (_, index) => startPage + index);
 
   const baseButtonStyle: React.CSSProperties = {
     minWidth: 40,
@@ -38,6 +40,18 @@ export function PaginationControls({ currentPage, totalPages, onPageChange }: Pa
         marginTop: 24,
       }}
     >
+      <button
+        type="button"
+        onClick={() => onPageChange(1)}
+        disabled={currentPage <= 1}
+        style={{
+          ...baseButtonStyle,
+          opacity: currentPage <= 1 ? 0.45 : 1,
+          cursor: currentPage <= 1 ? "not-allowed" : "pointer",
+        }}
+      >
+        First
+      </button>
       <button
         type="button"
         onClick={() => onPageChange(currentPage - 1)}
@@ -80,6 +94,18 @@ export function PaginationControls({ currentPage, totalPages, onPageChange }: Pa
         }}
       >
         Next
+      </button>
+      <button
+        type="button"
+        onClick={() => onPageChange(totalPages)}
+        disabled={currentPage >= totalPages}
+        style={{
+          ...baseButtonStyle,
+          opacity: currentPage >= totalPages ? 0.45 : 1,
+          cursor: currentPage >= totalPages ? "not-allowed" : "pointer",
+        }}
+      >
+        Last
       </button>
     </div>
   );

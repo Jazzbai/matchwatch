@@ -49,6 +49,7 @@ type SyncResult = {
     errors: number;
     teamsUpserted: number;
     skipped?: boolean;
+    restricted?: boolean;
 };
 
 type MatchSyncRunOptions = {
@@ -722,6 +723,11 @@ async function fetchJsonWithRetry<T>(url: string, headers: Record<string, string
     if (!response.ok) {
         const body = await response.text();
         logger.error({ source, url, status: response.status, body }, 'Match sync provider request failed');
+        if (source === 'football-data' && (response.status === 401 || response.status === 403)) {
+            const error = new Error(`Football-Data access restricted (${response.status})`) as Error & { status?: number };
+            error.status = response.status;
+            throw error;
+        }
         return null;
     }
 
@@ -959,7 +965,7 @@ async function syncLeagueFromFootballData(
             code,
             apiKey,
             mode === 'LIVE' ? 1 : 0,
-            mode === 'LIVE' ? 1 : 14,
+            mode === 'LIVE' ? 1 : 30,
         );
         result.fetched = apiMatches.length;
 
@@ -1010,6 +1016,10 @@ async function syncLeagueFromFootballData(
             }
         }
     } catch (err) {
+        const status = typeof err === 'object' && err && 'status' in err ? Number((err as { status?: number }).status) : null;
+        if (status === 401 || status === 403) {
+            result.restricted = true;
+        }
         result.errors += 1;
         logger.error({ league: league.name, code, err }, 'Failed syncing league from Football-Data');
     }
@@ -1040,7 +1050,7 @@ async function syncLeagueFromApiFootball(
     const externalCode = (league.externalId || '').trim().toUpperCase();
     const lookaheadDays = mode === 'LIVE'
         ? 1
-        : externalCode === 'INTL' ? 90 : 14;
+        : externalCode === 'INTL' ? 90 : FOOTBALL_DATA_SUPPORTED_CODES.has(externalCode) ? 30 : 14;
     const dateTo = new Date(now.getTime() + lookaheadDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const fixtures = await fetchApiFootball<ApiFootballFixturesResponse>('/fixtures', {
         league: resolved.leagueId,
@@ -1187,9 +1197,16 @@ async function syncLeagueWithResolvedProvider(
 
     if (externalCode === 'MLS' && footballDataApiKey) {
         await cleanupLegacyTheSportsDbLeagueData(league);
+        const result = await syncLeagueFromFootballData(league, footballDataApiKey, mode);
+        if (result.restricted && apiFootballApiKey) {
+            return {
+                providerUsed: 'API_FOOTBALL' as MatchSyncProvider,
+                result: await syncLeagueFromApiFootball(league, apiFootballApiKey, mode),
+            };
+        }
         return {
             providerUsed: 'FOOTBALL_DATA' as MatchSyncProvider,
-            result: await syncLeagueFromFootballData(league, footballDataApiKey, mode),
+            result,
         };
     }
 
@@ -1209,9 +1226,16 @@ async function syncLeagueWithResolvedProvider(
     }
 
     if (preferredProvider === 'FOOTBALL_DATA' && footballDataApiKey && FOOTBALL_DATA_SUPPORTED_CODES.has(externalCode)) {
+        const result = await syncLeagueFromFootballData(league, footballDataApiKey, mode);
+        if (result.restricted && apiFootballApiKey) {
+            return {
+                providerUsed: 'API_FOOTBALL' as MatchSyncProvider,
+                result: await syncLeagueFromApiFootball(league, apiFootballApiKey, mode),
+            };
+        }
         return {
             providerUsed: 'FOOTBALL_DATA' as MatchSyncProvider,
-            result: await syncLeagueFromFootballData(league, footballDataApiKey, mode),
+            result,
         };
     }
 
@@ -1223,9 +1247,16 @@ async function syncLeagueWithResolvedProvider(
     }
 
     if (footballDataApiKey && FOOTBALL_DATA_SUPPORTED_CODES.has(externalCode)) {
+        const result = await syncLeagueFromFootballData(league, footballDataApiKey, mode);
+        if (result.restricted && apiFootballApiKey) {
+            return {
+                providerUsed: 'API_FOOTBALL' as MatchSyncProvider,
+                result: await syncLeagueFromApiFootball(league, apiFootballApiKey, mode),
+            };
+        }
         return {
             providerUsed: 'FOOTBALL_DATA' as MatchSyncProvider,
-            result: await syncLeagueFromFootballData(league, footballDataApiKey, mode),
+            result,
         };
     }
 

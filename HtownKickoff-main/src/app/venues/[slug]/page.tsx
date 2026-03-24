@@ -10,6 +10,7 @@ import { AMENITY_LABELS, PRICE_LABELS } from "../../../lib/data";
 import { api } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
 import { useData } from "../../../lib/data-provider";
+import { getLeagueVisual, getMatchDisplay } from "../../../lib/match-display";
 import styles from "./page.module.css";
 
 type VenueMenuCategory = {
@@ -37,7 +38,7 @@ type VenueCustomEvent = {
     bookingNotes?: string | null;
 };
 
-type ActiveTab = "overview" | "events" | "menu" | "reviews" | "posts";
+type ActiveTab = "overview" | "menu" | "reviews" | "posts";
 
 function normalizeImage(value?: string | null) {
     const raw = (value || "").trim();
@@ -142,7 +143,6 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
         }
         const eventIdx = matchEvents.findIndex((event) => event.match.id === preselectedMatchId);
         if (eventIdx !== -1) {
-            setActiveTab("events");
             setBookingEventIdx(eventIdx);
             setBookingOpen(true);
         }
@@ -218,6 +218,8 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
     const bookingHome = bookingMatch ? getTeam(bookingMatch.homeTeamId) : undefined;
     const bookingAway = bookingMatch ? getTeam(bookingMatch.awayTeamId) : undefined;
     const bookingLeague = bookingMatch ? getLeague(bookingMatch.leagueId) : undefined;
+    const bookingDisplay = bookingMatch ? getMatchDisplay(bookingMatch, { homeTeam: bookingHome, awayTeam: bookingAway, league: bookingLeague }) : null;
+    const bookingLeagueVisual = getLeagueVisual(bookingLeague);
     const heroImage = venue?.coverImageUrl || "/venue-hero.webp";
     const galleryImages = venue?.galleryImageUrls?.length ? venue.galleryImageUrls : [];
 
@@ -316,27 +318,30 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                             <div className={styles.eventCard}>
                                 <header className={styles.eventTop}>
                                     <div className={styles.teamsWrap}>
-                                        <div className={styles.teamBlock}>
-                                            <TeamCrest
-                                                src={getTeam(bannerEvent.match.homeTeamId)?.image}
-                                                fallback={getTeam(bannerEvent.match.homeTeamId)?.crest || "H"}
-                                                alt={getTeam(bannerEvent.match.homeTeamId)?.name || "Home"}
-                                            />
-                                            <span className={styles.teamName}>
-                                                {getTeam(bannerEvent.match.homeTeamId)?.shortName || "Home"}
-                                            </span>
-                                        </div>
-                                        <span className={styles.vsText}>vs</span>
-                                        <div className={styles.teamBlock}>
-                                            <TeamCrest
-                                                src={getTeam(bannerEvent.match.awayTeamId)?.image}
-                                                fallback={getTeam(bannerEvent.match.awayTeamId)?.crest || "A"}
-                                                alt={getTeam(bannerEvent.match.awayTeamId)?.name || "Away"}
-                                            />
-                                            <span className={styles.teamName}>
-                                                {getTeam(bannerEvent.match.awayTeamId)?.shortName || "Away"}
-                                            </span>
-                                        </div>
+                                        {(() => {
+                                            const home = getTeam(bannerEvent.match.homeTeamId);
+                                            const away = getTeam(bannerEvent.match.awayTeamId);
+                                            const league = getLeague(bannerEvent.match.leagueId);
+                                            const display = getMatchDisplay(bannerEvent.match, { homeTeam: home, awayTeam: away, league });
+                                            return display.isSingleEvent ? (
+                                                <div className={styles.sideMeta}>
+                                                    <strong>{display.title}</strong>
+                                                    {display.subtitle ? <span>{display.subtitle}</span> : null}
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className={styles.teamBlock}>
+                                                        <TeamCrest src={home?.image} fallback={home?.crest || "H"} alt={display.homeName} />
+                                                        <span className={styles.teamName}>{display.homeName}</span>
+                                                    </div>
+                                                    <span className={styles.vsText}>vs</span>
+                                                    <div className={styles.teamBlock}>
+                                                        <TeamCrest src={away?.image} fallback={away?.crest || "A"} alt={display.awayName} />
+                                                        <span className={styles.teamName}>{display.awayName}</span>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                     <div className={styles.teamMeta}>
                                         <span>{formatMatchDate(bannerEvent.match.matchDateUTC).date}</span>
@@ -397,7 +402,6 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                     <nav className={styles.tabRail}>
                         {[
                             { id: "overview", label: "Overview" },
-                            { id: "events", label: `Events (${matchEvents.length})` },
                             { id: "menu", label: "Menu" },
                             { id: "reviews", label: `Reviews (${reviews.length})` },
                             { id: "posts", label: `Posts (${posts.length})` },
@@ -482,126 +486,6 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                                     </section>
                                 </div>
                             )}
-
-                            {activeTab === "events" && (
-                                <div className={styles.eventGrid}>
-                                    {matchEvents.length === 0 && (
-                                        <div className={styles.emptyState}>No upcoming watch events for this venue yet.</div>
-                                    )}
-                                    {matchEvents.map((row, idx) => {
-                                        const home = getTeam(row.match.homeTeamId);
-                                        const away = getTeam(row.match.awayTeamId);
-                                        const league = getLeague(row.match.leagueId);
-                                        const kickoff = formatMatchDate(row.match.matchDateUTC);
-                                        const spotsLeft = row.bookingLimit ? row.bookingLimit - row.confirmedBookings : null;
-                                        const occupancy = row.bookingLimit
-                                            ? Math.min((row.confirmedBookings / row.bookingLimit) * 100, 100)
-                                            : 0;
-
-                                        return (
-                                            <article key={row.id} className={styles.eventCard}>
-                                                <header className={styles.eventTop}>
-                                                    <div className={styles.teamsWrap}>
-                                                        <div className={styles.teamBlock}>
-                                                            <TeamCrest
-                                                                src={home?.image}
-                                                                fallback={home?.crest || "H"}
-                                                                alt={home?.name || "Home team"}
-                                                            />
-                                                            <span className={styles.teamName}>{home?.shortName || "Home"}</span>
-                                                        </div>
-                                                        <span className={styles.vsText}>vs</span>
-                                                        <div className={styles.teamBlock}>
-                                                            <TeamCrest
-                                                                src={away?.image}
-                                                                fallback={away?.crest || "A"}
-                                                                alt={away?.name || "Away team"}
-                                                            />
-                                                            <span className={styles.teamName}>{away?.shortName || "Away"}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className={styles.teamMeta}>
-                                                        <span>{kickoff.date}</span>
-                                                        <span>{kickoff.time}</span>
-                                                    </div>
-                                                </header>
-
-                                                <div className={styles.leagueMeta}>
-                                                    <LeagueCrest
-                                                        src={league?.image}
-                                                        fallback={league?.logo || "L"}
-                                                        alt={league?.name || "League"}
-                                                    />
-                                                    <span>{league?.name || "League"}</span>
-                                                </div>
-
-                                                {row.specialNotes && <p className={styles.eventNotes}>{row.specialNotes}</p>}
-
-                                                {row.bookingLimit && (
-                                                    <div className={styles.progressWrap}>
-                                                        <div className={styles.progressBar}>
-                                                            <div className={styles.progressFill} style={{ width: `${occupancy}%` }} />
-                                                        </div>
-                                                        <span className={styles.panelSubtle}>
-                                                            {row.confirmedBookings}/{row.bookingLimit} booked
-                                                            {spotsLeft !== null ? ` · ${Math.max(spotsLeft, 0)} left` : ""}
-                                                        </span>
-                                                    </div>
-                                                )}
-
-                                                <footer className={styles.eventFooter}>
-                                                    <Link href={`/matches/${row.match.id}`} className="btn-ghost">
-                                                        View Match
-                                                    </Link>
-                                                    <button
-                                                        className="btn-primary"
-                                                        onClick={() => {
-                                                            setBookingEventIdx(idx);
-                                                            setBookingOpen(true);
-                                                        }}
-                                                    >
-                                                        Book Spot
-                                                    </button>
-                                                </footer>
-                                            </article>
-                                        );
-                                    })}
-
-                                    {customEvents.length > 0 && (
-                                        <section className={styles.panel} style={{ gridColumn: "1 / -1" }}>
-                                            <h2 className={styles.panelTitle}>Custom Events</h2>
-                                            <div className={styles.overviewGrid}>
-                                                {customEvents.map((event) => (
-                                                    <article key={event.id} className={styles.postCard}>
-                                                        <header className={styles.eventTop}>
-                                                            <h3 className={styles.panelTitle}>{event.title}</h3>
-                                                            <span className={styles.panelSubtle}>
-                                                                {formatMatchDate(event.startsAt).date} · {formatMatchDate(event.startsAt).time}
-                                                            </span>
-                                                        </header>
-                                                        {event.imageUrl ? (
-                                                            <img
-                                                                src={normalizeImage(event.imageUrl)}
-                                                                alt={event.title}
-                                                                style={{ width: "100%", borderRadius: "10px", marginBottom: "10px", maxHeight: "180px", objectFit: "cover" }}
-                                                            />
-                                                        ) : null}
-                                                        {event.description ? <p className={styles.panelSubtle}>{event.description}</p> : null}
-                                                        <div className={styles.chipRow}>
-                                                            {event.eventTypeTags.map((tag) => (
-                                                                <span key={tag} className={styles.chip}>{tag}</span>
-                                                            ))}
-                                                        </div>
-                                                        {event.bookingNotes ? <p className={styles.ownerReply}>{event.bookingNotes}</p> : null}
-                                                    </article>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-                                </div>
-                            )}
-
                             {activeTab === "menu" && (
                                 <section className={styles.panel}>
                                     <h2 className={styles.panelTitle}>Food and Drinks</h2>
@@ -685,28 +569,35 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                                 {mainEvent ? (
                                     <>
                                         <div className={styles.sideListItem}>
-                                            <div className={styles.teamsWrap}>
-                                                <TeamCrest
-                                                    src={getTeam(mainEvent.event.match.homeTeamId)?.image}
-                                                    fallback={getTeam(mainEvent.event.match.homeTeamId)?.crest || "H"}
-                                                    alt={getTeam(mainEvent.event.match.homeTeamId)?.name || "Home"}
-                                                />
-                                                <span className={styles.vsText}>vs</span>
-                                                <TeamCrest
-                                                    src={getTeam(mainEvent.event.match.awayTeamId)?.image}
-                                                    fallback={getTeam(mainEvent.event.match.awayTeamId)?.crest || "A"}
-                                                    alt={getTeam(mainEvent.event.match.awayTeamId)?.name || "Away"}
-                                                />
-                                            </div>
-                                                <div className={styles.sideMeta}>
-                                                    <strong>
-                                                        <Link href={`/matches/${mainEvent.event.match.id}`} className={styles.mapLink}>
-                                                            {getTeam(mainEvent.event.match.homeTeamId)?.shortName || "Home"} vs{" "}
-                                                            {getTeam(mainEvent.event.match.awayTeamId)?.shortName || "Away"}
-                                                        </Link>
-                                                    </strong>
-                                                    <span>{formatMatchDate(mainEvent.event.match.matchDateUTC).date}</span>
-                                                </div>
+                                            {(() => {
+                                                const home = getTeam(mainEvent.event.match.homeTeamId);
+                                                const away = getTeam(mainEvent.event.match.awayTeamId);
+                                                const league = getLeague(mainEvent.event.match.leagueId);
+                                                const display = getMatchDisplay(mainEvent.event.match, { homeTeam: home, awayTeam: away, league });
+                                                return (
+                                                    <>
+                                                        <div className={styles.teamsWrap}>
+                                                            {display.isSingleEvent ? (
+                                                                <LeagueCrest src={league?.image} fallback={league?.logo || "L"} alt={league?.name || "League"} />
+                                                            ) : (
+                                                                <>
+                                                                    <TeamCrest src={home?.image} fallback={home?.crest || "H"} alt={display.homeName} />
+                                                                    <span className={styles.vsText}>vs</span>
+                                                                    <TeamCrest src={away?.image} fallback={away?.crest || "A"} alt={display.awayName} />
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                        <div className={styles.sideMeta}>
+                                                            <strong>
+                                                                <Link href={`/matches/${mainEvent.event.match.id}`} className={styles.mapLink}>
+                                                                    {display.isSingleEvent ? display.title : `${display.homeName} vs ${display.awayName}`}
+                                                                </Link>
+                                                            </strong>
+                                                            <span>{display.isSingleEvent ? display.subtitle || formatMatchDate(mainEvent.event.match.matchDateUTC).date : formatMatchDate(mainEvent.event.match.matchDateUTC).date}</span>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                         <div className={styles.sideActions}>
                                             <button
@@ -734,25 +625,32 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                                     {matchEvents.slice(0, 6).map((row, idx) => {
                                         const home = getTeam(row.match.homeTeamId);
                                         const away = getTeam(row.match.awayTeamId);
+                                        const league = getLeague(row.match.leagueId);
+                                        const display = getMatchDisplay(row.match, { homeTeam: home, awayTeam: away, league });
                                         return (
                                             <div key={row.id} className={styles.sideListItem}>
                                                 <div className={styles.teamsWrap}>
-                                                    <TeamCrest src={home?.image} fallback={home?.crest || "H"} alt={home?.name || "Home"} />
-                                                    <span className={styles.vsText}>vs</span>
-                                                    <TeamCrest src={away?.image} fallback={away?.crest || "A"} alt={away?.name || "Away"} />
+                                                    {display.isSingleEvent ? (
+                                                        <LeagueCrest src={league?.image} fallback={league?.logo || "L"} alt={league?.name || "League"} />
+                                                    ) : (
+                                                        <>
+                                                            <TeamCrest src={home?.image} fallback={home?.crest || "H"} alt={display.homeName} />
+                                                            <span className={styles.vsText}>vs</span>
+                                                            <TeamCrest src={away?.image} fallback={away?.crest || "A"} alt={display.awayName} />
+                                                        </>
+                                                    )}
                                                 </div>
                                                 <div className={styles.sideMeta}>
                                                     <strong>
                                                         <Link href={`/matches/${row.match.id}`} className={styles.mapLink}>
-                                                            {home?.shortName || "Home"} vs {away?.shortName || "Away"}
+                                                            {display.isSingleEvent ? display.title : `${display.homeName} vs ${display.awayName}`}
                                                         </Link>
                                                     </strong>
-                                                    <span>{formatMatchDate(row.match.matchDateUTC).date}</span>
+                                                    <span>{display.isSingleEvent ? display.subtitle || formatMatchDate(row.match.matchDateUTC).date : formatMatchDate(row.match.matchDateUTC).date}</span>
                                                 </div>
                                                 <button
                                                     className="btn-ghost"
                                                     onClick={() => {
-                                                        setActiveTab("events");
                                                         setBookingEventIdx(idx);
                                                         setBookingOpen(true);
                                                     }}
@@ -777,10 +675,14 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                                 address: `${venue.addressLine1}, ${venue.city}`,
                             }}
                             match={{
-                                homeTeam: bookingHome?.shortName || "Home",
-                                awayTeam: bookingAway?.shortName || "Away",
+                                eventFormat: bookingMatch?.eventFormat,
+                                title: bookingDisplay?.title || "Match",
+                                subtitle: bookingDisplay?.subtitle,
+                                homeTeam: bookingDisplay?.homeName,
+                                awayTeam: bookingDisplay?.awayName,
                                 homeCrest: bookingHome?.image || bookingHome?.crest || "H",
                                 awayCrest: bookingAway?.image || bookingAway?.crest || "A",
+                                eventBadge: bookingLeagueVisual.image || bookingLeagueVisual.logo,
                                 kickoff: bookingMatch ? formatMatchDate(bookingMatch.matchDateUTC).date : "TBD",
                                 league: bookingLeague?.name || "League",
                             }}
@@ -796,3 +698,4 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
             </AppShell>
     );
 }
+

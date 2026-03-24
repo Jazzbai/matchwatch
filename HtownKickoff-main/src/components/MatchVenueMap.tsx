@@ -31,6 +31,20 @@ function escapeHtml(value: string) {
         .replace(/'/g, "&#039;");
 }
 
+function createVenuePulseIcon(L: any) {
+    return L.divIcon({
+        className: "venue-map-pin",
+        html: `
+            <span class="venue-map-pin__pulse"></span>
+            <span class="venue-map-pin__ring"></span>
+            <span class="venue-map-pin__dot"></span>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -16],
+    });
+}
+
 export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenueMapProps) {
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<any>(null);
@@ -112,7 +126,9 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
         const points: [number, number][] = [];
 
         for (const venue of validVenues) {
-            const marker = L.marker([venue.lat, venue.lng]).addTo(layer);
+            const marker = L.marker([venue.lat, venue.lng], {
+                icon: createVenuePulseIcon(L),
+            }).addTo(layer);
             const capacityLabel = venue.bookingLimit
                 ? `${venue.confirmedBookings}/${venue.bookingLimit} booked`
                 : `${venue.confirmedBookings} booked`;
