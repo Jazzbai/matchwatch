@@ -105,6 +105,31 @@ function compareHomeVenues(a: { isFeatured: boolean; rating: number; name: strin
   return a.name.localeCompare(b.name);
 }
 
+const PRIORITY_SOCCER_LEAGUES = [
+  { key: "mls", label: "MLS", match: (name: string) => name === "mls" || name.includes("major league soccer") },
+  { key: "premier-league", label: "Premier League", match: (name: string) => name.includes("premier league") },
+  { key: "la-liga", label: "La Liga", match: (name: string) => name.includes("la liga") },
+  { key: "bundesliga", label: "Bundesliga", match: (name: string) => name.includes("bundesliga") },
+  { key: "serie-a", label: "Serie A", match: (name: string) => name.includes("serie a") },
+  { key: "ligue-1", label: "Ligue 1", match: (name: string) => name.includes("ligue 1") },
+] as const;
+
+function normalizeLeagueName(value?: string | null) {
+  return (value || "").trim().toLowerCase();
+}
+
+function getPrioritySoccerLeagueKey(league?: { name?: string; shortName?: string } | null) {
+  const candidates = [normalizeLeagueName(league?.name), normalizeLeagueName(league?.shortName)].filter(Boolean);
+  const match = PRIORITY_SOCCER_LEAGUES.find((entry) => candidates.some((candidate) => entry.match(candidate)));
+  return match?.key ?? null;
+}
+
+function isSoccerLeague(league?: { sportId?: string; name?: string; shortName?: string } | null) {
+  if (!league) return false;
+  if (league.sportId === "soccer") return true;
+  return getPrioritySoccerLeagueKey(league) !== null;
+}
+
 /* ═══════════════════════════════════════════════════
    HOME PAGE — Assembles all critical components
    Fully linked: every match, venue, team → single page
@@ -112,13 +137,15 @@ function compareHomeVenues(a: { isFeatured: boolean; rating: number; name: strin
 export default function HomePage() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
-  const [homeLeagueFilter, setHomeLeagueFilter] = useState("all");
-  const [homeMatchesPage, setHomeMatchesPage] = useState(1);
+  const [soccerLeagueFilter, setSoccerLeagueFilter] = useState("all");
+  const [soccerMatchesPage, setSoccerMatchesPage] = useState(1);
+  const [otherSportsFilter, setOtherSportsFilter] = useState("all");
+  const [otherSportsPage, setOtherSportsPage] = useState(1);
   const [featuredVenuesPage, setFeaturedVenuesPage] = useState(1);
   const [hostingVenuesPage, setHostingVenuesPage] = useState(1);
   const [hydrated, setHydrated] = useState(false);
   const [nowTs, setNowTs] = useState<number | null>(null);
-  const { matches: MATCHES, venues: VENUES, leagues, venueEvents, bookings, posts, getTeam, getLeague, getVenueEvents, isApiConnected } = useData();
+  const { matches: MATCHES, venues: VENUES, leagues, sports, venueEvents, bookings, posts, getTeam, getLeague, getVenueEvents, isApiConnected } = useData();
 
   useEffect(() => {
     setHydrated(true);
@@ -174,20 +201,71 @@ export default function HomePage() {
       return kickoffTs >= nowTs && kickoffTs < weekAheadTs;
     });
   }, [hydrated, nowTs, upcomingMatches]);
-  const weekLeagueOptions = useMemo(
-    () => leagues.filter((league) => thisWeekMatches.some((match) => match.leagueId === league.id)),
-    [leagues, thisWeekMatches],
-  );
-  const filteredWeekMatches = useMemo(
+  const prioritySoccerMatches = useMemo(
     () =>
-      thisWeekMatches.filter((match) =>
-        homeLeagueFilter === "all" ? true : match.leagueId === homeLeagueFilter,
-      ),
-    [thisWeekMatches, homeLeagueFilter],
+      thisWeekMatches.filter((match) => {
+        const league = getLeague(match.leagueId);
+        return Boolean(getPrioritySoccerLeagueKey(league));
+      }),
+    [thisWeekMatches, getLeague],
   );
-  const orderedWeekMatches = useMemo(
-    () => [...filteredWeekMatches].sort(compareHomeMatches),
-    [filteredWeekMatches],
+  const soccerLeagueOptions = useMemo(
+    () =>
+      PRIORITY_SOCCER_LEAGUES
+        .map((entry) => {
+          const league = leagues.find((candidate) => getPrioritySoccerLeagueKey(candidate) === entry.key);
+          const hasMatches = prioritySoccerMatches.some((match) => getPrioritySoccerLeagueKey(getLeague(match.leagueId)) === entry.key);
+          if (!league || !hasMatches) return null;
+          return {
+            id: entry.key,
+            shortName: league.shortName || entry.label,
+            logo: league.logo,
+            image: league.image,
+            label: entry.label,
+          };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
+    [leagues, prioritySoccerMatches, getLeague],
+  );
+  const filteredSoccerMatches = useMemo(
+    () =>
+      prioritySoccerMatches.filter((match) => {
+        if (soccerLeagueFilter === "all") return true;
+        const league = getLeague(match.leagueId);
+        return getPrioritySoccerLeagueKey(league) === soccerLeagueFilter;
+      }),
+    [prioritySoccerMatches, soccerLeagueFilter, getLeague],
+  );
+  const orderedSoccerMatches = useMemo(
+    () => [...filteredSoccerMatches].sort(compareHomeMatches),
+    [filteredSoccerMatches],
+  );
+  const orderedPrioritySoccerMatches = useMemo(
+    () => [...prioritySoccerMatches].sort(compareHomeMatches),
+    [prioritySoccerMatches],
+  );
+  const otherSportsMatches = useMemo(
+    () =>
+      thisWeekMatches.filter((match) => {
+        const league = getLeague(match.leagueId);
+        return !isSoccerLeague(league);
+      }),
+    [thisWeekMatches, getLeague],
+  );
+  const otherSportsOptions = useMemo(
+    () => {
+      const sportMap = new Map<string, { id: string; label: string }>();
+      for (const match of otherSportsMatches) {
+        const league = getLeague(match.leagueId);
+        const sportId = league?.sportId;
+        if (!sportId || sportMap.has(sportId)) continue;
+        const sport = sports.find((candidate) => candidate.id === sportId);
+        if (!sport) continue;
+        sportMap.set(sportId, { id: sport.id, label: sport.name });
+      }
+      return Array.from(sportMap.values());
+    },
+    [otherSportsMatches, getLeague, sports],
   );
   const orderedThisWeekMatches = useMemo(
     () => [...thisWeekMatches].sort(compareHomeMatches),
@@ -197,10 +275,27 @@ export default function HomePage() {
     () => [...upcomingMatches].sort(compareHomeMatches),
     [upcomingMatches],
   );
-  const featuredMatch = orderedWeekMatches[0] || orderedThisWeekMatches[0] || orderedUpcomingMatches[0] || MATCHES[0];
-  const { currentPage: currentHomeMatchesPage, totalPages: homeMatchesTotalPages, pageItems: paginatedWeekMatches } = useMemo(
-    () => paginateItems(orderedWeekMatches, homeMatchesPage),
-    [orderedWeekMatches, homeMatchesPage],
+  const filteredOtherSportsMatches = useMemo(
+    () =>
+      otherSportsMatches.filter((match) => {
+        if (otherSportsFilter === "all") return true;
+        const league = getLeague(match.leagueId);
+        return league?.sportId === otherSportsFilter;
+      }),
+    [otherSportsMatches, otherSportsFilter, getLeague],
+  );
+  const orderedOtherSportsMatches = useMemo(
+    () => [...filteredOtherSportsMatches].sort(compareHomeMatches),
+    [filteredOtherSportsMatches],
+  );
+  const featuredMatch = orderedSoccerMatches[0] || orderedPrioritySoccerMatches[0] || orderedThisWeekMatches[0] || orderedUpcomingMatches[0] || MATCHES[0];
+  const { currentPage: currentSoccerMatchesPage, totalPages: soccerMatchesTotalPages, pageItems: paginatedSoccerMatches } = useMemo(
+    () => paginateItems(orderedSoccerMatches, soccerMatchesPage),
+    [orderedSoccerMatches, soccerMatchesPage],
+  );
+  const { currentPage: currentOtherSportsPage, totalPages: otherSportsTotalPages, pageItems: paginatedOtherSportsMatches } = useMemo(
+    () => paginateItems(orderedOtherSportsMatches, otherSportsPage),
+    [orderedOtherSportsMatches, otherSportsPage],
   );
   const { currentPage: currentFeaturedVenuesPage, totalPages: featuredVenuesTotalPages, pageItems: paginatedFeaturedVenues } = useMemo(
     () => paginateItems(allActiveVenues, featuredVenuesPage),
@@ -250,9 +345,79 @@ export default function HomePage() {
     ? `${featuredMatchDisplay?.label || "Match"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
     : "UPCOMING MATCH";
 
+  const renderHomeMatchCard = (m: (typeof MATCHES)[number]) => {
+    const league = getLeague(m.leagueId);
+    if (!league) return null;
+
+    const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
+    const isFinished = m.status === "FINISHED";
+    const cardStatus: "SCHEDULED" | "LIVE" | "FINISHED" = isLive
+      ? "LIVE"
+      : isFinished
+        ? "FINISHED"
+        : "SCHEDULED";
+
+    if (m.eventFormat === "SINGLE_EVENT") {
+      return (
+        <MatchCard
+          key={m.id}
+          eventFormat="SINGLE_EVENT"
+          eventTitle={m.eventTitle || league.name}
+          eventSubtitle={m.eventSubtitle || undefined}
+          homeTeam=""
+          awayTeam=""
+          homeCrest=""
+          awayCrest=""
+          kickoff={formatKickoffLabel(m.matchDateUTC)}
+          league={league.shortName || league.name}
+          leagueLogo={league.logo}
+          leagueImage={league.image}
+          venueCount={m.venueCount}
+          status={cardStatus}
+          matchDay={m.stage || m.matchDay}
+          isHot={m.isHot}
+          onClick={() => { window.location.href = `/matches/${m.id}`; }}
+          style={{ minWidth: "unset", height: "100%" }}
+        />
+      );
+    }
+
+    const home = getTeam(m.homeTeamId);
+    const away = getTeam(m.awayTeamId);
+    const display = getMatchDisplay(m, { homeTeam: home, awayTeam: away, league });
+
+    return (
+      <MatchCard
+        key={m.id}
+        homeTeam={display.homeName}
+        awayTeam={display.awayName}
+        homeCrest={home?.crest || ""}
+        awayCrest={away?.crest || ""}
+        homeImage={home?.image}
+        awayImage={away?.image}
+        kickoff={formatKickoffLabel(m.matchDateUTC)}
+        league={league.shortName || league.name}
+        leagueLogo={league.logo}
+        leagueImage={league.image}
+        venueCount={m.venueCount}
+        status={cardStatus}
+        homeScore={m.homeScore ?? undefined}
+        awayScore={m.awayScore ?? undefined}
+        matchDay={m.stage || m.matchDay}
+        isHot={m.isHot}
+        onClick={() => { window.location.href = `/matches/${m.id}`; }}
+        style={{ minWidth: "unset", height: "100%" }}
+      />
+    );
+  };
+
   useEffect(() => {
-    setHomeMatchesPage(1);
-  }, [homeLeagueFilter, orderedWeekMatches.length]);
+    setSoccerMatchesPage(1);
+  }, [soccerLeagueFilter, orderedSoccerMatches.length]);
+
+  useEffect(() => {
+    setOtherSportsPage(1);
+  }, [otherSportsFilter, orderedOtherSportsMatches.length]);
 
   useEffect(() => {
     setFeaturedVenuesPage(1);
@@ -371,121 +536,56 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ─── Interactive Bento Box Match View ──────────── */}
+        {/* Soccer-first upcoming feed */}
         <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "96px 24px" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 48, gap: 16 }}>
             <div>
-              <div style={{ color: "var(--primary)", fontWeight: 700, letterSpacing: "0.16em", fontSize: 12, marginBottom: 8, textTransform: "uppercase" }}>UPCOMING MATCHES</div>
-              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>THIS WEEK</h2>
+              <div style={{ color: "var(--primary)", fontWeight: 700, letterSpacing: "0.16em", fontSize: 12, marginBottom: 8, textTransform: "uppercase" }}>SOCCER ONLY</div>
+              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>TOP LEAGUES THIS WEEK</h2>
             </div>
-            {/* League Filters */}
             <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-                <button style={{
+              <button style={{
+                padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
+                border: "none", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                backgroundColor: soccerLeagueFilter === "all" ? "var(--foreground)" : "var(--secondary)",
+                color: soccerLeagueFilter === "all" ? "var(--background)" : "var(--secondary-foreground)",
+              }} onClick={() => setSoccerLeagueFilter("all")}>
+                All Soccer
+              </button>
+              {soccerLeagueOptions.map((lg) => (
+                <button key={lg.id} style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
                   padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
-                  border: "none", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-                  backgroundColor: homeLeagueFilter === "all" ? "var(--foreground)" : "var(--secondary)",
-                  color: homeLeagueFilter === "all" ? "var(--background)" : "var(--secondary-foreground)",
-                }} onClick={() => setHomeLeagueFilter("all")}>
-                    All Matches
+                  cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                  border: soccerLeagueFilter === lg.id ? "1px solid var(--primary)" : "1px solid var(--border)",
+                  color: soccerLeagueFilter === lg.id ? "var(--primary)" : "var(--muted-foreground)",
+                  backgroundColor: soccerLeagueFilter === lg.id ? "color-mix(in oklch, var(--primary) 10%, transparent)" : "var(--secondary)",
+                }} onClick={() => setSoccerLeagueFilter(lg.id)}>
+                  {lg.image ? <img src={lg.image} alt={lg.shortName} style={{ width: 16, height: 16, objectFit: "contain" }} /> : lg.logo} {lg.shortName}
                 </button>
-                {weekLeagueOptions.map((lg) => (
-                    <button key={lg.id} style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
-                      cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-                      border: homeLeagueFilter === lg.id ? "1px solid var(--primary)" : "1px solid var(--border)",
-                      color: homeLeagueFilter === lg.id ? "var(--primary)" : "var(--muted-foreground)",
-                      backgroundColor: homeLeagueFilter === lg.id ? "color-mix(in oklch, var(--primary) 10%, transparent)" : "var(--secondary)",
-                    }} onClick={() => setHomeLeagueFilter(lg.id)}>
-                        {lg.image ? <img src={lg.image} alt={lg.shortName} style={{ width: 16, height: 16, objectFit: "contain" }} /> : lg.logo} {lg.shortName}
-                    </button>
-                ))}
+              ))}
             </div>
           </div>
-          
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-            {orderedWeekMatches.length === 0 && (
-                <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "1 / -1", minHeight: 300 }}>
-                    <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", marginBottom: 16 }}>
-                        <Trophy style={{ width: 32, height: 32, opacity: 0.5 }} />
-                    </div>
-                    <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Matches Scheduled</h3>
-                    <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 400 }}>
-                        There are currently no matches scheduled in the next seven days for this filter. Check another league or come back later.
-                    </p>
+            {orderedSoccerMatches.length === 0 && (
+              <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "1 / -1", minHeight: 300 }}>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", marginBottom: 16 }}>
+                  <Trophy style={{ width: 32, height: 32, opacity: 0.5 }} />
                 </div>
+                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Soccer Matches Scheduled</h3>
+                <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 440 }}>
+                  No MLS, Premier League, La Liga, Bundesliga, Serie A, or Ligue 1 matches are currently scheduled in the next seven days for this filter.
+                </p>
+              </div>
             )}
-            {paginatedWeekMatches.map((m) => {
-              const league = getLeague(m.leagueId);
-              if (!league) return null;
-              
-              const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
-              const isFinished = m.status === "FINISHED";
-              const cardStatus: "SCHEDULED" | "LIVE" | "FINISHED" = isLive
-                ? "LIVE"
-                : isFinished
-                  ? "FINISHED"
-                  : "SCHEDULED";
-
-              if (m.eventFormat === "SINGLE_EVENT") {
-                return (
-                  <MatchCard
-                    key={m.id}
-                    eventFormat="SINGLE_EVENT"
-                    eventTitle={m.eventTitle || league.name}
-                    eventSubtitle={m.eventSubtitle || undefined}
-                    homeTeam=""
-                    awayTeam=""
-                    homeCrest=""
-                    awayCrest=""
-                    kickoff={formatKickoffLabel(m.matchDateUTC)}
-                    league={league.shortName || league.name}
-                    leagueLogo={league.logo}
-                    leagueImage={league.image}
-                    venueCount={m.venueCount}
-                    status={cardStatus}
-                    matchDay={m.stage || m.matchDay}
-                    isHot={m.isHot}
-                    onClick={() => { window.location.href = `/matches/${m.id}`; }}
-                    style={{ minWidth: "unset", height: "100%" }}
-                  />
-                );
-              }
-
-              const home = getTeam(m.homeTeamId);
-              const away = getTeam(m.awayTeamId);
-              const display = getMatchDisplay(m, { homeTeam: home, awayTeam: away, league });
-              
-              return (
-                <MatchCard
-                  key={m.id}
-                  homeTeam={display.homeName}
-                  awayTeam={display.awayName}
-                  homeCrest={home?.crest || ""}
-                  awayCrest={away?.crest || ""}
-                  homeImage={home?.image}
-                  awayImage={away?.image}
-                  kickoff={formatKickoffLabel(m.matchDateUTC)}
-                  league={league.shortName || league.name}
-                  leagueLogo={league.logo}
-                  leagueImage={league.image}
-                  venueCount={m.venueCount}
-                  status={cardStatus}
-                  homeScore={m.homeScore ?? undefined}
-                  awayScore={m.awayScore ?? undefined}
-                  matchDay={m.stage || m.matchDay}
-                  isHot={m.isHot}
-                  onClick={() => { window.location.href = `/matches/${m.id}`; }}
-                  style={{ minWidth: "unset", height: "100%" }}
-                />
-              );
-            })}
+            {paginatedSoccerMatches.map((m) => renderHomeMatchCard(m))}
           </div>
-          <PaginationControls currentPage={currentHomeMatchesPage} totalPages={homeMatchesTotalPages} onPageChange={setHomeMatchesPage} />
+          <PaginationControls currentPage={currentSoccerMatchesPage} totalPages={soccerMatchesTotalPages} onPageChange={setSoccerMatchesPage} />
           <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
             <Link href="/matches" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 24px", borderRadius: 999, border: "1px solid var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)", textDecoration: "none", fontWeight: 700 }}>
               <CalendarDays style={{ width: 18, height: 18 }} />
-              View Calendar
+              View All Matches
             </Link>
           </div>
         </section>
@@ -553,6 +653,54 @@ export default function HomePage() {
             <PaginationControls currentPage={currentFeaturedVenuesPage} totalPages={featuredVenuesTotalPages} onPageChange={setFeaturedVenuesPage} />
           </div>
         </section>
+        {/* Other sports section */}
+        <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "64px 24px 24px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 40, gap: 16 }}>
+            <div>
+              <div style={{ color: "var(--primary)", fontWeight: 700, letterSpacing: "0.16em", fontSize: 12, marginBottom: 8, textTransform: "uppercase" }}>OTHER SPORTS</div>
+              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>THIS WEEK BEYOND SOCCER</h2>
+            </div>
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+              <button style={{
+                padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
+                border: "none", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                backgroundColor: otherSportsFilter === "all" ? "var(--foreground)" : "var(--secondary)",
+                color: otherSportsFilter === "all" ? "var(--background)" : "var(--secondary-foreground)",
+              }} onClick={() => setOtherSportsFilter("all")}>
+                All Sports
+              </button>
+              {otherSportsOptions.map((sport) => (
+                <button key={sport.id} style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
+                  cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                  border: otherSportsFilter === sport.id ? "1px solid var(--primary)" : "1px solid var(--border)",
+                  color: otherSportsFilter === sport.id ? "var(--primary)" : "var(--muted-foreground)",
+                  backgroundColor: otherSportsFilter === sport.id ? "color-mix(in oklch, var(--primary) 10%, transparent)" : "var(--secondary)",
+                }} onClick={() => setOtherSportsFilter(sport.id)}>
+                  {sport.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
+            {orderedOtherSportsMatches.length === 0 && (
+              <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "1 / -1", minHeight: 260 }}>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", marginBottom: 16 }}>
+                  <Trophy style={{ width: 32, height: 32, opacity: 0.5 }} />
+                </div>
+                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Other Sports Scheduled</h3>
+                <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 420 }}>
+                  There are no upcoming non-soccer matches scheduled in the next seven days for this filter.
+                </p>
+              </div>
+            )}
+            {paginatedOtherSportsMatches.map((m) => renderHomeMatchCard(m))}
+          </div>
+          <PaginationControls currentPage={currentOtherSportsPage} totalPages={otherSportsTotalPages} onPageChange={setOtherSportsPage} />
+        </section>
+
 
         {/* ─── Map / List Toggle View ────────────── */}
         <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "192px 24px 96px", position: "relative", zIndex: 10, backgroundColor: "var(--background)" }}>

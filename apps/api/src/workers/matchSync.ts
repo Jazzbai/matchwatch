@@ -11,7 +11,7 @@ const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE_URL || 'https://v3.footb
 const THE_SPORTS_DB_BASE = process.env.THE_SPORTS_DB_BASE_URL
     || `https://www.thesportsdb.com/api/v1/json/${process.env.THE_SPORTS_DB_API_KEY?.trim() || '3'}`;
 const FOOTBALL_DATA_SUPPORTED_CODES = new Set(['WC', 'PL', 'PD', 'BL1', 'SA', 'FL1', 'CL', 'MLS']);
-const THE_SPORTS_DB_PRIORITY_LEAGUE_CODES = new Set(['MLS', 'NWSL', 'LMX']);
+const THE_SPORTS_DB_PRIORITY_LEAGUE_CODES = new Set(['NWSL', 'LMX']);
 const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
     PL: 4328,
     PD: 4335,
