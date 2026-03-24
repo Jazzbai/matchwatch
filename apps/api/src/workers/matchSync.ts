@@ -14,6 +14,24 @@ const JOLPICA_BASE = process.env.JOLPICA_BASE_URL || 'https://api.jolpi.ca/ergas
 const ESPN_SCOREBOARD_BASE = process.env.ESPN_SCOREBOARD_BASE_URL || 'https://site.api.espn.com/apis/site/v2/sports';
 const FOOTBALL_DATA_SUPPORTED_CODES = new Set(['WC', 'PL', 'PD', 'BL1', 'SA', 'FL1', 'CL', 'MLS']);
 const LEGACY_THE_SPORTS_DB_SOCCER_CODES = new Set(['MLS', 'NWSL', 'LMX']);
+const API_FOOTBALL_LEAGUE_ALIASES: Record<string, { names?: string[]; countries?: string[] }> = {
+    MLS: {
+        names: ['Major League Soccer', 'MLS'],
+        countries: ['USA', 'United States', 'USA/Canada', 'US/CA', 'Canada'],
+    },
+    NWSL: {
+        names: ['National Women\'s Soccer League', 'NWSL'],
+        countries: ['USA', 'United States'],
+    },
+    LMX: {
+        names: ['Liga MX', 'Mexican Primera League'],
+        countries: ['Mexico'],
+    },
+    CL: {
+        names: ['UEFA Champions League', 'Champions League'],
+        countries: ['World', 'Europe'],
+    },
+};
 const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
     PL: 4328,
     PD: 4335,
@@ -864,19 +882,24 @@ async function fetchApiFootball<T>(
 }
 
 function pickApiFootballLeague(candidates: ApiFootballLeague[], league: LeagueRow) {
-    const wantedName = league.name.toLowerCase();
-    const wantedShort = (league.shortName || '').toLowerCase();
-    const wantedCountry = (league.country || '').toLowerCase();
+    const externalCode = (league.externalId || '').trim().toUpperCase();
+    const aliases = API_FOOTBALL_LEAGUE_ALIASES[externalCode];
+    const wantedNames = [league.name, league.shortName, ...(aliases?.names || [])]
+        .map((value) => (value || '').trim().toLowerCase())
+        .filter(Boolean);
+    const wantedCountries = [league.country, ...(aliases?.countries || [])]
+        .map((value) => (value || '').trim().toLowerCase())
+        .filter(Boolean);
 
     return candidates
         .map((candidate) => {
             let score = 0;
             const candidateName = (candidate.league.name || '').toLowerCase();
             const candidateCountry = (candidate.country?.name || '').toLowerCase();
-            if (candidateName === wantedName) score += 4;
-            if (wantedShort && candidateName.includes(wantedShort)) score += 2;
-            if (wantedCountry && (candidateCountry.includes(wantedCountry) || wantedCountry.includes(candidateCountry))) {
-                score += 3;
+            if (wantedNames.some((wantedName) => candidateName === wantedName)) score += 6;
+            if (wantedNames.some((wantedName) => candidateName.includes(wantedName) || wantedName.includes(candidateName))) score += 3;
+            if (wantedCountries.some((wantedCountry) => candidateCountry.includes(wantedCountry) || wantedCountry.includes(candidateCountry))) {
+                score += 4;
             }
             if (candidate.seasons.some((s) => s.current)) score += 1;
             return { candidate, score };
@@ -924,6 +947,9 @@ async function resolveApiFootballLeague(league: LeagueRow, apiKey: string) {
     }
     if (league.shortName) {
         await collect({ name: league.shortName });
+    }
+    for (const alias of API_FOOTBALL_LEAGUE_ALIASES[externalId]?.names || []) {
+        await collect({ name: alias });
     }
 
     if (candidates.length === 0) {
@@ -1192,6 +1218,14 @@ async function syncLeagueWithResolvedProvider(
         return {
             providerUsed: 'THE_SPORTS_DB' as MatchSyncProvider,
             result: await syncLeagueFromTheSportsDb(league, mode),
+        };
+    }
+
+    if (externalCode === 'MLS' && apiFootballApiKey) {
+        await cleanupLegacyTheSportsDbLeagueData(league);
+        return {
+            providerUsed: 'API_FOOTBALL' as MatchSyncProvider,
+            result: await syncLeagueFromApiFootball(league, apiFootballApiKey, mode),
         };
     }
 
