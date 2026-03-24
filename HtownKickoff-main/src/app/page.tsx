@@ -112,6 +112,7 @@ const PRIORITY_SOCCER_LEAGUES = [
   { key: "bundesliga", label: "Bundesliga", match: (name: string) => name.includes("bundesliga") },
   { key: "serie-a", label: "Serie A", match: (name: string) => name.includes("serie a") },
   { key: "ligue-1", label: "Ligue 1", match: (name: string) => name.includes("ligue 1") },
+  { key: "ucl", label: "Champions League", match: (name: string) => name.includes("champions league") || name.includes("ucl") },
 ] as const;
 
 function normalizeLeagueName(value?: string | null) {

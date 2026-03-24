@@ -23,7 +23,7 @@ const MATCH_FETCH_LIMIT = 50;
 const VENUE_FETCH_LIMIT = 50;
 const VENUE_CHILD_LIMIT = 50;
 const VENUE_MAX_PAGES = 4;
-const MATCH_MAX_PAGES = 8;
+const MATCH_MAX_PAGES = 12;
 const BOOKING_FETCH_LIMIT = 50;
 const FLAG_CDN_BASE = "https://flagcdn.com";
 

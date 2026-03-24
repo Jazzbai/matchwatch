@@ -1,8 +1,8 @@
 import { Queue, Worker } from 'bullmq';
 import { redis } from '../lib/redis';
 import { db } from '../db/client';
-import { sports, leagues, matches, teams, syncHistory } from '../db/schema';
-import { and, eq, lt, sql } from 'drizzle-orm';
+import { sports, leagues, matches, teams, syncHistory, venueEvents } from '../db/schema';
+import { and, eq, inArray, lt, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 const QUEUE_NAME = 'matchSync';
@@ -11,7 +11,9 @@ const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE_URL || 'https://v3.footb
 const THE_SPORTS_DB_BASE = process.env.THE_SPORTS_DB_BASE_URL
     || `https://www.thesportsdb.com/api/v1/json/${process.env.THE_SPORTS_DB_API_KEY?.trim() || '3'}`;
 const FOOTBALL_DATA_SUPPORTED_CODES = new Set(['WC', 'PL', 'PD', 'BL1', 'SA', 'FL1', 'CL', 'MLS']);
-const THE_SPORTS_DB_PRIORITY_LEAGUE_CODES = new Set(['NWSL', 'LMX']);
+const THE_SPORTS_DB_PRIORITY_LEAGUE_CODES = new Set<string>();
+const API_FOOTBALL_PREFERRED_LEAGUE_CODES = new Set(['MLS', 'NWSL', 'LMX', 'INTL']);
+const POLLUTED_THE_SPORTS_DB_LEAGUE_CODES = new Set(['NWSL', 'LMX']);
 const THE_SPORTS_DB_LEAGUE_IDS: Record<string, number> = {
     PL: 4328,
     PD: 4335,
@@ -489,6 +491,11 @@ async function fetchJsonWithRetry<T>(url: string, headers: Record<string, string
     if (!response.ok) {
         const body = await response.text();
         logger.error({ source, url, status: response.status, body }, 'Match sync provider request failed');
+        if (source === 'football-data' && (response.status === 401 || response.status === 403)) {
+            const err = new Error(`Football-Data access restricted (${response.status})`) as Error & { status?: number };
+            err.status = response.status;
+            throw err;
+        }
         return null;
     }
 
@@ -511,6 +518,26 @@ export async function fetchFootballDataCompetitionTeams(competitionCode: string,
     logger.info({ competitionCode }, 'Fetching teams from Football-Data');
     const data = await fetchJsonWithRetry<FootballDataTeamsResponse>(url, { 'X-Auth-Token': apiKey }, 'football-data');
     return data?.teams || [];
+}
+
+async function purgeTheSportsDbLeagueArtifacts(leagueId: string) {
+    const staleMatches = await db.select({ id: matches.id })
+        .from(matches)
+        .where(and(
+            eq(matches.leagueId, leagueId),
+            sql`${matches.externalMatchId} like 'TSD-%'`,
+        ));
+
+    const staleMatchIds = staleMatches.map((row) => row.id);
+    if (staleMatchIds.length > 0) {
+        await db.delete(venueEvents).where(inArray(venueEvents.matchId, staleMatchIds));
+        await db.delete(matches).where(inArray(matches.id, staleMatchIds));
+    }
+
+    await db.delete(teams).where(and(
+        eq(teams.leagueId, leagueId),
+        sql`${teams.externalId} like 'TSD-%'`,
+    ));
 }
 
 async function fetchApiFootball<T>(
@@ -812,6 +839,12 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
         if (THE_SPORTS_DB_PRIORITY_LEAGUE_CODES.has(externalCode)) {
             providerUsed = 'THE_SPORTS_DB';
             result = await syncLeagueFromTheSportsDb(league);
+        } else if (API_FOOTBALL_PREFERRED_LEAGUE_CODES.has(externalCode) && apiFootballApiKey) {
+            if (POLLUTED_THE_SPORTS_DB_LEAGUE_CODES.has(externalCode)) {
+                await purgeTheSportsDbLeagueArtifacts(league.id);
+            }
+            providerUsed = 'API_FOOTBALL';
+            result = await syncLeagueFromApiFootball(league, apiFootballApiKey);
         } else if (externalCode === 'INTL' && apiFootballApiKey) {
             providerUsed = 'API_FOOTBALL';
             result = await syncLeagueFromApiFootball(league, apiFootballApiKey);
