@@ -3,10 +3,13 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
 
-const REPO_ROOT = path.resolve('d:/MatchWatch.us/JazzB-watchparty');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(REPO_ROOT, 'output');
 const DEFAULT_REF = process.env.HAMID_REF || 'origin/hamid';
 const BASE_URL = (process.env.MATCHWATCH_BASE_URL || 'https://matchwatch.us').replace(/\/+$/, '');
