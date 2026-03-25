@@ -1527,6 +1527,56 @@ export default function JazzbaiSuperAdminPage() {
     }
   };
 
+  const applyGoogleDetailsToNewVenue = React.useCallback((details: GooglePlaceDetailsResponse) => {
+    const defaults = details.defaults;
+    setNewVenue((prev) => ({
+      ...prev,
+      googlePlaceId: defaults.placeId,
+      name: defaults.displayName || prev.name,
+      addressLine1: defaults.addressLine1 || defaults.formattedAddress || prev.addressLine1,
+      city: defaults.city || prev.city,
+      stateProvince: defaults.stateProvince || prev.stateProvince,
+      country: defaults.country || prev.country,
+      postalCode: defaults.postalCode || prev.postalCode,
+      lat: defaults.lat == null ? prev.lat : String(defaults.lat),
+      lng: defaults.lng == null ? prev.lng : String(defaults.lng),
+      timezone: defaults.timezone || prev.timezone,
+      phone: defaults.phone || prev.phone,
+      website: defaults.website || prev.website,
+      googleMapsUrl: defaults.googleMapsUrl || prev.googleMapsUrl,
+      ratingOverride: defaults.rating == null ? prev.ratingOverride : String(defaults.rating),
+      reviewCountOverride: defaults.reviewCount == null ? prev.reviewCountOverride : String(defaults.reviewCount),
+    }));
+  }, []);
+
+  const applyGoogleDetailsToVenueDraft = React.useCallback((venueId: string, details: GooglePlaceDetailsResponse) => {
+    const defaults = details.defaults;
+    setVenueDrafts((prev) => {
+      const draft = prev[venueId] || {};
+      return {
+        ...prev,
+        [venueId]: {
+          ...draft,
+          googlePlaceId: defaults.placeId,
+          name: defaults.displayName || draft.name,
+          addressLine1: defaults.addressLine1 || defaults.formattedAddress || draft.addressLine1,
+          city: defaults.city || draft.city,
+          stateProvince: defaults.stateProvince || draft.stateProvince,
+          country: defaults.country || draft.country,
+          postalCode: defaults.postalCode || draft.postalCode,
+          lat: defaults.lat == null ? draft.lat : String(defaults.lat),
+          lng: defaults.lng == null ? draft.lng : String(defaults.lng),
+          timezone: defaults.timezone || draft.timezone,
+          phone: defaults.phone || draft.phone,
+          website: defaults.website || draft.website,
+          googleMapsUrl: defaults.googleMapsUrl || draft.googleMapsUrl,
+          ratingOverride: defaults.rating == null ? draft.ratingOverride : String(defaults.rating),
+          reviewCountOverride: defaults.reviewCount == null ? draft.reviewCountOverride : String(defaults.reviewCount),
+        },
+      };
+    });
+  }, []);
+
   if (checkingSession) {
     return (
       <AppShell>
@@ -1720,56 +1770,6 @@ export default function JazzbaiSuperAdminPage() {
       || isNationalCompetitionLabel(league?.shortName)
       || isNationalCompetitionLabel(league?.name);
   };
-
-  const applyGoogleDetailsToNewVenue = React.useCallback((details: GooglePlaceDetailsResponse) => {
-    const defaults = details.defaults;
-    setNewVenue((prev) => ({
-      ...prev,
-      googlePlaceId: defaults.placeId,
-      name: defaults.displayName || prev.name,
-      addressLine1: defaults.addressLine1 || defaults.formattedAddress || prev.addressLine1,
-      city: defaults.city || prev.city,
-      stateProvince: defaults.stateProvince || prev.stateProvince,
-      country: defaults.country || prev.country,
-      postalCode: defaults.postalCode || prev.postalCode,
-      lat: defaults.lat == null ? prev.lat : String(defaults.lat),
-      lng: defaults.lng == null ? prev.lng : String(defaults.lng),
-      timezone: defaults.timezone || prev.timezone,
-      phone: defaults.phone || prev.phone,
-      website: defaults.website || prev.website,
-      googleMapsUrl: defaults.googleMapsUrl || prev.googleMapsUrl,
-      ratingOverride: defaults.rating == null ? prev.ratingOverride : String(defaults.rating),
-      reviewCountOverride: defaults.reviewCount == null ? prev.reviewCountOverride : String(defaults.reviewCount),
-    }));
-  }, []);
-
-  const applyGoogleDetailsToVenueDraft = React.useCallback((venueId: string, details: GooglePlaceDetailsResponse) => {
-    const defaults = details.defaults;
-    setVenueDrafts((prev) => {
-      const draft = prev[venueId] || {};
-      return {
-        ...prev,
-        [venueId]: {
-          ...draft,
-          googlePlaceId: defaults.placeId,
-          name: defaults.displayName || draft.name,
-          addressLine1: defaults.addressLine1 || defaults.formattedAddress || draft.addressLine1,
-          city: defaults.city || draft.city,
-          stateProvince: defaults.stateProvince || draft.stateProvince,
-          country: defaults.country || draft.country,
-          postalCode: defaults.postalCode || draft.postalCode,
-          lat: defaults.lat == null ? draft.lat : String(defaults.lat),
-          lng: defaults.lng == null ? draft.lng : String(defaults.lng),
-          timezone: defaults.timezone || draft.timezone,
-          phone: defaults.phone || draft.phone,
-          website: defaults.website || draft.website,
-          googleMapsUrl: defaults.googleMapsUrl || draft.googleMapsUrl,
-          ratingOverride: defaults.rating == null ? draft.ratingOverride : String(defaults.rating),
-          reviewCountOverride: defaults.reviewCount == null ? draft.reviewCountOverride : String(defaults.reviewCount),
-        },
-      };
-    });
-  }, []);
 
   const isNationalTeamLookup = (team: LookupTeam) => {
     if (!team.leagueId) return false;
