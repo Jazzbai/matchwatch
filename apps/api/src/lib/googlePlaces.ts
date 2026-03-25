@@ -88,37 +88,17 @@ function extractAddressLine1(addressComponents: unknown) {
 }
 
 function extractMenuSnapshot(raw: Record<string, unknown>): GoogleSourceSnapshot['menu'] {
-    const directMenuUrl = getString(raw.menuUri) || getString(raw.menuUrl);
     const websiteUri = getString(raw.websiteUri);
     const websiteLooksLikeMenu = websiteUri && /menu/i.test(websiteUri) ? websiteUri : null;
-    const sourceUrl = directMenuUrl || websiteLooksLikeMenu || null;
+    const sourceUrl = websiteLooksLikeMenu || null;
 
-    const categoriesRaw = Array.isArray(raw.menuCategories) ? raw.menuCategories : [];
-    const categories = categoriesRaw.flatMap((category): GoogleMenuCategorySnapshot[] => {
-        if (!isRecord(category)) return [];
-        const itemsRaw = Array.isArray(category.items) ? category.items : [];
-        return [{
-            name: getString(category.name) || 'Menu',
-            description: getString(category.description),
-            items: itemsRaw.flatMap((item): GoogleMenuItemSnapshot[] => {
-                if (!isRecord(item)) return [];
-                return [{
-                    name: getString(item.name) || 'Item',
-                    description: getString(item.description),
-                    price: getNumber(item.price),
-                    currency: getString(item.currency),
-                    dietaryTags: Array.isArray(item.dietaryTags) ? item.dietaryTags.filter((v): v is string => typeof v === 'string') : [],
-                    allergens: Array.isArray(item.allergens) ? item.allergens.filter((v): v is string => typeof v === 'string') : [],
-                }];
-            }),
-        }];
-    });
-
-    if (!sourceUrl && categories.length === 0) return null;
+    if (!sourceUrl) return null;
     return {
         sourceUrl,
-        categories,
-        raw,
+        categories: [],
+        raw: {
+            websiteUri,
+        },
     };
 }
 
@@ -239,16 +219,13 @@ export async function getGooglePlaceDetails(placeId: string): Promise<GoogleSour
         'googleMapsUri',
         'rating',
         'userRatingCount',
-        'utcOffsetMinutes',
+        'timeZone',
         'regularOpeningHours',
         'editorialSummary',
         'priceLevel',
         'primaryType',
         'types',
         'businessStatus',
-        'menuUri',
-        'menuUrl',
-        'menuCategories',
     ].join(',');
 
     const response = await googleFetch<Record<string, unknown>>(
