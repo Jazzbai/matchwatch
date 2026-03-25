@@ -15,7 +15,7 @@ interface AuthContextType {
         email: string;
         password: string;
         name: string;
-        venue: {
+        venue?: {
             name: string;
             address: string;
             city: string;
@@ -25,12 +25,24 @@ interface AuthContextType {
             timezone: string;
             phone?: string;
             description?: string;
+            shortDescription?: string;
             amenities?: string[];
+            vibes?: string[];
             cuisineTags?: string[];
             priceRange?: 'BUDGET' | 'MID' | 'UPSCALE' | 'LUXURY';
             capacity?: number;
+            googlePlaceId?: string;
         };
-    }) => Promise<void>;
+        claimVenueId?: string;
+        claimNotes?: string;
+        claimVerificationDocuments?: string[];
+    }) => Promise<{
+        message: string;
+        businessApprovalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+        venueApprovalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+        claimStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+        venue?: { id: string; name: string; slug: string };
+    }>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
     error: string | null;
@@ -63,6 +75,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     role: string;
                     avatarUrl?: string;
                     timezone?: string;
+                    businessApprovalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+                    businessApprovalNotes?: string | null;
                 }>('/user/me')
                     .then((res) => {
                         setUser(res.data);
@@ -121,7 +135,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         email: string;
         password: string;
         name: string;
-        venue: {
+        venue?: {
             name: string;
             address: string;
             city: string;
@@ -131,20 +145,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
             timezone: string;
             phone?: string;
             description?: string;
+            shortDescription?: string;
             amenities?: string[];
+            vibes?: string[];
             cuisineTags?: string[];
             priceRange?: 'BUDGET' | 'MID' | 'UPSCALE' | 'LUXURY';
             capacity?: number;
+            googlePlaceId?: string;
         };
+        claimVenueId?: string;
+        claimNotes?: string;
+        claimVerificationDocuments?: string[];
     }) => {
         setError(null);
         setIsLoading(true);
         try {
-            await authApi.registerVenue({
+            const res = await authApi.registerVenue({
                 ...input,
                 email: input.email.trim().toLowerCase(),
                 name: input.name.trim(),
             });
+            return res.data;
         } catch (err) {
             const message = err instanceof ApiClientError ? err.message : 'Venue registration failed';
             setError(message);

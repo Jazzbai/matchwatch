@@ -35,7 +35,7 @@ venueRoutes.get('/', async (c) => {
     const { q, city, lat, lng, is_verified, page, limit } = query.data;
     const offset = paginationOffset(page, limit);
 
-    let conditions: any[] = [eq(venues.isActive, true)];
+    let conditions: any[] = [eq(venues.isActive, true), eq(venues.approvalStatus, 'APPROVED')];
     if (city) conditions.push(ilike(venues.city, `%${city}%`));
     if (q) conditions.push(ilike(venues.name, `%${q}%`));
     if (is_verified !== undefined) conditions.push(eq(venues.isVerified, is_verified));
@@ -138,7 +138,7 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
     ).limit(1);
 
-    if (!venue || !venue.isActive) {
+    if (!venue || !venue.isActive || venue.approvalStatus !== 'APPROVED') {
         return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
     }
 
@@ -243,6 +243,11 @@ venueRoutes.get('/:slugOrId/events', async (c) => {
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
 
+    const [publicVenue] = await db.select({ approvalStatus: venues.approvalStatus, isActive: venues.isActive }).from(venues).where(eq(venues.id, venue.id)).limit(1);
+    if (!publicVenue || !publicVenue.isActive || publicVenue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
+
     const rows = await db.select({
         event: venueEvents,
         match: matches,
@@ -268,6 +273,10 @@ venueRoutes.get('/:slugOrId/custom-events', async (c) => {
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    const [publicVenue] = await db.select({ approvalStatus: venues.approvalStatus, isActive: venues.isActive }).from(venues).where(eq(venues.id, venue.id)).limit(1);
+    if (!publicVenue || !publicVenue.isActive || publicVenue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
 
     const rows = await db.select().from(venueCustomEvents)
         .where(and(
@@ -294,6 +303,10 @@ venueRoutes.get('/:slugOrId/posts', async (c) => {
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    const [publicVenue] = await db.select({ approvalStatus: venues.approvalStatus, isActive: venues.isActive }).from(venues).where(eq(venues.id, venue.id)).limit(1);
+    if (!publicVenue || !publicVenue.isActive || publicVenue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
 
     const rows = await db.select().from(posts)
         .where(and(eq(posts.venueId, venue.id), eq(posts.isPublished, true)))
@@ -312,6 +325,10 @@ venueRoutes.get('/:slugOrId/menu', async (c) => {
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    const [publicVenue] = await db.select({ approvalStatus: venues.approvalStatus, isActive: venues.isActive }).from(venues).where(eq(venues.id, venue.id)).limit(1);
+    if (!publicVenue || !publicVenue.isActive || publicVenue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
 
     const categories = await db.select().from(menuCategories)
         .where(and(eq(menuCategories.venueId, venue.id), eq(menuCategories.isActive, true)))
@@ -344,6 +361,10 @@ venueRoutes.get('/:slugOrId/reviews', async (c) => {
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    const [publicVenue] = await db.select({ approvalStatus: venues.approvalStatus, isActive: venues.isActive }).from(venues).where(eq(venues.id, venue.id)).limit(1);
+    if (!publicVenue || !publicVenue.isActive || publicVenue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
 
     const rows = await db.select({
         review: reviews,

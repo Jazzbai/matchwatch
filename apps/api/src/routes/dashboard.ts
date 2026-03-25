@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../db/client';
 import {
     venues, venueEvents, bookings, matches, posts, menuCategories, menuItems,
-    follows, notifications, auditLogs, users, venueCustomEvents,
+    follows, notifications, auditLogs, users, venueCustomEvents, venueClaims,
 } from '../db/schema';
 import { eq, and, count, desc, asc, sql, gte, lt } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, generateUniqueSlug } from '../lib/utils';
@@ -15,6 +15,8 @@ import {
 import { authMiddleware, requireRole } from '../middleware';
 import { z } from 'zod';
 import { deleteStorageObjects } from '../lib/storage';
+import { getGooglePlaceDetails, type GoogleSourceSnapshot } from '../lib/googlePlaces';
+import { applyGoogleMenuSnapshot, buildGoogleVenueFields, findExistingVenueMatch, getVenueMenuSourceState } from '../lib/venueOnboarding';
 
 const dashboardRoutes = new Hono();
 
@@ -45,6 +47,10 @@ async function getOwnedVenues(userId: string) {
         country: venues.country,
         isVerified: venues.isVerified,
         isFeatured: venues.isFeatured,
+        approvalStatus: venues.approvalStatus,
+        approvalNotes: venues.approvalNotes,
+        googlePlaceId: venues.googlePlaceId,
+        menuSource: venues.menuSource,
         createdAt: venues.createdAt,
     }).from(venues)
         .where(and(eq(venues.ownerId, userId), eq(venues.isActive, true)))
@@ -130,6 +136,49 @@ async function getVenueOr404(c: any) {
     return { user, venue, requestedVenueId } as const;
 }
 
+async function getBusinessUser(userId: string) {
+    const [user] = await db.select({
+        id: users.id,
+        role: users.role,
+        email: users.email,
+        businessApprovalStatus: users.businessApprovalStatus,
+        businessApprovalNotes: users.businessApprovalNotes,
+    }).from(users).where(eq(users.id, userId)).limit(1);
+    return user || null;
+}
+
+async function ensureVenueOperationalAccess(userId: string, venueId: string) {
+    const [row] = await db.select({
+        venueId: venues.id,
+        venueApprovalStatus: venues.approvalStatus,
+        businessApprovalStatus: users.businessApprovalStatus,
+    }).from(venues)
+        .innerJoin(users, eq(venues.ownerId, users.id))
+        .where(and(eq(venues.id, venueId), eq(users.id, userId)))
+        .limit(1);
+
+    if (!row) {
+        return { error: apiError('NOT_FOUND', 'Venue not found') };
+    }
+
+    if (row.businessApprovalStatus !== 'APPROVED') {
+        return { error: apiError('FORBIDDEN', 'Business profile is pending admin approval') };
+    }
+
+    if (row.venueApprovalStatus !== 'APPROVED') {
+        return { error: apiError('FORBIDDEN', 'Venue is pending admin approval') };
+    }
+
+    return { ok: true as const };
+}
+
+function googleSnapshotFromVenue(venue: { googleSourceSnapshot?: unknown }): GoogleSourceSnapshot | null {
+    if (!venue.googleSourceSnapshot || typeof venue.googleSourceSnapshot !== 'object' || Array.isArray(venue.googleSourceSnapshot)) {
+        return null;
+    }
+    return venue.googleSourceSnapshot as GoogleSourceSnapshot;
+}
+
 async function deactivateExpiredCustomEvents(venueId: string) {
     await db.update(venueCustomEvents).set({
         isActive: false,
@@ -181,6 +230,7 @@ async function getOverviewHandler(c: any) {
             ...venue,
             coverImageUrl: venue.coverImageUrl || galleryImageUrlsFromMetadata(venue.metadata)[0] || null,
             galleryImageUrls: galleryImageUrlsFromMetadata(venue.metadata),
+            menuSourceState: getVenueMenuSourceState(venue),
         },
         stats: {
             totalBookings: Number(totalBookings?.count ?? 0),
@@ -201,6 +251,7 @@ dashboardRoutes.get('/', getOverviewHandler);
 dashboardRoutes.get('/overview', getOverviewHandler);
 
 const createOwnedVenueSchema = z.object({
+    googlePlaceId: z.string().max(255).optional(),
     name: z.string().min(2).max(150),
     addressLine1: z.string().min(3).max(255),
     city: z.string().min(2).max(100),
@@ -228,44 +279,101 @@ dashboardRoutes.get('/venues', async (c) => {
 
 dashboardRoutes.post('/venues', async (c) => {
     const user = c.get('user');
+    const businessUser = await getBusinessUser(user.id);
+    if (!businessUser) {
+        return c.json(apiError('NOT_FOUND', 'Business account not found'), 404);
+    }
+
+    if (businessUser.businessApprovalStatus !== 'APPROVED') {
+        return c.json(apiError('FORBIDDEN', 'Your business profile must be approved before you can submit additional venues'), 403);
+    }
+
     const body = await c.req.json().catch(() => ({}));
     const parsed = createOwnedVenueSchema.safeParse(body);
     if (!parsed.success) {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const [created] = await db.insert(venues).values({
-        ownerId: user.id,
-        name: parsed.data.name.trim(),
-        slug: generateUniqueSlug(parsed.data.name.trim()),
-        description: parsed.data.description || null,
-        shortDescription: parsed.data.shortDescription || null,
-        addressLine1: parsed.data.addressLine1.trim(),
-        city: parsed.data.city.trim(),
-        stateProvince: parsed.data.stateProvince || null,
-        country: parsed.data.country.trim(),
-        postalCode: parsed.data.postalCode || null,
-        lat: String(parsed.data.lat),
-        lng: String(parsed.data.lng),
-        timezone: parsed.data.timezone.trim(),
-        phone: parsed.data.phone || null,
-        capacity: parsed.data.capacity || null,
-        amenities: parsed.data.amenities,
-        vibes: parsed.data.vibes,
-        cuisineTags: parsed.data.cuisineTags,
-        priceRange: parsed.data.priceRange,
-        isActive: true,
-    }).returning({
-        id: venues.id,
-        name: venues.name,
-        slug: venues.slug,
-        city: venues.city,
-        country: venues.country,
+    let googleFields: ReturnType<typeof buildGoogleVenueFields> | null = null;
+    if (parsed.data.googlePlaceId?.trim()) {
+        const snapshot = await getGooglePlaceDetails(parsed.data.googlePlaceId.trim());
+        googleFields = buildGoogleVenueFields(snapshot);
+    }
+
+    const existingVenue = await findExistingVenueMatch({
+        googlePlaceId: parsed.data.googlePlaceId,
+        name: parsed.data.name,
+        addressLine1: parsed.data.addressLine1,
+        city: parsed.data.city,
+    });
+    if (existingVenue) {
+        return c.json(apiError('CONFLICT', 'This venue already exists. Own this business? Claim it now!', {
+            venueId: existingVenue.id,
+            venueName: existingVenue.name,
+            venueSlug: existingVenue.slug,
+            venueCity: existingVenue.city,
+        }), 409);
+    }
+
+    const created = await db.transaction(async (tx) => {
+        const venueInsert: typeof venues.$inferInsert = {
+            ownerId: user.id,
+            name: parsed.data.name.trim(),
+            slug: generateUniqueSlug(parsed.data.name.trim()),
+            description: parsed.data.description || null,
+            shortDescription: parsed.data.shortDescription || null,
+            addressLine1: parsed.data.addressLine1.trim(),
+            city: parsed.data.city.trim(),
+            stateProvince: parsed.data.stateProvince || null,
+            country: parsed.data.country.trim(),
+            postalCode: parsed.data.postalCode || null,
+            lat: String(parsed.data.lat),
+            lng: String(parsed.data.lng),
+            timezone: parsed.data.timezone.trim(),
+            phone: parsed.data.phone || null,
+            capacity: parsed.data.capacity || null,
+            amenities: parsed.data.amenities,
+            vibes: parsed.data.vibes,
+            cuisineTags: parsed.data.cuisineTags,
+            priceRange: parsed.data.priceRange,
+            approvalStatus: 'PENDING',
+            approvalNotes: null,
+            isActive: true,
+        };
+
+        if (googleFields) {
+            venueInsert.googlePlaceId = googleFields.googlePlaceId;
+            venueInsert.googleSourceSnapshot = googleFields.googleSourceSnapshot as unknown as Record<string, unknown>;
+            venueInsert.googleLastSyncedAt = new Date();
+            venueInsert.googleSyncStatus = 'SYNCED';
+            venueInsert.googleSyncError = null;
+            venueInsert.phone = googleFields.phone;
+            venueInsert.website = googleFields.website;
+            venueInsert.googleMapsUrl = googleFields.googleMapsUrl;
+            venueInsert.ratingOverride = googleFields.ratingOverride;
+            venueInsert.reviewCountOverride = googleFields.reviewCountOverride;
+            venueInsert.menuSource = googleFields.googleSourceSnapshot.menu ? 'GOOGLE' : 'NONE';
+        }
+
+        const [createdVenue] = await tx.insert(venues).values(venueInsert).returning({
+            id: venues.id,
+            name: venues.name,
+            slug: venues.slug,
+            city: venues.city,
+            country: venues.country,
+            approvalStatus: venues.approvalStatus,
+        });
+
+        if (googleFields?.googleSourceSnapshot) {
+            await applyGoogleMenuSnapshot(tx, createdVenue.id, googleFields.googleSourceSnapshot as GoogleSourceSnapshot);
+        }
+
+        return createdVenue;
     });
 
     await db.insert(auditLogs).values({
         userId: user.id,
-        action: 'VENUE_CREATED',
+        action: 'VENUE_SUBMITTED',
         entityType: 'Venue',
         entityId: created.id,
     });
@@ -405,6 +513,8 @@ dashboardRoutes.get('/venue', async (c) => {
         coverImageUrl: venue.coverImageUrl || galleryImageUrlsFromMetadata(venue.metadata)[0] || null,
         galleryImageUrls: galleryImageUrlsFromMetadata(venue.metadata),
         promotedVenueEventId: promotedVenueEventIdFromMetadata(venue.metadata),
+        menuSourceState: getVenueMenuSourceState(venue),
+        googleDefaults: googleSnapshotFromVenue(venue),
     }));
 });
 
@@ -417,6 +527,26 @@ async function updateVenueHandler(c: any) {
     const parsed = updateVenueSchema.safeParse(body);
     if (!parsed.success) {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    let googleFields: ReturnType<typeof buildGoogleVenueFields> | null = null;
+    if (parsed.data.googlePlaceId?.trim()) {
+        const snapshot = await getGooglePlaceDetails(parsed.data.googlePlaceId.trim());
+        const existingVenue = await findExistingVenueMatch({
+            googlePlaceId: snapshot.placeId,
+            name: snapshot.displayName,
+            addressLine1: snapshot.addressLine1,
+            city: snapshot.city,
+        });
+        if (existingVenue && existingVenue.id !== venue.id) {
+            return c.json(apiError('CONFLICT', 'This venue already exists. Own this business? Claim it now!', {
+                venueId: existingVenue.id,
+                venueName: existingVenue.name,
+                venueSlug: existingVenue.slug,
+                venueCity: existingVenue.city,
+            }), 409);
+        }
+        googleFields = buildGoogleVenueFields(snapshot);
     }
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -451,8 +581,28 @@ async function updateVenueHandler(c: any) {
             galleryImageUrls: parsed.data.galleryImageUrls.slice(0, 5),
         };
     }
+    if (googleFields) {
+        updates.googlePlaceId = googleFields.googlePlaceId;
+        updates.googleSourceSnapshot = googleFields.googleSourceSnapshot;
+        updates.googleLastSyncedAt = new Date();
+        updates.googleSyncStatus = 'SYNCED';
+        updates.googleSyncError = null;
+        updates.ratingOverride = googleFields.ratingOverride;
+        updates.reviewCountOverride = googleFields.reviewCountOverride;
+        if (parsed.data.phone === undefined) updates.phone = googleFields.phone;
+        if (parsed.data.website === undefined) updates.website = googleFields.website;
+        if (parsed.data.googleMapsUrl === undefined) updates.googleMapsUrl = googleFields.googleMapsUrl;
+        if (venue.menuSource !== 'MANUAL') {
+            updates.menuSource = googleFields.googleSourceSnapshot.menu ? 'GOOGLE' : 'NONE';
+        }
+    }
 
-    await db.update(venues).set(updates).where(eq(venues.id, venue.id));
+    await db.transaction(async (tx) => {
+        await tx.update(venues).set(updates).where(eq(venues.id, venue.id));
+        if (googleFields && venue.menuSource !== 'MANUAL' && googleFields.googleSourceSnapshot.menu) {
+            await applyGoogleMenuSnapshot(tx, venue.id, googleFields.googleSourceSnapshot);
+        }
+    });
     await cleanupRemovedVenueMedia({
         previousCoverKey: venue.coverImageS3Key,
         previousGalleryKeys: venue.galleryS3Keys,
@@ -480,6 +630,16 @@ const setVenuePromotionSchema = z.object({
 
 const deleteOwnedVenueSchema = z.object({
     email: z.string().email(),
+});
+
+const createVenueClaimSchema = z.object({
+    venueId: z.string().uuid(),
+    notes: z.string().max(2000).optional(),
+    verificationDocuments: z.array(z.string().url()).max(10).default([]),
+});
+
+const revertVenueGoogleSchema = z.object({
+    includeMenu: z.boolean().default(false),
 });
 
 dashboardRoutes.put('/venue/promotion', async (c) => {
@@ -597,12 +757,197 @@ dashboardRoutes.post('/venue/delete', async (c) => {
     }));
 });
 
+dashboardRoutes.get('/claims', async (c) => {
+    const user = c.get('user');
+    const rows = await db.select({
+        id: venueClaims.id,
+        venueId: venueClaims.venueId,
+        venueName: venues.name,
+        venueSlug: venues.slug,
+        status: venueClaims.status,
+        notes: venueClaims.notes,
+        adminNotes: venueClaims.adminNotes,
+        verificationDocuments: venueClaims.verificationDocuments,
+        reviewedAt: venueClaims.reviewedAt,
+        createdAt: venueClaims.createdAt,
+    })
+        .from(venueClaims)
+        .innerJoin(venues, eq(venueClaims.venueId, venues.id))
+        .where(eq(venueClaims.claimantUserId, user.id))
+        .orderBy(desc(venueClaims.createdAt));
+
+    return c.json(apiResponse(rows));
+});
+
+dashboardRoutes.post('/claims', async (c) => {
+    const user = c.get('user');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createVenueClaimSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const [venue] = await db.select({
+        id: venues.id,
+        name: venues.name,
+        slug: venues.slug,
+    }).from(venues).where(eq(venues.id, parsed.data.venueId)).limit(1);
+
+    if (!venue) {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
+
+    const [existingClaim] = await db.select({ id: venueClaims.id }).from(venueClaims)
+        .where(and(
+            eq(venueClaims.venueId, parsed.data.venueId),
+            eq(venueClaims.claimantUserId, user.id),
+            eq(venueClaims.status, 'PENDING'),
+        ))
+        .limit(1);
+
+    if (existingClaim) {
+        return c.json(apiError('CONFLICT', 'You already have a pending claim for this venue'), 409);
+    }
+
+    const [claim] = await db.insert(venueClaims).values({
+        venueId: parsed.data.venueId,
+        claimantUserId: user.id,
+        notes: parsed.data.notes || null,
+        verificationDocuments: parsed.data.verificationDocuments,
+        status: 'PENDING',
+    }).returning({
+        id: venueClaims.id,
+        status: venueClaims.status,
+        createdAt: venueClaims.createdAt,
+    });
+
+    await db.insert(auditLogs).values({
+        userId: user.id,
+        action: 'VENUE_CLAIM_SUBMITTED',
+        entityType: 'VenueClaim',
+        entityId: claim.id,
+        metadata: { venueId: venue.id },
+    });
+
+    return c.json(apiResponse({
+        ...claim,
+        venue,
+    }), 201);
+});
+
+async function refreshVenueGoogleHandler(c: any) {
+    const context = await getVenueOr404(c);
+    if ('error' in context) return context.error;
+    const { user, venue } = context;
+
+    if (!venue.googlePlaceId) {
+        return c.json(apiError('VALIDATION_ERROR', 'This venue is not linked to a Google Place'), 400);
+    }
+
+    const snapshot = await getGooglePlaceDetails(venue.googlePlaceId);
+    const googleFields = buildGoogleVenueFields(snapshot);
+
+    await db.transaction(async (tx) => {
+        await tx.update(venues).set({
+            googleSourceSnapshot: snapshot,
+            googlePlaceId: googleFields.googlePlaceId,
+            googleLastSyncedAt: new Date(),
+            googleSyncStatus: 'SYNCED',
+            googleSyncError: null,
+            ratingOverride: googleFields.ratingOverride,
+            reviewCountOverride: googleFields.reviewCountOverride,
+            phone: venue.phone || googleFields.phone,
+            website: venue.website || googleFields.website,
+            googleMapsUrl: venue.googleMapsUrl || googleFields.googleMapsUrl,
+            updatedAt: new Date(),
+        }).where(eq(venues.id, venue.id));
+
+        if (venue.menuSource !== 'MANUAL' && snapshot.menu) {
+            await applyGoogleMenuSnapshot(tx, venue.id, snapshot);
+            await tx.update(venues).set({
+                menuSource: 'GOOGLE',
+                updatedAt: new Date(),
+            }).where(eq(venues.id, venue.id));
+        }
+    });
+
+    await db.insert(auditLogs).values({
+        userId: user.id,
+        action: 'VENUE_GOOGLE_REFRESHED',
+        entityType: 'Venue',
+        entityId: venue.id,
+    });
+
+    return c.json(apiResponse({
+        message: 'Google venue data refreshed',
+        snapshot,
+    }));
+}
+
+dashboardRoutes.post('/venue/google/refresh', refreshVenueGoogleHandler);
+
+dashboardRoutes.post('/venue/google/revert', async (c) => {
+    const context = await getVenueOr404(c);
+    if ('error' in context) return context.error;
+    const { user, venue } = context;
+
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = revertVenueGoogleSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const snapshot = googleSnapshotFromVenue(venue);
+    if (!snapshot) {
+        return c.json(apiError('NOT_FOUND', 'No Google defaults stored for this venue'), 404);
+    }
+
+    const googleFields = buildGoogleVenueFields(snapshot);
+    const updates: Record<string, unknown> = {
+        name: snapshot.displayName,
+        addressLine1: googleFields.addressLine1,
+        city: googleFields.city,
+        stateProvince: googleFields.stateProvince,
+        country: googleFields.country,
+        postalCode: googleFields.postalCode,
+        lat: googleFields.lat,
+        lng: googleFields.lng,
+        timezone: googleFields.timezone,
+        phone: googleFields.phone,
+        website: googleFields.website,
+        googleMapsUrl: googleFields.googleMapsUrl,
+        ratingOverride: googleFields.ratingOverride,
+        reviewCountOverride: googleFields.reviewCountOverride,
+        menuSource: snapshot.menu ? 'GOOGLE' : 'NONE',
+        updatedAt: new Date(),
+    };
+
+    await db.transaction(async (tx) => {
+        await tx.update(venues).set(updates).where(eq(venues.id, venue.id));
+        if (parsed.data.includeMenu) {
+            await applyGoogleMenuSnapshot(tx, venue.id, snapshot);
+        }
+    });
+
+    await db.insert(auditLogs).values({
+        userId: user.id,
+        action: 'VENUE_GOOGLE_REVERTED',
+        entityType: 'Venue',
+        entityId: venue.id,
+        metadata: { includeMenu: parsed.data.includeMenu },
+    });
+
+    return c.json(apiResponse({ message: 'Venue reverted to Google defaults' }));
+});
+
 // ─── Events CRUD ────────────────────────────────
 
 dashboardRoutes.post('/events', async (c) => {
     const user = c.get('user');
     const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
 
     const body = await c.req.json();
     const parsed = createEventSchema.safeParse(body);
@@ -673,6 +1018,8 @@ dashboardRoutes.post('/custom-events', async (c) => {
     const context = await getVenueOr404(c);
     if ('error' in context) return context.error;
     const { user, venue } = context;
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
 
     const body = await c.req.json();
     const parsed = createCustomVenueEventSchema.safeParse(body);
@@ -714,7 +1061,9 @@ dashboardRoutes.post('/custom-events', async (c) => {
 async function updateCustomEventHandler(c: any) {
     const context = await getVenueOr404(c);
     if ('error' in context) return context.error;
-    const { venue } = context;
+    const { user, venue } = context;
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
 
     const customEventId = c.req.param('customEventId');
     const body = await c.req.json();
@@ -762,7 +1111,9 @@ dashboardRoutes.patch('/custom-events/:customEventId', updateCustomEventHandler)
 dashboardRoutes.delete('/custom-events/:customEventId', async (c) => {
     const context = await getVenueOr404(c);
     if ('error' in context) return context.error;
-    const { venue } = context;
+    const { user, venue } = context;
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
 
     const customEventId = c.req.param('customEventId');
     const [existing] = await db.select({ id: venueCustomEvents.id }).from(venueCustomEvents)
@@ -782,6 +1133,8 @@ async function updateEventHandler(c: any) {
     const user = c.get('user');
     const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
 
     const eventId = c.req.param('eventId');
     const body = await c.req.json();
@@ -810,6 +1163,8 @@ dashboardRoutes.put('/events/:eventId/booking-limit', async (c) => {
     const user = c.get('user');
     const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
 
     const eventId = c.req.param('eventId');
     const [event] = await db.select().from(venueEvents)
@@ -836,6 +1191,8 @@ dashboardRoutes.delete('/events/:eventId', async (c) => {
     const user = c.get('user');
     const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
 
     const eventId = c.req.param('eventId');
     const [event] = await db.select().from(venueEvents)
@@ -1021,6 +1378,8 @@ dashboardRoutes.post('/posts', async (c) => {
     const user = c.get('user');
     const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
 
     const body = await c.req.json();
     const parsed = createPostSchema.safeParse(body);
@@ -1101,6 +1460,7 @@ dashboardRoutes.post('/menu/categories', async (c) => {
         description: parsed.data.description,
         sortOrder: parsed.data.sortOrder,
     }).returning();
+    await db.update(venues).set({ menuSource: 'MANUAL', updatedAt: new Date() }).where(eq(venues.id, venue.id));
 
     return c.json(apiResponse(category), 201);
 });
@@ -1125,6 +1485,7 @@ async function updateMenuCategoryHandler(c: any) {
         ...(parsed.data.description !== undefined ? { description: parsed.data.description } : {}),
         ...(parsed.data.sortOrder !== undefined ? { sortOrder: parsed.data.sortOrder } : {}),
     }).where(eq(menuCategories.id, categoryId));
+    await db.update(venues).set({ menuSource: 'MANUAL', updatedAt: new Date() }).where(eq(venues.id, venue.id));
 
     return c.json(apiResponse({ message: 'Category updated' }));
 }
@@ -1145,6 +1506,7 @@ dashboardRoutes.delete('/menu/categories/:id', async (c) => {
 
     await db.delete(menuItems).where(eq(menuItems.categoryId, categoryId));
     await db.delete(menuCategories).where(eq(menuCategories.id, categoryId));
+    await db.update(venues).set({ menuSource: 'MANUAL', updatedAt: new Date() }).where(eq(venues.id, venue.id));
 
     return c.json(apiResponse({ message: 'Category deleted' }));
 });
@@ -1169,6 +1531,7 @@ dashboardRoutes.post('/menu/items', async (c) => {
         venueId: venue.id,
         price: String(parsed.data.price),
     }).returning();
+    await db.update(venues).set({ menuSource: 'MANUAL', updatedAt: new Date() }).where(eq(venues.id, venue.id));
 
     return c.json(apiResponse(item), 201);
 });
@@ -1209,6 +1572,7 @@ async function updateMenuItemHandler(c: any) {
         ...(parsed.data.sortOrder !== undefined ? { sortOrder: parsed.data.sortOrder } : {}),
         updatedAt: new Date(),
     }).where(eq(menuItems.id, itemId));
+    await db.update(venues).set({ menuSource: 'MANUAL', updatedAt: new Date() }).where(eq(venues.id, venue.id));
 
     return c.json(apiResponse({ message: 'Menu item updated' }));
 }
@@ -1226,6 +1590,7 @@ dashboardRoutes.delete('/menu/items/:itemId', async (c) => {
     const itemId = c.req.param('itemId');
     await db.delete(menuItems)
         .where(and(eq(menuItems.id, itemId), eq(menuItems.venueId, venue.id)));
+    await db.update(venues).set({ menuSource: 'MANUAL', updatedAt: new Date() }).where(eq(venues.id, venue.id));
     return c.json(apiResponse({ message: 'Menu item deleted' }));
 });
 
@@ -1237,6 +1602,7 @@ dashboardRoutes.delete('/menu/items/:id', async (c) => {
     const itemId = c.req.param('id');
     await db.delete(menuItems)
         .where(and(eq(menuItems.id, itemId), eq(menuItems.venueId, venue.id)));
+    await db.update(venues).set({ menuSource: 'MANUAL', updatedAt: new Date() }).where(eq(venues.id, venue.id));
     return c.json(apiResponse({ message: 'Menu item deleted' }));
 });
 
@@ -1246,6 +1612,8 @@ async function notifyFollowersHandler(c: any) {
     const user = c.get('user');
     const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
     if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
 
     const body = await c.req.json();
     const parsed = notifyFollowersSchema.safeParse(body);

@@ -3,6 +3,8 @@
 import * as React from "react";
 import { AppShell } from "../../components/AppShell";
 import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
+import { GooglePlacePicker } from "../../components/GooglePlacePicker";
+import type { GooglePlaceDetailsResponse } from "../../lib/api";
 
 type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches" | "motorsportEntries" | "blog";
 
@@ -178,6 +180,7 @@ type VenueRow = {
   website?: string | null;
   instagramHandle?: string | null;
   googleMapsUrl?: string | null;
+  googlePlaceId?: string | null;
   capacity?: number | null;
   amenities: string[];
   vibes: string[];
@@ -191,6 +194,9 @@ type VenueRow = {
   phone?: string | null;
   createdAt: string;
   updatedAt?: string;
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
+  approvalNotes?: string | null;
+  menuSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
 };
 
 type VenuePriceRange = "BUDGET" | "MID" | "UPSCALE" | "LUXURY";
@@ -218,6 +224,7 @@ type VenueEditorDraft = {
   website?: string | null;
   instagramHandle?: string | null;
   googleMapsUrl?: string | null;
+  googlePlaceId?: string | null;
   capacity?: string | number | null;
   amenities?: string[];
   vibes?: string[];
@@ -225,6 +232,9 @@ type VenueEditorDraft = {
   priceRange?: VenuePriceRange | null;
   ratingOverride?: string | number | null;
   reviewCountOverride?: string | number | null;
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
+  approvalNotes?: string | null;
+  menuSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
   isVerified?: boolean;
   isActive?: boolean;
   isFeatured?: boolean;
@@ -255,6 +265,7 @@ type NewVenueForm = {
   website: string;
   instagramHandle: string;
   googleMapsUrl: string;
+  googlePlaceId: string;
   capacity: string;
   priceRange: VenuePriceRange;
   amenities: string[];
@@ -262,9 +273,55 @@ type NewVenueForm = {
   cuisineTags: string[];
   ratingOverride: string;
   reviewCountOverride: string;
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  approvalNotes: string;
   isVerified: boolean;
   isActive: boolean;
   isFeatured: boolean;
+};
+
+type BusinessApprovalRow = {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRow["role"];
+  businessApprovalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  businessApprovalNotes?: string | null;
+  businessApprovedAt?: string | null;
+  createdAt: string;
+};
+
+type VenueApprovalRow = {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  country: string;
+  ownerId?: string | null;
+  ownerEmail?: string | null;
+  ownerName?: string | null;
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  approvalNotes?: string | null;
+  isVerified: boolean;
+  googlePlaceId?: string | null;
+  createdAt: string;
+};
+
+type VenueClaimRow = {
+  id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  notes?: string | null;
+  adminNotes?: string | null;
+  verificationDocuments?: string[];
+  reviewedAt?: string | null;
+  createdAt: string;
+  venueId: string;
+  venueName: string;
+  venueSlug: string;
+  venueOwnerId?: string | null;
+  claimantUserId: string;
+  claimantName: string;
+  claimantEmail: string;
 };
 
 type VenueAttributeRow = {
@@ -857,6 +914,9 @@ export default function JazzbaiSuperAdminPage() {
   const [venuesSearch, setVenuesSearch] = React.useState("");
   const [venuesLoading, setVenuesLoading] = React.useState(false);
   const [venueDrafts, setVenueDrafts] = React.useState<Record<string, VenueEditorDraft>>({});
+  const [businessApprovals, setBusinessApprovals] = React.useState<BusinessApprovalRow[]>([]);
+  const [venueApprovals, setVenueApprovals] = React.useState<VenueApprovalRow[]>([]);
+  const [venueClaims, setVenueClaims] = React.useState<VenueClaimRow[]>([]);
   const [newVenue, setNewVenue] = React.useState<NewVenueForm>({
     ownerId: "",
     name: "",
@@ -880,6 +940,7 @@ export default function JazzbaiSuperAdminPage() {
     website: "",
     instagramHandle: "",
     googleMapsUrl: "",
+    googlePlaceId: "",
     capacity: "",
     priceRange: "MID" as const,
     amenities: [] as string[],
@@ -887,6 +948,8 @@ export default function JazzbaiSuperAdminPage() {
     cuisineTags: [] as string[],
     ratingOverride: "",
     reviewCountOverride: "",
+    approvalStatus: "PENDING",
+    approvalNotes: "",
     isVerified: false,
     isActive: true,
     isFeatured: false,
@@ -1099,6 +1162,25 @@ export default function JazzbaiSuperAdminPage() {
     }
   }, [venuesSearch]);
 
+  const loadApprovalQueues = React.useCallback(async () => {
+    const [businessResponse, venueResponse, claimResponse] = await Promise.all([
+      fetch("/api/v1/super-admin/approval/businesses?page=1&limit=50", { credentials: "include" }),
+      fetch("/api/v1/super-admin/approval/venues?page=1&limit=50", { credentials: "include" }),
+      fetch("/api/v1/super-admin/venue-claims?page=1&limit=50", { credentials: "include" }),
+    ]);
+    const [businessPayload, venuePayload, claimPayload] = await Promise.all([
+      businessResponse.json(),
+      venueResponse.json(),
+      claimResponse.json(),
+    ]);
+    if (!businessResponse.ok || !businessPayload?.success) throw new Error(formatApiErrorMessage(businessPayload, "Failed to load business approvals"));
+    if (!venueResponse.ok || !venuePayload?.success) throw new Error(formatApiErrorMessage(venuePayload, "Failed to load venue approvals"));
+    if (!claimResponse.ok || !claimPayload?.success) throw new Error(formatApiErrorMessage(claimPayload, "Failed to load venue claims"));
+    setBusinessApprovals(businessPayload.data || []);
+    setVenueApprovals(venuePayload.data || []);
+    setVenueClaims(claimPayload.data || []);
+  }, []);
+
   const loadEvents = React.useCallback(async () => {
     setEventsLoading(true);
     try {
@@ -1285,7 +1367,7 @@ export default function JazzbaiSuperAdminPage() {
       return;
     }
     if (tab === "venues") {
-      await Promise.all([loadVenues(), loadLookups()]);
+      await Promise.all([loadVenues(), loadLookups(), loadApprovalQueues()]);
       return;
     }
     if (tab === "attributes") {
@@ -1324,7 +1406,7 @@ export default function JazzbaiSuperAdminPage() {
       return;
     }
     await Promise.all([loadMatches(), loadLookups()]);
-  }, [loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadMotorsportEntries, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
+  }, [loadApprovalQueues, loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadMotorsportEntries, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
 
   React.useEffect(() => {
     async function checkSession() {
@@ -1552,6 +1634,19 @@ export default function JazzbaiSuperAdminPage() {
     minWidth: 940,
   };
 
+  const badgeStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    padding: "3px 10px",
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 800,
+    background: "var(--secondary)",
+    color: "var(--foreground)",
+    border: "1px solid var(--border)",
+  };
+
   const thStyle: React.CSSProperties = {
     textAlign: "left",
     padding: "10px 12px",
@@ -1625,6 +1720,56 @@ export default function JazzbaiSuperAdminPage() {
       || isNationalCompetitionLabel(league?.shortName)
       || isNationalCompetitionLabel(league?.name);
   };
+
+  const applyGoogleDetailsToNewVenue = React.useCallback((details: GooglePlaceDetailsResponse) => {
+    const defaults = details.defaults;
+    setNewVenue((prev) => ({
+      ...prev,
+      googlePlaceId: defaults.placeId,
+      name: defaults.displayName || prev.name,
+      addressLine1: defaults.addressLine1 || defaults.formattedAddress || prev.addressLine1,
+      city: defaults.city || prev.city,
+      stateProvince: defaults.stateProvince || prev.stateProvince,
+      country: defaults.country || prev.country,
+      postalCode: defaults.postalCode || prev.postalCode,
+      lat: defaults.lat == null ? prev.lat : String(defaults.lat),
+      lng: defaults.lng == null ? prev.lng : String(defaults.lng),
+      timezone: defaults.timezone || prev.timezone,
+      phone: defaults.phone || prev.phone,
+      website: defaults.website || prev.website,
+      googleMapsUrl: defaults.googleMapsUrl || prev.googleMapsUrl,
+      ratingOverride: defaults.rating == null ? prev.ratingOverride : String(defaults.rating),
+      reviewCountOverride: defaults.reviewCount == null ? prev.reviewCountOverride : String(defaults.reviewCount),
+    }));
+  }, []);
+
+  const applyGoogleDetailsToVenueDraft = React.useCallback((venueId: string, details: GooglePlaceDetailsResponse) => {
+    const defaults = details.defaults;
+    setVenueDrafts((prev) => {
+      const draft = prev[venueId] || {};
+      return {
+        ...prev,
+        [venueId]: {
+          ...draft,
+          googlePlaceId: defaults.placeId,
+          name: defaults.displayName || draft.name,
+          addressLine1: defaults.addressLine1 || defaults.formattedAddress || draft.addressLine1,
+          city: defaults.city || draft.city,
+          stateProvince: defaults.stateProvince || draft.stateProvince,
+          country: defaults.country || draft.country,
+          postalCode: defaults.postalCode || draft.postalCode,
+          lat: defaults.lat == null ? draft.lat : String(defaults.lat),
+          lng: defaults.lng == null ? draft.lng : String(defaults.lng),
+          timezone: defaults.timezone || draft.timezone,
+          phone: defaults.phone || draft.phone,
+          website: defaults.website || draft.website,
+          googleMapsUrl: defaults.googleMapsUrl || draft.googleMapsUrl,
+          ratingOverride: defaults.rating == null ? draft.ratingOverride : String(defaults.rating),
+          reviewCountOverride: defaults.reviewCount == null ? draft.reviewCountOverride : String(defaults.reviewCount),
+        },
+      };
+    });
+  }, []);
 
   const isNationalTeamLookup = (team: LookupTeam) => {
     if (!team.leagueId) return false;
@@ -2157,17 +2302,107 @@ export default function JazzbaiSuperAdminPage() {
 
         {activeTab === "venues" && (
           <section style={{ display: "grid", gap: 14 }}>
+            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+              <div style={cardStyle}>
+                <div style={sectionHeadStyle}>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Business Approvals</h2>
+                </div>
+                <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                  {businessApprovals.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No business approvals queued.</div> : businessApprovals.slice(0, 6).map((row) => (
+                    <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.email}</div>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.businessApprovalNotes || "No admin notes yet."}</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button style={smallBtn("outline")} onClick={() => void runAction(`biz-approve-${row.id}`, async () => {
+                          await superAdminFetch(`/users/${row.id}/business-approval`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
+                          await loadApprovalQueues();
+                        })}>Approve</button>
+                        <button style={smallBtn("danger")} onClick={() => void runAction(`biz-reject-${row.id}`, async () => {
+                          await superAdminFetch(`/users/${row.id}/business-approval`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", notes: "Rejected by admin" }) });
+                          await loadApprovalQueues();
+                        })}>Reject</button>
+                        <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.businessApprovalStatus}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <div style={sectionHeadStyle}>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Venue Approvals</h2>
+                </div>
+                <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                  {venueApprovals.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No venue approvals queued.</div> : venueApprovals.slice(0, 6).map((row) => (
+                    <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.city}, {row.country} • {row.ownerName || row.ownerEmail || "No owner"}</div>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.approvalNotes || "No admin notes yet."}</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button style={smallBtn("outline")} onClick={() => void runAction(`venue-approve-${row.id}`, async () => {
+                          await superAdminFetch(`/venues/${row.id}/approval`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED", isVerified: true }) });
+                          await Promise.all([loadApprovalQueues(), loadVenues()]);
+                        })}>Approve</button>
+                        <button style={smallBtn("danger")} onClick={() => void runAction(`venue-reject-${row.id}`, async () => {
+                          await superAdminFetch(`/venues/${row.id}/approval`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", isVerified: false, notes: "Rejected by admin" }) });
+                          await Promise.all([loadApprovalQueues(), loadVenues()]);
+                        })}>Reject</button>
+                        <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.approvalStatus}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <div style={sectionHeadStyle}>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Venue Claims</h2>
+                </div>
+                <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                  {venueClaims.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No venue claims queued.</div> : venueClaims.slice(0, 6).map((row) => (
+                    <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.venueName}</div>
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.claimantName} ({row.claimantEmail})</div>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.notes || "No claim notes provided."}</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button style={smallBtn("outline")} onClick={() => void runAction(`claim-approve-${row.id}`, async () => {
+                          await superAdminFetch(`/venue-claims/${row.id}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
+                          await Promise.all([loadApprovalQueues(), loadVenues(), loadLookups()]);
+                        })}>Approve + Transfer</button>
+                        <button style={smallBtn("danger")} onClick={() => void runAction(`claim-reject-${row.id}`, async () => {
+                          await superAdminFetch(`/venue-claims/${row.id}`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", adminNotes: "Rejected by admin" }) });
+                          await loadApprovalQueues();
+                        })}>Reject</button>
+                        <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div style={cardStyle}>
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Venue</h2>
               </div>
               <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <GooglePlacePicker initialPlaceId={newVenue.googlePlaceId} onPlaceResolved={applyGoogleDetailsToNewVenue} />
+                </div>
                 <select style={inputStyle} value={newVenue.ownerId} onChange={(e) => setNewVenue((prev) => ({ ...prev, ownerId: e.target.value }))}>
                   <option value="">Owner</option>
                   {lookupOwners.map((owner) => (
                     <option key={owner.id} value={owner.id}>{owner.name} ({owner.email})</option>
                   ))}
                 </select>
+                <input style={inputStyle} placeholder="Google Place ID" value={newVenue.googlePlaceId} onChange={(e) => setNewVenue((prev) => ({ ...prev, googlePlaceId: e.target.value }))} />
                 <input style={inputStyle} placeholder="Venue name" value={newVenue.name} onChange={(e) => setNewVenue((prev) => ({ ...prev, name: e.target.value }))} />
                 <input style={inputStyle} placeholder="Slug (optional)" value={newVenue.slug} onChange={(e) => setNewVenue((prev) => ({ ...prev, slug: e.target.value }))} />
                 <input style={inputStyle} placeholder="Short description" value={newVenue.shortDescription} onChange={(e) => setNewVenue((prev) => ({ ...prev, shortDescription: e.target.value }))} />
@@ -2269,8 +2504,14 @@ export default function JazzbaiSuperAdminPage() {
                   </div>
                 </div>
                 <input style={inputStyle} placeholder="Capacity" value={newVenue.capacity} onChange={(e) => setNewVenue((prev) => ({ ...prev, capacity: e.target.value }))} />
+                <select style={inputStyle} value={newVenue.approvalStatus} onChange={(e) => setNewVenue((prev) => ({ ...prev, approvalStatus: e.target.value as "PENDING" | "APPROVED" | "REJECTED" }))}>
+                  <option value="PENDING">PENDING</option>
+                  <option value="APPROVED">APPROVED</option>
+                  <option value="REJECTED">REJECTED</option>
+                </select>
                 <input style={inputStyle} type="number" min="0" max="5" step="0.1" placeholder="Displayed rating override" value={newVenue.ratingOverride} onChange={(e) => setNewVenue((prev) => ({ ...prev, ratingOverride: e.target.value }))} />
                 <input style={inputStyle} type="number" min="0" step="1" placeholder="Displayed review count override" value={newVenue.reviewCountOverride} onChange={(e) => setNewVenue((prev) => ({ ...prev, reviewCountOverride: e.target.value }))} />
+                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1" }} placeholder="Approval notes" value={newVenue.approvalNotes} onChange={(e) => setNewVenue((prev) => ({ ...prev, approvalNotes: e.target.value }))} />
                 <select style={inputStyle} value={newVenue.priceRange} onChange={(e) => setNewVenue((prev) => ({ ...prev, priceRange: e.target.value as "BUDGET" | "MID" | "UPSCALE" | "LUXURY" }))}>
                   <option value="BUDGET">BUDGET</option>
                   <option value="MID">MID</option>
@@ -2342,6 +2583,7 @@ export default function JazzbaiSuperAdminPage() {
                         website: newVenue.website || undefined,
                         instagramHandle: newVenue.instagramHandle || undefined,
                         googleMapsUrl: newVenue.googleMapsUrl || undefined,
+                        googlePlaceId: newVenue.googlePlaceId || undefined,
                         coverImageUrl: newVenue.coverImageUrl || undefined,
                         coverImageS3Key: newVenue.coverImageS3Key || undefined,
                         lat: Number(newVenue.lat),
@@ -2349,6 +2591,8 @@ export default function JazzbaiSuperAdminPage() {
                         capacity: newVenue.capacity ? Number(newVenue.capacity) : undefined,
                         ratingOverride: newVenue.ratingOverride ? Number(newVenue.ratingOverride) : undefined,
                         reviewCountOverride: newVenue.reviewCountOverride ? Number(newVenue.reviewCountOverride) : undefined,
+                        approvalStatus: newVenue.approvalStatus,
+                        approvalNotes: newVenue.approvalNotes || undefined,
                       }),
                     });
                     setNewVenue({
@@ -2374,6 +2618,7 @@ export default function JazzbaiSuperAdminPage() {
                       website: "",
                       instagramHandle: "",
                       googleMapsUrl: "",
+                      googlePlaceId: "",
                       capacity: "",
                       priceRange: "MID",
                       amenities: [],
@@ -2381,11 +2626,13 @@ export default function JazzbaiSuperAdminPage() {
                       cuisineTags: [],
                       ratingOverride: "",
                       reviewCountOverride: "",
+                      approvalStatus: "PENDING",
+                      approvalNotes: "",
                       isVerified: false,
                       isActive: true,
                       isFeatured: false,
                     });
-                    await Promise.all([loadVenues(), loadLookups(), loadOverview()]);
+                    await Promise.all([loadVenues(), loadLookups(), loadOverview(), loadApprovalQueues()]);
                   })}
                 >
                   Create Venue
@@ -2422,6 +2669,7 @@ export default function JazzbaiSuperAdminPage() {
                     website: row.website || "",
                     instagramHandle: row.instagramHandle || "",
                     googleMapsUrl: row.googleMapsUrl || "",
+                    googlePlaceId: row.googlePlaceId || "",
                     coverImageUrl: row.coverImageUrl || "",
                     coverImageS3Key: row.coverImageS3Key || "",
                     galleryImageUrls: row.galleryImageUrls || [],
@@ -2430,6 +2678,9 @@ export default function JazzbaiSuperAdminPage() {
                     priceRange: row.priceRange || "MID",
                     ratingOverride: row.ratingOverride ?? "",
                     reviewCountOverride: row.reviewCountOverride ?? "",
+                    approvalStatus: row.approvalStatus || "PENDING",
+                    approvalNotes: row.approvalNotes || "",
+                    menuSource: row.menuSource || "NONE",
                     amenities: row.amenities || [],
                     vibes: row.vibes || [],
                     cuisineTags: row.cuisineTags || [],
@@ -2443,7 +2694,7 @@ export default function JazzbaiSuperAdminPage() {
                         <div>
                           <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
                           <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                            {row.id} • {ownerLabelById.get(row.ownerId) || row.ownerEmail || row.ownerId} • Created {formatDateTime(row.createdAt)}
+                            {row.id} • {ownerLabelById.get(row.ownerId) || row.ownerEmail || row.ownerId} • {row.approvalStatus || "PENDING"} • Created {formatDateTime(row.createdAt)}
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
@@ -2472,6 +2723,7 @@ export default function JazzbaiSuperAdminPage() {
                                   website: draft.website || null,
                                   instagramHandle: draft.instagramHandle || null,
                                   googleMapsUrl: draft.googleMapsUrl || null,
+                                  googlePlaceId: draft.googlePlaceId || null,
                                   coverImageUrl: draft.coverImageUrl || null,
                                   coverImageS3Key: draft.coverImageS3Key || null,
                                   galleryImageUrls: Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [],
@@ -2480,6 +2732,8 @@ export default function JazzbaiSuperAdminPage() {
                                   priceRange: draft.priceRange,
                                   ratingOverride: draft.ratingOverride === "" || draft.ratingOverride == null ? null : Number(draft.ratingOverride),
                                   reviewCountOverride: draft.reviewCountOverride === "" || draft.reviewCountOverride == null ? null : Number(draft.reviewCountOverride),
+                                  approvalStatus: draft.approvalStatus,
+                                  approvalNotes: draft.approvalNotes || null,
                                   amenities: Array.isArray(draft.amenities) ? draft.amenities : [],
                                   vibes: Array.isArray(draft.vibes) ? draft.vibes : [],
                                   cuisineTags: Array.isArray(draft.cuisineTags) ? draft.cuisineTags : [],
@@ -2488,17 +2742,37 @@ export default function JazzbaiSuperAdminPage() {
                                   isFeatured: draft.isFeatured,
                                 }),
                               });
-                              await Promise.all([loadVenues(), loadLookups(), loadOverview()]);
+                              await Promise.all([loadVenues(), loadLookups(), loadOverview(), loadApprovalQueues()]);
                             })}
                           >
                             Save
+                          </button>
+                          <button
+                            style={smallBtn("outline", submittingAction === `refresh-google-${row.id}`)}
+                            disabled={submittingAction === `refresh-google-${row.id}` || !draft.googlePlaceId}
+                            onClick={() => void runAction(`refresh-google-${row.id}`, async () => {
+                              await superAdminFetch(`/venues/${row.id}/google/refresh`, { method: "POST" });
+                              await Promise.all([loadVenues(), loadApprovalQueues()]);
+                            })}
+                          >
+                            Refresh Google
+                          </button>
+                          <button
+                            style={smallBtn("outline", submittingAction === `revert-google-${row.id}`)}
+                            disabled={submittingAction === `revert-google-${row.id}` || !draft.googlePlaceId}
+                            onClick={() => void runAction(`revert-google-${row.id}`, async () => {
+                              await superAdminFetch(`/venues/${row.id}/google/revert`, { method: "POST", body: JSON.stringify({ includeMenu: true }) });
+                              await Promise.all([loadVenues(), loadApprovalQueues()]);
+                            })}
+                          >
+                            Revert Defaults
                           </button>
                           <button
                             style={smallBtn("danger", submittingAction === `archive-venue-${row.id}`)}
                             disabled={submittingAction === `archive-venue-${row.id}`}
                             onClick={() => void runAction(`archive-venue-${row.id}`, async () => {
                               await superAdminFetch(`/venues/${row.id}`, { method: "DELETE" });
-                              await Promise.all([loadVenues(), loadLookups(), loadOverview()]);
+                              await Promise.all([loadVenues(), loadLookups(), loadOverview(), loadApprovalQueues()]);
                             })}
                           >
                             Archive
@@ -2507,12 +2781,16 @@ export default function JazzbaiSuperAdminPage() {
                       </div>
 
                       <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                        <div style={{ gridColumn: "1 / -1" }}>
+                          <GooglePlacePicker initialPlaceId={String(draft.googlePlaceId ?? "")} onPlaceResolved={(details) => applyGoogleDetailsToVenueDraft(row.id, details)} />
+                        </div>
                         <select style={inputStyle} value={String(draft.ownerId ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, ownerId: e.target.value } }))}>
                           <option value="">Owner</option>
                           {lookupOwners.map((owner) => (
                             <option key={owner.id} value={owner.id}>{owner.name} ({owner.email})</option>
                           ))}
                         </select>
+                        <input style={inputStyle} value={String(draft.googlePlaceId ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, googlePlaceId: e.target.value } }))} placeholder="Google Place ID" />
                         <input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} placeholder="Venue name" />
                         <input style={inputStyle} value={String(draft.slug ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, slug: e.target.value } }))} placeholder="Slug" />
                         <input style={inputStyle} value={String(draft.shortDescription ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortDescription: e.target.value } }))} placeholder="Short description" />
@@ -2619,8 +2897,14 @@ export default function JazzbaiSuperAdminPage() {
                           </div>
                         </div>
                         <input style={inputStyle} value={String(draft.capacity ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, capacity: e.target.value } }))} placeholder="Capacity" />
+                        <select style={inputStyle} value={String(draft.approvalStatus ?? "PENDING")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, approvalStatus: e.target.value as "PENDING" | "APPROVED" | "REJECTED" } }))}>
+                          <option value="PENDING">PENDING</option>
+                          <option value="APPROVED">APPROVED</option>
+                          <option value="REJECTED">REJECTED</option>
+                        </select>
                         <input style={inputStyle} type="number" min="0" max="5" step="0.1" value={String(draft.ratingOverride ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, ratingOverride: e.target.value } }))} placeholder="Displayed rating override" />
                         <input style={inputStyle} type="number" min="0" step="1" value={String(draft.reviewCountOverride ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, reviewCountOverride: e.target.value } }))} placeholder="Displayed review count override" />
+                        <textarea style={{ ...textareaStyle, gridColumn: "1 / -1" }} value={String(draft.approvalNotes ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, approvalNotes: e.target.value } }))} placeholder="Approval notes" />
                         <select style={inputStyle} value={String(draft.priceRange ?? "MID")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, priceRange: e.target.value as VenueRow["priceRange"] } }))}>
                           <option value="BUDGET">BUDGET</option>
                           <option value="MID">MID</option>

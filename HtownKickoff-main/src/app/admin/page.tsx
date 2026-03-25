@@ -25,8 +25,9 @@ import {
   Users,
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
+import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import { useAuth } from "../../lib/auth-context";
-import { api, uploadApi } from "../../lib/api";
+import { api, uploadApi, type GooglePlaceDetailsResponse, type GooglePlaceSnapshot } from "../../lib/api";
 import { useData } from "../../lib/data-provider";
 import { EVENT_WATCH_PARTY_TYPES } from "../../lib/tags";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -52,6 +53,7 @@ type DashboardOverview = {
     slug: string;
     city: string;
     isVerified: boolean;
+    approvalStatus?: "PENDING" | "APPROVED" | "REJECTED";
   };
   stats: {
     totalBookings: number;
@@ -132,12 +134,30 @@ type UpcomingMatch = {
 type VenueProfile = {
   name?: string | null;
   description?: string | null;
+  shortDescription?: string | null;
   phone?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  stateProvince?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  lat?: string | null;
+  lng?: string | null;
+  timezone?: string | null;
+  website?: string | null;
+  googleMapsUrl?: string | null;
+  ratingOverride?: string | null;
+  reviewCountOverride?: number | null;
   coverImageUrl?: string | null;
   coverImageS3Key?: string | null;
   galleryImageUrls?: string[];
   galleryS3Keys?: string[];
   promotedVenueEventId?: string | null;
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED";
+  approvalNotes?: string | null;
+  googlePlaceId?: string | null;
+  menuSourceState?: "google" | "manual" | "none";
+  googleDefaults?: GooglePlaceSnapshot | null;
 };
 
 type OwnedVenue = {
@@ -148,6 +168,23 @@ type OwnedVenue = {
   country: string;
   isVerified: boolean;
   isFeatured: boolean;
+  createdAt: string;
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED";
+  approvalNotes?: string | null;
+  googlePlaceId?: string | null;
+  menuSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+};
+
+type ClaimRecord = {
+  id: string;
+  venueId: string;
+  venueName: string;
+  venueSlug: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  notes?: string | null;
+  adminNotes?: string | null;
+  verificationDocuments?: string[];
+  reviewedAt?: string | null;
   createdAt: string;
 };
 
@@ -271,6 +308,24 @@ function toDatetimeLocal(iso?: string | null) {
   return local.toISOString().slice(0, 16);
 }
 
+function applyGoogleDefaultsToVenueForm(snapshot: GooglePlaceSnapshot) {
+  return {
+    googlePlaceId: snapshot.placeId,
+    name: snapshot.displayName || "",
+    addressLine1: snapshot.addressLine1 || snapshot.formattedAddress || "",
+    city: snapshot.city || "",
+    country: snapshot.country || "",
+    stateProvince: snapshot.stateProvince || "",
+    postalCode: snapshot.postalCode || "",
+    lat: snapshot.lat == null ? "" : String(snapshot.lat),
+    lng: snapshot.lng == null ? "" : String(snapshot.lng),
+    timezone: snapshot.timezone || "America/Chicago",
+    phone: snapshot.phone || "",
+    website: snapshot.website || "",
+    googleMapsUrl: snapshot.googleMapsUrl || "",
+  };
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { isAuthenticated, user, logout } = useAuth();
@@ -284,6 +339,7 @@ export default function AdminPage() {
   const [showCreateVenueForm, setShowCreateVenueForm] = React.useState(false);
 
   const [overview, setOverview] = React.useState<DashboardOverview | null>(null);
+  const [claims, setClaims] = React.useState<ClaimRecord[]>([]);
   const [events, setEvents] = React.useState<OwnerEvent[]>([]);
   const [bookingsByEvent, setBookingsByEvent] = React.useState<GroupedBookingEvent[]>([]);
   const [upcomingMatches, setUpcomingMatches] = React.useState<UpcomingMatch[]>([]);
@@ -336,7 +392,25 @@ export default function AdminPage() {
 
   const [venueName, setVenueName] = React.useState("");
   const [venueDescription, setVenueDescription] = React.useState("");
+  const [venueShortDescription, setVenueShortDescription] = React.useState("");
   const [venuePhone, setVenuePhone] = React.useState("");
+  const [venueAddressLine1, setVenueAddressLine1] = React.useState("");
+  const [venueCity, setVenueCity] = React.useState("");
+  const [venueStateProvince, setVenueStateProvince] = React.useState("");
+  const [venueCountry, setVenueCountry] = React.useState("");
+  const [venuePostalCode, setVenuePostalCode] = React.useState("");
+  const [venueLat, setVenueLat] = React.useState("");
+  const [venueLng, setVenueLng] = React.useState("");
+  const [venueTimezone, setVenueTimezone] = React.useState("America/Chicago");
+  const [venueWebsite, setVenueWebsite] = React.useState("");
+  const [venueGoogleMapsUrl, setVenueGoogleMapsUrl] = React.useState("");
+  const [venueGooglePlaceId, setVenueGooglePlaceId] = React.useState("");
+  const [venueApprovalStatus, setVenueApprovalStatus] = React.useState<"PENDING" | "APPROVED" | "REJECTED" | null>(null);
+  const [venueApprovalNotes, setVenueApprovalNotes] = React.useState<string | null>(null);
+  const [menuSourceState, setMenuSourceState] = React.useState<"google" | "manual" | "none">("none");
+  const [googleDefaults, setGoogleDefaults] = React.useState<GooglePlaceSnapshot | null>(null);
+  const [refreshingGoogleData, setRefreshingGoogleData] = React.useState(false);
+  const [revertingGoogleData, setRevertingGoogleData] = React.useState(false);
   const [coverImageUrl, setCoverImageUrl] = React.useState("");
   const [coverImageS3Key, setCoverImageS3Key] = React.useState("");
   const [galleryItems, setGalleryItems] = React.useState<GalleryItem[]>([]);
@@ -345,14 +419,19 @@ export default function AdminPage() {
   const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
   const [deleteVenueEmailConfirm, setDeleteVenueEmailConfirm] = React.useState("");
   const [newOwnedVenue, setNewOwnedVenue] = React.useState({
+    googlePlaceId: "",
     name: "",
     addressLine1: "",
     city: "Houston",
+    stateProvince: "",
     country: "US",
+    postalCode: "",
     lat: "29.7604",
     lng: "-95.3698",
     timezone: "America/Chicago",
     phone: "",
+    website: "",
+    googleMapsUrl: "",
     description: "",
   });
 
@@ -449,6 +528,8 @@ export default function AdminPage() {
 
     try {
       const venueRows = await loadOwnedVenues();
+      const claimsRes = await api.get<ClaimRecord[]>("/dashboard/claims");
+      setClaims(claimsRes.data || []);
       const effectiveVenueId = selectedVenueId && venueRows.some((venue) => venue.id === selectedVenueId)
         ? selectedVenueId
         : (venueRows[0]?.id || "");
@@ -467,7 +548,23 @@ export default function AdminPage() {
         setPromotedEventId(null);
         setVenueName("");
         setVenueDescription("");
+        setVenueShortDescription("");
         setVenuePhone("");
+        setVenueAddressLine1("");
+        setVenueCity("");
+        setVenueStateProvince("");
+        setVenueCountry("");
+        setVenuePostalCode("");
+        setVenueLat("");
+        setVenueLng("");
+        setVenueTimezone("America/Chicago");
+        setVenueWebsite("");
+        setVenueGoogleMapsUrl("");
+        setVenueGooglePlaceId("");
+        setVenueApprovalStatus(null);
+        setVenueApprovalNotes(null);
+        setMenuSourceState("none");
+        setGoogleDefaults(null);
         setCoverImageUrl("");
         setCoverImageS3Key("");
         setGalleryItems([]);
@@ -502,7 +599,23 @@ export default function AdminPage() {
       const profile = venueRes.data || {};
       setVenueName(profile.name || "");
       setVenueDescription(profile.description || "");
+      setVenueShortDescription(profile.shortDescription || "");
       setVenuePhone(profile.phone || "");
+      setVenueAddressLine1(profile.addressLine1 || "");
+      setVenueCity(profile.city || "");
+      setVenueStateProvince(profile.stateProvince || "");
+      setVenueCountry(profile.country || "");
+      setVenuePostalCode(profile.postalCode || "");
+      setVenueLat(profile.lat || "");
+      setVenueLng(profile.lng || "");
+      setVenueTimezone(profile.timezone || "America/Chicago");
+      setVenueWebsite(profile.website || "");
+      setVenueGoogleMapsUrl(profile.googleMapsUrl || "");
+      setVenueGooglePlaceId(profile.googlePlaceId || "");
+      setVenueApprovalStatus(profile.approvalStatus || null);
+      setVenueApprovalNotes(profile.approvalNotes || null);
+      setMenuSourceState(profile.menuSourceState || "none");
+      setGoogleDefaults(profile.googleDefaults || null);
       setCoverImageUrl(normalizeImageUrl(profile.coverImageUrl));
       setCoverImageS3Key(profile.coverImageS3Key || "");
       setGalleryItems(parseGalleryItems(profile.galleryImageUrls, profile.galleryS3Keys));
@@ -558,6 +671,32 @@ export default function AdminPage() {
       setNewMenuItemCategoryId(menu[0].id);
     }
   }, [menu, newMenuItemCategoryId]);
+
+  const applyOwnerVenueGoogleDefaults = React.useCallback((details: GooglePlaceDetailsResponse) => {
+    const defaults = applyGoogleDefaultsToVenueForm(details.defaults);
+    setVenueGooglePlaceId(defaults.googlePlaceId);
+    setVenueName(defaults.name);
+    setVenueAddressLine1(defaults.addressLine1);
+    setVenueCity(defaults.city);
+    setVenueStateProvince(defaults.stateProvince);
+    setVenueCountry(defaults.country);
+    setVenuePostalCode(defaults.postalCode);
+    setVenueLat(defaults.lat);
+    setVenueLng(defaults.lng);
+    setVenueTimezone(defaults.timezone);
+    setVenuePhone(defaults.phone);
+    setVenueWebsite(defaults.website);
+    setVenueGoogleMapsUrl(defaults.googleMapsUrl);
+    setGoogleDefaults(details.defaults);
+  }, []);
+
+  const applyNewVenueGoogleDefaults = React.useCallback((details: GooglePlaceDetailsResponse) => {
+    const defaults = applyGoogleDefaultsToVenueForm(details.defaults);
+    setNewOwnedVenue((prev) => ({
+      ...prev,
+      ...defaults,
+    }));
+  }, []);
 
   const createMatchEvent = async () => {
     if (!newEventMatchId) return;
@@ -816,9 +955,21 @@ export default function AdminPage() {
     setError(null);
     try {
       await api.put(dashboardPath("/dashboard/venue"), {
+        googlePlaceId: venueGooglePlaceId || undefined,
         name: venueName.trim(),
         description: venueDescription.trim() || undefined,
+        shortDescription: venueShortDescription.trim() || undefined,
+        addressLine1: venueAddressLine1.trim() || undefined,
+        city: venueCity.trim() || undefined,
+        stateProvince: venueStateProvince.trim() || undefined,
+        country: venueCountry.trim() || undefined,
+        postalCode: venuePostalCode.trim() || undefined,
+        lat: venueLat ? Number(venueLat) : undefined,
+        lng: venueLng ? Number(venueLng) : undefined,
+        timezone: venueTimezone.trim() || undefined,
         phone: venuePhone.trim() || undefined,
+        website: venueWebsite.trim() || undefined,
+        googleMapsUrl: venueGoogleMapsUrl.trim() || undefined,
         coverImageUrl: coverImageUrl || undefined,
         coverImageS3Key: coverImageS3Key || undefined,
         galleryImageUrls: galleryItems.map((item) => item.url),
@@ -830,6 +981,36 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : "Failed to save venue settings");
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const refreshVenueGoogleData = async () => {
+    if (!selectedVenueId) return;
+    setRefreshingGoogleData(true);
+    setError(null);
+    try {
+      await api.post(dashboardPath("/dashboard/venue/google/refresh"));
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to refresh Google defaults");
+    } finally {
+      setRefreshingGoogleData(false);
+    }
+  };
+
+  const revertVenueToGoogleDefaults = async () => {
+    if (!selectedVenueId) return;
+    setRevertingGoogleData(true);
+    setError(null);
+    try {
+      await api.post(dashboardPath("/dashboard/venue/google/revert"), {
+        includeMenu: true,
+      });
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to revert venue to Google defaults");
+    } finally {
+      setRevertingGoogleData(false);
     }
   };
 
@@ -891,27 +1072,37 @@ export default function AdminPage() {
     setError(null);
     try {
       const response = await api.post<{ id: string; name: string; slug: string; city: string; country: string }>("/dashboard/venues", {
+        googlePlaceId: newOwnedVenue.googlePlaceId || undefined,
         name: newOwnedVenue.name.trim(),
         addressLine1: newOwnedVenue.addressLine1.trim(),
         city: newOwnedVenue.city.trim(),
+        stateProvince: newOwnedVenue.stateProvince.trim() || undefined,
         country: newOwnedVenue.country.trim(),
+        postalCode: newOwnedVenue.postalCode.trim() || undefined,
         lat,
         lng,
         timezone: newOwnedVenue.timezone.trim() || "America/Chicago",
         phone: newOwnedVenue.phone.trim() || undefined,
+        website: newOwnedVenue.website.trim() || undefined,
+        googleMapsUrl: newOwnedVenue.googleMapsUrl.trim() || undefined,
         description: newOwnedVenue.description.trim() || undefined,
       });
 
       setShowCreateVenueForm(false);
       setNewOwnedVenue({
+        googlePlaceId: "",
         name: "",
         addressLine1: "",
         city: "Houston",
+        stateProvince: "",
         country: "US",
+        postalCode: "",
         lat: "29.7604",
         lng: "-95.3698",
         timezone: "America/Chicago",
         phone: "",
+        website: "",
+        googleMapsUrl: "",
         description: "",
       });
 
@@ -1054,6 +1245,10 @@ export default function AdminPage() {
               </div>
               {showCreateVenueForm && (
                 <div style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12, display: "grid", gap: 8 }}>
+                  <GooglePlacePicker
+                    initialPlaceId={newOwnedVenue.googlePlaceId}
+                    onPlaceResolved={applyNewVenueGoogleDefaults}
+                  />
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     <input
                       value={newOwnedVenue.name}
@@ -1068,7 +1263,7 @@ export default function AdminPage() {
                       style={inputStyle}
                     />
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px 120px", gap: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
                     <input
                       value={newOwnedVenue.city}
                       onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, city: event.target.value }))}
@@ -1082,6 +1277,20 @@ export default function AdminPage() {
                       style={inputStyle}
                     />
                     <input
+                      value={newOwnedVenue.stateProvince}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, stateProvince: event.target.value }))}
+                      placeholder="State / Province"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.postalCode}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, postalCode: event.target.value }))}
+                      placeholder="Postal code"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "120px 120px 1fr 1fr", gap: 8 }}>
+                    <input
                       value={newOwnedVenue.lat}
                       onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, lat: event.target.value }))}
                       placeholder="Lat"
@@ -1091,6 +1300,18 @@ export default function AdminPage() {
                       value={newOwnedVenue.lng}
                       onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, lng: event.target.value }))}
                       placeholder="Lng"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.website}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, website: event.target.value }))}
+                      placeholder="Website"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.googleMapsUrl}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, googleMapsUrl: event.target.value }))}
+                      placeholder="Google Maps URL"
                       style={inputStyle}
                     />
                   </div>
@@ -1136,6 +1357,46 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+
+          {(user.businessApprovalStatus && user.businessApprovalStatus !== "APPROVED") || venueApprovalStatus || claims.length > 0 ? (
+            <div style={{ display: "grid", gap: 12, marginBottom: 16 }}>
+              {user.businessApprovalStatus && user.businessApprovalStatus !== "APPROVED" ? (
+                <div style={{ padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(245,158,11,0.3)", backgroundColor: "rgba(245,158,11,0.08)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--foreground)" }}>Business approval: {user.businessApprovalStatus}</div>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                    {user.businessApprovalNotes || "Your business profile is pending admin review. Public activation and event publishing stay blocked until approval."}
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedVenueId && venueApprovalStatus && venueApprovalStatus !== "APPROVED" ? (
+                <div style={{ padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(245,158,11,0.3)", backgroundColor: "rgba(245,158,11,0.08)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--foreground)" }}>Venue approval: {venueApprovalStatus}</div>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                    {venueApprovalNotes || "This venue is waiting for admin approval before it appears publicly or can host match events."}
+                  </div>
+                </div>
+              ) : null}
+
+              {claims.length > 0 ? (
+                <div style={{ ...cardStyle, padding: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--foreground)", marginBottom: 10 }}>Venue claims</div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {claims.slice(0, 5).map((claim) => (
+                      <div key={claim.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, backgroundColor: "var(--secondary)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{claim.venueName}</div>
+                          <span style={badgeStyle}>{claim.status}</span>
+                        </div>
+                        {claim.notes ? <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>{claim.notes}</div> : null}
+                        {claim.adminNotes ? <div style={{ marginTop: 6, fontSize: 12, color: "var(--foreground)" }}>Admin note: {claim.adminNotes}</div> : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* Tab Navigation */}
           <div style={{ display: "inline-flex", padding: 4, backgroundColor: "var(--secondary)", borderRadius: 12, border: "1px solid var(--border)", maxWidth: "100%", overflowX: "auto", marginBottom: 24 }}>
@@ -1439,6 +1700,37 @@ export default function AdminPage() {
                 <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Update your public venue info and media shown on listing and venue pages.</p>
               </div>
               <div style={cardContentStyle}>
+                <div style={{ display: "grid", gap: 12, marginBottom: 20 }}>
+                  <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                    <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Venue approval</div>
+                      <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800, color: "var(--foreground)" }}>{venueApprovalStatus || "UNKNOWN"}</div>
+                      {venueApprovalNotes ? <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>{venueApprovalNotes}</div> : null}
+                    </div>
+                    <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Menu source</div>
+                      <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800, color: "var(--foreground)" }}>{menuSourceState.toUpperCase()}</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        {googleDefaults?.menu?.sections?.length || googleDefaults?.menu?.url ? "Google menu is available for revert." : "No Google menu snapshot stored."}
+                      </div>
+                    </div>
+                  </div>
+
+                  <GooglePlacePicker
+                    initialPlaceId={venueGooglePlaceId}
+                    onPlaceResolved={applyOwnerVenueGoogleDefaults}
+                  />
+
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    <button style={btnOutline(refreshingGoogleData || !venueGooglePlaceId)} disabled={refreshingGoogleData || !venueGooglePlaceId} onClick={() => void refreshVenueGoogleData()}>
+                      {refreshingGoogleData ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Refreshing</> : "Refresh Google Data"}
+                    </button>
+                    <button style={btnOutline(revertingGoogleData || !googleDefaults)} disabled={revertingGoogleData || !googleDefaults} onClick={() => void revertVenueToGoogleDefaults()}>
+                      {revertingGoogleData ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Reverting</> : "Revert to Google Defaults"}
+                    </button>
+                  </div>
+                </div>
+
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 20 }}>
                   <div>
                     <label style={labelStyle}>Venue name</label>
@@ -1451,6 +1743,54 @@ export default function AdminPage() {
                       <input value={venuePhone} onChange={(e) => setVenuePhone(e.target.value)} placeholder="+1 000 000 0000" style={{ ...inputStyle, paddingLeft: 36 }} />
                     </div>
                   </div>
+                  <div>
+                    <label style={labelStyle}>Website</label>
+                    <input value={venueWebsite} onChange={(e) => setVenueWebsite(e.target.value)} placeholder="https://example.com" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Google Maps URL</label>
+                    <input value={venueGoogleMapsUrl} onChange={(e) => setVenueGoogleMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." style={inputStyle} />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 20 }}>
+                  <div>
+                    <label style={labelStyle}>Address line 1</label>
+                    <input value={venueAddressLine1} onChange={(e) => setVenueAddressLine1(e.target.value)} placeholder="Street address" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>City</label>
+                    <input value={venueCity} onChange={(e) => setVenueCity(e.target.value)} placeholder="City" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>State / Province</label>
+                    <input value={venueStateProvince} onChange={(e) => setVenueStateProvince(e.target.value)} placeholder="State / Province" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Country</label>
+                    <input value={venueCountry} onChange={(e) => setVenueCountry(e.target.value)} placeholder="Country" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Postal code</label>
+                    <input value={venuePostalCode} onChange={(e) => setVenuePostalCode(e.target.value)} placeholder="Postal code" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Timezone</label>
+                    <input value={venueTimezone} onChange={(e) => setVenueTimezone(e.target.value)} placeholder="Timezone" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Latitude</label>
+                    <input value={venueLat} onChange={(e) => setVenueLat(e.target.value)} placeholder="Latitude" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Longitude</label>
+                    <input value={venueLng} onChange={(e) => setVenueLng(e.target.value)} placeholder="Longitude" style={inputStyle} />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Short description</label>
+                  <textarea value={venueShortDescription} onChange={(e) => setVenueShortDescription(e.target.value)} placeholder="Short public summary." style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} />
                 </div>
 
                 <div style={{ marginBottom: 20 }}>

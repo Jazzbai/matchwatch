@@ -3,47 +3,62 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Armchair,
-  BadgeCheck,
-  Building2,
-  CircleAlert,
-  LocateFixed,
-  MapPin,
-  Phone,
-} from "lucide-react";
+import { BadgeCheck, Building2, CircleAlert, ExternalLink, RefreshCcw } from "lucide-react";
 import { AppShell } from "../../../components/AppShell";
-import { useAuth } from "../../../lib/auth-context";
-import { LocationPickerMap } from "../../../components/LocationPickerMap";
+import { GooglePlacePicker } from "../../../components/GooglePlacePicker";
 import { Alert, AlertDescription, AlertTitle } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../../components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/select";
-import { Separator } from "../../../components/ui/separator";
 import { Textarea } from "../../../components/ui/textarea";
-import { cn } from "../../../lib/utils";
-import {
-  CUISINE_TAGS,
-  DIETARY_TAGS,
-  DRINK_TAGS,
-  VENUE_FEATURE_TAGS,
-  VIBE_TAGS,
-} from "../../../lib/tags";
+import { useAuth } from "../../../lib/auth-context";
+import type { ExistingVenueMatch, GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../../lib/api";
+
+type PriceRange = "BUDGET" | "MID" | "UPSCALE" | "LUXURY";
+
+type VenueFormState = {
+  googlePlaceId: string;
+  name: string;
+  address: string;
+  city: string;
+  stateProvince: string;
+  country: string;
+  postalCode: string;
+  lat: string;
+  lng: string;
+  timezone: string;
+  phone: string;
+  website: string;
+  googleMapsUrl: string;
+  description: string;
+  shortDescription: string;
+  capacity: string;
+  priceRange: PriceRange;
+};
+
+function mapGoogleDefaultsToVenue(snapshot: GooglePlaceSnapshot): VenueFormState {
+  return {
+    googlePlaceId: snapshot.placeId,
+    name: snapshot.displayName || "",
+    address: snapshot.addressLine1 || snapshot.formattedAddress || "",
+    city: snapshot.city || "",
+    stateProvince: snapshot.stateProvince || "",
+    country: snapshot.country || "",
+    postalCode: snapshot.postalCode || "",
+    lat: snapshot.lat == null ? "" : String(snapshot.lat),
+    lng: snapshot.lng == null ? "" : String(snapshot.lng),
+    timezone: snapshot.timezone || "America/Chicago",
+    phone: snapshot.phone || "",
+    website: snapshot.website || "",
+    googleMapsUrl: snapshot.googleMapsUrl || "",
+    description: "",
+    shortDescription: "",
+    capacity: "",
+    priceRange: "MID",
+  };
+}
 
 export default function VenueRegisterPage() {
   const router = useRouter();
@@ -52,396 +67,357 @@ export default function VenueRegisterPage() {
   const [ownerName, setOwnerName] = React.useState("");
   const [ownerEmail, setOwnerEmail] = React.useState("");
   const [ownerPassword, setOwnerPassword] = React.useState("");
-
-  const [venueName, setVenueName] = React.useState("");
-  const [address, setAddress] = React.useState("");
-  const [city, setCity] = React.useState("Houston");
-  const [country, setCountry] = React.useState("US");
-  const [lat, setLat] = React.useState(29.7604);
-  const [lng, setLng] = React.useState(-95.3698);
-  const [locationPicked, setLocationPicked] = React.useState(false);
-  const [isResolvingAddress, setIsResolvingAddress] = React.useState(false);
-  const [phone, setPhone] = React.useState("");
-  const [description, setDescription] = React.useState("");
-  const [capacity, setCapacity] = React.useState("");
-  const [amenities, setAmenities] = React.useState<string[]>([
-    "Massive Projector Screen",
-    "Free Wi-Fi",
-    "Full Bar Service",
-  ]);
-  const [cuisines, setCuisines] = React.useState<string[]>(["Tex-Mex"]);
-  const [priceRange, setPriceRange] = React.useState<"BUDGET" | "MID" | "UPSCALE" | "LUXURY">("MID");
-
+  const [venueForm, setVenueForm] = React.useState<VenueFormState>({
+    googlePlaceId: "",
+    name: "",
+    address: "",
+    city: "",
+    stateProvince: "",
+    country: "",
+    postalCode: "",
+    lat: "",
+    lng: "",
+    timezone: "America/Chicago",
+    phone: "",
+    website: "",
+    googleMapsUrl: "",
+    description: "",
+    shortDescription: "",
+    capacity: "",
+    priceRange: "MID",
+  });
+  const [googleDefaults, setGoogleDefaults] = React.useState<GooglePlaceSnapshot | null>(null);
+  const [existingVenue, setExistingVenue] = React.useState<ExistingVenueMatch | null>(null);
+  const [claimMode, setClaimMode] = React.useState(false);
+  const [claimNotes, setClaimNotes] = React.useState("");
+  const [claimDocs, setClaimDocs] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
 
-  const venuePwChecks = [
-    { label: "10+ characters", pass: ownerPassword.length >= 10 },
-    { label: "Uppercase", pass: /[A-Z]/.test(ownerPassword) },
-    { label: "Lowercase", pass: /[a-z]/.test(ownerPassword) },
-    { label: "Number", pass: /[0-9]/.test(ownerPassword) },
-    { label: "Symbol", pass: /[^A-Za-z0-9]/.test(ownerPassword) },
-  ];
-  const venuePwScore = venuePwChecks.filter((c) => c.pass).length;
-  const venuePwColor = venuePwScore <= 1 ? "#ef4444" : venuePwScore <= 2 ? "#f97316" : venuePwScore <= 3 ? "#eab308" : venuePwScore <= 4 ? "#84cc16" : "#22c55e";
-  const venuePwLabel = venuePwScore <= 1 ? "Weak" : venuePwScore <= 2 ? "Fair" : venuePwScore <= 3 ? "Moderate" : venuePwScore <= 4 ? "Good" : "Strong";
-  const fieldClassName = "h-11 px-3 text-sm";
-
-  const toggleAmenity = (value: string) => {
-    setAmenities((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
-  };
-
-  const toggleCuisine = (value: string) => {
-    setCuisines((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
-  };
-
-  const resolveAddressFromCoords = async (selectedLat: number, selectedLng: number) => {
-    setIsResolvingAddress(true);
-    try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${selectedLat}&lon=${selectedLng}&zoom=18&addressdetails=1`;
-      const res = await fetch(url, { method: "GET" });
-      if (!res.ok) return;
-      const data = await res.json();
-      const addr = data?.address || {};
-      if (!address && typeof data?.display_name === "string") {
-        setAddress(data.display_name);
-      }
-      if (typeof addr?.city === "string") setCity(addr.city);
-      else if (typeof addr?.town === "string") setCity(addr.town);
-      else if (typeof addr?.village === "string") setCity(addr.village);
-      if (typeof addr?.country_code === "string") {
-        setCountry(addr.country_code.toUpperCase());
-      }
-    } catch {
-      // User can still type address manually.
-    } finally {
-      setIsResolvingAddress(false);
-    }
-  };
-
-  const handleMapSelect = (selectedLat: number, selectedLng: number) => {
-    setLat(selectedLat);
-    setLng(selectedLng);
-    setLocationPicked(true);
-    void resolveAddressFromCoords(selectedLat, selectedLng);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePlaceResolved = React.useCallback((details: GooglePlaceDetailsResponse) => {
+    setGoogleDefaults(details.defaults);
+    setVenueForm((prev) => ({
+      ...prev,
+      ...mapGoogleDefaultsToVenue(details.defaults),
+    }));
+    setExistingVenue(details.existingVenue || null);
+    setClaimMode(Boolean(details.existingVenue));
     setFormError(null);
+  }, []);
 
-    if (!locationPicked) {
-      setFormError("Select your venue location on the map before submitting.");
+  const resetToGoogleDefaults = React.useCallback(() => {
+    if (!googleDefaults) return;
+    setVenueForm((prev) => ({
+      ...prev,
+      ...mapGoogleDefaultsToVenue(googleDefaults),
+    }));
+  }, [googleDefaults]);
+
+  const parsedClaimDocs = React.useMemo(
+    () =>
+      claimDocs
+        .split("\n")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    [claimDocs],
+  );
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setFormError(null);
+    setSuccessMessage(null);
+
+    if (!googleDefaults) {
+      setFormError("Search and select the venue from Google before submitting.");
       return;
     }
-    if (!address.trim() || !city.trim() || !country.trim()) {
-      setFormError("Complete address, city, and country after selecting map location.");
+
+    if (!ownerName.trim() || !ownerEmail.trim() || !ownerPassword) {
+      setFormError("Owner name, email, and password are required.");
+      return;
+    }
+
+    if (!claimMode && (!venueForm.name.trim() || !venueForm.address.trim() || !venueForm.city.trim() || !venueForm.country.trim())) {
+      setFormError("Venue name, address, city, and country are required.");
       return;
     }
 
     setIsSubmitting(true);
     try {
       const normalizedEmail = ownerEmail.trim().toLowerCase();
-      await registerVenue({
+      const response = await registerVenue({
         email: normalizedEmail,
         password: ownerPassword,
         name: ownerName.trim(),
-        venue: {
-          name: venueName.trim(),
-          address: address.trim(),
-          city: city.trim(),
-          country: country.trim().toUpperCase(),
-          lat,
-          lng,
-          timezone: "America/Chicago",
-          phone: phone || undefined,
-          description: description || undefined,
-          amenities,
-          cuisineTags: cuisines,
-          priceRange,
-          capacity: capacity ? Number(capacity) : undefined,
-        },
+        ...(claimMode && existingVenue
+          ? {
+              claimVenueId: existingVenue.id,
+              claimNotes: claimNotes.trim() || undefined,
+              claimVerificationDocuments: parsedClaimDocs,
+            }
+          : {
+              venue: {
+                googlePlaceId: venueForm.googlePlaceId,
+                name: venueForm.name.trim(),
+                address: venueForm.address.trim(),
+                city: venueForm.city.trim(),
+                country: venueForm.country.trim(),
+                lat: Number(venueForm.lat),
+                lng: Number(venueForm.lng),
+                timezone: venueForm.timezone.trim() || "America/Chicago",
+                phone: venueForm.phone.trim() || undefined,
+                description: venueForm.description.trim() || undefined,
+                shortDescription: venueForm.shortDescription.trim() || undefined,
+                priceRange: venueForm.priceRange,
+                capacity: venueForm.capacity ? Number(venueForm.capacity) : undefined,
+                amenities: [],
+                vibes: [],
+                cuisineTags: [],
+              },
+            }),
       });
 
+      setSuccessMessage(response.message);
       await login(normalizedEmail, ownerPassword);
       router.push("/admin");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Venue registration failed";
-      setFormError(message);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Venue registration failed");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-      <AppShell>
-        <main className="mx-auto w-full max-w-6xl px-4 py-8 md:py-10">
-          <div className="mb-8 flex items-center justify-between gap-4">
-            <div>
-              <Badge variant="secondary" className="mb-2 gap-1">
-                <Building2 className="h-3.5 w-3.5" />
-                Venue onboarding
-              </Badge>
-              <h1 className="font-display text-3xl md:text-4xl text-[var(--foreground)]">Register Your Venue</h1>
-              <p className="mt-2 max-w-2xl text-sm md:text-base text-[var(--muted-foreground)]">
-                Create your owner account, place your venue on the map, and publish your profile.
-              </p>
-            </div>
-            <Link href="/login" className="text-sm text-[var(--primary)]">
-              Back to login
-            </Link>
+    <AppShell>
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 md:py-10">
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <div>
+            <Badge variant="secondary" className="mb-2 gap-1">
+              <Building2 className="h-3.5 w-3.5" />
+              Venue onboarding
+            </Badge>
+            <h1 className="font-display text-3xl text-[var(--foreground)] md:text-4xl">Register Your Business Venue</h1>
+            <p className="mt-2 max-w-3xl text-sm text-[var(--muted-foreground)] md:text-base">
+              Search the venue from Google, review the defaults, adjust the editable business details, and submit for admin approval.
+            </p>
           </div>
+          <Link href="/login" className="text-sm text-[var(--primary)]">
+            Back to login
+          </Link>
+        </div>
 
-          {formError && (
-            <Alert variant="destructive" className="mb-4">
-              <CircleAlert className="mb-2 h-4 w-4" />
-              <AlertTitle>Registration blocked</AlertTitle>
-              <AlertDescription>{formError}</AlertDescription>
+        {formError ? (
+          <Alert variant="destructive" className="mb-4">
+            <CircleAlert className="h-4 w-4" />
+            <AlertTitle>Registration blocked</AlertTitle>
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {successMessage ? (
+          <Alert className="mb-4 border-emerald-400/40 bg-emerald-500/10 text-emerald-700">
+            <BadgeCheck className="h-4 w-4" />
+            <AlertTitle>Submitted</AlertTitle>
+            <AlertDescription>{successMessage}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <form onSubmit={handleSubmit} className="grid gap-6">
+          <Card className="border-[var(--border)]/70 bg-card shadow-sm">
+            <CardHeader>
+              <CardTitle>Owner account</CardTitle>
+              <CardDescription>This account stays pending until admin approves the business profile.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="owner-name">Owner name</Label>
+                <Input id="owner-name" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="owner-email">Email</Label>
+                <Input id="owner-email" type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="owner-password">Password</Label>
+                <Input id="owner-password" type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} required />
+              </div>
+            </CardContent>
+          </Card>
+
+          <GooglePlacePicker
+            initialPlaceId={venueForm.googlePlaceId}
+            onPlaceResolved={handlePlaceResolved}
+          />
+
+          {existingVenue ? (
+            <Alert className="border-amber-400/30 bg-amber-500/10 text-amber-700">
+              <CircleAlert className="h-4 w-4" />
+              <AlertTitle>This venue already exists. Own this business? Claim it now!</AlertTitle>
+              <AlertDescription>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>{existingVenue.name} in {existingVenue.city}</span>
+                  <Link href={`/venues/${existingVenue.slug}`} className="inline-flex items-center gap-1 font-semibold underline">
+                    View venue
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </AlertDescription>
             </Alert>
-          )}
+          ) : null}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <Card className="border-[var(--border)]/70 bg-card shadow-sm">
-              <CardHeader>
-                <CardTitle>Owner account</CardTitle>
-                <CardDescription>This account will manage events, bookings, and venue content.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-5 md:grid-cols-3">
-                <div className="space-y-2 md:col-span-1">
-                  <Label htmlFor="owner-name">Owner name</Label>
-                  <Input id="owner-name" className={fieldClassName} value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
-                </div>
-                <div className="space-y-2 md:col-span-1">
-                  <Label htmlFor="owner-email">Email</Label>
-                  <Input id="owner-email" className={fieldClassName} type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} required />
-                </div>
-                <div className="space-y-2 md:col-span-1">
-                  <Label htmlFor="owner-password">Password</Label>
-                  <Input
-                    id="owner-password"
-                    className={fieldClassName}
-                    type="password"
-                    placeholder="At least 10 characters"
-                    value={ownerPassword}
-                    onChange={(e) => setOwnerPassword(e.target.value)}
-                    required
-                  />
-                  {ownerPassword.length > 0 && (
-                    <div style={{ marginTop: 8 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: venuePwColor }}>{venuePwLabel}</span>
-                        <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>{venuePwScore}/5</span>
-                      </div>
-                      <div style={{ width: "100%", height: 5, borderRadius: 99, backgroundColor: "var(--border)", overflow: "hidden" }}>
-                        <div style={{ width: `${(venuePwScore / 5) * 100}%`, height: "100%", borderRadius: 99, backgroundColor: venuePwColor, transition: "all 0.3s ease" }} />
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
-                        {venuePwChecks.map((c) => (
-                          <span key={c.label} style={{
-                            fontSize: 10, padding: "2px 6px", borderRadius: 4,
-                            backgroundColor: c.pass ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.1)",
-                            color: c.pass ? "#22c55e" : "var(--muted-foreground)",
-                            fontWeight: 600, border: `1px solid ${c.pass ? "rgba(34,197,94,0.3)" : "transparent"}`,
-                          }}>{c.pass ? "✓" : "•"} {c.label}</span>
-                        ))}
-                      </div>
+          <Card className="border-[var(--border)]/70 bg-card shadow-sm">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle>{claimMode ? "Claim request" : "Venue defaults and editable profile"}</CardTitle>
+                <CardDescription>
+                  {claimMode
+                    ? "This venue is already on MatchWatch. Submit proof and admin will review the claim."
+                    : "Ratings and review counts come from Google. Contact and location fields are preloaded and can be adjusted."}
+                </CardDescription>
+              </div>
+              {googleDefaults ? (
+                <Button type="button" variant="outline" onClick={resetToGoogleDefaults}>
+                  <RefreshCcw className="h-4 w-4" />
+                  Revert to Google defaults
+                </Button>
+              ) : null}
+            </CardHeader>
+            <CardContent className="grid gap-5">
+              {googleDefaults ? (
+                <div className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 md:grid-cols-4">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Google rating</div>
+                    <div className="mt-1 text-lg font-semibold text-[var(--foreground)]">{googleDefaults.rating ?? "N/A"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Google reviews</div>
+                    <div className="mt-1 text-lg font-semibold text-[var(--foreground)]">{googleDefaults.reviewCount ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Menu</div>
+                    <div className="mt-1 text-sm font-medium text-[var(--foreground)]">
+                      {googleDefaults.menu?.sections?.length || googleDefaults.menu?.url ? "Imported from Google" : "Not available from Google"}
                     </div>
-                  )}
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Google Place ID</div>
+                    <div className="mt-1 break-all text-xs text-[var(--foreground)]">{googleDefaults.placeId}</div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              ) : null}
 
-            <Card className="border-[var(--border)]/70 bg-card shadow-sm">
-              <CardHeader>
-                <CardTitle>Venue details</CardTitle>
-                <CardDescription>Set your location and profile details used on the public venue page.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-3 md:grid-cols-2">
+              {existingVenue ? (
+                <div className="flex gap-3">
+                  <Button type="button" variant={claimMode ? "default" : "outline"} onClick={() => setClaimMode(true)}>
+                    Claim this venue
+                  </Button>
+                  <Button type="button" variant={!claimMode ? "default" : "outline"} onClick={() => setClaimMode(false)}>
+                    Submit as new venue
+                  </Button>
+                </div>
+              ) : null}
+
+              {claimMode ? (
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="claim-notes">Claim notes</Label>
+                    <Textarea
+                      id="claim-notes"
+                      value={claimNotes}
+                      onChange={(e) => setClaimNotes(e.target.value)}
+                      placeholder="Explain your relationship to the venue and what proof you can provide."
+                      rows={5}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="claim-docs">Verification document URLs</Label>
+                    <Textarea
+                      id="claim-docs"
+                      value={claimDocs}
+                      onChange={(e) => setClaimDocs(e.target.value)}
+                      placeholder="One URL per line"
+                      rows={4}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="venue-name">Venue name</Label>
-                    <Input id="venue-name" className={fieldClassName} value={venueName} onChange={(e) => setVenueName(e.target.value)} required />
+                    <Input id="venue-name" value={venueForm.name} onChange={(e) => setVenueForm((prev) => ({ ...prev, name: e.target.value }))} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="venue-phone">Phone</Label>
-                    <div className="relative">
-                      <Phone className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--muted-foreground)]" />
-                      <Input id="venue-phone" className={`${fieldClassName} pl-9`} value={phone} onChange={(e) => setPhone(e.target.value)} />
-                    </div>
+                    <Input id="venue-phone" value={venueForm.phone} onChange={(e) => setVenueForm((prev) => ({ ...prev, phone: e.target.value }))} />
                   </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-3">
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      className={fieldClassName}
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="Street address (you can type this before selecting map point)"
-                      required
-                    />
+                    <Label htmlFor="venue-address">Address</Label>
+                    <Input id="venue-address" value={venueForm.address} onChange={(e) => setVenueForm((prev) => ({ ...prev, address: e.target.value }))} required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="capacity">Capacity</Label>
-                    <div className="relative">
-                      <Armchair className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[var(--muted-foreground)]" />
-                      <Input
-                        id="capacity"
-                        type="number"
-                        className={`${fieldClassName} pl-9`}
-                        value={capacity}
-                        onChange={(e) => setCapacity(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Location on map</Label>
-                  <div className="rounded-lg border border-[var(--border)] p-2">
-                    <LocationPickerMap lat={lat} lng={lng} onSelect={handleMapSelect} />
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-                    <MapPin className="h-3.5 w-3.5" />
-                    <span>{lat.toFixed(6)}, {lng.toFixed(6)}</span>
-                    {!locationPicked && (
-                      <>
-                        <Separator orientation="vertical" className="h-3" />
-                        <span>Select map point to finalize coordinates.</span>
-                      </>
-                    )}
-                    {isResolvingAddress && (
-                      <>
-                        <Separator orientation="vertical" className="h-3" />
-                        <LocateFixed className="h-3.5 w-3.5" />
-                        <span>Resolving address</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input id="city" className={fieldClassName} value={city} onChange={(e) => setCity(e.target.value)} required />
+                    <Label htmlFor="venue-city">City</Label>
+                    <Input id="venue-city" value={venueForm.city} onChange={(e) => setVenueForm((prev) => ({ ...prev, city: e.target.value }))} required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="country">Country code</Label>
-                    <Input
-                      id="country"
-                      className={fieldClassName}
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value.toUpperCase())}
-                      required
-                    />
+                    <Label htmlFor="venue-state">State / province</Label>
+                    <Input id="venue-state" value={venueForm.stateProvince} onChange={(e) => setVenueForm((prev) => ({ ...prev, stateProvince: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="price-range">Price range</Label>
-                    <Select value={priceRange} onValueChange={(value) => setPriceRange(value as typeof priceRange)}>
-                      <SelectTrigger id="price-range" className={fieldClassName}>
-                        <SelectValue placeholder="Select range" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="BUDGET">$ Budget</SelectItem>
-                        <SelectItem value="MID">$$ Mid</SelectItem>
-                        <SelectItem value="UPSCALE">$$$ Upscale</SelectItem>
-                        <SelectItem value="LUXURY">$$$$ Luxury</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="venue-country">Country</Label>
+                    <Input id="venue-country" value={venueForm.country} onChange={(e) => setVenueForm((prev) => ({ ...prev, country: e.target.value }))} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue-postal">Postal code</Label>
+                    <Input id="venue-postal" value={venueForm.postalCode} onChange={(e) => setVenueForm((prev) => ({ ...prev, postalCode: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue-lat">Latitude</Label>
+                    <Input id="venue-lat" value={venueForm.lat} onChange={(e) => setVenueForm((prev) => ({ ...prev, lat: e.target.value }))} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue-lng">Longitude</Label>
+                    <Input id="venue-lng" value={venueForm.lng} onChange={(e) => setVenueForm((prev) => ({ ...prev, lng: e.target.value }))} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue-timezone">Timezone</Label>
+                    <Input id="venue-timezone" value={venueForm.timezone} onChange={(e) => setVenueForm((prev) => ({ ...prev, timezone: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue-capacity">Capacity</Label>
+                    <Input id="venue-capacity" type="number" value={venueForm.capacity} onChange={(e) => setVenueForm((prev) => ({ ...prev, capacity: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue-website">Website</Label>
+                    <Input id="venue-website" value={venueForm.website} onChange={(e) => setVenueForm((prev) => ({ ...prev, website: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue-maps">Google Maps URL</Label>
+                    <Input id="venue-maps" value={venueForm.googleMapsUrl} onChange={(e) => setVenueForm((prev) => ({ ...prev, googleMapsUrl: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="venue-short">Short description</Label>
+                    <Textarea id="venue-short" rows={2} value={venueForm.shortDescription} onChange={(e) => setVenueForm((prev) => ({ ...prev, shortDescription: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="venue-description">Business description</Label>
+                    <Textarea id="venue-description" rows={5} value={venueForm.description} onChange={(e) => setVenueForm((prev) => ({ ...prev, description: e.target.value }))} />
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    className="min-h-28"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe atmosphere, specialties, and watch-party setup."
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-[var(--border)]/70 bg-card shadow-sm">
-              <CardHeader>
-                <CardTitle>Amenities and cuisine</CardTitle>
-                <CardDescription>Select tags to improve venue discovery and matching.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <Label>Venue tags</Label>
-                  {[
-                    { title: "Dietary options", values: DIETARY_TAGS },
-                    { title: "Drink options", values: DRINK_TAGS },
-                    { title: "Amenities & features", values: VENUE_FEATURE_TAGS },
-                    { title: "Vibe & audience", values: VIBE_TAGS },
-                  ].map((group) => (
-                    <div key={group.title} className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">{group.title}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {group.values.map((value) => {
-                          const selected = amenities.includes(value);
-                          return (
-                            <button
-                              key={value}
-                              type="button"
-                              onClick={() => toggleAmenity(value)}
-                              className={cn(
-                                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
-                                selected
-                                  ? "border-[var(--primary)] bg-[color-mix(in oklch, var(--primary) 15%, transparent)] text-[var(--primary)]"
-                                  : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]/50",
-                              )}
-                            >
-                              {value}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Cuisine tags</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {CUISINE_TAGS.map((value) => {
-                      const selected = cuisines.includes(value);
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => toggleCuisine(value)}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
-                            selected
-                              ? "border-[var(--primary)] bg-[color-mix(in oklch, var(--primary) 15%, transparent)] text-[var(--primary)]"
-                              : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]/50",
-                          )}
-                        >
-                          {value}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex items-center justify-end gap-3">
-              <Button type="button" variant="outline" asChild>
-                <Link href="/login">Cancel</Link>
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating business account..." : "Create Business Account"}
-              </Button>
-            </div>
-          </form>
-        </main>
-      </AppShell>
+          <div className="flex items-center justify-end gap-3">
+            <Button type="button" variant="outline" asChild>
+              <Link href="/for-venues">Cancel</Link>
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Submitting..." : claimMode ? "Submit claim" : "Submit for approval"}
+            </Button>
+          </div>
+        </form>
+      </main>
+    </AppShell>
   );
 }

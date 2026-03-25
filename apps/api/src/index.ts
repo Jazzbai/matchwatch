@@ -20,6 +20,7 @@ import adminRoutes from './routes/admin';
 import uploadRoutes from './routes/uploads';
 import superAdminRoutes from './routes/superAdmin';
 import blogRoutes from './routes/blog';
+import placeRoutes from './routes/places';
 import { logger } from './lib/logger';
 import { scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
 
@@ -51,6 +52,7 @@ v1.route('/super-admin', superAdminRoutes);
 v1.route('/uploads', uploadRoutes);
 v1.route('/upload', uploadRoutes);
 v1.route('/blog', blogRoutes);
+v1.route('/places', placeRoutes);
 
 app.route('/api/v1', v1);
 

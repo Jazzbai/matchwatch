@@ -73,9 +73,12 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
             venueCount: count(),
         })
             .from(venueEvents)
+            .innerJoin(venues, eq(venueEvents.venueId, venues.id))
             .where(and(
                 inArray(venueEvents.matchId, matchIds),
                 eq(venueEvents.isActive, true),
+                eq(venues.isActive, true),
+                eq(venues.approvalStatus, 'APPROVED'),
             ))
             .groupBy(venueEvents.matchId)
         : [];
@@ -387,7 +390,13 @@ matchRoutes.get('/:matchId', async (c) => {
 
     const [venueCountResult] = await db.select({ count: count() })
         .from(venueEvents)
-        .where(and(eq(venueEvents.matchId, matchId), eq(venueEvents.isActive, true)));
+        .innerJoin(venues, eq(venueEvents.venueId, venues.id))
+        .where(and(
+            eq(venueEvents.matchId, matchId),
+            eq(venueEvents.isActive, true),
+            eq(venues.isActive, true),
+            eq(venues.approvalStatus, 'APPROVED'),
+        ));
 
     return c.json(apiResponse({
         ...row.match,
@@ -424,6 +433,7 @@ matchRoutes.get('/:matchId/venues', async (c) => {
             eq(venueEvents.matchId, matchId),
             eq(venueEvents.isActive, true),
             eq(venues.isActive, true),
+            eq(venues.approvalStatus, 'APPROVED'),
         ))
         .limit(limit)
         .offset(offset);
@@ -435,6 +445,7 @@ matchRoutes.get('/:matchId/venues', async (c) => {
             eq(venueEvents.matchId, matchId),
             eq(venueEvents.isActive, true),
             eq(venues.isActive, true),
+            eq(venues.approvalStatus, 'APPROVED'),
         ));
 
     const results = rows.map((r) => {

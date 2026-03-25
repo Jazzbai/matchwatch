@@ -19,6 +19,9 @@ export const notificationTypeEnum = pgEnum('notification_type', [
 export const priceRangeEnum = pgEnum('price_range', ['BUDGET', 'MID', 'UPSCALE', 'LUXURY']);
 export const venueAttributeTypeEnum = pgEnum('venue_attribute_type', ['AMENITY', 'VIBE', 'CUISINE']);
 export const claimStatusEnum = pgEnum('claim_status', ['PENDING', 'APPROVED', 'REJECTED']);
+export const approvalStatusEnum = pgEnum('approval_status', ['PENDING', 'APPROVED', 'REJECTED']);
+export const googleSyncStatusEnum = pgEnum('google_sync_status', ['NEVER_SYNCED', 'SYNCED', 'ERROR']);
+export const venueMenuSourceEnum = pgEnum('venue_menu_source', ['NONE', 'GOOGLE', 'MANUAL']);
 export const discountTypeEnum = pgEnum('discount_type', ['PERCENTAGE', 'FIXED', 'FREE_ITEM']);
 export const matchEventFormatEnum = pgEnum('match_event_format', ['HEAD_TO_HEAD', 'SINGLE_EVENT']);
 export const motorsportEntryStatusEnum = pgEnum('motorsport_entry_status', ['ENTERED', 'ACTIVE', 'FINISHED', 'DNF', 'DNS', 'DSQ', 'WITHDRAWN']);
@@ -48,6 +51,10 @@ export const users = pgTable('users', {
     timezone: varchar('timezone', { length: 50 }).default('UTC').notNull(),
     locale: varchar('locale', { length: 10 }).default('en').notNull(),
     pushToken: varchar('push_token'),
+    businessApprovalStatus: approvalStatusEnum('business_approval_status').default('PENDING').notNull(),
+    businessApprovalNotes: text('business_approval_notes'),
+    businessApprovedAt: timestamp('business_approved_at'),
+    businessApprovedBy: uuid('business_approved_by'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at'),
@@ -280,6 +287,16 @@ export const venues = pgTable('venues', {
     website: varchar('website', { length: 255 }),
     instagramHandle: varchar('instagram_handle', { length: 100 }),
     googleMapsUrl: varchar('google_maps_url'),
+    googlePlaceId: varchar('google_place_id', { length: 255 }),
+    googleSourceSnapshot: jsonb('google_source_snapshot').default({}),
+    googleLastSyncedAt: timestamp('google_last_synced_at'),
+    googleSyncStatus: googleSyncStatusEnum('google_sync_status').default('NEVER_SYNCED').notNull(),
+    googleSyncError: text('google_sync_error'),
+    approvalStatus: approvalStatusEnum('approval_status').default('PENDING').notNull(),
+    approvalNotes: text('approval_notes'),
+    approvedAt: timestamp('approved_at'),
+    approvedBy: uuid('approved_by').references(() => users.id),
+    menuSource: venueMenuSourceEnum('menu_source').default('NONE').notNull(),
     capacity: integer('capacity'),
     averageRating: decimal('average_rating', { precision: 3, scale: 2 }).default('0'),
     totalReviews: integer('total_reviews').default(0),
@@ -301,6 +318,7 @@ export const venues = pgTable('venues', {
     index('venues_owner_idx').on(table.ownerId),
     index('venues_city_idx').on(table.city),
     index('venues_slug_idx').on(table.slug),
+    uniqueIndex('venues_google_place_id_unique').on(table.googlePlaceId),
 ]);
 
 export const venueAttributes = pgTable('venue_attributes', {
@@ -595,6 +613,7 @@ export const venueClaims = pgTable('venue_claims', {
     status: claimStatusEnum('status').default('PENDING').notNull(),
     verificationDocuments: text('verification_documents').array().default([]),
     notes: text('notes'),
+    adminNotes: text('admin_notes'),
     reviewedBy: uuid('reviewed_by').references(() => users.id),
     reviewedAt: timestamp('reviewed_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),

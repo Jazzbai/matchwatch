@@ -31,7 +31,12 @@ bookingRoutes.post('/', async (c) => {
         .from(venueEvents)
         .innerJoin(venues, eq(venueEvents.venueId, venues.id))
         .innerJoin(matches, eq(venueEvents.matchId, matches.id))
-        .where(and(eq(venueEvents.id, venueEventId), eq(venueEvents.isActive, true)))
+        .where(and(
+            eq(venueEvents.id, venueEventId),
+            eq(venueEvents.isActive, true),
+            eq(venues.isActive, true),
+            eq(venues.approvalStatus, 'APPROVED'),
+        ))
         .limit(1);
 
     if (!event) {
@@ -159,7 +164,7 @@ bookingRoutes.get('/', async (c) => {
         .innerJoin(venueEvents, eq(bookings.venueEventId, venueEvents.id))
         .innerJoin(venues, eq(venueEvents.venueId, venues.id))
         .innerJoin(matches, eq(venueEvents.matchId, matches.id))
-        .where(and(...conditions))
+        .where(and(...conditions, eq(venues.isActive, true), eq(venues.approvalStatus, 'APPROVED')))
         .orderBy(desc(bookings.createdAt))
         .limit(limit)
         .offset(offset);
@@ -192,7 +197,7 @@ bookingRoutes.get('/:bookingId', async (c) => {
         .innerJoin(venueEvents, eq(bookings.venueEventId, venueEvents.id))
         .innerJoin(venues, eq(venueEvents.venueId, venues.id))
         .innerJoin(matches, eq(venueEvents.matchId, matches.id))
-        .where(and(eq(bookings.id, bookingId), eq(bookings.userId, user.id)))
+        .where(and(eq(bookings.id, bookingId), eq(bookings.userId, user.id), eq(venues.isActive, true), eq(venues.approvalStatus, 'APPROVED')))
         .limit(1);
 
     if (!row) {

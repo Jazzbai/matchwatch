@@ -27,6 +27,7 @@ import {
     menuCategories,
     teams,
     users,
+    venueClaims,
     venueAttributes,
     venueCustomEvents,
     venueEvents,
@@ -36,6 +37,8 @@ import { apiError, apiResponse, generateUniqueSlug, paginationMeta, paginationOf
 import { hashPassword } from '../lib/auth';
 import { authRateLimit } from '../middleware';
 import { createPresignedUpload as createStoragePresignedUpload, deleteStorageObjects, STORAGE_MAX_FILE_SIZE } from '../lib/storage';
+import { getGooglePlaceDetails } from '../lib/googlePlaces';
+import { applyGoogleMenuSnapshot, buildGoogleVenueFields } from '../lib/venueOnboarding';
 import { presignedUploadSchema } from '@matchwatch/shared';
 
 declare module 'hono' {
@@ -78,6 +81,11 @@ const updateUserSchema = z.object({
     isSuspended: z.boolean().optional(),
     password: z.string().min(10).max(200).optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const reviewBusinessApprovalSchema = z.object({
+    status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+    notes: z.string().max(2000).nullable().optional(),
+});
 
 const createSportSchema = z.object({
     name: z.string().min(2).max(80),
@@ -179,6 +187,7 @@ const createVenueSchema = z.object({
     website: z.string().url().optional(),
     instagramHandle: z.string().max(100).optional(),
     googleMapsUrl: z.string().url().optional(),
+    googlePlaceId: z.string().max(255).optional(),
     coverImageUrl: z.string().url().optional(),
     coverImageS3Key: z.string().max(500).optional(),
     galleryImageUrls: galleryUrlArraySchema.optional(),
@@ -230,7 +239,25 @@ const updateVenueSchema = z.object({
     capacity: z.coerce.number().int().positive().nullable().optional(),
     ratingOverride: z.coerce.number().min(0).max(5).nullable().optional(),
     reviewCountOverride: z.coerce.number().int().min(0).nullable().optional(),
+    googlePlaceId: z.string().max(255).optional(),
+    approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+    approvalNotes: z.string().max(2000).nullable().optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const reviewVenueApprovalSchema = z.object({
+    status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+    notes: z.string().max(2000).nullable().optional(),
+    isVerified: z.boolean().optional(),
+});
+
+const reviewVenueClaimSchema = z.object({
+    status: z.enum(['APPROVED', 'REJECTED']),
+    adminNotes: z.string().max(2000).nullable().optional(),
+});
+
+const revertVenueGoogleSchema = z.object({
+    includeMenu: z.boolean().default(false),
+});
 
 const createBlogCategorySchema = z.object({
     name: z.string().min(2).max(120),
@@ -1002,6 +1029,10 @@ function mapVenueRow(row: {
     website?: string | null;
     instagramHandle?: string | null;
     googleMapsUrl?: string | null;
+    googlePlaceId?: string | null;
+    approvalStatus?: string | null;
+    approvalNotes?: string | null;
+    menuSource?: string | null;
     capacity?: number | null;
     amenities: string[];
     vibes: string[];
@@ -1027,6 +1058,10 @@ function mapVenueRow(row: {
         cuisineTags: row.cuisineTags || [],
         ratingOverride: row.ratingOverride === null || row.ratingOverride === undefined ? null : Number(row.ratingOverride),
         reviewCountOverride: row.reviewCountOverride ?? null,
+        googlePlaceId: row.googlePlaceId ?? null,
+        approvalStatus: row.approvalStatus ?? null,
+        approvalNotes: row.approvalNotes ?? null,
+        menuSource: row.menuSource ?? null,
     };
 }
 
@@ -2177,6 +2212,10 @@ superAdminRoutes.get('/venues', async (c) => {
             website: venues.website,
             instagramHandle: venues.instagramHandle,
             googleMapsUrl: venues.googleMapsUrl,
+            googlePlaceId: venues.googlePlaceId,
+            approvalStatus: venues.approvalStatus,
+            approvalNotes: venues.approvalNotes,
+            menuSource: venues.menuSource,
             capacity: venues.capacity,
             amenities: venues.amenities,
             vibes: venues.vibes,
@@ -2243,6 +2282,7 @@ superAdminRoutes.post('/venues', async (c) => {
         website: parsed.data.website?.trim() || null,
         instagramHandle: parsed.data.instagramHandle?.trim() || null,
         googleMapsUrl: parsed.data.googleMapsUrl?.trim() || null,
+        googlePlaceId: parsed.data.googlePlaceId?.trim() || null,
         coverImageUrl: parsed.data.coverImageUrl || null,
         coverImageS3Key: parsed.data.coverImageS3Key?.trim() || null,
         galleryS3Keys: sanitizeGalleryKeys(parsed.data.galleryS3Keys),
@@ -2254,6 +2294,7 @@ superAdminRoutes.post('/venues', async (c) => {
         isVerified: parsed.data.isVerified,
         isActive: parsed.data.isActive,
         isFeatured: parsed.data.isFeatured,
+        approvalStatus: parsed.data.isActive ? 'APPROVED' : 'PENDING',
         ratingOverride: null,
         reviewCountOverride: null,
         metadata: {
@@ -2330,6 +2371,16 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
     }
     if (parsed.data.reviewCountOverride !== undefined) {
         updates.reviewCountOverride = parsed.data.reviewCountOverride;
+    }
+    if (parsed.data.googlePlaceId !== undefined) {
+        updates.googlePlaceId = parsed.data.googlePlaceId?.trim() || null;
+    }
+    if (parsed.data.approvalStatus !== undefined) {
+        updates.approvalStatus = parsed.data.approvalStatus;
+        updates.approvedAt = parsed.data.approvalStatus === 'APPROVED' ? new Date() : null;
+    }
+    if (parsed.data.approvalNotes !== undefined) {
+        updates.approvalNotes = parsed.data.approvalNotes;
     }
 
     await db.update(venues).set(updates).where(eq(venues.id, venueId));
@@ -3280,6 +3331,264 @@ superAdminRoutes.patch('/blog/comments/:commentId', async (c) => {
     }).where(eq(blogComments.id, commentId));
 
     return c.json(apiResponse({ message: 'Blog comment updated' }));
+});
+
+superAdminRoutes.get('/approval/businesses', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+
+    const { page, limit, search } = parsed.data;
+    const offset = paginationOffset(page, limit);
+    const where = and(
+        or(eq(users.role, 'BUSINESS'), eq(users.role, 'VENUE_OWNER')),
+        ...(search ? [or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`))] : []),
+    );
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: users.id,
+            email: users.email,
+            name: users.name,
+            role: users.role,
+            businessApprovalStatus: users.businessApprovalStatus,
+            businessApprovalNotes: users.businessApprovalNotes,
+            businessApprovedAt: users.businessApprovedAt,
+            createdAt: users.createdAt,
+        }).from(users).where(where).orderBy(desc(users.createdAt)).limit(limit).offset(offset),
+        db.select({ count: count() }).from(users).where(where),
+    ]);
+
+    return c.json(apiResponse(rows, paginationMeta(page, limit, Number(totalResult?.count ?? 0))));
+});
+
+superAdminRoutes.patch('/users/:userId/business-approval', async (c) => {
+    const userId = c.req.param('userId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = reviewBusinessApprovalSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'User not found'), 404);
+
+    await db.update(users).set({
+        businessApprovalStatus: parsed.data.status,
+        businessApprovalNotes: parsed.data.notes ?? null,
+        businessApprovedAt: parsed.data.status === 'APPROVED' ? new Date() : null,
+        updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+
+    return c.json(apiResponse({ message: 'Business approval updated' }));
+});
+
+superAdminRoutes.get('/approval/venues', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+
+    const { page, limit, search } = parsed.data;
+    const offset = paginationOffset(page, limit);
+    const where = search
+        ? or(ilike(venues.name, `%${search}%`), ilike(venues.city, `%${search}%`))
+        : undefined;
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: venues.id,
+            name: venues.name,
+            slug: venues.slug,
+            city: venues.city,
+            country: venues.country,
+            ownerId: venues.ownerId,
+            ownerEmail: users.email,
+            ownerName: users.name,
+            approvalStatus: venues.approvalStatus,
+            approvalNotes: venues.approvalNotes,
+            isVerified: venues.isVerified,
+            googlePlaceId: venues.googlePlaceId,
+            createdAt: venues.createdAt,
+        })
+            .from(venues)
+            .leftJoin(users, eq(venues.ownerId, users.id))
+            .where(where)
+            .orderBy(desc(venues.createdAt))
+            .limit(limit)
+            .offset(offset),
+        db.select({ count: count() }).from(venues).where(where),
+    ]);
+
+    return c.json(apiResponse(rows, paginationMeta(page, limit, Number(totalResult?.count ?? 0))));
+});
+
+superAdminRoutes.patch('/venues/:venueId/approval', async (c) => {
+    const venueId = c.req.param('venueId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = reviewVenueApprovalSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({ id: venues.id }).from(venues).where(eq(venues.id, venueId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+
+    await db.update(venues).set({
+        approvalStatus: parsed.data.status,
+        approvalNotes: parsed.data.notes ?? null,
+        approvedAt: parsed.data.status === 'APPROVED' ? new Date() : null,
+        isVerified: parsed.data.isVerified ?? (parsed.data.status === 'APPROVED'),
+        updatedAt: new Date(),
+    }).where(eq(venues.id, venueId));
+
+    return c.json(apiResponse({ message: 'Venue approval updated' }));
+});
+
+superAdminRoutes.get('/venue-claims', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+
+    const { page, limit } = parsed.data;
+    const offset = paginationOffset(page, limit);
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: venueClaims.id,
+            status: venueClaims.status,
+            notes: venueClaims.notes,
+            adminNotes: venueClaims.adminNotes,
+            verificationDocuments: venueClaims.verificationDocuments,
+            reviewedAt: venueClaims.reviewedAt,
+            createdAt: venueClaims.createdAt,
+            venueId: venues.id,
+            venueName: venues.name,
+            venueSlug: venues.slug,
+            venueOwnerId: venues.ownerId,
+            claimantUserId: venueClaims.claimantUserId,
+            claimantName: users.name,
+            claimantEmail: users.email,
+        })
+            .from(venueClaims)
+            .innerJoin(venues, eq(venueClaims.venueId, venues.id))
+            .innerJoin(users, eq(venueClaims.claimantUserId, users.id))
+            .orderBy(desc(venueClaims.createdAt))
+            .limit(limit)
+            .offset(offset),
+        db.select({ count: count() }).from(venueClaims),
+    ]);
+
+    return c.json(apiResponse(rows, paginationMeta(page, limit, Number(totalResult?.count ?? 0))));
+});
+
+superAdminRoutes.patch('/venue-claims/:claimId', async (c) => {
+    const claimId = c.req.param('claimId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = reviewVenueClaimSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [claim] = await db.select({
+        id: venueClaims.id,
+        venueId: venueClaims.venueId,
+        claimantUserId: venueClaims.claimantUserId,
+    }).from(venueClaims).where(eq(venueClaims.id, claimId)).limit(1);
+    if (!claim) return c.json(apiError('NOT_FOUND', 'Claim not found'), 404);
+
+    await db.transaction(async (tx) => {
+        await tx.update(venueClaims).set({
+            status: parsed.data.status,
+            adminNotes: parsed.data.adminNotes ?? null,
+            reviewedAt: new Date(),
+        }).where(eq(venueClaims.id, claimId));
+
+        if (parsed.data.status === 'APPROVED') {
+            await tx.update(venues).set({
+                ownerId: claim.claimantUserId,
+                updatedAt: new Date(),
+            }).where(eq(venues.id, claim.venueId));
+        }
+    });
+
+    return c.json(apiResponse({ message: 'Venue claim reviewed' }));
+});
+
+superAdminRoutes.post('/venues/:venueId/google/refresh', async (c) => {
+    const venueId = c.req.param('venueId');
+    const [venue] = await db.select({
+        id: venues.id,
+        googlePlaceId: venues.googlePlaceId,
+        menuSource: venues.menuSource,
+        phone: venues.phone,
+        website: venues.website,
+        googleMapsUrl: venues.googleMapsUrl,
+    }).from(venues).where(eq(venues.id, venueId)).limit(1);
+    if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    if (!venue.googlePlaceId) return c.json(apiError('VALIDATION_ERROR', 'Venue is not linked to a Google Place'), 400);
+
+    const snapshot = await getGooglePlaceDetails(venue.googlePlaceId);
+    const googleFields = buildGoogleVenueFields(snapshot);
+
+    await db.transaction(async (tx) => {
+        await tx.update(venues).set({
+            googlePlaceId: googleFields.googlePlaceId,
+            googleSourceSnapshot: googleFields.googleSourceSnapshot,
+            googleLastSyncedAt: new Date(),
+            googleSyncStatus: 'SYNCED',
+            googleSyncError: null,
+            ratingOverride: googleFields.ratingOverride,
+            reviewCountOverride: googleFields.reviewCountOverride,
+            phone: venue.phone || googleFields.phone,
+            website: venue.website || googleFields.website,
+            googleMapsUrl: venue.googleMapsUrl || googleFields.googleMapsUrl,
+            updatedAt: new Date(),
+        }).where(eq(venues.id, venueId));
+
+        if (venue.menuSource !== 'MANUAL' && snapshot.menu) {
+            await applyGoogleMenuSnapshot(tx, venueId, snapshot);
+            await tx.update(venues).set({ menuSource: 'GOOGLE', updatedAt: new Date() }).where(eq(venues.id, venueId));
+        }
+    });
+
+    return c.json(apiResponse({ message: 'Google venue data refreshed', snapshot }));
+});
+
+superAdminRoutes.post('/venues/:venueId/google/revert', async (c) => {
+    const venueId = c.req.param('venueId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = revertVenueGoogleSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [venue] = await db.select({
+        id: venues.id,
+        googleSourceSnapshot: venues.googleSourceSnapshot,
+    }).from(venues).where(eq(venues.id, venueId)).limit(1);
+    if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    if (!venue.googleSourceSnapshot || typeof venue.googleSourceSnapshot !== 'object' || Array.isArray(venue.googleSourceSnapshot)) {
+        return c.json(apiError('NOT_FOUND', 'No Google defaults stored for this venue'), 404);
+    }
+
+    const snapshot = venue.googleSourceSnapshot as Parameters<typeof applyGoogleMenuSnapshot>[2];
+    const googleFields = buildGoogleVenueFields(snapshot);
+
+    await db.transaction(async (tx) => {
+        await tx.update(venues).set({
+            name: snapshot.displayName,
+            addressLine1: googleFields.addressLine1,
+            city: googleFields.city,
+            stateProvince: googleFields.stateProvince,
+            country: googleFields.country,
+            postalCode: googleFields.postalCode,
+            ...(googleFields.lat !== null ? { lat: googleFields.lat } : {}),
+            ...(googleFields.lng !== null ? { lng: googleFields.lng } : {}),
+            timezone: googleFields.timezone,
+            phone: googleFields.phone,
+            website: googleFields.website,
+            googleMapsUrl: googleFields.googleMapsUrl,
+            ratingOverride: googleFields.ratingOverride,
+            reviewCountOverride: googleFields.reviewCountOverride,
+            menuSource: snapshot.menu ? 'GOOGLE' : 'NONE',
+            updatedAt: new Date(),
+        }).where(eq(venues.id, venueId));
+
+        if (parsed.data.includeMenu) {
+            await applyGoogleMenuSnapshot(tx, venueId, snapshot);
+        }
+    });
+
+    return c.json(apiResponse({ message: 'Venue reverted to Google defaults' }));
 });
 
 export default superAdminRoutes;

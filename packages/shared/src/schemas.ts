@@ -23,6 +23,7 @@ export const registerSchema = z.object({
 
 export const registerVenueSchema = registerSchema.extend({
     venue: z.object({
+        googlePlaceId: z.string().max(255).optional(),
         name: z.string().min(2).max(150),
         address: z.string().min(5),
         city: z.string().min(2),
@@ -37,7 +38,18 @@ export const registerVenueSchema = registerSchema.extend({
         cuisineTags: z.array(z.string().min(1).max(80)).max(60).default([]),
         priceRange: z.enum(PRICE_RANGES).default('MID'),
         capacity: z.number().int().positive().optional(),
-    }),
+    }).optional(),
+    claimVenueId: z.string().uuid().optional(),
+    claimNotes: z.string().max(2000).optional(),
+    claimVerificationDocuments: z.array(z.string().url()).max(10).default([]),
+}).superRefine((value, ctx) => {
+    if (!value.venue && !value.claimVenueId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['venue'],
+            message: 'venue or claimVenueId is required',
+        });
+    }
 });
 
 export const loginSchema = z.object({
@@ -113,6 +125,7 @@ export const venueQuerySchema = z.object({
 });
 
 export const updateVenueSchema = z.object({
+    googlePlaceId: z.string().max(255).optional(),
     name: z.string().min(2).max(150).optional(),
     description: z.string().optional(),
     shortDescription: z.string().max(280).optional(),
