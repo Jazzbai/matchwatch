@@ -1,6 +1,14 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef } from "react";
+import {
+    createVenueClusterGroup,
+    createVenuePinIcon,
+    loadLeafletWithClusters,
+    type ClusterLayer,
+    type ClusterLeafletModule,
+    type LeafletMap,
+} from "@/lib/leaflet-map-markers";
 
 type MatchVenueMapPoint = {
     id: string;
@@ -31,25 +39,11 @@ function escapeHtml(value: string) {
         .replace(/'/g, "&#039;");
 }
 
-function createVenuePulseIcon(L: any) {
-    return L.divIcon({
-        className: "venue-map-pin",
-        html: `
-            <span class="venue-map-pin__pulse"></span>
-            <span class="venue-map-pin__ring"></span>
-            <span class="venue-map-pin__dot"></span>
-        `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -16],
-    });
-}
-
 export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenueMapProps) {
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
-    const mapRef = useRef<any>(null);
-    const markerLayerRef = useRef<any>(null);
-    const leafletRef = useRef<any>(null);
+    const mapRef = useRef<LeafletMap | null>(null);
+    const markerLayerRef = useRef<ClusterLayer | null>(null);
+    const leafletRef = useRef<ClusterLeafletModule | null>(null);
 
     const validVenues = useMemo(
         () =>
@@ -67,12 +61,12 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
         let mounted = true;
 
         void (async () => {
-            const L = await import("leaflet");
+            const L = await loadLeafletWithClusters();
             if (!mounted || !mapContainerRef.current || mapRef.current) return;
 
             leafletRef.current = L;
 
-            delete (L.Icon.Default.prototype as any)._getIconUrl;
+            delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
             L.Icon.Default.mergeOptions({
                 iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
                 iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -114,7 +108,7 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
             markerLayerRef.current = null;
         }
 
-        const layer = L.layerGroup();
+        const layer = createVenueClusterGroup(L, true);
         markerLayerRef.current = layer;
         layer.addTo(map);
 
@@ -127,8 +121,8 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
 
         for (const venue of validVenues) {
             const marker = L.marker([venue.lat, venue.lng], {
-                icon: createVenuePulseIcon(L),
-            }).addTo(layer);
+                icon: createVenuePinIcon(L),
+            });
             const capacityLabel = venue.bookingLimit
                 ? `${venue.confirmedBookings}/${venue.bookingLimit} booked`
                 : `${venue.confirmedBookings} booked`;
@@ -136,6 +130,7 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
                 `<div style="min-width:180px"><strong>${escapeHtml(venue.name)}</strong><br/>${escapeHtml(venue.city || "")}${venue.city && venue.addressLine1 ? " · " : ""}${escapeHtml(venue.addressLine1 || "")}<br/><span style="color:#666">${escapeHtml(capacityLabel)}</span></div>`,
             );
             marker.on("click", () => onSelectVenue?.(venue.id));
+            layer.addLayer(marker);
             points.push([venue.lat, venue.lng]);
         }
 

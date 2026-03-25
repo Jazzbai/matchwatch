@@ -3,6 +3,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "lucide-react";
 import { useTheme } from "next-themes";
+import {
+    createVenueClusterGroup,
+    createVenuePinIcon,
+    loadLeafletWithClusters,
+    type ClusterLayer,
+    type ClusterLeafletModule,
+    type LeafletMap,
+    type LeafletTileLayer,
+} from "@/lib/leaflet-map-markers";
 import { VenueCard, type VenueCardProps } from "./VenueCard";
 
 export type VenueMapListItem = VenueCardProps & {
@@ -44,30 +53,16 @@ function getTileConfig(theme: string | undefined) {
     };
 }
 
-function createVenuePulseIcon(L: any) {
-    return L.divIcon({
-        className: "venue-map-pin",
-        html: `
-            <span class="venue-map-pin__pulse"></span>
-            <span class="venue-map-pin__ring"></span>
-            <span class="venue-map-pin__dot"></span>
-        `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -16],
-    });
-}
-
 export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560 }: MapListToggleProps) {
     const { resolvedTheme } = useTheme();
     const [mobileView, setMobileView] = useState<"cards" | "map">("cards");
     const [isMobile, setIsMobile] = useState(false);
     const [mapReady, setMapReady] = useState(false);
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
-    const mapRef = useRef<any>(null);
-    const leafletRef = useRef<any>(null);
-    const markerLayerRef = useRef<any>(null);
-    const tileLayerRef = useRef<any>(null);
+    const mapRef = useRef<LeafletMap | null>(null);
+    const leafletRef = useRef<ClusterLeafletModule | null>(null);
+    const markerLayerRef = useRef<ClusterLayer | null>(null);
+    const tileLayerRef = useRef<LeafletTileLayer | null>(null);
 
     const mappedVenues = useMemo(
         () => venues
@@ -106,7 +101,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
         let mounted = true;
 
         void (async () => {
-            const L = await import("leaflet");
+            const L = await loadLeafletWithClusters();
             if (!mounted || !mapContainerRef.current || mapRef.current) return;
 
             leafletRef.current = L;
@@ -157,7 +152,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
             markerLayerRef.current = null;
         }
 
-        const layer = L.layerGroup();
+        const layer = createVenueClusterGroup(L, isMobile);
         markerLayerRef.current = layer;
         layer.addTo(map);
 
@@ -170,8 +165,8 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
 
         mappedVenues.forEach((venue) => {
             const marker = L.marker([venue.lat, venue.lng], {
-                icon: createVenuePulseIcon(L),
-            }).addTo(layer);
+                icon: createVenuePinIcon(L),
+            });
 
             const image = escapeHtml(venue.coverImage || "/venue-hero.webp");
             const title = escapeHtml(venue.name);
@@ -197,6 +192,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                 `,
                 { className: popupClassName, closeButton: false, offset: [0, -18] },
             );
+            layer.addLayer(marker);
             points.push([venue.lat, venue.lng]);
         });
 
@@ -207,7 +203,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
         }
 
         setTimeout(() => map.invalidateSize(), 0);
-    }, [mappedVenues, onVenueClick, resolvedTheme]);
+    }, [isMobile, mappedVenues, onVenueClick, resolvedTheme]);
 
     useEffect(() => {
         const map = mapRef.current;

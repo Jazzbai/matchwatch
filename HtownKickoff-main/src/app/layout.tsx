@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
 import { AuthProvider } from "../lib/auth-context";
 import { DataProvider } from "../lib/data-provider";
 import { ThemeProvider } from "@/components/theme-provider";

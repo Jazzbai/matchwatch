@@ -12,7 +12,9 @@
     "type-check": "turbo run type-check",
     "db:generate": "turbo run db:generate --filter=@matchwatch/api",
     "db:migrate": "turbo run db:migrate --filter=@matchwatch/api",
-    "db:seed": "turbo run db:seed --filter=@matchwatch/api"
+    "db:seed": "turbo run db:seed --filter=@matchwatch/api",
+    "venues:sanitize-export": "node scripts/sanitize_venues_export.mjs",
+    "venues:import-sanitized": "node scripts/import_sanitized_venues_export.mjs"
   },
   "devDependencies": {
     "turbo": "^2.3.0",

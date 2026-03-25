@@ -131,6 +131,7 @@ function normalizeInstagram(value) {
 function normalizeVenue(rawVenue) {
   const ownerEmail = String(rawVenue.ownerEmail || '').trim().toLowerCase();
   const ownerName = String(rawVenue.ownerName || ownerEmail.split('@')[0] || rawVenue.name || 'Business Owner').trim();
+  const rawCapacity = rawVenue.capacity;
 
   return {
     sourceId: String(rawVenue.id || ''),
@@ -153,7 +154,9 @@ function normalizeVenue(rawVenue) {
     website: normalizeUrl(rawVenue.website),
     instagramHandle: normalizeInstagram(rawVenue.instagram),
     googleMapsUrl: normalizeUrl(rawVenue.googleMapsUrl),
-    capacity: Number.isFinite(Number(rawVenue.capacity)) ? Number(rawVenue.capacity) : undefined,
+    capacity: rawCapacity === null || rawCapacity === undefined || rawCapacity === ''
+      ? undefined
+      : (Number.isFinite(Number(rawCapacity)) ? Number(rawCapacity) : undefined),
     amenities: Array.isArray(rawVenue.amenities) ? rawVenue.amenities.map((v) => String(v)) : [],
     vibes: Array.isArray(rawVenue.vibes) ? rawVenue.vibes.map((v) => String(v)) : [],
     cuisineTags: Array.isArray(rawVenue.cuisineTags) ? rawVenue.cuisineTags.map((v) => String(v)) : [],
