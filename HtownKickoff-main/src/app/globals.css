@@ -523,8 +523,8 @@ body {
 .venue-map-pin {
   position: relative;
   display: block;
-  width: 20px !important;
-  height: 20px !important;
+  width: 40px !important;
+  height: 40px !important;
   background: transparent;
   border: none;
   margin: 0;
@@ -542,24 +542,24 @@ body {
 }
 
 .venue-map-pin__pulse {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   background: color-mix(in oklch, var(--primary) 24%, transparent);
   animation: venue-pin-pulse 1.8s ease-out infinite;
 }
 
 .venue-map-pin__shell {
-  width: 14px;
-  height: 14px;
+  width: 28px;
+  height: 28px;
   background: var(--primary);
-  border: 2px solid color-mix(in oklch, var(--card) 88%, transparent);
+  border: 3px solid color-mix(in oklch, var(--card) 88%, transparent);
   box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 12%, transparent),
-    0 4px 12px color-mix(in oklch, var(--primary) 24%, transparent);
+    0 8px 18px color-mix(in oklch, var(--primary) 24%, transparent);
 }
 
 .venue-map-pin__center {
-  width: 4px;
-  height: 4px;
+  width: 8px;
+  height: 8px;
   background: white;
   box-shadow: 0 0 0 2px color-mix(in oklch, white 30%, transparent);
 }
@@ -577,16 +577,16 @@ body {
 }
 
 .venue-map-cluster__count {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   letter-spacing: -0.02em;
 }
 
 .venue-map-cluster--md .venue-map-cluster__count {
-  font-size: 0.8125rem;
+  font-size: 0.74rem;
 }
 
 .venue-map-cluster--lg .venue-map-cluster__count {
-  font-size: 0.875rem;
+  font-size: 0.8rem;
 }
 
 /* Typography */

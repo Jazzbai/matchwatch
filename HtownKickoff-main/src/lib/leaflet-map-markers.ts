@@ -48,9 +48,9 @@ export function createVenuePinIcon(L: LeafletModule) {
             <span class="venue-map-pin__shell"></span>
             <span class="venue-map-pin__center"></span>
         `,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-        popupAnchor: [0, -14],
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -24],
     });
 }
 
@@ -67,7 +67,7 @@ export function createVenueClusterGroup(L: ClusterLeafletModule, compact = false
         iconCreateFunction: (cluster) => {
             const count = cluster.getChildCount();
             const density = count < 10 ? "sm" : count < 50 ? "md" : "lg";
-            const size = density === "sm" ? 34 : density === "md" ? 40 : 46;
+            const size = density === "sm" ? 30 : density === "md" ? 34 : 38;
 
             return L.divIcon({
                 className: `venue-map-cluster venue-map-cluster--${density}`,
