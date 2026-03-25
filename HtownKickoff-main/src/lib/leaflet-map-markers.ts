@@ -24,9 +24,20 @@ export interface ClusterLeafletModule extends LeafletModule {
 }
 
 export async function loadLeafletWithClusters(): Promise<ClusterLeafletModule> {
-    const L = await import("leaflet");
-    await import("leaflet.markercluster");
-    return L as unknown as ClusterLeafletModule;
+    const leafletModule = await import("leaflet");
+    const L = (("default" in leafletModule ? leafletModule.default : leafletModule) as unknown as ClusterLeafletModule);
+    const globalScope = globalThis as typeof globalThis & {
+        L?: ClusterLeafletModule;
+        Leaflet?: ClusterLeafletModule;
+    };
+
+    if (!globalScope.L?.markerClusterGroup) {
+        globalScope.L = L;
+        globalScope.Leaflet = L;
+        await import("leaflet.markercluster/dist/leaflet.markercluster-src.js");
+    }
+
+    return (globalScope.L ?? L) as ClusterLeafletModule;
 }
 
 export function createVenuePinIcon(L: LeafletModule) {
