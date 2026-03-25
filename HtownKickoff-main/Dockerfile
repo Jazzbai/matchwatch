@@ -9,11 +9,11 @@ COPY . .
 
 # Build-time env — API URL for client-side fetching + server-side proxy target
 ARG NEXT_PUBLIC_API_URL=/api/v1
-ARG API_PROXY_TARGET=https://matchwatch.us
+ARG API_PROXY_TARGET=http://api:4000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV API_PROXY_TARGET=$API_PROXY_TARGET
 
-RUN rm -rf .next && npm run build
+RUN npm run build
 
 # ─── Stage 2: Production ─────────────────────────
 FROM node:20-alpine AS runner

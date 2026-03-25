@@ -430,6 +430,13 @@ function shouldSkipBootstrapFetch(pathname: string) {
         || pathname.startsWith("/for-venues/register");
 }
 
+function getVenueDetailSlug(pathname: string) {
+    if (!pathname.startsWith("/venues/")) return null;
+    const slug = pathname.slice("/venues/".length).split("/")[0]?.trim();
+    if (!slug || slug === "[slug]") return null;
+    return slug;
+}
+
 function authHeader(): Record<string, string> {
     if (typeof window === "undefined") return {};
     const token = localStorage.getItem("accessToken");
@@ -540,7 +547,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchFromApi = useCallback(async () => {
-        if (typeof window !== "undefined" && shouldSkipBootstrapFetch(window.location.pathname)) {
+        const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+
+        if (pathname && shouldSkipBootstrapFetch(pathname)) {
             setIsLoading(false);
             return;
         }
@@ -785,11 +794,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
         } satisfies Venue);
         });
 
+        const venueDetailSlug = getVenueDetailSlug(pathname);
+        const detailedVenueIds = new Set<string>();
+        if (venueDetailSlug) {
+            const detailedVenue = baseVenues.find((venue) => venue.slug === venueDetailSlug || venue.id === venueDetailSlug);
+            if (detailedVenue) {
+                detailedVenueIds.add(detailedVenue.id);
+            }
+        }
+
         const venueDetails = await Promise.all(
             baseVenues.map(async (venue) => {
-                const [detail, events, venuePosts, venueReviews] = await Promise.all([
+                const shouldFetchDeepVenueData = detailedVenueIds.has(venue.id);
+                const events = await safeFetchPaginated<any>(`/venues/${venue.slug}/events`, VENUE_CHILD_LIMIT, 6);
+
+                if (!shouldFetchDeepVenueData) {
+                    return { venue, detail: null, events: events || [], venuePosts: [], venueReviews: [] };
+                }
+
+                const [detail, venuePosts, venueReviews] = await Promise.all([
                     safeFetch<any>(`/venues/${venue.slug}`),
-                    safeFetchPaginated<any>(`/venues/${venue.slug}/events`, VENUE_CHILD_LIMIT, 6),
                     safeFetchPaginated<any>(`/venues/${venue.slug}/posts`, VENUE_CHILD_LIMIT, 6),
                     safeFetchPaginated<any>(`/venues/${venue.slug}/reviews`, VENUE_CHILD_LIMIT, 6),
                 ]);
@@ -802,6 +826,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const mappedPosts: Post[] = [];
         const mappedReviews: Review[] = [];
         const mergedVenues: Venue[] = [];
+        const knownMatchIds = new Set(mappedMatches.map((match) => String(match.id).trim().toLowerCase()));
 
         for (const row of venueDetails) {
             const detail = row.detail;
@@ -869,7 +894,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
                     if (match?.awayTeamName) upsertTeam(awayTeamId, match.awayTeamName, leagueId, match.awayTeamCrestUrl);
                 }
 
-                if (eventMatchId && !mappedMatches.find((m) => String(m.id).trim().toLowerCase() === eventMatchId.toLowerCase())) {
+                const normalizedEventMatchId = eventMatchId.toLowerCase();
+                if (eventMatchId && !knownMatchIds.has(normalizedEventMatchId)) {
                     mappedMatches.push({
                         id: eventMatchId,
                         isFeatured: Boolean(match?.isFeatured),
@@ -891,6 +917,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                         eventTitle: match?.eventTitle || undefined,
                         eventSubtitle: match?.eventSubtitle || undefined,
                     });
+                    knownMatchIds.add(normalizedEventMatchId);
                 }
 
                 if (!eventMatchId) continue;
