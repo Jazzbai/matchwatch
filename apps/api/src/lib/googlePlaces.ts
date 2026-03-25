@@ -167,7 +167,10 @@ async function googleFetch<T>(url: string, init: RequestInit, context: string): 
     const bodyText = await response.text();
     if (!response.ok) {
         logger.warn({ context, status: response.status, bodyText }, 'Google Places request failed');
-        throw new Error(`Google Places request failed (${response.status})`);
+        const message = bodyText && bodyText.length < 1200
+            ? `Google Places request failed (${response.status}): ${bodyText}`
+            : `Google Places request failed (${response.status})`;
+        throw new Error(message);
     }
 
     return bodyText ? JSON.parse(bodyText) as T : ({} as T);
