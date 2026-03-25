@@ -114,6 +114,7 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
     const [menuLoading, setMenuLoading] = useState(false);
     const [menuError, setMenuError] = useState<string | null>(null);
     const [customEvents, setCustomEvents] = useState<VenueCustomEvent[]>([]);
+    const [localMatchEvents, setLocalMatchEvents] = useState<(ReturnType<typeof getVenueMatchEvents>[number])[]>([]);
     const [followBusy, setFollowBusy] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
@@ -122,7 +123,8 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
 
     const reviews = venue ? getVenueReviews(venue.id) : [];
     const posts = venue ? getVenuePosts(venue.id) : [];
-    const matchEvents = venue ? getVenueMatchEvents(venue.id) : [];
+    // Use locally fetched events (loaded on-demand) — fallback to DataProvider for backwards compat
+    const matchEvents = localMatchEvents.length > 0 ? localMatchEvents : (venue ? getVenueMatchEvents(venue.id) : []);
 
     useEffect(() => {
         if (bookingEventIdx >= matchEvents.length) {
@@ -130,9 +132,7 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
         }
     }, [bookingEventIdx, matchEvents.length]);
 
-    useEffect(() => {
-        void refetch();
-    }, [refetch, slug]);
+    // Removed: void refetch() on every venue visit was re-fetching all 200+ venues + matches
 
     useEffect(() => {
         if (!venue || prefillApplied) return;
@@ -159,11 +159,13 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
             setMenuError(null);
             setMenu([]);
             setCustomEvents([]);
+            setLocalMatchEvents([]);
 
-            const [venueResult, menuResult, customResult] = await Promise.allSettled([
-                api.get<{ followerCount: number; isFollowing: boolean }>(`/venues/${venue.slug}`),
+            const [venueResult, menuResult, customResult, eventsResult] = await Promise.allSettled([
+                api.get<{ followerCount: number; isFollowing: boolean; upcomingEvents?: any[] }>(`/venues/${venue.slug}`),
                 api.get<VenueMenuCategory[]>(`/venues/${venue.slug}/menu`),
                 api.get<VenueCustomEvent[]>(`/venues/${venue.slug}/custom-events`),
+                api.get<any[]>(`/venues/${venue.slug}/events?limit=20`),
             ]);
 
             if (!active) return;
@@ -181,6 +183,49 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
 
             if (customResult.status === "fulfilled") {
                 setCustomEvents(customResult.value.data || []);
+            }
+
+            if (eventsResult.status === "fulfilled") {
+                const rawEvents: any[] = eventsResult.value.data || [];
+                const mapped = rawEvents.map((ev: any) => {
+                    const m = ev.match;
+                    return {
+                        id: ev.id,
+                        venueId: venue.id,
+                        matchId: ev.matchId || m?.id || "",
+                        isActive: ev.isActive !== false,
+                        bookingLimit: ev.bookingLimit ?? null,
+                        confirmedBookings: Number(ev.confirmedBookingsCount || 0),
+                        specialNotes: ev.specialNotes || "",
+                        entryFee: ev.customPrice != null ? Number(ev.customPrice) : null,
+                        doorsOpenAt: ev.doorsOpenAt || "",
+                        requiresApproval: Boolean(ev.requiresApproval),
+                        match: m ? {
+                            id: m.id,
+                            isFeatured: Boolean(m.isFeatured),
+                            homeTeamId: m.homeTeamId || m.homeTeamName || "",
+                            awayTeamId: m.awayTeamId || m.awayTeamName || "",
+                            homeTeamName: m.homeTeamName || "",
+                            awayTeamName: m.awayTeamName || "",
+                            homeTeamCrestUrl: m.homeTeamCrestUrl,
+                            awayTeamCrestUrl: m.awayTeamCrestUrl,
+                            leagueId: m.leagueId || m.league?.id || "",
+                            matchDateUTC: m.matchDateUtc || "",
+                            status: m.status || "SCHEDULED",
+                            homeScore: m.homeScore ?? null,
+                            awayScore: m.awayScore ?? null,
+                            matchDay: m.matchDay ? String(m.matchDay) : "",
+                            stage: m.stage || "",
+                            stadiumName: m.venueName || "",
+                            venueCount: 0,
+                            isHot: false,
+                            eventFormat: (m.eventFormat || "HEAD_TO_HEAD") as any,
+                            eventTitle: m.eventTitle,
+                            eventSubtitle: m.eventSubtitle,
+                        } : undefined,
+                    };
+                });
+                setLocalMatchEvents(mapped as any);
             }
 
             setMenuLoading(false);
@@ -236,11 +281,29 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
 
     if (isLoading && !venue) {
         return (
-                <AppShell>
-                    <section className={styles.notFound}>
-                        <p className={styles.notFoundText}>Loading venue details...</p>
+            <AppShell>
+                <article className={styles.page}>
+                    {/* Skeleton hero */}
+                    <section className={styles.hero} style={{ background: "var(--secondary)", minHeight: 340 }}>
+                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, var(--background))" }} />
                     </section>
-                </AppShell>
+                    {/* Skeleton body */}
+                    <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+                        <div style={{ height: 36, width: "55%", borderRadius: 10, background: "var(--secondary)", animation: "pulse 1.5s ease-in-out infinite" }} />
+                        <div style={{ height: 18, width: "35%", borderRadius: 8, background: "var(--secondary)", animation: "pulse 1.5s ease-in-out infinite" }} />
+                        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} style={{ height: 32, width: 80, borderRadius: 99, background: "var(--secondary)", animation: "pulse 1.5s ease-in-out infinite" }} />
+                            ))}
+                        </div>
+                        <div style={{ height: 1, background: "var(--border)", margin: "8px 0" }} />
+                        <div style={{ height: 14, width: "90%", borderRadius: 6, background: "var(--secondary)", animation: "pulse 1.5s ease-in-out infinite" }} />
+                        <div style={{ height: 14, width: "75%", borderRadius: 6, background: "var(--secondary)", animation: "pulse 1.5s ease-in-out infinite" }} />
+                        <div style={{ height: 14, width: "60%", borderRadius: 6, background: "var(--secondary)", animation: "pulse 1.5s ease-in-out infinite" }} />
+                    </div>
+                    <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
+                </article>
+            </AppShell>
         );
     }
 

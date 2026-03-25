@@ -21,9 +21,8 @@ import {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 const MATCH_FETCH_LIMIT = 50;
 const VENUE_FETCH_LIMIT = 50;
-const VENUE_CHILD_LIMIT = 50;
 const VENUE_MAX_PAGES = 4;
-const MATCH_MAX_PAGES = 8;
+const MATCH_MAX_PAGES = 3; // 150 matches — enough for 2 weeks of fixtures
 const BOOKING_FETCH_LIMIT = 50;
 
 type ApiMeta = {
@@ -571,16 +570,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         } satisfies Venue);
         });
 
+        // Only fetch venue detail (phone, website, description, gallery) — skip events/posts/reviews.
+        // Those are fetched on-demand when a user opens a specific venue page.
+        // This eliminates ~220 API calls that previously fired on every bootstrap.
         const venueDetails = await Promise.all(
             baseVenues.map(async (venue) => {
-                const [detail, events, venuePosts, venueReviews] = await Promise.all([
-                    safeFetch<any>(`/venues/${venue.slug}`),
-                    safeFetchPaginated<any>(`/venues/${venue.slug}/events`, VENUE_CHILD_LIMIT, 6),
-                    safeFetchPaginated<any>(`/venues/${venue.slug}/posts`, VENUE_CHILD_LIMIT, 6),
-                    safeFetchPaginated<any>(`/venues/${venue.slug}/reviews`, VENUE_CHILD_LIMIT, 6),
-                ]);
-
-                return { venue, detail, events: events || [], venuePosts: venuePosts || [], venueReviews: venueReviews || [] };
+                const detail = await safeFetch<any>(`/venues/${venue.slug}`);
+                return { venue, detail, events: [] as any[], venuePosts: [] as any[], venueReviews: [] as any[] };
             }),
         );
 
@@ -758,26 +754,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }, [isApiConnected, fetchFromApi]);
 
     useEffect(() => {
+        // Refresh data every 5 minutes — not 30s, which hammered the API
         const timer = window.setInterval(() => {
             void fetchFromApi();
-        }, 30000);
+        }, 5 * 60 * 1000);
         return () => window.clearInterval(timer);
     }, [fetchFromApi]);
 
     useEffect(() => {
-        const onFocus = () => {
-            void fetchFromApi();
-        };
-        const onVisible = () => {
-            if (document.visibilityState === "visible") {
-                void fetchFromApi();
+        // Only refetch on focus/visibility if data is more than 5 minutes old
+        const STALE_MS = 5 * 60 * 1000;
+        let lastFetchAt = Date.now();
+        const originalFetch = fetchFromApi;
+        const conditionalFetch = () => {
+            if (Date.now() - lastFetchAt >= STALE_MS) {
+                lastFetchAt = Date.now();
+                void originalFetch();
             }
         };
-        window.addEventListener("focus", onFocus);
-        document.addEventListener("visibilitychange", onVisible);
+        window.addEventListener("focus", conditionalFetch);
+        document.addEventListener("visibilitychange", conditionalFetch);
         return () => {
-            window.removeEventListener("focus", onFocus);
-            document.removeEventListener("visibilitychange", onVisible);
+            window.removeEventListener("focus", conditionalFetch);
+            document.removeEventListener("visibilitychange", conditionalFetch);
         };
     }, [fetchFromApi]);
 

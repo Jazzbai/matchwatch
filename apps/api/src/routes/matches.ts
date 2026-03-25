@@ -129,6 +129,7 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
             } : null,
         }));
 
+    c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     return c.json(apiResponse(results, paginationMeta(page, limit, totalResult?.count ?? 0)));
 });
 

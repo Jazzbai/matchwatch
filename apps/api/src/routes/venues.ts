@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db/client';
 import { venues, venueEvents, matches, posts, menuCategories, menuItems, follows, reviews, users, venueCustomEvents } from '../db/schema';
-import { eq, and, gte, count, desc, asc, sql, ilike } from 'drizzle-orm';
+import { eq, and, count, desc, asc, sql, ilike, inArray, gte } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { venueQuerySchema, paginationSchema } from '@matchwatch/shared';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware';
@@ -10,7 +10,7 @@ const venueRoutes = new Hono();
 
 function galleryImageUrlsFromMetadata(metadata: unknown): string[] {
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return [];
-    const raw = (metadata as Record<string, unknown>).galleryImageUrls;
+    const raw = (metadata as Record<string, unknown>).galleryUrls ?? (metadata as Record<string, unknown>).galleryImageUrls;
     if (!Array.isArray(raw)) return [];
     return raw.filter((value): value is string => typeof value === 'string').slice(0, 5);
 }
@@ -23,6 +23,11 @@ function venueMetadataRecord(metadata: unknown): Record<string, unknown> {
 function promotedVenueEventIdFromMetadata(metadata: unknown): string | null {
     const raw = venueMetadataRecord(metadata).promotedVenueEventId;
     return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : null;
+}
+
+/** Downsize Google Places photo URLs to a smaller width for list/card thumbnails */
+function toThumbnailUrl(url: string, maxwidth = 600): string {
+    return url.replace(/maxwidth=\d+/, `maxwidth=${maxwidth}`);
 }
 
 // ─── GET / ──────────────────────────────────────
@@ -47,12 +52,31 @@ venueRoutes.get('/', async (c) => {
         db.select({ count: count() }).from(venues).where(whereClause),
     ]);
 
+    // Fetch upcoming event counts for all returned venues in one query
+    const venueIds = rows.map(v => v.id);
+    const eventCounts = venueIds.length > 0
+        ? await db.select({ venueId: venueEvents.venueId, cnt: count() })
+            .from(venueEvents)
+            .innerJoin(matches, eq(venueEvents.matchId, matches.id))
+            .where(and(
+                inArray(venueEvents.venueId, venueIds),
+                eq(venueEvents.isActive, true),
+                gte(matches.matchDateUtc, new Date()),
+            ))
+            .groupBy(venueEvents.venueId)
+        : [];
+    const eventCountMap = new Map(eventCounts.map(e => [e.venueId, Number(e.cnt)]));
+
     const results = rows.map((v) => {
         const distance = lat && lng
             ? haversineDistance(lat, lng, Number(v.lat), Number(v.lng))
             : null;
-        const galleryImageUrls = galleryImageUrlsFromMetadata(v.metadata);
-        const coverImageUrl = v.coverImageUrl || galleryImageUrls[0] || null;
+        const rawGallery = galleryImageUrlsFromMetadata(v.metadata);
+        // Use smaller thumbnails (600px) for list cards — saves 60-70% bandwidth
+        const galleryImageUrls = rawGallery.map(u => toThumbnailUrl(u, 600));
+        const coverImageUrl = v.coverImageUrl
+            ? toThumbnailUrl(v.coverImageUrl, 600)
+            : galleryImageUrls[0] || null;
 
         return {
             id: v.id,
@@ -74,6 +98,7 @@ venueRoutes.get('/', async (c) => {
             isVerified: v.isVerified,
             isFeatured: v.isFeatured,
             capacity: v.capacity,
+            upcomingEventsCount: eventCountMap.get(v.id) ?? 0,
             distance: distance ? `${distance.toFixed(1)} km` : null,
         };
     });
@@ -82,6 +107,8 @@ venueRoutes.get('/', async (c) => {
         results.sort((a, b) => parseFloat(a.distance || '9999') - parseFloat(b.distance || '9999'));
     }
 
+    // Cache list for 60s, allow serving stale for up to 5min while revalidating
+    c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     return c.json(apiResponse(results, paginationMeta(page, limit, Number(totalResult?.count ?? 0))));
 });
 
@@ -186,10 +213,13 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
         isFollowing = !!follow;
     }
 
+    // Detail endpoint: use full-size photos (1200px)
+    const galleryUrls = galleryImageUrlsFromMetadata(venue.metadata);
+    c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     return c.json(apiResponse({
         ...venue,
-        coverImageUrl: venue.coverImageUrl || galleryImageUrlsFromMetadata(venue.metadata)[0] || null,
-        galleryImageUrls: galleryImageUrlsFromMetadata(venue.metadata),
+        coverImageUrl: venue.coverImageUrl || galleryUrls[0] || null,
+        galleryImageUrls: galleryUrls,
         promotedVenueEventId,
         followerCount: Number(followerResult?.count ?? 0),
         isFollowing,

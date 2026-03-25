@@ -112,6 +112,8 @@ export function VenueCard({
                 <img
                     src={coverImage}
                     alt={name}
+                    loading="lazy"
+                    decoding="async"
                     style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s" }}
                     onError={(e) => { (e.target as HTMLImageElement).src = "/venue-hero.webp"; }}
                 />

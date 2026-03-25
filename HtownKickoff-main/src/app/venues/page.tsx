@@ -22,7 +22,7 @@ export default function VenuesPage() {
     const [activeCity, setActiveCity] = useState("all");
     const [activeAmenity, setActiveAmenity] = useState("all");
     const [sortBy, setSortBy] = useState<"rating" | "reviews" | "name">("rating");
-    const { venues: VENUES } = useData();
+    const { venues: VENUES, isLoading } = useData();
     const cityOptions = React.useMemo(
         () => Array.from(new Set(
             VENUES
@@ -64,6 +64,35 @@ export default function VenuesPage() {
 
 
 
+
+    if (isLoading && VENUES.length === 0) {
+        return (
+            <AppShell>
+                <style>{`@keyframes shimmer{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
+                <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 20px" }}>
+                    <div style={{ height: 14, width: 80, borderRadius: 6, background: "var(--secondary)", marginBottom: 10, animation: "shimmer 1.5s ease-in-out infinite" }} />
+                    <div style={{ height: 40, width: 200, borderRadius: 10, background: "var(--secondary)", marginBottom: 10, animation: "shimmer 1.5s ease-in-out infinite" }} />
+                    <div style={{ height: 16, width: 320, borderRadius: 6, background: "var(--secondary)", animation: "shimmer 1.5s ease-in-out infinite" }} />
+                </section>
+                <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 48px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
+                        {Array.from({ length: 9 }).map((_, i) => (
+                            <div key={i} style={{ borderRadius: 16, overflow: "hidden", background: "var(--card)", border: "1px solid var(--border)" }}>
+                                <div style={{ height: 180, background: "var(--secondary)", animation: "shimmer 1.5s ease-in-out infinite" }} />
+                                <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                                    <div style={{ height: 18, width: "70%", borderRadius: 6, background: "var(--secondary)", animation: "shimmer 1.5s ease-in-out infinite" }} />
+                                    <div style={{ height: 13, width: "50%", borderRadius: 6, background: "var(--secondary)", animation: "shimmer 1.5s ease-in-out infinite" }} />
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                        {[1,2,3].map(j => <div key={j} style={{ height: 24, width: 60, borderRadius: 99, background: "var(--secondary)", animation: "shimmer 1.5s ease-in-out infinite" }} />)}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            </AppShell>
+        );
+    }
 
     return (
         <AppShell>
