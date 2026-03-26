@@ -187,7 +187,7 @@ const createVenueSchema = z.object({
     website: z.string().url().optional(),
     instagramHandle: z.string().max(100).optional(),
     googleMapsUrl: z.string().url().optional(),
-    googlePlaceId: z.string().max(255).optional(),
+    googlePlaceId: z.string().max(255).nullable().optional(),
     coverImageUrl: z.string().url().optional(),
     coverImageS3Key: z.string().max(500).optional(),
     galleryImageUrls: galleryUrlArraySchema.optional(),
