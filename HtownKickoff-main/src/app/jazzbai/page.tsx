@@ -4,7 +4,7 @@ import * as React from "react";
 import { AppShell } from "../../components/AppShell";
 import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
 import { GooglePlacePicker } from "../../components/GooglePlacePicker";
-import type { GooglePlaceDetailsResponse } from "../../lib/api";
+import type { GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../lib/api";
 
 type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches" | "motorsportEntries" | "blog";
 
@@ -1529,11 +1529,16 @@ export default function JazzbaiSuperAdminPage() {
 
   const applyGoogleDetailsToNewVenue = React.useCallback((details: GooglePlaceDetailsResponse) => {
     const defaults = details.defaults;
+    const placeId = details.googlePlaceId || defaults.placeId;
+    const displayName = defaults.displayName || (defaults as GooglePlaceSnapshot & { name?: string }).name;
+    const addressLine1 = defaults.addressLine1
+      || defaults.formattedAddress
+      || (defaults as GooglePlaceSnapshot & { formattedAddress?: string | null }).formattedAddress;
     setNewVenue((prev) => ({
       ...prev,
-      googlePlaceId: defaults.placeId,
-      name: defaults.displayName || prev.name,
-      addressLine1: defaults.addressLine1 || defaults.formattedAddress || prev.addressLine1,
+      googlePlaceId: placeId || prev.googlePlaceId,
+      name: displayName || prev.name,
+      addressLine1: addressLine1 || prev.addressLine1,
       city: defaults.city || prev.city,
       stateProvince: defaults.stateProvince || prev.stateProvince,
       country: defaults.country || prev.country,
@@ -1551,15 +1556,20 @@ export default function JazzbaiSuperAdminPage() {
 
   const applyGoogleDetailsToVenueDraft = React.useCallback((venueId: string, details: GooglePlaceDetailsResponse) => {
     const defaults = details.defaults;
+    const placeId = details.googlePlaceId || defaults.placeId;
+    const displayName = defaults.displayName || (defaults as GooglePlaceSnapshot & { name?: string }).name;
+    const addressLine1 = defaults.addressLine1
+      || defaults.formattedAddress
+      || (defaults as GooglePlaceSnapshot & { formattedAddress?: string | null }).formattedAddress;
     setVenueDrafts((prev) => {
       const draft = prev[venueId] || {};
       return {
         ...prev,
         [venueId]: {
           ...draft,
-          googlePlaceId: defaults.placeId,
-          name: defaults.displayName || draft.name,
-          addressLine1: defaults.addressLine1 || defaults.formattedAddress || draft.addressLine1,
+          googlePlaceId: placeId || draft.googlePlaceId,
+          name: displayName || draft.name,
+          addressLine1: addressLine1 || draft.addressLine1,
           city: defaults.city || draft.city,
           stateProvince: defaults.stateProvince || draft.stateProvince,
           country: defaults.country || draft.country,

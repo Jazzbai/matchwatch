@@ -71,6 +71,19 @@ function getNumber(value: unknown) {
     return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function getTimeZoneString(value: unknown) {
+    if (typeof value === 'string') {
+        return getString(value);
+    }
+    if (!isRecord(value)) {
+        return null;
+    }
+    return getString(value.id)
+        || getString(value.name)
+        || getString(value.timeZoneId)
+        || null;
+}
+
 function getAddressPart(addressComponents: unknown, type: string, useShortText = false) {
     if (!Array.isArray(addressComponents)) return null;
     for (const entry of addressComponents) {
@@ -122,7 +135,7 @@ function mapPlaceToSnapshot(place: Record<string, unknown>): GoogleSourceSnapsho
         postalCode: getAddressPart(addressComponents, 'postal_code'),
         lat: location ? getNumber(location.latitude) : null,
         lng: location ? getNumber(location.longitude) : null,
-        timezone: getString(place.timeZone?.toString?.()) || getString(place.timeZone),
+        timezone: getTimeZoneString(place.timeZone),
         phone: getString(place.nationalPhoneNumber) || getString(place.internationalPhoneNumber),
         website: getString(place.websiteUri),
         googleMapsUrl: getString(place.googleMapsUri),

@@ -134,6 +134,9 @@ export function getVenueMenuSourceState(venue: { menuSource?: string | null; goo
 
 export function buildVenueGoogleDefaults(snapshot: GoogleSourceSnapshot) {
     return {
+        placeId: snapshot.placeId,
+        displayName: snapshot.displayName,
+        formattedAddress: snapshot.formattedAddress || '',
         name: snapshot.displayName,
         addressLine1: snapshot.addressLine1 || snapshot.formattedAddress || '',
         city: snapshot.city || '',
