@@ -959,6 +959,24 @@ function metadataRecord(metadata: unknown): Record<string, unknown> {
     return metadata as Record<string, unknown>;
 }
 
+function formatVenueMutationError(error: unknown) {
+    const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: unknown }).code || '') : '';
+    const message = typeof error === 'object' && error && 'message' in error ? String((error as { message?: unknown }).message || '') : '';
+    const detail = `${code} ${message}`.toLowerCase();
+
+    if (code === '23505' || detail.includes('duplicate key')) {
+        if (detail.includes('google_place')) {
+            return { status: 409 as const, body: apiError('CONFLICT', 'Google Place ID is already linked to another venue') };
+        }
+        if (detail.includes('slug')) {
+            return { status: 409 as const, body: apiError('CONFLICT', 'Venue slug already exists') };
+        }
+        return { status: 409 as const, body: apiError('CONFLICT', 'Venue update conflicts with an existing record') };
+    }
+
+    return { status: 500 as const, body: apiError('INTERNAL_ERROR', 'Failed to save venue') };
+}
+
 const deleteUploadSchema = z.object({
     keys: z.array(z.string().min(1).max(500)).min(1).max(20),
 });
@@ -2263,48 +2281,54 @@ superAdminRoutes.post('/venues', async (c) => {
         }).where(eq(users.id, owner.id));
     }
 
-    const [created] = await db.insert(venues).values({
-        ownerId: owner.id,
-        name: parsed.data.name.trim(),
-        slug: parsed.data.slug?.trim() || generateUniqueSlug(parsed.data.name),
-        description: parsed.data.description?.trim() || null,
-        shortDescription: parsed.data.shortDescription?.trim() || null,
-        addressLine1: parsed.data.addressLine1.trim(),
-        addressLine2: parsed.data.addressLine2?.trim() || null,
-        city: parsed.data.city.trim(),
-        stateProvince: parsed.data.stateProvince?.trim() || null,
-        country: parsed.data.country.trim(),
-        postalCode: parsed.data.postalCode?.trim() || null,
-        lat: String(parsed.data.lat),
-        lng: String(parsed.data.lng),
-        timezone: parsed.data.timezone.trim(),
-        phone: parsed.data.phone?.trim() || null,
-        website: parsed.data.website?.trim() || null,
-        instagramHandle: parsed.data.instagramHandle?.trim() || null,
-        googleMapsUrl: parsed.data.googleMapsUrl?.trim() || null,
-        googlePlaceId: parsed.data.googlePlaceId?.trim() || null,
-        coverImageUrl: parsed.data.coverImageUrl || null,
-        coverImageS3Key: parsed.data.coverImageS3Key?.trim() || null,
-        galleryS3Keys: sanitizeGalleryKeys(parsed.data.galleryS3Keys),
-        amenities: parsed.data.amenities,
-        vibes: parsed.data.vibes,
-        cuisineTags: parsed.data.cuisineTags,
-        priceRange: parsed.data.priceRange,
-        capacity: parsed.data.capacity || null,
-        isVerified: parsed.data.isVerified,
-        isActive: parsed.data.isActive,
-        isFeatured: parsed.data.isFeatured,
-        approvalStatus: parsed.data.isActive ? 'APPROVED' : 'PENDING',
-        ratingOverride: null,
-        reviewCountOverride: null,
-        metadata: {
-            galleryImageUrls: sanitizeGalleryUrls(parsed.data.galleryImageUrls),
-        },
-    }).returning({
-        id: venues.id,
-        slug: venues.slug,
-        name: venues.name,
-    });
+    let created: { id: string; slug: string; name: string };
+    try {
+        [created] = await db.insert(venues).values({
+            ownerId: owner.id,
+            name: parsed.data.name.trim(),
+            slug: parsed.data.slug?.trim() || generateUniqueSlug(parsed.data.name),
+            description: parsed.data.description?.trim() || null,
+            shortDescription: parsed.data.shortDescription?.trim() || null,
+            addressLine1: parsed.data.addressLine1.trim(),
+            addressLine2: parsed.data.addressLine2?.trim() || null,
+            city: parsed.data.city.trim(),
+            stateProvince: parsed.data.stateProvince?.trim() || null,
+            country: parsed.data.country.trim(),
+            postalCode: parsed.data.postalCode?.trim() || null,
+            lat: String(parsed.data.lat),
+            lng: String(parsed.data.lng),
+            timezone: parsed.data.timezone.trim(),
+            phone: parsed.data.phone?.trim() || null,
+            website: parsed.data.website?.trim() || null,
+            instagramHandle: parsed.data.instagramHandle?.trim() || null,
+            googleMapsUrl: parsed.data.googleMapsUrl?.trim() || null,
+            googlePlaceId: parsed.data.googlePlaceId?.trim() || null,
+            coverImageUrl: parsed.data.coverImageUrl || null,
+            coverImageS3Key: parsed.data.coverImageS3Key?.trim() || null,
+            galleryS3Keys: sanitizeGalleryKeys(parsed.data.galleryS3Keys),
+            amenities: parsed.data.amenities,
+            vibes: parsed.data.vibes,
+            cuisineTags: parsed.data.cuisineTags,
+            priceRange: parsed.data.priceRange,
+            capacity: parsed.data.capacity || null,
+            isVerified: parsed.data.isVerified,
+            isActive: parsed.data.isActive,
+            isFeatured: parsed.data.isFeatured,
+            approvalStatus: parsed.data.isActive ? 'APPROVED' : 'PENDING',
+            ratingOverride: null,
+            reviewCountOverride: null,
+            metadata: {
+                galleryImageUrls: sanitizeGalleryUrls(parsed.data.galleryImageUrls),
+            },
+        }).returning({
+            id: venues.id,
+            slug: venues.slug,
+            name: venues.name,
+        });
+    } catch (error) {
+        const formatted = formatVenueMutationError(error);
+        return c.json(formatted.body, formatted.status);
+    }
 
     return c.json(apiResponse(created), 201);
 });
@@ -2383,7 +2407,12 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
         updates.approvalNotes = parsed.data.approvalNotes;
     }
 
-    await db.update(venues).set(updates).where(eq(venues.id, venueId));
+    try {
+        await db.update(venues).set(updates).where(eq(venues.id, venueId));
+    } catch (error) {
+        const formatted = formatVenueMutationError(error);
+        return c.json(formatted.body, formatted.status);
+    }
     await cleanupRemovedVenueMedia({
         previousCoverKey: existingVenue.coverImageS3Key,
         previousGalleryKeys: existingVenue.galleryS3Keys,

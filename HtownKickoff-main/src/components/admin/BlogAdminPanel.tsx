@@ -6,7 +6,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import { ImagePlus, Link2, Plus, RefreshCcw } from "lucide-react";
-import { api, uploadApi } from "../../lib/api";
+import { api } from "../../lib/api";
 
 type BlogCategory = {
   id: string;
@@ -120,7 +120,11 @@ function toSlug(value: string) {
 }
 
 async function uploadImage(file: File) {
-  const presigned = await uploadApi.createPresignedUrl({
+  const presigned = await api.post<{
+    uploadUrl: string;
+    publicUrl: string;
+    key: string;
+  }>("/super-admin/uploads/presigned-url", {
     filename: file.name,
     contentType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
     purpose: "post",

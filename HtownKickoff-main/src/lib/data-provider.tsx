@@ -427,7 +427,9 @@ function shouldSkipBootstrapFetch(pathname: string) {
         || pathname === "/signup"
         || pathname === "/register"
         || pathname === "/register-venue"
-        || pathname.startsWith("/for-venues/register");
+        || pathname.startsWith("/for-venues/register")
+        || pathname.startsWith("/admin")
+        || pathname.startsWith("/jazzbai");
 }
 
 function getVenueDetailSlug(pathname: string) {
