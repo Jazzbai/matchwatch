@@ -239,7 +239,7 @@ const updateVenueSchema = z.object({
     capacity: z.coerce.number().int().positive().nullable().optional(),
     ratingOverride: z.coerce.number().min(0).max(5).nullable().optional(),
     reviewCountOverride: z.coerce.number().int().min(0).nullable().optional(),
-    googlePlaceId: z.string().max(255).optional(),
+    googlePlaceId: z.string().max(255).nullable().optional(),
     approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
     approvalNotes: z.string().max(2000).nullable().optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
