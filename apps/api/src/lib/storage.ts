@@ -18,7 +18,12 @@ const s3 = new S3Client({
 });
 
 const BUCKET = process.env.S3_BUCKET || 'matchwatch-uploads';
-const OBJECT_ACL = process.env.STORAGE_OBJECT_ACL?.trim() || 'public-read';
+const OBJECT_ACL = (() => {
+    const raw = process.env.STORAGE_OBJECT_ACL?.trim();
+    if (!raw) return null;
+    if (raw.toLowerCase() === 'none' || raw.toLowerCase() === 'false') return null;
+    return raw;
+})();
 
 function sanitizeActorId(actorId: string) {
     return actorId.trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'anonymous';
@@ -48,7 +53,7 @@ export async function createPresignedUpload(params: {
     const command = new PutObjectCommand({
         Bucket: BUCKET,
         Key: key,
-        ACL: OBJECT_ACL as any,
+        ...(OBJECT_ACL ? { ACL: OBJECT_ACL as any } : {}),
         ContentType: params.contentType,
         Metadata: {
             actorId: actorPath,
@@ -62,9 +67,11 @@ export async function createPresignedUpload(params: {
     return {
         uploadUrl,
         publicUrl: buildStoragePublicUrl(key),
-        uploadHeaders: {
-            'x-amz-acl': OBJECT_ACL,
-        },
+        ...(OBJECT_ACL ? {
+            uploadHeaders: {
+                'x-amz-acl': OBJECT_ACL,
+            },
+        } : {}),
         key,
         expiresIn: 300,
     };
