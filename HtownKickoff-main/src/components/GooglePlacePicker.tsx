@@ -11,6 +11,8 @@ type GooglePlacePickerProps = {
   description?: string;
   initialPlaceId?: string | null;
   disabled?: boolean;
+  className?: string;
+  buttonClassName?: string;
   onPlaceResolved: (details: GooglePlaceDetailsResponse) => void | Promise<void>;
 };
 
@@ -19,6 +21,8 @@ export function GooglePlacePicker({
   description = "Search by venue name or paste a Google Places ID to load defaults.",
   initialPlaceId,
   disabled = false,
+  className,
+  buttonClassName,
   onPlaceResolved,
 }: GooglePlacePickerProps) {
   const [query, setQuery] = React.useState("");
@@ -65,7 +69,7 @@ export function GooglePlacePicker({
   }, [onPlaceResolved]);
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+    <div className={["rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4", className].filter(Boolean).join(" ")}>
       <div className="mb-3">
         <div className="text-sm font-semibold text-[var(--foreground)]">{title}</div>
         <div className="text-xs text-[var(--muted-foreground)]">{description}</div>
@@ -79,7 +83,13 @@ export function GooglePlacePicker({
             placeholder="Search venue name"
             disabled={disabled || loading}
           />
-          <Button type="button" variant="outline" onClick={() => void search()} disabled={disabled || loading || !query.trim()}>
+          <Button
+            type="button"
+            variant="outline"
+            className={buttonClassName}
+            onClick={() => void search()}
+            disabled={disabled || loading || !query.trim()}
+          >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             Search
           </Button>
@@ -91,7 +101,13 @@ export function GooglePlacePicker({
             placeholder="Google Places ID"
             disabled={disabled || !!resolvingPlaceId}
           />
-          <Button type="button" variant="outline" onClick={() => void resolve(placeId)} disabled={disabled || !!resolvingPlaceId || !placeId.trim()}>
+          <Button
+            type="button"
+            variant="outline"
+            className={buttonClassName}
+            onClick={() => void resolve(placeId)}
+            disabled={disabled || !!resolvingPlaceId || !placeId.trim()}
+          >
             {resolvingPlaceId === placeId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load"}
           </Button>
         </div>

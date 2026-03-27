@@ -195,21 +195,23 @@ export default function VenueRegisterPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto w-full max-w-6xl px-4 py-8 md:py-10">
-        <div className="mb-8 flex items-center justify-between gap-4">
-          <div>
-            <Badge variant="secondary" className="mb-2 gap-1">
+      <main className="mx-auto w-full max-w-4xl px-5 py-12 sm:px-6">
+        <div className="mx-auto mb-8 max-w-2xl text-center">
+          <div className="mb-3 flex justify-center">
+            <Badge variant="secondary" className="gap-1">
               <Building2 className="h-3.5 w-3.5" />
               Venue onboarding
             </Badge>
-            <h1 className="font-display text-3xl text-[var(--foreground)] md:text-4xl">Register Your Business Venue</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted-foreground)] md:text-base">
-              Search the venue from Google, review the defaults, adjust the editable business details, and submit for admin approval.
-            </p>
           </div>
-          <Link href="/login" className="text-sm text-[var(--primary)]">
-            Back to login
-          </Link>
+          <h1 className="font-display text-3xl text-[var(--foreground)] md:text-4xl">Register Your Business Venue</h1>
+          <p className="mt-3 text-sm text-[var(--muted-foreground)] md:text-base">
+            Search the venue from Google, review the defaults, adjust the editable business details, and submit for admin approval.
+          </p>
+          <div className="mt-4">
+            <Link href="/login" className="text-sm font-semibold text-[var(--primary)]">
+              Back to login
+            </Link>
+          </div>
         </div>
 
         {formError ? (
@@ -228,7 +230,7 @@ export default function VenueRegisterPage() {
           </Alert>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="grid gap-6">
+        <form onSubmit={handleSubmit} className="mx-auto flex w-full flex-col gap-6">
           <Card className="border-[var(--border)]/70 bg-card shadow-sm">
             <CardHeader>
               <CardTitle>Owner account</CardTitle>
@@ -251,6 +253,8 @@ export default function VenueRegisterPage() {
           </Card>
 
           <GooglePlacePicker
+            className="p-6"
+            buttonClassName="h-11 rounded-xl px-5 text-sm font-semibold"
             initialPlaceId={venueForm.googlePlaceId}
             onPlaceResolved={handlePlaceResolved}
           />
@@ -272,7 +276,7 @@ export default function VenueRegisterPage() {
           ) : null}
 
           <Card className="border-[var(--border)]/70 bg-card shadow-sm">
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <CardHeader className="flex flex-col items-start justify-between gap-4 sm:flex-row">
               <div>
                 <CardTitle>{claimMode ? "Claim request" : "Venue defaults and editable profile"}</CardTitle>
                 <CardDescription>
@@ -282,7 +286,12 @@ export default function VenueRegisterPage() {
                 </CardDescription>
               </div>
               {googleDefaults ? (
-                <Button type="button" variant="outline" onClick={resetToGoogleDefaults}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 rounded-xl px-5 text-sm font-semibold"
+                  onClick={resetToGoogleDefaults}
+                >
                   <RefreshCcw className="h-4 w-4" />
                   Revert to Google defaults
                 </Button>
@@ -313,11 +322,21 @@ export default function VenueRegisterPage() {
               ) : null}
 
               {existingVenue ? (
-                <div className="flex gap-3">
-                  <Button type="button" variant={claimMode ? "default" : "outline"} onClick={() => setClaimMode(true)}>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant={claimMode ? "default" : "outline"}
+                    className="h-11 rounded-xl px-5 text-sm font-semibold"
+                    onClick={() => setClaimMode(true)}
+                  >
                     Claim this venue
                   </Button>
-                  <Button type="button" variant={!claimMode ? "default" : "outline"} onClick={() => setClaimMode(false)}>
+                  <Button
+                    type="button"
+                    variant={!claimMode ? "default" : "outline"}
+                    className="h-11 rounded-xl px-5 text-sm font-semibold"
+                    onClick={() => setClaimMode(false)}
+                  >
                     Submit as new venue
                   </Button>
                 </div>
@@ -413,16 +432,16 @@ export default function VenueRegisterPage() {
             </CardContent>
           </Card>
 
-          <div className="flex items-center justify-end gap-3">
+          <div className="flex flex-col items-center gap-3 pt-2 text-center sm:flex-row sm:flex-wrap sm:justify-center">
             {recaptchaEnabled ? (
-              <p className="mr-auto text-xs text-[var(--muted-foreground)]">
+              <p className="text-xs text-[var(--muted-foreground)] sm:basis-full">
                 Protected by Google reCAPTCHA.
               </p>
             ) : null}
-            <Button type="button" variant="outline" asChild>
+            <Button type="button" variant="outline" className="h-11 rounded-xl px-5 text-sm font-semibold" asChild>
               <Link href="/for-venues">Cancel</Link>
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" className="h-11 rounded-xl px-6 text-sm font-bold" disabled={isSubmitting}>
               {isSubmitting ? "Submitting..." : claimMode ? "Submit claim" : "Submit for approval"}
             </Button>
           </div>
