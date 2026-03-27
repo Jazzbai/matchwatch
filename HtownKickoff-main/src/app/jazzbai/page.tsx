@@ -823,6 +823,47 @@ function resolveVenueGalleryDisplayItems(
   }));
 }
 
+function buildVenueEditorDraft(row: VenueRow): VenueEditorDraft {
+  return {
+    ownerId: row.ownerId,
+    name: row.name,
+    slug: row.slug,
+    description: row.description || "",
+    shortDescription: row.shortDescription || "",
+    addressLine1: row.addressLine1,
+    addressLine2: row.addressLine2 || "",
+    city: row.city,
+    stateProvince: row.stateProvince || "",
+    country: row.country,
+    postalCode: row.postalCode || "",
+    lat: String(row.lat),
+    lng: String(row.lng),
+    timezone: row.timezone,
+    phone: row.phone || "",
+    website: row.website || "",
+    instagramHandle: row.instagramHandle || "",
+    googleMapsUrl: row.googleMapsUrl || "",
+    googlePlaceId: row.googlePlaceId || "",
+    coverImageUrl: row.coverImageUrl || "",
+    coverImageS3Key: row.coverImageS3Key || "",
+    galleryImageUrls: row.galleryImageUrls || [],
+    galleryS3Keys: row.galleryS3Keys || [],
+    capacity: row.capacity == null ? "" : String(row.capacity),
+    priceRange: row.priceRange || "MID",
+    ratingOverride: row.ratingOverride ?? "",
+    reviewCountOverride: row.reviewCountOverride ?? "",
+    approvalStatus: row.approvalStatus || "PENDING",
+    approvalNotes: row.approvalNotes || "",
+    menuSource: row.menuSource || "NONE",
+    amenities: row.amenities || [],
+    vibes: row.vibes || [],
+    cuisineTags: row.cuisineTags || [],
+    isVerified: row.isVerified,
+    isActive: row.isActive,
+    isFeatured: row.isFeatured,
+  };
+}
+
 async function createSuperAdminPresignedUpload(data: {
   filename: string;
   contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
@@ -2023,7 +2064,7 @@ export default function JazzbaiSuperAdminPage() {
 
   const uploadVenueDraftCover = async (venueId: string, file: File) => {
     const row = venues.find((item) => item.id === venueId);
-    const draft = venueDrafts[venueId];
+    const draft = row ? (venueDrafts[venueId] ?? buildVenueEditorDraft(row)) : undefined;
     if (!row || !draft) return;
 
     setUploadingVenueCoverId(venueId);
@@ -2041,7 +2082,7 @@ export default function JazzbaiSuperAdminPage() {
       setVenueDrafts((prev) => ({
         ...prev,
         [venueId]: {
-          ...prev[venueId],
+          ...(prev[venueId] ?? buildVenueEditorDraft(row)),
           coverImageUrl: uploaded.url,
           coverImageS3Key: uploaded.key,
         },
@@ -2054,8 +2095,9 @@ export default function JazzbaiSuperAdminPage() {
   };
 
   const uploadVenueDraftGallery = async (venueId: string, files: File[]) => {
-    const draft = venueDrafts[venueId];
-    if (!draft) return;
+    const row = venues.find((item) => item.id === venueId);
+    const draft = row ? (venueDrafts[venueId] ?? buildVenueEditorDraft(row)) : undefined;
+    if (!row || !draft) return;
     const existingItems = parseVenueGalleryItems(draft.galleryImageUrls, draft.galleryS3Keys);
     const slots = MAX_GALLERY_IMAGES - existingItems.length;
     if (slots <= 0) {
@@ -2073,8 +2115,7 @@ export default function JazzbaiSuperAdminPage() {
         uploaded.push(nextUpload);
       }
       setVenueDrafts((prev) => {
-        const baseDraft = prev[venueId];
-        if (!baseDraft) return prev;
+        const baseDraft = prev[venueId] ?? buildVenueEditorDraft(row);
         const nextItems = [...parseVenueGalleryItems(baseDraft.galleryImageUrls, baseDraft.galleryS3Keys), ...uploaded].slice(0, MAX_GALLERY_IMAGES);
         return {
           ...prev,
@@ -2093,7 +2134,7 @@ export default function JazzbaiSuperAdminPage() {
 
   const removeVenueDraftCover = async (venueId: string) => {
     const row = venues.find((item) => item.id === venueId);
-    const draft = venueDrafts[venueId];
+    const draft = row ? (venueDrafts[venueId] ?? buildVenueEditorDraft(row)) : undefined;
     if (!row || !draft) return;
 
     const draftKey = String(draft.coverImageS3Key || "").trim();
@@ -2111,7 +2152,7 @@ export default function JazzbaiSuperAdminPage() {
     setVenueDrafts((prev) => ({
       ...prev,
       [venueId]: {
-        ...prev[venueId],
+        ...(prev[venueId] ?? buildVenueEditorDraft(row)),
         coverImageUrl: "",
         coverImageS3Key: "",
       },
@@ -2120,7 +2161,7 @@ export default function JazzbaiSuperAdminPage() {
 
   const removeVenueDraftGalleryImage = async (venueId: string, idx: number) => {
     const row = venues.find((item) => item.id === venueId);
-    const draft = venueDrafts[venueId];
+    const draft = row ? (venueDrafts[venueId] ?? buildVenueEditorDraft(row)) : undefined;
     if (!row || !draft) return;
 
     const items = parseVenueGalleryItems(draft.galleryImageUrls, draft.galleryS3Keys);
@@ -2142,7 +2183,7 @@ export default function JazzbaiSuperAdminPage() {
     setVenueDrafts((prev) => ({
       ...prev,
       [venueId]: {
-        ...prev[venueId],
+        ...(prev[venueId] ?? buildVenueEditorDraft(row)),
         ...galleryFieldsFromItems(nextItems),
       },
     }));
@@ -2759,44 +2800,7 @@ export default function JazzbaiSuperAdminPage() {
               </div>
               <div style={{ padding: 14, display: "grid", gap: 12 }}>
                 {venues.map((row) => {
-                  const draft = venueDrafts[row.id] ?? {
-                    ownerId: row.ownerId,
-                    name: row.name,
-                    slug: row.slug,
-                    description: row.description || "",
-                    shortDescription: row.shortDescription || "",
-                    addressLine1: row.addressLine1,
-                    addressLine2: row.addressLine2 || "",
-                    city: row.city,
-                    stateProvince: row.stateProvince || "",
-                    country: row.country,
-                    postalCode: row.postalCode || "",
-                    lat: String(row.lat),
-                    lng: String(row.lng),
-                    timezone: row.timezone,
-                    phone: row.phone || "",
-                    website: row.website || "",
-                    instagramHandle: row.instagramHandle || "",
-                    googleMapsUrl: row.googleMapsUrl || "",
-                    googlePlaceId: row.googlePlaceId || "",
-                    coverImageUrl: row.coverImageUrl || "",
-                    coverImageS3Key: row.coverImageS3Key || "",
-                    galleryImageUrls: row.galleryImageUrls || [],
-                    galleryS3Keys: row.galleryS3Keys || [],
-                    capacity: row.capacity == null ? "" : String(row.capacity),
-                    priceRange: row.priceRange || "MID",
-                    ratingOverride: row.ratingOverride ?? "",
-                    reviewCountOverride: row.reviewCountOverride ?? "",
-                    approvalStatus: row.approvalStatus || "PENDING",
-                    approvalNotes: row.approvalNotes || "",
-                    menuSource: row.menuSource || "NONE",
-                    amenities: row.amenities || [],
-                    vibes: row.vibes || [],
-                    cuisineTags: row.cuisineTags || [],
-                    isVerified: row.isVerified,
-                    isActive: row.isActive,
-                    isFeatured: row.isFeatured,
-                  };
+                  const draft = venueDrafts[row.id] ?? buildVenueEditorDraft(row);
                   const draftGalleryItems = resolveVenueGalleryDisplayItems(
                     Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [],
                     Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [],
