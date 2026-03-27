@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { AppShell } from "../../components/AppShell";
 import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
 import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import type { GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../lib/api";
@@ -821,6 +820,22 @@ function resolveVenueGalleryDisplayItems(
     ...item,
     url: (item.key ? localImagePreviews?.[item.key] : "") || item.url,
   }));
+}
+
+function SuperAdminShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      suppressHydrationWarning
+      style={{
+        minHeight: "100dvh",
+        background: "var(--background)",
+        color: "var(--foreground)",
+        fontFamily: "var(--font-body), system-ui, sans-serif",
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 function buildVenueEditorDraft(row: VenueRow): VenueEditorDraft {
@@ -1715,19 +1730,19 @@ export default function JazzbaiSuperAdminPage() {
 
   if (checkingSession) {
     return (
-      <AppShell>
+      <SuperAdminShell>
         <main style={{ maxWidth: 840, margin: "0 auto", padding: "48px 20px" }}>
           <div style={{ borderRadius: 14, border: "1px solid var(--border)", background: "var(--card)", padding: 24, color: "var(--muted-foreground)" }}>
             Checking super admin session...
           </div>
         </main>
-      </AppShell>
+      </SuperAdminShell>
     );
   }
 
   if (!authenticated) {
     return (
-      <AppShell>
+      <SuperAdminShell>
         <main style={{ maxWidth: 520, margin: "0 auto", padding: "72px 20px" }}>
           <section style={{ borderRadius: 16, border: "1px solid var(--border)", background: "var(--card)", padding: 24 }}>
             <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", fontWeight: 800 }}>
@@ -1782,7 +1797,7 @@ export default function JazzbaiSuperAdminPage() {
             </form>
           </section>
         </main>
-      </AppShell>
+      </SuperAdminShell>
     );
   }
 
@@ -2190,7 +2205,7 @@ export default function JazzbaiSuperAdminPage() {
   };
 
   return (
-    <AppShell>
+    <SuperAdminShell>
       <main style={pageStyle}>
         <header style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
@@ -4648,7 +4663,7 @@ export default function JazzbaiSuperAdminPage() {
           </section>
         )}
       </main>
-    </AppShell>
+    </SuperAdminShell>
   );
 }
 
