@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { db } from '../db/client';
 import { users, auditLogs, refreshTokenSessions, venueClaims, venues } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
@@ -11,6 +11,7 @@ import { apiResponse, apiError, generateUniqueSlug } from '../lib/utils';
 import { redis } from '../lib/redis';
 import { logger } from '../lib/logger';
 import { getGooglePlaceDetails } from '../lib/googlePlaces';
+import { getRequestIp, RecaptchaVerificationError, verifyRecaptchaToken } from '../lib/recaptcha';
 import { applyGoogleMenuSnapshot, buildGoogleVenueFields, findExistingVenueMatch } from '../lib/venueOnboarding';
 import {
     registerSchema, registerVenueSchema, loginSchema,
@@ -59,6 +60,22 @@ async function compareHash(raw: string, hash: string) {
     return compare(raw, hash);
 }
 
+async function enforceRecaptcha(c: Context, token: string | undefined, expectedAction: string) {
+    try {
+        await verifyRecaptchaToken({
+            token,
+            expectedAction,
+            remoteIp: getRequestIp(c.req.raw.headers),
+        });
+        return null;
+    } catch (error) {
+        if (error instanceof RecaptchaVerificationError) {
+            return c.json(apiError(error.code, error.message, error.details), error.status as 400 | 502 | 503);
+        }
+        throw error;
+    }
+}
+
 // ─── POST /register ─────────────────────────────
 auth.post('/register', authRateLimit, async (c) => {
     const body = await c.req.json();
@@ -67,12 +84,17 @@ auth.post('/register', authRateLimit, async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const { email, password, name, timezone, locale, website } = parsed.data;
+    const { email, password, name, timezone, locale, captchaToken, website } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
 
     // Honeypot check
     if (website) {
         return c.json(apiResponse({ message: 'Verification email sent' }), 201);
+    }
+
+    const recaptchaFailure = await enforceRecaptcha(c, captchaToken, 'register');
+    if (recaptchaFailure) {
+        return recaptchaFailure;
     }
 
     // Check if user already exists
@@ -114,10 +136,15 @@ auth.post('/register-venue', authRateLimit, async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const { email, password, name, timezone, locale, website, venue, claimVenueId, claimNotes, claimVerificationDocuments } = parsed.data;
+    const { email, password, name, timezone, locale, captchaToken, website, venue, claimVenueId, claimNotes, claimVerificationDocuments } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
     if (website) {
         return c.json(apiResponse({ message: 'Verification email sent' }), 201);
+    }
+
+    const recaptchaFailure = await enforceRecaptcha(c, captchaToken, 'register_venue');
+    if (recaptchaFailure) {
+        return recaptchaFailure;
     }
 
     const existing = await db
@@ -321,8 +348,13 @@ auth.post('/login', authRateLimit, async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const { email, password, deviceName } = parsed.data;
+    const { email, password, deviceName, captchaToken } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
+
+    const recaptchaFailure = await enforceRecaptcha(c, captchaToken, 'login');
+    if (recaptchaFailure) {
+        return recaptchaFailure;
+    }
 
     const [user] = await db
         .select()

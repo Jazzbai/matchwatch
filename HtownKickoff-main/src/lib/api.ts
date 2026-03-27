@@ -203,7 +203,7 @@ export const api = {
 // ─── Auth API ───────────────────────────────────
 
 export const authApi = {
-    register: (data: { email: string; password: string; name: string; timezone?: string; locale?: string }) =>
+    register: (data: { email: string; password: string; name: string; timezone?: string; locale?: string; captchaToken?: string }) =>
         apiFetch<{ message: string }>('/auth/register', {
             method: 'POST',
             body: { ...data, email: data.email.trim().toLowerCase(), name: data.name.trim() },
@@ -216,6 +216,7 @@ export const authApi = {
         name: string;
         timezone?: string;
         locale?: string;
+        captchaToken?: string;
         venue?: {
             name: string;
             address: string;
@@ -250,7 +251,7 @@ export const authApi = {
             skipAuth: true,
         }),
 
-    login: (data: { email: string; password: string }) =>
+    login: (data: { email: string; password: string; captchaToken?: string }) =>
         apiFetch<{ accessToken: string; user: AuthUser }>('/auth/login', {
             method: 'POST',
             body: { ...data, email: data.email.trim().toLowerCase() },

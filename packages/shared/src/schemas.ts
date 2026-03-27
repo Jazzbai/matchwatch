@@ -18,6 +18,7 @@ export const registerSchema = z.object({
     name: z.string().min(2).max(100),
     timezone: z.string().default('UTC'),
     locale: z.string().default('en'),
+    captchaToken: z.string().min(1).optional(),
     website: z.string().optional(), // honeypot
 });
 
@@ -56,6 +57,7 @@ export const loginSchema = z.object({
     email: z.string().email(),
     password: z.string().min(1),
     deviceName: z.string().optional(),
+    captchaToken: z.string().min(1).optional(),
 });
 
 export const verifyEmailSchema = z.object({

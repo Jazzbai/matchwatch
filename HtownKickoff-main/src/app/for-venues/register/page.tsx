@@ -15,6 +15,7 @@ import { Label } from "../../../components/ui/label";
 import { Textarea } from "../../../components/ui/textarea";
 import { useAuth } from "../../../lib/auth-context";
 import type { ExistingVenueMatch, GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../../lib/api";
+import { executeRecaptcha, isRecaptchaEnabled } from "../../../lib/recaptcha";
 
 type PriceRange = "BUDGET" | "MID" | "UPSCALE" | "LUXURY";
 
@@ -63,6 +64,7 @@ function mapGoogleDefaultsToVenue(snapshot: GooglePlaceSnapshot): VenueFormState
 export default function VenueRegisterPage() {
   const router = useRouter();
   const { registerVenue, login } = useAuth();
+  const recaptchaEnabled = isRecaptchaEnabled();
 
   const [ownerName, setOwnerName] = React.useState("");
   const [ownerEmail, setOwnerEmail] = React.useState("");
@@ -146,10 +148,12 @@ export default function VenueRegisterPage() {
     setIsSubmitting(true);
     try {
       const normalizedEmail = ownerEmail.trim().toLowerCase();
+      const registerCaptchaToken = await executeRecaptcha("register_venue");
       const response = await registerVenue({
         email: normalizedEmail,
         password: ownerPassword,
         name: ownerName.trim(),
+        captchaToken: registerCaptchaToken,
         ...(claimMode && existingVenue
           ? {
               claimVenueId: existingVenue.id,
@@ -179,7 +183,8 @@ export default function VenueRegisterPage() {
       });
 
       setSuccessMessage(response.message);
-      await login(normalizedEmail, ownerPassword);
+      const loginCaptchaToken = await executeRecaptcha("login");
+      await login(normalizedEmail, ownerPassword, loginCaptchaToken);
       router.push("/admin");
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Venue registration failed");
@@ -409,6 +414,11 @@ export default function VenueRegisterPage() {
           </Card>
 
           <div className="flex items-center justify-end gap-3">
+            {recaptchaEnabled ? (
+              <p className="mr-auto text-xs text-[var(--muted-foreground)]">
+                Protected by Google reCAPTCHA.
+              </p>
+            ) : null}
             <Button type="button" variant="outline" asChild>
               <Link href="/for-venues">Cancel</Link>
             </Button>

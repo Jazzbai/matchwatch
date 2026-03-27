@@ -9,12 +9,13 @@ interface AuthContextType {
     user: AuthUser | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string, name: string) => Promise<void>;
+    login: (email: string, password: string, captchaToken?: string) => Promise<void>;
+    register: (email: string, password: string, name: string, captchaToken?: string) => Promise<void>;
     registerVenue: (input: {
         email: string;
         password: string;
         name: string;
+        captchaToken?: string;
         venue?: {
             name: string;
             address: string;
@@ -101,11 +102,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }, []);
 
-    const login = useCallback(async (email: string, password: string) => {
+    const login = useCallback(async (email: string, password: string, captchaToken?: string) => {
         setError(null);
         setIsLoading(true);
         try {
-            const res = await authApi.login({ email: email.trim().toLowerCase(), password });
+            const res = await authApi.login({ email: email.trim().toLowerCase(), password, captchaToken });
             setAccessToken(res.data.accessToken);
             setUser(res.data.user);
         } catch (err) {
@@ -117,11 +118,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }, []);
 
-    const register = useCallback(async (email: string, password: string, name: string) => {
+    const register = useCallback(async (email: string, password: string, name: string, captchaToken?: string) => {
         setError(null);
         setIsLoading(true);
         try {
-            await authApi.register({ email: email.trim().toLowerCase(), password, name: name.trim() });
+            await authApi.register({ email: email.trim().toLowerCase(), password, name: name.trim(), captchaToken });
         } catch (err) {
             const message = err instanceof ApiClientError ? err.message : 'Registration failed';
             setError(message);
@@ -135,6 +136,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         email: string;
         password: string;
         name: string;
+        captchaToken?: string;
         venue?: {
             name: string;
             address: string;
