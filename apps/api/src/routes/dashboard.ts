@@ -791,6 +791,7 @@ dashboardRoutes.post('/claims', async (c) => {
         id: venues.id,
         name: venues.name,
         slug: venues.slug,
+        ownerId: venues.ownerId,
     }).from(venues).where(eq(venues.id, parsed.data.venueId)).limit(1);
 
     if (!venue) {
@@ -828,6 +829,21 @@ dashboardRoutes.post('/claims', async (c) => {
         entityId: claim.id,
         metadata: { venueId: venue.id },
     });
+
+    if (venue.ownerId && venue.ownerId !== user.id) {
+        await db.insert(notifications).values({
+            userId: venue.ownerId,
+            type: 'SYSTEM',
+            title: `Ownership claim submitted for ${venue.name}`,
+            body: `${user.name} (${user.email}) submitted a claim for ${venue.name}. Please provide documents or ownership proof to MatchWatch admin before the claim is reviewed.`,
+            actionUrl: '/admin',
+            data: {
+                venueId: venue.id,
+                claimId: claim.id,
+                claimantUserId: user.id,
+            },
+        });
+    }
 
     return c.json(apiResponse({
         ...claim,

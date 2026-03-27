@@ -3500,7 +3500,24 @@ superAdminRoutes.get('/venue-claims', async (c) => {
         db.select({ count: count() }).from(venueClaims),
     ]);
 
-    return c.json(apiResponse(rows, paginationMeta(page, limit, Number(totalResult?.count ?? 0))));
+    const ownerIds = Array.from(new Set(rows.map((row) => row.venueOwnerId).filter((value): value is string => Boolean(value))));
+    const ownerRows = ownerIds.length
+        ? await db.select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+        }).from(users).where(inArray(users.id, ownerIds))
+        : [];
+    const ownerMap = new Map(ownerRows.map((row) => [row.id, row]));
+
+    return c.json(apiResponse(rows.map((row) => {
+        const owner = row.venueOwnerId ? ownerMap.get(row.venueOwnerId) : null;
+        return {
+            ...row,
+            venueOwnerName: owner?.name ?? null,
+            venueOwnerEmail: owner?.email ?? null,
+        };
+    }), paginationMeta(page, limit, Number(totalResult?.count ?? 0))));
 });
 
 superAdminRoutes.patch('/venue-claims/:claimId', async (c) => {

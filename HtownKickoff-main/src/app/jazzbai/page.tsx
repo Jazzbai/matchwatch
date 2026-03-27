@@ -319,6 +319,8 @@ type VenueClaimRow = {
   venueName: string;
   venueSlug: string;
   venueOwnerId?: string | null;
+  venueOwnerName?: string | null;
+  venueOwnerEmail?: string | null;
   claimantUserId: string;
   claimantName: string;
   claimantEmail: string;
@@ -1321,6 +1323,27 @@ export default function JazzbaiSuperAdminPage() {
     setVenueApprovals(venuePayload.data || []);
     setVenueClaims(claimPayload.data || []);
   }, []);
+
+  const venueApprovalsByOwner = React.useMemo(() => {
+    const next = new Map<string, VenueApprovalRow[]>();
+    for (const row of venueApprovals) {
+      if (!row.ownerId) continue;
+      const existing = next.get(row.ownerId) || [];
+      existing.push(row);
+      next.set(row.ownerId, existing);
+    }
+    return next;
+  }, [venueApprovals]);
+
+  const venueClaimsByClaimant = React.useMemo(() => {
+    const next = new Map<string, VenueClaimRow[]>();
+    for (const row of venueClaims) {
+      const existing = next.get(row.claimantUserId) || [];
+      existing.push(row);
+      next.set(row.claimantUserId, existing);
+    }
+    return next;
+  }, [venueClaims]);
 
   const loadEvents = React.useCallback(async () => {
     setEventsLoading(true);
@@ -2473,26 +2496,72 @@ export default function JazzbaiSuperAdminPage() {
                   <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Business Approvals</h2>
                 </div>
                 <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                  {businessApprovals.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No business approvals queued.</div> : businessApprovals.slice(0, 6).map((row) => (
-                    <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
-                      <div>
-                        <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
-                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.email}</div>
+                  {businessApprovals.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No business approvals queued.</div> : businessApprovals.slice(0, 6).map((row) => {
+                    const linkedVenueApprovals = venueApprovalsByOwner.get(row.id) || [];
+                    const linkedClaims = venueClaimsByClaimant.get(row.id) || [];
+                    const canApprove = row.businessApprovalStatus !== "APPROVED";
+                    const canReject = row.businessApprovalStatus !== "REJECTED";
+                    return (
+                      <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
+                          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.email}</div>
+                          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+                            Role: {row.role} | Submitted {formatDateTime(row.createdAt)}
+                          </div>
+                        </div>
+                        {linkedVenueApprovals.length > 0 && (
+                          <div style={{ borderRadius: 8, background: "var(--secondary)", padding: 10, display: "grid", gap: 6 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>
+                              Submitted Venues
+                            </div>
+                            {linkedVenueApprovals.map((venue) => (
+                              <div key={venue.id} style={{ fontSize: 12, color: "var(--foreground)" }}>
+                                {venue.name} | {venue.city}, {venue.country} | {venue.approvalStatus}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {linkedClaims.length > 0 && (
+                          <div style={{ borderRadius: 8, background: "var(--secondary)", padding: 10, display: "grid", gap: 6 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>
+                              Claim Requests
+                            </div>
+                            {linkedClaims.map((claim) => (
+                              <div key={claim.id} style={{ fontSize: 12, color: "var(--foreground)", display: "grid", gap: 2 }}>
+                                <div>{claim.venueName} | {claim.status} | {formatDateTime(claim.createdAt)}</div>
+                                <div style={{ color: "var(--muted-foreground)" }}>{claim.notes || "No claimant notes provided."}</div>
+                                <div style={{ color: "var(--muted-foreground)" }}>
+                                  Verification documents: {claim.verificationDocuments?.length || 0}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {linkedVenueApprovals.length === 0 && linkedClaims.length === 0 && (
+                          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                            No linked venue submission or claim was found for this account.
+                          </div>
+                        )}
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.businessApprovalNotes || "No admin notes yet."}</div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          {canApprove && (
+                            <button style={smallBtn("outline")} onClick={() => void runAction(`biz-approve-${row.id}`, async () => {
+                              await superAdminFetch(`/users/${row.id}/business-approval`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
+                              await loadApprovalQueues();
+                            })}>Approve</button>
+                          )}
+                          {canReject && (
+                            <button style={smallBtn("danger")} onClick={() => void runAction(`biz-reject-${row.id}`, async () => {
+                              await superAdminFetch(`/users/${row.id}/business-approval`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", notes: "Rejected by admin" }) });
+                              await loadApprovalQueues();
+                            })}>Reject</button>
+                          )}
+                          <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.businessApprovalStatus}</span>
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.businessApprovalNotes || "No admin notes yet."}</div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button style={smallBtn("outline")} onClick={() => void runAction(`biz-approve-${row.id}`, async () => {
-                          await superAdminFetch(`/users/${row.id}/business-approval`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
-                          await loadApprovalQueues();
-                        })}>Approve</button>
-                        <button style={smallBtn("danger")} onClick={() => void runAction(`biz-reject-${row.id}`, async () => {
-                          await superAdminFetch(`/users/${row.id}/business-approval`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", notes: "Rejected by admin" }) });
-                          await loadApprovalQueues();
-                        })}>Reject</button>
-                        <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.businessApprovalStatus}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2501,26 +2570,42 @@ export default function JazzbaiSuperAdminPage() {
                   <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Venue Approvals</h2>
                 </div>
                 <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                  {venueApprovals.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No venue approvals queued.</div> : venueApprovals.slice(0, 6).map((row) => (
-                    <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
-                      <div>
-                        <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
-                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.city}, {row.country} • {row.ownerName || row.ownerEmail || "No owner"}</div>
+                  {venueApprovals.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No venue approvals queued.</div> : venueApprovals.slice(0, 6).map((row) => {
+                    const canApprove = row.approvalStatus !== "APPROVED";
+                    const canReject = row.approvalStatus !== "REJECTED";
+                    return (
+                      <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
+                          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.city}, {row.country} | {row.ownerName || row.ownerEmail || "No owner"}</div>
+                          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+                            Submitted {formatDateTime(row.createdAt)} | Verified: {row.isVerified ? "Yes" : "No"}
+                          </div>
+                          {row.googlePlaceId && (
+                            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+                              Google Place ID: {row.googlePlaceId}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.approvalNotes || "No admin notes yet."}</div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          {canApprove && (
+                            <button style={smallBtn("outline")} onClick={() => void runAction(`venue-approve-${row.id}`, async () => {
+                              await superAdminFetch(`/venues/${row.id}/approval`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED", isVerified: true }) });
+                              await Promise.all([loadApprovalQueues(), loadVenues()]);
+                            })}>Approve</button>
+                          )}
+                          {canReject && (
+                            <button style={smallBtn("danger")} onClick={() => void runAction(`venue-reject-${row.id}`, async () => {
+                              await superAdminFetch(`/venues/${row.id}/approval`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", isVerified: false, notes: "Rejected by admin" }) });
+                              await Promise.all([loadApprovalQueues(), loadVenues()]);
+                            })}>Reject</button>
+                          )}
+                          <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.approvalStatus}</span>
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.approvalNotes || "No admin notes yet."}</div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button style={smallBtn("outline")} onClick={() => void runAction(`venue-approve-${row.id}`, async () => {
-                          await superAdminFetch(`/venues/${row.id}/approval`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED", isVerified: true }) });
-                          await Promise.all([loadApprovalQueues(), loadVenues()]);
-                        })}>Approve</button>
-                        <button style={smallBtn("danger")} onClick={() => void runAction(`venue-reject-${row.id}`, async () => {
-                          await superAdminFetch(`/venues/${row.id}/approval`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", isVerified: false, notes: "Rejected by admin" }) });
-                          await Promise.all([loadApprovalQueues(), loadVenues()]);
-                        })}>Reject</button>
-                        <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.approvalStatus}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2529,26 +2614,50 @@ export default function JazzbaiSuperAdminPage() {
                   <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Venue Claims</h2>
                 </div>
                 <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                  {venueClaims.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No venue claims queued.</div> : venueClaims.slice(0, 6).map((row) => (
-                    <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
-                      <div>
-                        <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.venueName}</div>
-                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.claimantName} ({row.claimantEmail})</div>
+                  {venueClaims.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No venue claims queued.</div> : venueClaims.slice(0, 6).map((row) => {
+                    const canApprove = row.status !== "APPROVED";
+                    const canReject = row.status !== "REJECTED";
+                    return (
+                      <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.venueName}</div>
+                          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.claimantName} ({row.claimantEmail})</div>
+                          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+                            Current owner: {row.venueOwnerName || row.venueOwnerEmail || "Unassigned"} | Submitted {formatDateTime(row.createdAt)}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.notes || "No claim notes provided."}</div>
+                        {row.verificationDocuments && row.verificationDocuments.length > 0 && (
+                          <div style={{ borderRadius: 8, background: "var(--secondary)", padding: 10, display: "grid", gap: 6 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>
+                              Verification Documents
+                            </div>
+                            {row.verificationDocuments.map((url) => (
+                              <a key={url} href={url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "var(--primary)", textDecoration: "underline", overflowWrap: "anywhere" }}>
+                                {url}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        {row.adminNotes && <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Admin notes: {row.adminNotes}</div>}
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          {canApprove && (
+                            <button style={smallBtn("outline")} onClick={() => void runAction(`claim-approve-${row.id}`, async () => {
+                              await superAdminFetch(`/venue-claims/${row.id}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
+                              await Promise.all([loadApprovalQueues(), loadVenues(), loadLookups()]);
+                            })}>Approve + Transfer</button>
+                          )}
+                          {canReject && (
+                            <button style={smallBtn("danger")} onClick={() => void runAction(`claim-reject-${row.id}`, async () => {
+                              await superAdminFetch(`/venue-claims/${row.id}`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", adminNotes: "Rejected by admin" }) });
+                              await loadApprovalQueues();
+                            })}>Reject</button>
+                          )}
+                          <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.status}</span>
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.notes || "No claim notes provided."}</div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button style={smallBtn("outline")} onClick={() => void runAction(`claim-approve-${row.id}`, async () => {
-                          await superAdminFetch(`/venue-claims/${row.id}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
-                          await Promise.all([loadApprovalQueues(), loadVenues(), loadLookups()]);
-                        })}>Approve + Transfer</button>
-                        <button style={smallBtn("danger")} onClick={() => void runAction(`claim-reject-${row.id}`, async () => {
-                          await superAdminFetch(`/venue-claims/${row.id}`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", adminNotes: "Rejected by admin" }) });
-                          await loadApprovalQueues();
-                        })}>Reject</button>
-                        <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.status}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -4666,4 +4775,3 @@ export default function JazzbaiSuperAdminPage() {
     </SuperAdminShell>
   );
 }
-
