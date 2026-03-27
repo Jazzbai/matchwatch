@@ -451,6 +451,7 @@ export interface BlogComment {
 export interface PresignedUpload {
     uploadUrl: string;
     publicUrl: string;
+    uploadHeaders?: Record<string, string>;
     key: string;
     expiresIn: number;
 }

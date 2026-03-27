@@ -23,6 +23,7 @@ type VenueGalleryItem = {
 type SuperAdminPresignedUpload = {
   uploadUrl: string;
   publicUrl: string;
+  uploadHeaders?: Record<string, string>;
   key: string;
   expiresIn: number;
 };
@@ -773,7 +774,13 @@ function parseOptionalNumber(value: string | number | null | undefined) {
 function normalizeImageUrl(value?: string | null) {
   const raw = String(value || "").trim();
   if (!raw) return "";
-  if (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("/")) return raw;
+  if (
+    raw.startsWith("http://")
+    || raw.startsWith("https://")
+    || raw.startsWith("/")
+    || raw.startsWith("blob:")
+    || raw.startsWith("data:")
+  ) return raw;
   return `https://${raw}`;
 }
 
@@ -794,6 +801,26 @@ function galleryFieldsFromItems(items: VenueGalleryItem[]) {
     galleryImageUrls: items.map((item) => item.url),
     galleryS3Keys: items.map((item) => item.key).filter(Boolean),
   };
+}
+
+function resolveImageDisplayUrl(
+  value?: string | null,
+  key?: string | null,
+  localImagePreviews?: Record<string, string>,
+) {
+  const normalizedKey = String(key || "").trim();
+  return (normalizedKey ? localImagePreviews?.[normalizedKey] : "") || normalizeImageUrl(value);
+}
+
+function resolveVenueGalleryDisplayItems(
+  urls?: string[] | null,
+  keys?: string[] | null,
+  localImagePreviews?: Record<string, string>,
+) {
+  return parseVenueGalleryItems(urls, keys).map((item) => ({
+    ...item,
+    url: (item.key ? localImagePreviews?.[item.key] : "") || item.url,
+  }));
 }
 
 async function createSuperAdminPresignedUpload(data: {
@@ -834,7 +861,10 @@ async function uploadSuperAdminVenueImage(file: File, purpose: "venue_cover" | "
 
   const putRes = await fetch(presigned.uploadUrl, {
     method: "PUT",
-    headers: { "Content-Type": file.type },
+    headers: {
+      "Content-Type": file.type,
+      ...(presigned.uploadHeaders || {}),
+    },
     body: file,
   });
 
@@ -845,6 +875,7 @@ async function uploadSuperAdminVenueImage(file: File, purpose: "venue_cover" | "
   return {
     url: normalizeImageUrl(presigned.publicUrl),
     key: presigned.key,
+    previewUrl: URL.createObjectURL(file),
   };
 }
 
@@ -962,6 +993,60 @@ export default function JazzbaiSuperAdminPage() {
   const newVenueGalleryInputRef = React.useRef<HTMLInputElement | null>(null);
   const venueCoverInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
   const venueGalleryInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
+  const [localImagePreviews, setLocalImagePreviews] = React.useState<Record<string, string>>({});
+  const localImagePreviewsRef = React.useRef<Record<string, string>>({});
+
+  React.useEffect(() => {
+    localImagePreviewsRef.current = localImagePreviews;
+  }, [localImagePreviews]);
+
+  React.useEffect(() => {
+    return () => {
+      Object.values(localImagePreviewsRef.current).forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
+    };
+  }, []);
+
+  const setLocalImagePreview = React.useCallback((key?: string | null, previewUrl?: string) => {
+    const normalizedKey = String(key || "").trim();
+    if (!normalizedKey || !previewUrl) return;
+    setLocalImagePreviews((prev) => {
+      const existing = prev[normalizedKey];
+      if (existing === previewUrl) return prev;
+      if (existing) URL.revokeObjectURL(existing);
+      return {
+        ...prev,
+        [normalizedKey]: previewUrl,
+      };
+    });
+  }, []);
+
+  const clearLocalImagePreviews = React.useCallback((keys: Array<string | null | undefined>) => {
+    const normalizedKeys = Array.from(new Set(
+      keys.map((key) => String(key || "").trim()).filter(Boolean),
+    ));
+    if (normalizedKeys.length === 0) return;
+    setLocalImagePreviews((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const key of normalizedKeys) {
+        const previewUrl = next[key];
+        if (!previewUrl) continue;
+        URL.revokeObjectURL(previewUrl);
+        delete next[key];
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, []);
+
+  const newVenueCoverDisplayUrl = React.useMemo(
+    () => resolveImageDisplayUrl(newVenue.coverImageUrl, newVenue.coverImageS3Key, localImagePreviews),
+    [localImagePreviews, newVenue.coverImageS3Key, newVenue.coverImageUrl],
+  );
+  const newVenueGalleryDisplayItems = React.useMemo(
+    () => resolveVenueGalleryDisplayItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys, localImagePreviews),
+    [localImagePreviews, newVenue.galleryImageUrls, newVenue.galleryS3Keys],
+  );
 
   const [attributesRows, setAttributesRows] = React.useState<VenueAttributeRow[]>([]);
   const [attributesLoading, setAttributesLoading] = React.useState(false);
@@ -1858,11 +1943,14 @@ export default function JazzbaiSuperAdminPage() {
   const uploadNewVenueCover = async (file: File) => {
     setUploadingNewVenueCover(true);
     setError(null);
+    const previousKey = String(newVenue.coverImageS3Key || "").trim();
     try {
-      if (newVenue.coverImageS3Key) {
-        await deleteSuperAdminStorageKeys([newVenue.coverImageS3Key]);
+      if (previousKey) {
+        await deleteSuperAdminStorageKeys([previousKey]);
       }
       const uploaded = await uploadSuperAdminVenueImage(file, "venue_cover");
+      setLocalImagePreview(uploaded.key, uploaded.previewUrl);
+      clearLocalImagePreviews(previousKey ? [previousKey] : []);
       setNewVenue((prev) => ({
         ...prev,
         coverImageUrl: uploaded.url,
@@ -1888,7 +1976,9 @@ export default function JazzbaiSuperAdminPage() {
     try {
       const uploaded: VenueGalleryItem[] = [];
       for (const file of files.slice(0, slots)) {
-        uploaded.push(await uploadSuperAdminVenueImage(file, "venue_gallery"));
+        const nextUpload = await uploadSuperAdminVenueImage(file, "venue_gallery");
+        setLocalImagePreview(nextUpload.key, nextUpload.previewUrl);
+        uploaded.push(nextUpload);
       }
       setNewVenue((prev) => {
         const nextItems = [...parseVenueGalleryItems(prev.galleryImageUrls, prev.galleryS3Keys), ...uploaded].slice(0, MAX_GALLERY_IMAGES);
@@ -1910,6 +2000,7 @@ export default function JazzbaiSuperAdminPage() {
         return;
       }
     }
+    clearLocalImagePreviews([newVenue.coverImageS3Key]);
     setNewVenue((prev) => ({ ...prev, coverImageUrl: "", coverImageS3Key: "" }));
   };
 
@@ -1925,6 +2016,7 @@ export default function JazzbaiSuperAdminPage() {
         return;
       }
     }
+    clearLocalImagePreviews([item.key]);
     const nextItems = items.filter((_, index) => index !== idx);
     setNewVenue((prev) => ({ ...prev, ...galleryFieldsFromItems(nextItems) }));
   };
@@ -1936,13 +2028,16 @@ export default function JazzbaiSuperAdminPage() {
 
     setUploadingVenueCoverId(venueId);
     setError(null);
+    const persistedKey = String(row.coverImageS3Key || "").trim();
     try {
       const currentUnsavedKey = String(draft.coverImageS3Key || "").trim();
-      if (currentUnsavedKey && currentUnsavedKey !== String(row.coverImageS3Key || "").trim()) {
+      if (currentUnsavedKey && currentUnsavedKey !== persistedKey) {
         await deleteSuperAdminStorageKeys([currentUnsavedKey]);
       }
 
       const uploaded = await uploadSuperAdminVenueImage(file, "venue_cover");
+      setLocalImagePreview(uploaded.key, uploaded.previewUrl);
+      clearLocalImagePreviews(currentUnsavedKey && currentUnsavedKey !== uploaded.key ? [currentUnsavedKey] : []);
       setVenueDrafts((prev) => ({
         ...prev,
         [venueId]: {
@@ -1973,7 +2068,9 @@ export default function JazzbaiSuperAdminPage() {
     try {
       const uploaded: VenueGalleryItem[] = [];
       for (const file of files.slice(0, slots)) {
-        uploaded.push(await uploadSuperAdminVenueImage(file, "venue_gallery"));
+        const nextUpload = await uploadSuperAdminVenueImage(file, "venue_gallery");
+        setLocalImagePreview(nextUpload.key, nextUpload.previewUrl);
+        uploaded.push(nextUpload);
       }
       setVenueDrafts((prev) => {
         const baseDraft = prev[venueId];
@@ -2010,6 +2107,7 @@ export default function JazzbaiSuperAdminPage() {
       }
     }
 
+    clearLocalImagePreviews([draftKey]);
     setVenueDrafts((prev) => ({
       ...prev,
       [venueId]: {
@@ -2039,6 +2137,7 @@ export default function JazzbaiSuperAdminPage() {
       }
     }
 
+    clearLocalImagePreviews([item.key]);
     const nextItems = items.filter((_, index) => index !== idx);
     setVenueDrafts((prev) => ({
       ...prev,
@@ -2457,8 +2556,8 @@ export default function JazzbaiSuperAdminPage() {
                         }}
                       />
                       <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", overflow: "hidden", minHeight: 160 }}>
-                        {newVenue.coverImageUrl ? (
-                          <img src={newVenue.coverImageUrl} alt="Venue cover" style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                        {newVenueCoverDisplayUrl ? (
+                          <img src={newVenueCoverDisplayUrl} alt="Venue cover" style={{ width: "100%", height: 160, objectFit: "cover" }} />
                         ) : (
                           <div style={{ minHeight: 160, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted-foreground)" }}>
                             No cover image
@@ -2469,11 +2568,11 @@ export default function JazzbaiSuperAdminPage() {
 
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Gallery images ({parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length}/{MAX_GALLERY_IMAGES})</span>
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Gallery images ({newVenueGalleryDisplayItems.length}/{MAX_GALLERY_IMAGES})</span>
                         <button
                           type="button"
-                          style={smallBtn("outline", uploadingNewVenueGallery || parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length >= MAX_GALLERY_IMAGES)}
-                          disabled={uploadingNewVenueGallery || parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length >= MAX_GALLERY_IMAGES}
+                          style={smallBtn("outline", uploadingNewVenueGallery || newVenueGalleryDisplayItems.length >= MAX_GALLERY_IMAGES)}
+                          disabled={uploadingNewVenueGallery || newVenueGalleryDisplayItems.length >= MAX_GALLERY_IMAGES}
                           onClick={() => newVenueGalleryInputRef.current?.click()}
                         >
                           {uploadingNewVenueGallery ? "Uploading..." : "Add Images"}
@@ -2492,7 +2591,7 @@ export default function JazzbaiSuperAdminPage() {
                         }}
                       />
                       <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
-                        {parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).map((item, idx) => (
+                        {newVenueGalleryDisplayItems.map((item, idx) => (
                           <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", background: "var(--secondary)" }}>
                             <img src={item.url} alt={`Gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
                             <button
@@ -2504,7 +2603,7 @@ export default function JazzbaiSuperAdminPage() {
                             </button>
                           </div>
                         ))}
-                        {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length) }).map((_, idx) => (
+                        {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - newVenueGalleryDisplayItems.length) }).map((_, idx) => (
                           <div key={`new-venue-empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 96, borderRadius: 10, border: "1px dashed var(--border)", color: "var(--muted-foreground)", fontSize: 11 }}>
                             Empty slot
                           </div>
@@ -2698,6 +2797,16 @@ export default function JazzbaiSuperAdminPage() {
                     isActive: row.isActive,
                     isFeatured: row.isFeatured,
                   };
+                  const draftGalleryItems = resolveVenueGalleryDisplayItems(
+                    Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [],
+                    Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [],
+                    localImagePreviews,
+                  );
+                  const draftCoverDisplayUrl = resolveImageDisplayUrl(
+                    draft.coverImageUrl,
+                    draft.coverImageS3Key,
+                    localImagePreviews,
+                  );
                   return (
                     <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 14, display: "grid", gap: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
@@ -2733,7 +2842,7 @@ export default function JazzbaiSuperAdminPage() {
                                   website: draft.website || null,
                                   instagramHandle: draft.instagramHandle || null,
                                   googleMapsUrl: draft.googleMapsUrl || null,
-                                  googlePlaceId: draft.googlePlaceId || null,
+                                  googlePlaceId: draft.googlePlaceId || undefined,
                                   coverImageUrl: draft.coverImageUrl || null,
                                   coverImageS3Key: draft.coverImageS3Key || null,
                                   galleryImageUrls: Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [],
@@ -2850,8 +2959,8 @@ export default function JazzbaiSuperAdminPage() {
                                 }}
                               />
                               <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", overflow: "hidden", minHeight: 160 }}>
-                                {draft.coverImageUrl ? (
-                                  <img src={String(draft.coverImageUrl)} alt={`${row.name} cover`} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                                {draftCoverDisplayUrl ? (
+                                  <img src={draftCoverDisplayUrl} alt={`${row.name} cover`} style={{ width: "100%", height: 160, objectFit: "cover" }} />
                                 ) : (
                                   <div style={{ minHeight: 160, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted-foreground)" }}>
                                     No cover image
@@ -2862,11 +2971,11 @@ export default function JazzbaiSuperAdminPage() {
 
                             <div style={{ display: "grid", gap: 10 }}>
                               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Gallery images ({parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length}/{MAX_GALLERY_IMAGES})</span>
+                                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Gallery images ({draftGalleryItems.length}/{MAX_GALLERY_IMAGES})</span>
                                 <button
                                   type="button"
-                                  style={smallBtn("outline", uploadingVenueGalleryId === row.id || parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length >= MAX_GALLERY_IMAGES)}
-                                  disabled={uploadingVenueGalleryId === row.id || parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length >= MAX_GALLERY_IMAGES}
+                                  style={smallBtn("outline", uploadingVenueGalleryId === row.id || draftGalleryItems.length >= MAX_GALLERY_IMAGES)}
+                                  disabled={uploadingVenueGalleryId === row.id || draftGalleryItems.length >= MAX_GALLERY_IMAGES}
                                   onClick={() => venueGalleryInputRefs.current[row.id]?.click()}
                                 >
                                   {uploadingVenueGalleryId === row.id ? "Uploading..." : "Add Images"}
@@ -2885,7 +2994,7 @@ export default function JazzbaiSuperAdminPage() {
                                 }}
                               />
                               <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
-                                {parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).map((item, idx) => (
+                                {draftGalleryItems.map((item, idx) => (
                                   <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", background: "var(--secondary)" }}>
                                     <img src={item.url} alt={`${row.name} gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
                                     <button
@@ -2897,7 +3006,7 @@ export default function JazzbaiSuperAdminPage() {
                                     </button>
                                   </div>
                                 ))}
-                                {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - parseVenueGalleryItems(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [], Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : []).length) }).map((_, idx) => (
+                                {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - draftGalleryItems.length) }).map((_, idx) => (
                                   <div key={`${row.id}-gallery-empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 96, borderRadius: 10, border: "1px dashed var(--border)", color: "var(--muted-foreground)", fontSize: 11 }}>
                                     Empty slot
                                   </div>

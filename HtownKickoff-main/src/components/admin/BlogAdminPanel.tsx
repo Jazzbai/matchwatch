@@ -123,6 +123,7 @@ async function uploadImage(file: File) {
   const presigned = await api.post<{
     uploadUrl: string;
     publicUrl: string;
+    uploadHeaders?: Record<string, string>;
     key: string;
   }>("/super-admin/uploads/presigned-url", {
     filename: file.name,
@@ -133,7 +134,10 @@ async function uploadImage(file: File) {
 
   const uploadRes = await fetch(presigned.data.uploadUrl, {
     method: "PUT",
-    headers: { "Content-Type": file.type },
+    headers: {
+      "Content-Type": file.type,
+      ...(presigned.data.uploadHeaders || {}),
+    },
     body: file,
   });
 
