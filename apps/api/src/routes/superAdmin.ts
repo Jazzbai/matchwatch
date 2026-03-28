@@ -278,9 +278,9 @@ const updateBlogCategorySchema = z.object({
 const createBlogPostSchema = z.object({
     title: z.string().min(3).max(200),
     slug: z.string().max(220).optional(),
-    excerpt: z.string().max(500).optional(),
-    featuredImageUrl: z.string().url().optional(),
-    featuredImageS3Key: z.string().max(500).optional(),
+    excerpt: z.string().max(500).nullable().optional(),
+    featuredImageUrl: z.string().url().nullable().optional(),
+    featuredImageS3Key: z.string().max(500).nullable().optional(),
     contentJson: z.any().optional(),
     renderedHtml: z.string().default(''),
     status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),

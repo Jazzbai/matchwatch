@@ -6,7 +6,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import { ImagePlus, Link2, Plus, RefreshCcw } from "lucide-react";
-import { api } from "../../lib/api";
+import { api, ApiClientError } from "../../lib/api";
 
 type BlogCategory = {
   id: string;
@@ -71,6 +71,10 @@ type PostDraft = {
   categoryIds: string[];
 };
 
+const SUPPORTED_UPLOAD_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
+const SUPPORTED_UPLOAD_ACCEPT = SUPPORTED_UPLOAD_TYPES.join(",");
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
 const inputStyle: React.CSSProperties = {
   width: "100%",
   borderRadius: 10,
@@ -119,7 +123,39 @@ function toSlug(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+function formatApiError(error: unknown, fallback: string) {
+  if (error instanceof ApiClientError) {
+    if (Array.isArray(error.details) && error.details.length > 0) {
+      const issues = error.details
+        .map((issue) => {
+          if (!issue || typeof issue !== "object") return null;
+          const path = Array.isArray((issue as { path?: unknown }).path) ? (issue as { path: unknown[] }).path.join(".") : "";
+          const message = typeof (issue as { message?: unknown }).message === "string" ? (issue as { message: string }).message : null;
+          if (!message) return null;
+          return path ? `${path}: ${message}` : message;
+        })
+        .filter((value): value is string => Boolean(value));
+      if (issues.length > 0) return issues.join(" | ");
+    }
+    return error.message || fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
+function validateUploadFile(file: File) {
+  if (!SUPPORTED_UPLOAD_TYPES.includes(file.type as (typeof SUPPORTED_UPLOAD_TYPES)[number])) {
+    return "Unsupported image type. Use JPG, PNG, WebP, or GIF.";
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return "Image upload failed. Max file size is 4MB.";
+  }
+  return null;
+}
+
 async function uploadImage(file: File) {
+  const validationError = validateUploadFile(file);
+  if (validationError) throw new Error(validationError);
+
   const presigned = await api.post<{
     uploadUrl: string;
     publicUrl: string;
@@ -231,7 +267,7 @@ export function BlogAdminPanel() {
     try {
       await Promise.all([loadCategories(), loadPosts(), loadComments()]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load blog admin data");
+      setError(formatApiError(err, "Failed to load blog admin data"));
     } finally {
       setLoading(false);
     }
@@ -268,7 +304,7 @@ export function BlogAdminPanel() {
       await loadCategories();
       setMessage("Category saved");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save category");
+      setError(formatApiError(err, "Failed to save category"));
     } finally {
       setSaving(null);
     }
@@ -306,7 +342,7 @@ export function BlogAdminPanel() {
       await loadPosts();
       setMessage("Post saved");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save post");
+      setError(formatApiError(err, "Failed to save post"));
     } finally {
       setSaving(null);
     }
@@ -320,7 +356,7 @@ export function BlogAdminPanel() {
       const uploaded = await uploadImage(file);
       setPostDraft((prev) => ({ ...prev, featuredImageUrl: uploaded.url, featuredImageS3Key: uploaded.key }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Featured image upload failed");
+      setError(formatApiError(err, "Featured image upload failed"));
     } finally {
       setSaving(null);
     }
@@ -334,7 +370,7 @@ export function BlogAdminPanel() {
       const uploaded = await uploadImage(file);
       editor.chain().focus().setImage({ src: uploaded.url, alt: file.name }).run();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Inline image upload failed");
+      setError(formatApiError(err, "Inline image upload failed"));
     } finally {
       setSaving(null);
     }
@@ -428,8 +464,8 @@ export function BlogAdminPanel() {
               </div>
             </div>
 
-            <input ref={featuredUploadRef} type="file" accept="image/*" hidden onChange={(e) => void handleFeaturedUpload(e.target.files?.[0] || null)} />
-            <input ref={inlineUploadRef} type="file" accept="image/*" hidden onChange={(e) => void handleInlineUpload(e.target.files?.[0] || null)} />
+            <input ref={featuredUploadRef} type="file" accept={SUPPORTED_UPLOAD_ACCEPT} hidden onChange={(e) => void handleFeaturedUpload(e.target.files?.[0] || null)} />
+            <input ref={inlineUploadRef} type="file" accept={SUPPORTED_UPLOAD_ACCEPT} hidden onChange={(e) => void handleInlineUpload(e.target.files?.[0] || null)} />
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               <input style={inputStyle} placeholder="Title" value={postDraft.title} onChange={(e) => setPostDraft((prev) => ({ ...prev, title: e.target.value, slug: prev.slug || toSlug(e.target.value) }))} />
