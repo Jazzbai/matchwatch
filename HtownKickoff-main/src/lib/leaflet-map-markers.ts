@@ -71,7 +71,11 @@ export function createVenueClusterGroup(L: ClusterLeafletModule, compact = false
 
             return L.divIcon({
                 className: `venue-map-cluster venue-map-cluster--${density}`,
-                html: `<span class="venue-map-cluster__count">${count}</span>`,
+                html: `
+                    <span class="venue-map-cluster__bubble">
+                        <span class="venue-map-cluster__count">${count}</span>
+                    </span>
+                `,
                 iconSize: [size, size],
                 iconAnchor: [size / 2, size / 2],
             });

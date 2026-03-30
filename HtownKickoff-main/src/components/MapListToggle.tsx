@@ -71,24 +71,6 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
             .filter((venue) => Number.isFinite(venue.lat) && Number.isFinite(venue.lng) && Math.abs(venue.lat) > 0 && Math.abs(venue.lng) > 0),
         [venues],
     );
-    const mapDebug = useMemo(() => {
-        const invalidCoordinateCount = venues.filter((venue) => {
-            if (!Number.isFinite(venue.lat) || !Number.isFinite(venue.lng)) return true;
-            if (Math.abs(venue.lat) <= 0 || Math.abs(venue.lng) <= 0) return true;
-            return false;
-        }).length;
-        const uniqueCoordinateCount = new Set(
-            mappedVenues.map((venue) => `${venue.lat.toFixed(6)},${venue.lng.toFixed(6)}`),
-        ).size;
-
-        return {
-            totalVenues: venues.length,
-            mappedVenues: mappedVenues.length,
-            invalidCoordinateCount,
-            duplicateCoordinateCount: Math.max(mappedVenues.length - uniqueCoordinateCount, 0),
-            uniqueCoordinateCount,
-        };
-    }, [mappedVenues, venues]);
     const stickyTop = 96;
     const effectiveMapHeight: number | string = isMobile
         ? Math.min(mapHeight, 420)
@@ -254,45 +236,8 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
     );
 
     const mapPane = (
-        <div style={{ position: "relative", minHeight: effectiveMapHeight, height: effectiveMapHeight, borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", background: "var(--secondary)" }}>
+        <div style={{ minHeight: effectiveMapHeight, height: effectiveMapHeight, borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", background: "var(--secondary)" }}>
             <div ref={mapContainerRef} style={{ width: "100%", height: effectiveMapHeight }} />
-            <div
-                style={{
-                    position: "absolute",
-                    left: 12,
-                    bottom: 12,
-                    zIndex: 500,
-                    display: "grid",
-                    gap: 3,
-                    minWidth: 180,
-                    padding: "10px 12px",
-                    borderRadius: 12,
-                    border: "1px solid color-mix(in oklch, var(--border) 75%, transparent)",
-                    background: "color-mix(in oklch, var(--card) 90%, transparent)",
-                    backdropFilter: "blur(10px)",
-                    WebkitBackdropFilter: "blur(10px)",
-                    boxShadow: "0 10px 24px color-mix(in oklch, black 12%, transparent)",
-                    fontSize: 11,
-                    lineHeight: 1.35,
-                    pointerEvents: "none",
-                }}
-            >
-                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--primary)" }}>
-                    Map Debug
-                </div>
-                <div style={{ color: "var(--foreground)", fontWeight: 600 }}>
-                    {mapDebug.mappedVenues} mapped of {mapDebug.totalVenues} venues
-                </div>
-                <div style={{ color: "var(--muted-foreground)" }}>
-                    {mapDebug.invalidCoordinateCount} excluded for invalid coordinates
-                </div>
-                <div style={{ color: "var(--muted-foreground)" }}>
-                    {mapDebug.uniqueCoordinateCount} unique locations
-                </div>
-                <div style={{ color: "var(--muted-foreground)" }}>
-                    {mapDebug.duplicateCoordinateCount} duplicate coordinates
-                </div>
-            </div>
         </div>
     );
 
