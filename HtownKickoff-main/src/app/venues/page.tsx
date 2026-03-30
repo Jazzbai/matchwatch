@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { LocateFixed, MapPin, Search, X } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { MapListToggle } from "../../components/MapListToggle";
 import { PaginationControls } from "../../components/PaginationControls";
@@ -18,10 +18,12 @@ const PRICE_OPTIONS: Array<{ value: PriceRange; label: string }> = [
     { value: "LUXURY", label: "Luxury" },
 ];
 const PAGE_SIZE_OPTIONS = [12, 24, 48] as const;
-const LOCATION_PROMPT_STORAGE_KEY = "venues-location-prompt-v1";
+const LOCATION_SESSION_KEY = "venues-location-session-v1";
 
 type SortOption = "rating" | "reviews" | "name";
-type BrowserPermissionState = "idle" | "requesting" | "dismissed" | "applied" | "unsupported" | "error";
+type BrowserPermissionState = "idle" | "requesting" | "applied" | "unsupported" | "error";
+
+type DropdownKey = "price" | "state" | "city" | "amenity" | null;
 
 function parsePageSizeParam(value: string | null | undefined) {
     if (!value) return 12;
@@ -61,12 +63,10 @@ function FilterCheckbox({
     checked,
     label,
     onChange,
-    disabled = false,
 }: {
     checked: boolean;
     label: string;
     onChange: () => void;
-    disabled?: boolean;
 }) {
     return (
         <label
@@ -74,17 +74,16 @@ function FilterCheckbox({
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 10,
-                padding: "10px 12px",
                 width: "100%",
-                borderRadius: 14,
+                padding: "10px 12px",
+                borderRadius: 12,
                 border: checked ? "1px solid var(--primary)" : "1px solid var(--border)",
                 backgroundColor: checked ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "var(--secondary)",
                 color: checked ? "var(--foreground)" : "var(--muted-foreground)",
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: disabled ? "not-allowed" : "pointer",
-                opacity: disabled ? 0.55 : 1,
-                minHeight: 44,
+                cursor: "pointer",
+                minHeight: 42,
                 userSelect: "none",
             }}
         >
@@ -92,7 +91,6 @@ function FilterCheckbox({
                 type="checkbox"
                 checked={checked}
                 onChange={onChange}
-                disabled={disabled}
                 style={{ width: 16, height: 16, accentColor: "var(--primary)", flexShrink: 0 }}
             />
             <span>{label}</span>
@@ -100,37 +98,89 @@ function FilterCheckbox({
     );
 }
 
-function FilterSection({
+function FilterDropdown({
     title,
-    hint,
+    summary,
+    isOpen,
+    onToggle,
     onClear,
     isMobile,
     children,
 }: {
     title: string;
-    hint?: string;
+    summary: string;
+    isOpen: boolean;
+    onToggle: () => void;
     onClear?: () => void;
     isMobile: boolean;
     children: React.ReactNode;
 }) {
     return (
-        <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ display: "grid", gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</span>
-                    {hint ? <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{hint}</span> : null}
+        <div style={{ position: "relative", minWidth: isMobile ? "100%" : 180, flex: isMobile ? "1 1 100%" : "0 1 220px" }}>
+            <button
+                type="button"
+                onClick={onToggle}
+                style={{
+                    width: "100%",
+                    minHeight: 44,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--secondary)",
+                    color: "var(--foreground)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textAlign: "left",
+                }}
+            >
+                <span style={{ display: "grid", gap: 2 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>{title}</span>
+                    <span>{summary}</span>
+                </span>
+                <ChevronDown size={16} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }} />
+            </button>
+            {isOpen ? (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: "calc(100% + 8px)",
+                        left: 0,
+                        zIndex: 20,
+                        width: isMobile ? "100%" : 320,
+                        maxWidth: "min(92vw, 360px)",
+                        maxHeight: 320,
+                        overflowY: "auto",
+                        display: "grid",
+                        gap: 12,
+                        padding: 14,
+                        borderRadius: 16,
+                        border: "1px solid var(--border)",
+                        backgroundColor: "var(--card)",
+                        boxShadow: "0 18px 40px rgba(0, 0, 0, 0.14)",
+                    }}
+                >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--foreground)" }}>{title}</span>
+                        {onClear ? (
+                            <button
+                                type="button"
+                                onClick={onClear}
+                                style={{ border: "none", background: "transparent", color: "var(--primary)", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}
+                            >
+                                Clear
+                            </button>
+                        ) : null}
+                    </div>
+                    <div style={{ display: "grid", gap: 10, gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(132px, 1fr))" }}>
+                        {children}
+                    </div>
                 </div>
-                {onClear ? (
-                    <button
-                        type="button"
-                        onClick={onClear}
-                        style={{ border: "1px solid var(--border)", background: "transparent", color: "var(--muted-foreground)", borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                    >
-                        Clear
-                    </button>
-                ) : null}
-            </div>
-            <div style={{ display: "grid", gap: 10, gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(180px, 1fr))" }}>{children}</div>
+            ) : null}
         </div>
     );
 }
@@ -147,15 +197,16 @@ function VenuesPageContent() {
     const [selectedCities, setSelectedCities] = useState<string[]>([]);
     const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
     const [sortBy, setSortBy] = useState<SortOption>("rating");
-    const [locationPromptVisible, setLocationPromptVisible] = useState(false);
     const [locationPermissionState, setLocationPermissionState] = useState<BrowserPermissionState>("idle");
     const [locationMessage, setLocationMessage] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(false);
+    const [openDropdown, setOpenDropdown] = useState<DropdownKey>(null);
 
     const requestedPage = parsePageParam(searchParams.get("page"));
     const pageSize = parsePageSizeParam(searchParams.get("pageSize"));
     const syncArchivePageRef = useRef<(nextPage: number, nextPageSize?: number) => void>(() => {});
     const hasInitializedPageReset = useRef(false);
+    const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
 
     const activeVenues = useMemo(() => VENUES.filter((venue) => venue.isActive), [VENUES]);
     const stateOptions = useMemo(
@@ -206,19 +257,50 @@ function VenuesPageContent() {
     }, []);
 
     useEffect(() => {
+        function handleOutsideClick(event: MouseEvent) {
+            if (!dropdownContainerRef.current?.contains(event.target as Node)) {
+                setOpenDropdown(null);
+            }
+        }
+
+        document.addEventListener("mousedown", handleOutsideClick);
+        return () => document.removeEventListener("mousedown", handleOutsideClick);
+    }, []);
+
+    useEffect(() => {
         if (typeof window === "undefined") return;
-        const storedPreference = window.localStorage.getItem(LOCATION_PROMPT_STORAGE_KEY);
-        if (!storedPreference) {
-            setLocationPromptVisible(true);
+        if (window.sessionStorage.getItem(LOCATION_SESSION_KEY) === "done") return;
+        window.sessionStorage.setItem(LOCATION_SESSION_KEY, "done");
+
+        if (!("geolocation" in navigator)) {
+            setLocationPermissionState("unsupported");
             return;
         }
 
-        if (storedPreference === "dismissed") {
-            setLocationPermissionState("dismissed");
-        } else if (storedPreference === "applied") {
-            setLocationPermissionState("applied");
-        }
-    }, []);
+        setLocationPermissionState("requesting");
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const nearestVenue = nearestVenueByCoordinates(activeVenues, position.coords.latitude, position.coords.longitude);
+                if (!nearestVenue) {
+                    setLocationPermissionState("error");
+                    setLocationMessage("No venue coordinates are available yet for location matching.");
+                    return;
+                }
+
+                const nextState = nearestVenue.state.trim();
+                const nextCity = nearestVenue.city.trim();
+                setSelectedStates(nextState ? [nextState] : []);
+                setSelectedCities(nextCity ? [nextCity] : []);
+                setLocationPermissionState("applied");
+                setLocationMessage(nextCity ? `Showing venues in ${nextCity}${nextState ? `, ${nextState}` : ""}.` : "Showing venues closest to your current area.");
+            },
+            () => {
+                setLocationPermissionState("error");
+                setLocationMessage("Location access was not granted. You can still filter manually.");
+            },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+        );
+    }, [activeVenues]);
 
     const filtered = useMemo(() => activeVenues
         .filter((venue) => {
@@ -257,68 +339,8 @@ function VenuesPageContent() {
             hasInitializedPageReset.current = true;
             return;
         }
-
         syncArchivePageRef.current(1);
     }, [searchQuery, selectedPrices, selectedStates, selectedCities, selectedAmenities, sortBy]);
-
-    const applyNearestVenueLocation = (venue: Venue) => {
-        const nextState = venue.state.trim();
-        const nextCity = venue.city.trim();
-
-        setSelectedStates(nextState ? [nextState] : []);
-        setSelectedCities(nextCity ? [nextCity] : []);
-        setLocationPermissionState("applied");
-        setLocationPromptVisible(false);
-        setLocationMessage(nextCity
-            ? `Showing venues in ${nextCity}${nextState ? `, ${nextState}` : ""}.`
-            : "Showing venues closest to your current area.");
-
-        if (typeof window !== "undefined") {
-            window.localStorage.setItem(LOCATION_PROMPT_STORAGE_KEY, "applied");
-        }
-    };
-
-    const requestUserLocation = () => {
-        if (typeof window === "undefined") return;
-        if (!("geolocation" in navigator)) {
-            setLocationPermissionState("unsupported");
-            setLocationMessage("Location is not supported in this browser.");
-            setLocationPromptVisible(false);
-            window.localStorage.setItem(LOCATION_PROMPT_STORAGE_KEY, "dismissed");
-            return;
-        }
-
-        setLocationPermissionState("requesting");
-        setLocationMessage(null);
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const nearestVenue = nearestVenueByCoordinates(activeVenues, position.coords.latitude, position.coords.longitude);
-                if (!nearestVenue) {
-                    setLocationPermissionState("error");
-                    setLocationMessage("No venue coordinates are available yet for location matching.");
-                    return;
-                }
-
-                applyNearestVenueLocation(nearestVenue);
-            },
-            () => {
-                setLocationPermissionState("error");
-                setLocationMessage("We could not access your location. You can still filter manually.");
-                setLocationPromptVisible(false);
-                window.localStorage.setItem(LOCATION_PROMPT_STORAGE_KEY, "dismissed");
-            },
-            { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
-        );
-    };
-
-    const dismissLocationPrompt = () => {
-        setLocationPermissionState("dismissed");
-        setLocationPromptVisible(false);
-        if (typeof window !== "undefined") {
-            window.localStorage.setItem(LOCATION_PROMPT_STORAGE_KEY, "dismissed");
-        }
-    };
 
     const clearAllFilters = () => {
         setSearchQuery("");
@@ -330,11 +352,11 @@ function VenuesPageContent() {
         setLocationMessage(null);
     };
 
-    const hasActiveFilters = searchQuery.trim().length > 0
-        || selectedPrices.length > 0
-        || selectedStates.length > 0
-        || selectedCities.length > 0
-        || selectedAmenities.length > 0;
+    const priceSummary = selectedPrices.length > 0 ? `${selectedPrices.length} selected` : "Any price";
+    const stateSummary = selectedStates.length > 0 ? `${selectedStates.length} selected` : "All states";
+    const citySummary = selectedCities.length > 0 ? `${selectedCities.length} selected` : "All cities";
+    const amenitySummary = selectedAmenities.length > 0 ? `${selectedAmenities.length} selected` : "Any amenity";
+    const hasActiveFilters = searchQuery.trim().length > 0 || selectedPrices.length > 0 || selectedStates.length > 0 || selectedCities.length > 0 || selectedAmenities.length > 0;
 
     return (
         <AppShell>
@@ -342,47 +364,14 @@ function VenuesPageContent() {
                 <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--primary)" }}>EXPLORE</div>
                 <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 36, fontWeight: 900, color: "var(--foreground)", marginBottom: 8, letterSpacing: "-0.02em" }}>Venues</h1>
                 <p style={{ fontSize: 15, color: "var(--muted-foreground)", maxWidth: 640, lineHeight: 1.6, fontWeight: 500 }}>
-                    Discover bars, lounges, and restaurants hosting major match watch parties and daily sports viewing. Filters now support multi-select combinations, including state-first location browsing.
+                    Discover bars, lounges, and restaurants hosting major match watch parties and daily sports viewing. Filters support multi-select combinations, including state-first location browsing.
                 </p>
             </section>
 
             <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 20px" }}>
-                <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: isMobile ? "16px" : "20px 24px", display: "grid", gap: 20 }}>
-                    {locationPromptVisible ? (
-                        <div style={{ display: "grid", gap: 12, padding: 16, borderRadius: 16, border: "1px solid color-mix(in oklch, var(--primary) 30%, var(--border))", backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)" }}>
-                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                                <div style={{ display: "grid", gap: 6 }}>
-                                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 800, color: "var(--primary)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                                        <LocateFixed size={14} />
-                                        Use Your Location
-                                    </div>
-                                    <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--foreground)" }}>
-                                        Start with venues in the city nearest to your current location. We use your device location once to preset the State and City filters.
-                                    </p>
-                                </div>
-                                <button type="button" onClick={dismissLocationPrompt} style={{ border: "none", background: "transparent", color: "var(--muted-foreground)", cursor: "pointer", padding: 4 }} aria-label="Dismiss location prompt">
-                                    <X size={16} />
-                                </button>
-                            </div>
-                            <div style={{ display: "grid", gap: 10, gridTemplateColumns: isMobile ? "1fr" : "repeat(2, max-content)" }}>
-                                <button
-                                    type="button"
-                                    onClick={requestUserLocation}
-                                    disabled={locationPermissionState === "requesting"}
-                                    style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 999, border: "none", backgroundColor: "var(--primary)", color: "var(--primary-foreground)", fontSize: 13, fontWeight: 700, cursor: locationPermissionState === "requesting" ? "wait" : "pointer", justifyContent: "center", width: "100%" }}
-                                >
-                                    <LocateFixed size={16} />
-                                    {locationPermissionState === "requesting" ? "Checking location..." : "Use my location"}
-                                </button>
-                                <button type="button" onClick={dismissLocationPrompt} style={{ padding: "10px 16px", borderRadius: 999, border: "1px solid var(--border)", background: "transparent", color: "var(--muted-foreground)", fontSize: 13, fontWeight: 700, cursor: "pointer", width: "100%" }}>
-                                    Not now
-                                </button>
-                            </div>
-                        </div>
-                    ) : null}
-
+                <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: isMobile ? "16px" : "20px 24px", display: "grid", gap: 16 }}>
                     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, flexDirection: isMobile ? "column" : "row" }}>
-                        <div style={{ position: "relative", flex: "1 1 320px", maxWidth: isMobile ? "100%" : 520, width: "100%" }}>
+                        <div style={{ position: "relative", flex: "1 1 320px", maxWidth: isMobile ? "100%" : 420, width: "100%" }}>
                             <input
                                 type="text"
                                 placeholder="Search venues, cuisine, neighborhoods, city, or state..."
@@ -392,83 +381,6 @@ function VenuesPageContent() {
                             />
                             <Search style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", width: 16, height: 16, color: "var(--muted-foreground)" }} />
                         </div>
-
-                        <div style={{ display: "grid", gap: 10, width: isMobile ? "100%" : "auto", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, max-content)" }}>
-                            <button type="button" onClick={requestUserLocation} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 999, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--foreground)", fontSize: 13, fontWeight: 700, cursor: "pointer", justifyContent: "center", width: "100%" }}>
-                                <MapPin size={15} />
-                                Use my location
-                            </button>
-                            {hasActiveFilters ? (
-                                <button type="button" onClick={clearAllFilters} style={{ padding: "10px 14px", borderRadius: 999, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", fontSize: 13, fontWeight: 700, cursor: "pointer", width: "100%" }}>
-                                    Clear all filters
-                                </button>
-                            ) : null}
-                        </div>
-                    </div>
-
-                    {locationMessage ? <div style={{ fontSize: 13, fontWeight: 600, color: "var(--primary)" }}>{locationMessage}</div> : null}
-
-                    <div style={{ height: 1, backgroundColor: "var(--border)" }} />
-
-                    <div style={{ display: "grid", gap: 20 }}>
-                        <FilterSection title="Price" hint="Choose one or more budget levels. Leave empty to include all prices." onClear={selectedPrices.length > 0 ? () => setSelectedPrices([]) : undefined} isMobile={isMobile}>
-                            {PRICE_OPTIONS.map((option) => (
-                                <FilterCheckbox
-                                    key={option.value}
-                                    checked={selectedPrices.includes(option.value)}
-                                    label={option.label}
-                                    onChange={() => setSelectedPrices((current) => toggleSelection(current, option.value) as PriceRange[])}
-                                />
-                            ))}
-                        </FilterSection>
-
-                        <div style={{ display: "grid", gap: 20 }}>
-                            <div style={{ display: "grid", gap: 4 }}>
-                                <span style={{ fontSize: 11, fontWeight: 800, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Location</span>
-                                <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Filter by state first, then narrow to one or more cities inside those states.</span>
-                            </div>
-
-                            <FilterSection title="State" hint="Select one or more states." onClear={selectedStates.length > 0 ? () => setSelectedStates([]) : undefined} isMobile={isMobile}>
-                                {stateOptions.map((state) => (
-                                    <FilterCheckbox
-                                        key={state}
-                                        checked={selectedStates.includes(state)}
-                                        label={state}
-                                        onChange={() => setSelectedStates((current) => toggleSelection(current, state))}
-                                    />
-                                ))}
-                            </FilterSection>
-
-                            <FilterSection title="City" hint={selectedStates.length > 0 ? "Cities are limited to the selected states." : "Select one or more cities across all active venues."} onClear={selectedCities.length > 0 ? () => setSelectedCities([]) : undefined} isMobile={isMobile}>
-                                {cityOptions.length > 0 ? cityOptions.map((city) => (
-                                    <FilterCheckbox
-                                        key={city}
-                                        checked={selectedCities.includes(city)}
-                                        label={city}
-                                        onChange={() => setSelectedCities((current) => toggleSelection(current, city))}
-                                    />
-                                )) : <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No cities match the selected states.</span>}
-                            </FilterSection>
-                        </div>
-
-                        <FilterSection title="Amenities" hint="Choose any combination of amenities. A venue matches if it has at least one selected amenity." onClear={selectedAmenities.length > 0 ? () => setSelectedAmenities([]) : undefined} isMobile={isMobile}>
-                            {amenityOptions.map(([key, value]) => (
-                                <FilterCheckbox
-                                    key={key}
-                                    checked={selectedAmenities.includes(key)}
-                                    label={value.label}
-                                    onChange={() => setSelectedAmenities((current) => toggleSelection(current, key))}
-                                />
-                            ))}
-                        </FilterSection>
-                    </div>
-
-                    <div style={{ height: 1, backgroundColor: "var(--border)" }} />
-
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, flexDirection: isMobile ? "column" : "row" }}>
-                        <span style={{ fontSize: 13, color: "var(--muted-foreground)", fontWeight: 600 }}>
-                            Showing {paginatedVenues.length} on this page, {filtered.length} venue{filtered.length !== 1 ? "s" : ""} total
-                        </span>
 
                         <div style={{ display: "grid", gap: 12, width: isMobile ? "100%" : "auto", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, max-content)" }}>
                             <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "var(--muted-foreground)", justifyContent: isMobile ? "space-between" : "flex-start" }}>
@@ -489,6 +401,50 @@ function VenuesPageContent() {
                                 </select>
                             </label>
                         </div>
+                    </div>
+
+                    {locationMessage ? <div style={{ fontSize: 13, fontWeight: 600, color: locationPermissionState === "error" ? "var(--muted-foreground)" : "var(--primary)" }}>{locationMessage}</div> : null}
+
+                    <div ref={dropdownContainerRef} style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                        <FilterDropdown title="Price" summary={priceSummary} isOpen={openDropdown === "price"} onToggle={() => setOpenDropdown((current) => current === "price" ? null : "price")} onClear={selectedPrices.length > 0 ? () => setSelectedPrices([]) : undefined} isMobile={isMobile}>
+                            {PRICE_OPTIONS.map((option) => (
+                                <FilterCheckbox
+                                    key={option.value}
+                                    checked={selectedPrices.includes(option.value)}
+                                    label={option.label}
+                                    onChange={() => setSelectedPrices((current) => toggleSelection(current, option.value) as PriceRange[])}
+                                />
+                            ))}
+                        </FilterDropdown>
+
+                        <FilterDropdown title="State" summary={stateSummary} isOpen={openDropdown === "state"} onToggle={() => setOpenDropdown((current) => current === "state" ? null : "state")} onClear={selectedStates.length > 0 ? () => setSelectedStates([]) : undefined} isMobile={isMobile}>
+                            {stateOptions.map((state) => (
+                                <FilterCheckbox key={state} checked={selectedStates.includes(state)} label={state} onChange={() => setSelectedStates((current) => toggleSelection(current, state))} />
+                            ))}
+                        </FilterDropdown>
+
+                        <FilterDropdown title="City" summary={citySummary} isOpen={openDropdown === "city"} onToggle={() => setOpenDropdown((current) => current === "city" ? null : "city")} onClear={selectedCities.length > 0 ? () => setSelectedCities([]) : undefined} isMobile={isMobile}>
+                            {cityOptions.length > 0 ? cityOptions.map((city) => (
+                                <FilterCheckbox key={city} checked={selectedCities.includes(city)} label={city} onChange={() => setSelectedCities((current) => toggleSelection(current, city))} />
+                            )) : <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No cities match the selected states.</span>}
+                        </FilterDropdown>
+
+                        <FilterDropdown title="Amenities" summary={amenitySummary} isOpen={openDropdown === "amenity"} onToggle={() => setOpenDropdown((current) => current === "amenity" ? null : "amenity")} onClear={selectedAmenities.length > 0 ? () => setSelectedAmenities([]) : undefined} isMobile={isMobile}>
+                            {amenityOptions.map(([key, value]) => (
+                                <FilterCheckbox key={key} checked={selectedAmenities.includes(key)} label={value.label} onChange={() => setSelectedAmenities((current) => toggleSelection(current, key))} />
+                            ))}
+                        </FilterDropdown>
+                    </div>
+
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                        <span style={{ fontSize: 13, color: "var(--muted-foreground)", fontWeight: 600 }}>
+                            Showing {paginatedVenues.length} on this page, {filtered.length} venue{filtered.length !== 1 ? "s" : ""} total
+                        </span>
+                        {hasActiveFilters ? (
+                            <button type="button" onClick={clearAllFilters} style={{ padding: "10px 14px", borderRadius: 999, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                                Clear all filters
+                            </button>
+                        ) : null}
                     </div>
                 </div>
             </section>
