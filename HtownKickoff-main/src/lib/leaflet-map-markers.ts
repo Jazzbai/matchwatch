@@ -68,12 +68,39 @@ export function createVenueClusterGroup(L: ClusterLeafletModule, compact = false
             const count = cluster.getChildCount();
             const density = count < 10 ? "sm" : count < 50 ? "md" : "lg";
             const size = density === "sm" ? 30 : density === "md" ? 34 : 38;
+            const fontSize = density === "sm" ? 12 : density === "md" ? 13 : 14;
 
             return L.divIcon({
                 className: `venue-map-cluster venue-map-cluster--${density}`,
                 html: `
-                    <span class="venue-map-cluster__bubble">
-                        <span class="venue-map-cluster__count">${count}</span>
+                    <span
+                        class="venue-map-cluster__bubble"
+                        style="
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            width:${size}px;
+                            height:${size}px;
+                            border-radius:999px;
+                            border:2px solid rgba(255,255,255,0.72);
+                            background:linear-gradient(180deg,#32c36c 0%,#17924b 100%);
+                            box-shadow:0 10px 24px rgba(23,146,75,0.32), inset 0 1px 0 rgba(255,255,255,0.28);
+                            color:#ffffff;
+                            font-weight:900;
+                            line-height:1;
+                        "
+                    >
+                        <span
+                            class="venue-map-cluster__count"
+                            style="
+                                display:block;
+                                width:100%;
+                                text-align:center;
+                                font-size:${fontSize}px;
+                                letter-spacing:-0.02em;
+                                text-shadow:0 1px 1px rgba(0,0,0,0.28);
+                            "
+                        >${count}</span>
                     </span>
                 `,
                 iconSize: [size, size],
