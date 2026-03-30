@@ -29,7 +29,12 @@ import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import { useAuth } from "../../lib/auth-context";
 import { api, uploadApi, type GooglePlaceDetailsResponse, type GooglePlaceSnapshot } from "../../lib/api";
 import { useData } from "../../lib/data-provider";
-import { EVENT_WATCH_PARTY_TYPES } from "../../lib/tags";
+import {
+  DIETARY_TAGS,
+  DRINK_TAGS,
+  EVENT_WATCH_PARTY_TYPES,
+  VENUE_FEATURE_TAGS,
+} from "../../lib/tags";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -135,6 +140,7 @@ type VenueProfile = {
   name?: string | null;
   description?: string | null;
   shortDescription?: string | null;
+  amenities?: string[];
   phone?: string | null;
   addressLine1?: string | null;
   city?: string | null;
@@ -409,6 +415,7 @@ export default function AdminPage() {
   const [venueName, setVenueName] = React.useState("");
   const [venueDescription, setVenueDescription] = React.useState("");
   const [venueShortDescription, setVenueShortDescription] = React.useState("");
+  const [venueAmenities, setVenueAmenities] = React.useState<string[]>([]);
   const [venuePhone, setVenuePhone] = React.useState("");
   const [venueAddressLine1, setVenueAddressLine1] = React.useState("");
   const [venueCity, setVenueCity] = React.useState("");
@@ -425,6 +432,7 @@ export default function AdminPage() {
   const [venueApprovalNotes, setVenueApprovalNotes] = React.useState<string | null>(null);
   const [menuSourceState, setMenuSourceState] = React.useState<"google" | "manual" | "none">("none");
   const [googleDefaults, setGoogleDefaults] = React.useState<GooglePlaceSnapshot | null>(null);
+  const [linkingGooglePlace, setLinkingGooglePlace] = React.useState(false);
   const [refreshingGoogleData, setRefreshingGoogleData] = React.useState(false);
   const [revertingGoogleData, setRevertingGoogleData] = React.useState(false);
   const [coverImageUrl, setCoverImageUrl] = React.useState("");
@@ -567,6 +575,7 @@ export default function AdminPage() {
         setVenueName("");
         setVenueDescription("");
         setVenueShortDescription("");
+        setVenueAmenities([]);
         setVenuePhone("");
         setVenueAddressLine1("");
         setVenueCity("");
@@ -619,6 +628,7 @@ export default function AdminPage() {
       setVenueName(profile.name || "");
       setVenueDescription(profile.description || "");
       setVenueShortDescription(profile.shortDescription || "");
+      setVenueAmenities(Array.isArray(profile.amenities) ? profile.amenities : []);
       setVenuePhone(profile.phone || "");
       setVenueAddressLine1(profile.addressLine1 || "");
       setVenueCity(profile.city || "");
@@ -692,7 +702,7 @@ export default function AdminPage() {
     }
   }, [menu, newMenuItemCategoryId]);
 
-  const applyOwnerVenueGoogleDefaults = React.useCallback((details: GooglePlaceDetailsResponse) => {
+  const applyOwnerVenueGoogleDefaults = React.useCallback(async (details: GooglePlaceDetailsResponse) => {
     const defaults = applyGoogleDefaultsToVenueForm(details.defaults);
     setVenueGooglePlaceId(defaults.googlePlaceId);
     setVenueName(defaults.name);
@@ -708,7 +718,23 @@ export default function AdminPage() {
     setVenueWebsite(defaults.website);
     setVenueGoogleMapsUrl(defaults.googleMapsUrl);
     setGoogleDefaults(details.defaults);
-  }, []);
+    if (!selectedVenueId || !details.googlePlaceId?.trim()) {
+      return;
+    }
+
+    setLinkingGooglePlace(true);
+    setError(null);
+    try {
+      await api.put(dashboardPath("/dashboard/venue"), {
+        googlePlaceId: details.googlePlaceId.trim(),
+      });
+      await Promise.all([loadDashboard(), refetch()]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to link Google Business profile");
+    } finally {
+      setLinkingGooglePlace(false);
+    }
+  }, [dashboardPath, loadDashboard, refetch, selectedVenueId]);
 
   const applyNewVenueGoogleDefaults = React.useCallback((details: GooglePlaceDetailsResponse) => {
     const defaults = applyGoogleDefaultsToVenueForm(details.defaults);
@@ -716,6 +742,12 @@ export default function AdminPage() {
       ...prev,
       ...defaults,
     }));
+  }, []);
+
+  const toggleVenueAmenity = React.useCallback((tag: string) => {
+    setVenueAmenities((prev) =>
+      prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag],
+    );
   }, []);
 
   const createMatchEvent = async () => {
@@ -990,6 +1022,7 @@ export default function AdminPage() {
         phone: venuePhone.trim() || undefined,
         website: venueWebsite.trim() || undefined,
         googleMapsUrl: venueGoogleMapsUrl.trim() || undefined,
+        amenities: venueAmenities,
         coverImageUrl: coverImageUrl || undefined,
         coverImageS3Key: coverImageS3Key || undefined,
         galleryImageUrls: galleryItems.map((item) => item.url),
@@ -1762,12 +1795,19 @@ export default function AdminPage() {
 
                   <GooglePlacePicker
                     initialPlaceId={venueGooglePlaceId}
+                    disabled={linkingGooglePlace}
                     onPlaceResolved={applyOwnerVenueGoogleDefaults}
                   />
 
+                  {linkingGooglePlace ? (
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                      Linking Google Business profile and storing photo suggestions...
+                    </div>
+                  ) : null}
+
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     <button style={btnOutline(refreshingGoogleData || !venueGooglePlaceId)} disabled={refreshingGoogleData || !venueGooglePlaceId} onClick={() => void refreshVenueGoogleData()}>
-                      {refreshingGoogleData ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Refreshing</> : "Refresh Google Data"}
+                      {refreshingGoogleData ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Re-syncing</> : "Re-sync Google Data"}
                     </button>
                     <button style={btnOutline(revertingGoogleData || !googleDefaults)} disabled={revertingGoogleData || !googleDefaults} onClick={() => void revertVenueToGoogleDefaults()}>
                       {revertingGoogleData ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Reverting</> : "Revert to Google Defaults"}
@@ -1837,7 +1877,7 @@ export default function AdminPage() {
                     </div>
                   ) : (
                     <div style={{ borderRadius: 12, border: "1px dashed var(--border)", padding: 16, fontSize: 12, color: "var(--muted-foreground)" }}>
-                      Refresh Google data after linking a Google Business profile to fetch and score photo suggestions automatically.
+                      Link a Google Business profile above to fetch and score photo suggestions automatically. Use re-sync only if you want to refresh Google photos later.
                     </div>
                   )}
                 </div>
@@ -1901,12 +1941,63 @@ export default function AdminPage() {
 
                 <div style={{ marginBottom: 20 }}>
                   <label style={labelStyle}>Short description</label>
-                  <textarea value={venueShortDescription} onChange={(e) => setVenueShortDescription(e.target.value)} placeholder="Short public summary." style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} />
+                  <div style={{ marginBottom: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                    Keep this to one tight sentence. Focus on what makes the venue worth booking for match day: crowd, screen setup, signature food, patio, or neighborhood draw.
+                  </div>
+                  <textarea value={venueShortDescription} onChange={(e) => setVenueShortDescription(e.target.value)} placeholder="Example: Energetic sports bar with giant projector screens, patio seating, and game-day drink specials in Midtown." style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} />
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
                   <label style={labelStyle}>Description</label>
-                  <textarea value={venueDescription} onChange={(e) => setVenueDescription(e.target.value)} placeholder="Describe your venue atmosphere, food, and watch-party setup." style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} />
+                  <div style={{ marginBottom: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                    Write 3 to 5 concrete sentences. Cover the atmosphere, screen and sound setup, seating style, food and drink strengths, parking or reservation details, and what makes your venue different on match days.
+                  </div>
+                  <textarea value={venueDescription} onChange={(e) => setVenueDescription(e.target.value)} placeholder="Example: MatchWatch guests come here for a loud, high-energy soccer crowd, two projector walls, and guaranteed sound for major fixtures. We serve craft beer, wings, tacos, and late-night snacks, with patio overflow seating for big tournaments. Free parking is available behind the building, and larger groups should reserve early for derby and finals nights." style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} />
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Amenities & watch-party features</label>
+                  <div style={{ marginBottom: 10, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                    Select the features guests care about most before booking: screen size, sound, drinks, parking, patio, accessibility, Wi-Fi, and special service options. These show up as public venue badges.
+                  </div>
+
+                  <div style={{ display: "grid", gap: 14 }}>
+                    <div>
+                      <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>Drinks & service</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
+                        {DRINK_TAGS.map((tag) => (
+                          <label key={tag} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", cursor: "pointer" }}>
+                            <input type="checkbox" checked={venueAmenities.includes(tag)} onChange={() => toggleVenueAmenity(tag)} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--primary)" }} />
+                            <span style={{ fontSize: 13, color: "var(--foreground)" }}>{tag}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>Venue features</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
+                        {VENUE_FEATURE_TAGS.map((tag) => (
+                          <label key={tag} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", cursor: "pointer" }}>
+                            <input type="checkbox" checked={venueAmenities.includes(tag)} onChange={() => toggleVenueAmenity(tag)} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--primary)" }} />
+                            <span style={{ fontSize: 13, color: "var(--foreground)" }}>{tag}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>Dietary & guest needs</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
+                        {DIETARY_TAGS.map((tag) => (
+                          <label key={tag} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", cursor: "pointer" }}>
+                            <input type="checkbox" checked={venueAmenities.includes(tag)} onChange={() => toggleVenueAmenity(tag)} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--primary)" }} />
+                            <span style={{ fontSize: 13, color: "var(--foreground)" }}>{tag}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Cover + Gallery */}

@@ -82,7 +82,9 @@ placeRoutes.get('/details', async (c) => {
         return c.json(apiResponse({
             googlePlaceId: snapshot.placeId,
             snapshot,
-            defaults: buildVenueGoogleDefaults(snapshot),
+            defaults: buildVenueGoogleDefaults(snapshot, {
+                slugOrId: existingVenue?.slug || existingVenue?.id,
+            }),
             existingVenue: existingVenue ? {
                 id: existingVenue.id,
                 name: existingVenue.name,
