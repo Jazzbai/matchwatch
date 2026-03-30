@@ -25,6 +25,10 @@ type BrowserPermissionState = "idle" | "requesting" | "applied" | "unsupported" 
 
 type DropdownKey = "price" | "state" | "city" | "amenity" | null;
 
+function normalizeFilterValue(value: string | null | undefined) {
+    return (value || "").trim();
+}
+
 function parsePageSizeParam(value: string | null | undefined) {
     if (!value) return 12;
     const parsed = Number.parseInt(value, 10);
@@ -105,6 +109,10 @@ function FilterDropdown({
     onToggle,
     onClear,
     isMobile,
+    searchValue,
+    onSearchChange,
+    searchPlaceholder,
+    emptyState,
     children,
 }: {
     title: string;
@@ -113,6 +121,10 @@ function FilterDropdown({
     onToggle: () => void;
     onClear?: () => void;
     isMobile: boolean;
+    searchValue?: string;
+    onSearchChange?: (value: string) => void;
+    searchPlaceholder?: string;
+    emptyState?: string;
     children: React.ReactNode;
 }) {
     return (
@@ -176,9 +188,37 @@ function FilterDropdown({
                             </button>
                         ) : null}
                     </div>
-                    <div style={{ display: "grid", gap: 10, gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(132px, 1fr))" }}>
-                        {children}
-                    </div>
+                    {onSearchChange ? (
+                        <div style={{ position: "relative" }}>
+                            <input
+                                type="text"
+                                value={searchValue || ""}
+                                onChange={(event) => onSearchChange(event.target.value)}
+                                placeholder={searchPlaceholder || `Search ${title.toLowerCase()}...`}
+                                style={{
+                                    width: "100%",
+                                    minHeight: 40,
+                                    padding: "10px 12px 10px 38px",
+                                    borderRadius: 12,
+                                    border: "1px solid var(--border)",
+                                    backgroundColor: "var(--secondary)",
+                                    color: "var(--foreground)",
+                                    fontFamily: "inherit",
+                                    fontSize: 13,
+                                    fontWeight: 500,
+                                    outline: "none",
+                                }}
+                            />
+                            <Search style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--muted-foreground)" }} />
+                        </div>
+                    ) : null}
+                    {React.Children.count(children) > 0 ? (
+                        <div style={{ display: "grid", gap: 10, gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(132px, 1fr))" }}>
+                            {children}
+                        </div>
+                    ) : (
+                        <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{emptyState || `No ${title.toLowerCase()} match your search.`}</span>
+                    )}
                 </div>
             ) : null}
         </div>
@@ -201,6 +241,9 @@ function VenuesPageContent() {
     const [locationMessage, setLocationMessage] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<DropdownKey>(null);
+    const [stateSearchQuery, setStateSearchQuery] = useState("");
+    const [citySearchQuery, setCitySearchQuery] = useState("");
+    const [amenitySearchQuery, setAmenitySearchQuery] = useState("");
 
     const requestedPage = parsePageParam(searchParams.get("page"));
     const pageSize = parsePageSizeParam(searchParams.get("pageSize"));
@@ -210,14 +253,13 @@ function VenuesPageContent() {
 
     const activeVenues = useMemo(() => VENUES.filter((venue) => venue.isActive), [VENUES]);
     const stateOptions = useMemo(
-        () => Array.from(new Set(activeVenues.map((venue) => venue.state.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+        () => Array.from(new Set(activeVenues.map((venue) => normalizeFilterValue(venue.state)).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
         [activeVenues],
     );
     const cityOptions = useMemo(() => {
-        const narrowedVenues = selectedStates.length > 0
-            ? activeVenues.filter((venue) => selectedStates.includes(venue.state.trim()))
-            : activeVenues;
-        return Array.from(new Set(narrowedVenues.map((venue) => venue.city.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+        if (selectedStates.length === 0) return [];
+        const narrowedVenues = activeVenues.filter((venue) => selectedStates.includes(normalizeFilterValue(venue.state)));
+        return Array.from(new Set(narrowedVenues.map((venue) => normalizeFilterValue(venue.city)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
     }, [activeVenues, selectedStates]);
     const amenityOptions = useMemo(
         () => Object.entries(AMENITY_LABELS)
@@ -225,6 +267,24 @@ function VenuesPageContent() {
             .sort((a, b) => a[1].label.localeCompare(b[1].label)),
         [activeVenues],
     );
+    const filteredStateOptions = useMemo(() => {
+        const query = stateSearchQuery.trim().toLowerCase();
+        if (!query) return stateOptions;
+        return stateOptions.filter((state) => state.toLowerCase().includes(query));
+    }, [stateOptions, stateSearchQuery]);
+    const filteredCityOptions = useMemo(() => {
+        const query = citySearchQuery.trim().toLowerCase();
+        if (!query) return cityOptions;
+        return cityOptions.filter((city) => city.toLowerCase().includes(query));
+    }, [cityOptions, citySearchQuery]);
+    const filteredAmenityOptions = useMemo(() => {
+        const query = amenitySearchQuery.trim().toLowerCase();
+        if (!query) return amenityOptions;
+        return amenityOptions.filter(([key, value]) => {
+            const label = value.label.toLowerCase();
+            return label.includes(query) || key.toLowerCase().includes(query);
+        });
+    }, [amenityOptions, amenitySearchQuery]);
 
     syncArchivePageRef.current = (nextPage: number, nextPageSize?: number) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -268,6 +328,18 @@ function VenuesPageContent() {
     }, []);
 
     useEffect(() => {
+        if (openDropdown !== "state") {
+            setStateSearchQuery("");
+        }
+        if (openDropdown !== "city") {
+            setCitySearchQuery("");
+        }
+        if (openDropdown !== "amenity") {
+            setAmenitySearchQuery("");
+        }
+    }, [openDropdown]);
+
+    useEffect(() => {
         if (typeof window === "undefined") return;
         if (window.sessionStorage.getItem(LOCATION_SESSION_KEY) === "done") return;
         window.sessionStorage.setItem(LOCATION_SESSION_KEY, "done");
@@ -287,8 +359,8 @@ function VenuesPageContent() {
                     return;
                 }
 
-                const nextState = nearestVenue.state.trim();
-                const nextCity = nearestVenue.city.trim();
+                const nextState = normalizeFilterValue(nearestVenue.state);
+                const nextCity = normalizeFilterValue(nearestVenue.city);
                 setSelectedStates(nextState ? [nextState] : []);
                 setSelectedCities(nextCity ? [nextCity] : []);
                 setLocationPermissionState("applied");
@@ -312,8 +384,10 @@ function VenuesPageContent() {
                 || venue.city.toLowerCase().includes(searchTerm)
                 || venue.state.toLowerCase().includes(searchTerm);
             const priceOK = selectedPrices.length === 0 || selectedPrices.includes(venue.priceRange);
-            const stateOK = selectedStates.length === 0 || selectedStates.includes(venue.state);
-            const cityOK = selectedCities.length === 0 || selectedCities.includes(venue.city);
+            const normalizedState = normalizeFilterValue(venue.state);
+            const normalizedCity = normalizeFilterValue(venue.city);
+            const stateOK = selectedStates.length === 0 || selectedStates.includes(normalizedState);
+            const cityOK = selectedCities.length === 0 || selectedCities.includes(normalizedCity);
             const amenityOK = selectedAmenities.length === 0 || selectedAmenities.some((amenity) => venue.amenities.includes(amenity));
             return searchOK && priceOK && stateOK && cityOK && amenityOK;
         })
@@ -354,7 +428,7 @@ function VenuesPageContent() {
 
     const priceSummary = selectedPrices.length > 0 ? `${selectedPrices.length} selected` : "Any price";
     const stateSummary = selectedStates.length > 0 ? `${selectedStates.length} selected` : "All states";
-    const citySummary = selectedCities.length > 0 ? `${selectedCities.length} selected` : "All cities";
+    const citySummary = selectedCities.length > 0 ? `${selectedCities.length} selected` : selectedStates.length > 0 ? "All cities" : "Select state first";
     const amenitySummary = selectedAmenities.length > 0 ? `${selectedAmenities.length} selected` : "Any amenity";
     const hasActiveFilters = searchQuery.trim().length > 0 || selectedPrices.length > 0 || selectedStates.length > 0 || selectedCities.length > 0 || selectedAmenities.length > 0;
 
@@ -417,20 +491,53 @@ function VenuesPageContent() {
                             ))}
                         </FilterDropdown>
 
-                        <FilterDropdown title="State" summary={stateSummary} isOpen={openDropdown === "state"} onToggle={() => setOpenDropdown((current) => current === "state" ? null : "state")} onClear={selectedStates.length > 0 ? () => setSelectedStates([]) : undefined} isMobile={isMobile}>
-                            {stateOptions.map((state) => (
+                        <FilterDropdown
+                            title="State"
+                            summary={stateSummary}
+                            isOpen={openDropdown === "state"}
+                            onToggle={() => setOpenDropdown((current) => current === "state" ? null : "state")}
+                            onClear={selectedStates.length > 0 ? () => setSelectedStates([]) : undefined}
+                            isMobile={isMobile}
+                            searchValue={stateSearchQuery}
+                            onSearchChange={setStateSearchQuery}
+                            searchPlaceholder="Search states..."
+                            emptyState="No states match your search."
+                        >
+                            {filteredStateOptions.map((state) => (
                                 <FilterCheckbox key={state} checked={selectedStates.includes(state)} label={state} onChange={() => setSelectedStates((current) => toggleSelection(current, state))} />
                             ))}
                         </FilterDropdown>
 
-                        <FilterDropdown title="City" summary={citySummary} isOpen={openDropdown === "city"} onToggle={() => setOpenDropdown((current) => current === "city" ? null : "city")} onClear={selectedCities.length > 0 ? () => setSelectedCities([]) : undefined} isMobile={isMobile}>
-                            {cityOptions.length > 0 ? cityOptions.map((city) => (
+                        <FilterDropdown
+                            title="City"
+                            summary={citySummary}
+                            isOpen={openDropdown === "city"}
+                            onToggle={() => setOpenDropdown((current) => current === "city" ? null : "city")}
+                            onClear={selectedCities.length > 0 ? () => setSelectedCities([]) : undefined}
+                            isMobile={isMobile}
+                            searchValue={citySearchQuery}
+                            onSearchChange={setCitySearchQuery}
+                            searchPlaceholder={selectedStates.length > 0 ? "Search cities in selected states..." : "Select state(s) first"}
+                            emptyState={selectedStates.length > 0 ? "No cities match the selected states or search." : "Select one or more states to load cities."}
+                        >
+                            {filteredCityOptions.map((city) => (
                                 <FilterCheckbox key={city} checked={selectedCities.includes(city)} label={city} onChange={() => setSelectedCities((current) => toggleSelection(current, city))} />
-                            )) : <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No cities match the selected states.</span>}
+                            ))}
                         </FilterDropdown>
 
-                        <FilterDropdown title="Amenities" summary={amenitySummary} isOpen={openDropdown === "amenity"} onToggle={() => setOpenDropdown((current) => current === "amenity" ? null : "amenity")} onClear={selectedAmenities.length > 0 ? () => setSelectedAmenities([]) : undefined} isMobile={isMobile}>
-                            {amenityOptions.map(([key, value]) => (
+                        <FilterDropdown
+                            title="Amenities"
+                            summary={amenitySummary}
+                            isOpen={openDropdown === "amenity"}
+                            onToggle={() => setOpenDropdown((current) => current === "amenity" ? null : "amenity")}
+                            onClear={selectedAmenities.length > 0 ? () => setSelectedAmenities([]) : undefined}
+                            isMobile={isMobile}
+                            searchValue={amenitySearchQuery}
+                            onSearchChange={setAmenitySearchQuery}
+                            searchPlaceholder="Search amenities..."
+                            emptyState="No amenities match your search."
+                        >
+                            {filteredAmenityOptions.map(([key, value]) => (
                                 <FilterCheckbox key={key} checked={selectedAmenities.includes(key)} label={value.label} onChange={() => setSelectedAmenities((current) => toggleSelection(current, key))} />
                             ))}
                         </FilterDropdown>

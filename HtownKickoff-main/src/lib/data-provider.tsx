@@ -849,7 +849,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                     ? detail.galleryImageUrls.map((url: string) => normalizeImageUrl(url)).filter(Boolean)
                     : row.venue.galleryImageUrls || [],
                 addressLine2: detail?.addressLine2 || "",
-                state: detail?.stateProvince || "",
+                state: detail?.stateProvince || row.venue.state || "",
                 postalCode: detail?.postalCode || "",
                 lat: Number(detail?.lat ?? row.venue.lat ?? 0),
                 lng: Number(detail?.lng ?? row.venue.lng ?? 0),
