@@ -18,6 +18,13 @@ const PRICE_OPTIONS: { value: PriceRange | "all"; label: string; icon: React.Rea
     { value: "UPSCALE", label: "Upscale", icon: <Gem size={14} /> },
     { value: "LUXURY", label: "Luxury", icon: <Crown size={14} /> },
 ];
+const PAGE_SIZE_OPTIONS = [12, 24, 48] as const;
+
+function parsePageSizeParam(value: string | null | undefined) {
+    if (!value) return 12;
+    const parsed = Number.parseInt(value, 10);
+    return PAGE_SIZE_OPTIONS.includes(parsed as (typeof PAGE_SIZE_OPTIONS)[number]) ? parsed : 12;
+}
 
 function VenuesPageContent() {
     const pathname = usePathname();
@@ -30,7 +37,8 @@ function VenuesPageContent() {
     const [sortBy, setSortBy] = useState<"rating" | "reviews" | "name">("rating");
     const { venues: VENUES } = useData();
     const requestedPage = parsePageParam(searchParams.get("page"));
-    const syncArchivePageRef = useRef<(nextPage: number) => void>(() => {});
+    const pageSize = parsePageSizeParam(searchParams.get("pageSize"));
+    const syncArchivePageRef = useRef<(nextPage: number, nextPageSize?: number) => void>(() => {});
     const hasInitializedPageReset = useRef(false);
     const cityOptions = useMemo(
         () => Array.from(new Set(
@@ -42,12 +50,18 @@ function VenuesPageContent() {
         [VENUES],
     );
 
-    syncArchivePageRef.current = (nextPage: number) => {
+    syncArchivePageRef.current = (nextPage: number, nextPageSize?: number) => {
         const params = new URLSearchParams(searchParams.toString());
+        const resolvedPageSize = nextPageSize ?? pageSize;
         if (nextPage <= 1) {
             params.delete("page");
         } else {
             params.set("page", String(nextPage));
+        }
+        if (resolvedPageSize === 12) {
+            params.delete("pageSize");
+        } else {
+            params.set("pageSize", String(resolvedPageSize));
         }
         const nextQuery = params.toString();
         router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
@@ -73,31 +87,8 @@ function VenuesPageContent() {
         }), [VENUES, searchQuery, activePrice, activeCity, activeAmenity, sortBy]);
 
     const { currentPage, totalPages, pageItems: paginatedVenues } = useMemo(
-        () => paginateItems(filtered, requestedPage),
-        [filtered, requestedPage],
-    );
-
-    const filteredMapVenues = useMemo(
-        () => filtered.map((v) => ({
-            id: v.id,
-            slug: v.slug,
-            lat: v.lat,
-            lng: v.lng,
-            name: v.name,
-            coverImage: v.coverImageUrl || "/venue-hero.webp",
-            city: v.city,
-            address: v.addressLine1,
-            rating: v.rating,
-            reviewCount: v.reviewCount,
-            amenities: v.amenities,
-            cuisineTags: v.cuisineTags,
-            priceRange: v.priceRange,
-            isVerified: v.isVerified,
-            isFeatured: v.isFeatured,
-            spotsRemaining: null,
-            nextEvent: `${v.upcomingEventsCount} upcoming events`,
-        })),
-        [filtered],
+        () => paginateItems(filtered, requestedPage, pageSize),
+        [filtered, requestedPage, pageSize],
     );
 
     useEffect(() => {
@@ -301,6 +292,32 @@ function VenuesPageContent() {
                                 })}
                             </div>
                         </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Per Page</span>
+                            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+                                {PAGE_SIZE_OPTIONS.map((size) => {
+                                    const sel = pageSize === size;
+                                    return (
+                                        <button
+                                            key={size}
+                                            onClick={() => syncArchivePageRef.current(1, size)}
+                                            style={{
+                                                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                                padding: "7px 14px", borderRadius: 99,
+                                                fontSize: 12, fontWeight: 700, cursor: "pointer",
+                                                fontFamily: "inherit", whiteSpace: "nowrap",
+                                                border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
+                                                backgroundColor: sel ? "var(--primary)" : "transparent",
+                                                color: sel ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                                                transition: "all 0.2s",
+                                            }}
+                                        >
+                                            {size}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -333,7 +350,6 @@ function VenuesPageContent() {
                             spotsRemaining: null,
                             nextEvent: `${v.upcomingEventsCount} upcoming events`,
                         }))}
-                        mapVenues={filteredMapVenues}
                         onVenueClick={(index) => {
                             const venue = paginatedVenues[index];
                             if (venue) window.location.href = `/venues/${venue.slug}`;
