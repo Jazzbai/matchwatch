@@ -565,13 +565,6 @@ body {
 }
 
 .venue-map-cluster {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  width: 100% !important;
-  height: 100% !important;
-  padding: 0;
-  text-align: center;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;

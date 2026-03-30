@@ -69,10 +69,26 @@ export function createVenueClusterGroup(L: ClusterLeafletModule, compact = false
             const density = count < 10 ? "sm" : count < 50 ? "md" : "lg";
             const size = density === "sm" ? 30 : density === "md" ? 34 : 38;
             const fontSize = density === "sm" ? 12 : density === "md" ? 13 : 14;
+            const radius = Math.floor(size / 2) - 2;
+            const center = size / 2;
 
             return L.divIcon({
                 className: `venue-map-cluster venue-map-cluster--${density}`,
-                html: `<div style="display:inline-grid;place-items:center;width:${size}px;height:${size}px;border-radius:50%;border:2px solid rgba(255,255,255,0.72);background:linear-gradient(180deg,#32c36c 0%,#17924b 100%);box-shadow:0 10px 24px rgba(23,146,75,0.32), inset 0 1px 0 rgba(255,255,255,0.28);color:#ffffff;font-weight:900;font-size:${fontSize}px;line-height:1;letter-spacing:-0.02em;text-shadow:0 1px 1px rgba(0,0,0,0.28);">${count}</div>`,
+                html: `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block;overflow:visible">
+                        <defs>
+                            <linearGradient id="venue-cluster-gradient-${size}" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#32c36c" />
+                                <stop offset="100%" stop-color="#17924b" />
+                            </linearGradient>
+                            <filter id="venue-cluster-shadow-${size}" x="-50%" y="-50%" width="200%" height="200%">
+                                <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="rgba(23,146,75,0.32)" />
+                            </filter>
+                        </defs>
+                        <circle cx="${center}" cy="${center}" r="${radius}" fill="url(#venue-cluster-gradient-${size})" stroke="rgba(255,255,255,0.72)" stroke-width="2" filter="url(#venue-cluster-shadow-${size})" />
+                        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-size="${fontSize}" font-weight="900" letter-spacing="-0.02em" style="paint-order:stroke;stroke:rgba(0,0,0,0.28);stroke-width:1px;">${count}</text>
+                    </svg>
+                `,
                 iconSize: [size, size],
                 iconAnchor: [size / 2, size / 2],
             });
