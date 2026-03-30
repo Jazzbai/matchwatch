@@ -23,6 +23,7 @@ const MATCH_FETCH_LIMIT = 50;
 const VENUE_FETCH_LIMIT = 50;
 const VENUE_CHILD_LIMIT = 50;
 const VENUE_MAX_PAGES = 4;
+const VENUE_DEEP_MAX_PAGES = 50;
 const MATCH_MAX_PAGES = 20;
 const BOOKING_FETCH_LIMIT = 50;
 const FLAG_CDN_BASE = "https://flagcdn.com";
@@ -439,6 +440,10 @@ function getVenueDetailSlug(pathname: string) {
     return slug;
 }
 
+function getVenueBootstrapMaxPages(pathname: string) {
+    return pathname.startsWith("/venues") ? VENUE_DEEP_MAX_PAGES : VENUE_MAX_PAGES;
+}
+
 function authHeader(): Record<string, string> {
     if (typeof window === "undefined") return {};
     const token = localStorage.getItem("accessToken");
@@ -561,9 +566,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
 
         const hasToken = typeof window !== "undefined" && Boolean(localStorage.getItem("accessToken"));
+        const venueBootstrapMaxPages = getVenueBootstrapMaxPages(pathname);
         const [apiMatches, apiVenues, apiBookings, prioritySoccerPayload] = await Promise.all([
             safeFetchPaginated<ApiMatch>("/matches?sort=date_asc", MATCH_FETCH_LIMIT, MATCH_MAX_PAGES),
-            safeFetchPaginated<any>("/venues?sort=featured", VENUE_FETCH_LIMIT, VENUE_MAX_PAGES),
+            safeFetchPaginated<any>("/venues?sort=featured", VENUE_FETCH_LIMIT, venueBootstrapMaxPages),
             hasToken ? safeFetch<any[]>(`/bookings?page=1&limit=${BOOKING_FETCH_LIMIT}`) : Promise.resolve([] as any[]),
             fetchPrioritySoccerMatches(),
         ]);
