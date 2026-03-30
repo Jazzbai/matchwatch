@@ -23,6 +23,7 @@ export type VenueMapListItem = VenueCardProps & {
 
 interface MapListToggleProps {
     venues: VenueMapListItem[];
+    mapVenues?: VenueMapListItem[];
     onVenueClick?: (index: number) => void;
     onBookNow?: (index: number) => void;
     mapHeight?: number;
@@ -54,7 +55,7 @@ function getTileConfig(theme: string | undefined) {
     };
 }
 
-export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560 }: MapListToggleProps) {
+export function MapListToggle({ venues, mapVenues, onVenueClick, onBookNow, mapHeight = 560 }: MapListToggleProps) {
     const { resolvedTheme } = useTheme();
     const [mobileView, setMobileView] = useState<"cards" | "map">("cards");
     const [isMobile, setIsMobile] = useState(false);
@@ -64,12 +65,13 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
     const leafletRef = useRef<ClusterLeafletModule | null>(null);
     const markerLayerRef = useRef<ClusterLayer | null>(null);
     const tileLayerRef = useRef<LeafletTileLayer | null>(null);
+    const venuesForMap = mapVenues ?? venues;
 
     const mappedVenues = useMemo(
-        () => venues
+        () => venuesForMap
             .map((venue, index) => ({ ...venue, originalIndex: index }))
             .filter((venue) => Number.isFinite(venue.lat) && Number.isFinite(venue.lng) && Math.abs(venue.lat) > 0 && Math.abs(venue.lng) > 0),
-        [venues],
+        [venuesForMap],
     );
     const stickyTop = 96;
     const effectiveMapHeight: number | string = isMobile

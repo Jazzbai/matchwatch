@@ -77,6 +77,29 @@ function VenuesPageContent() {
         [filtered, requestedPage],
     );
 
+    const filteredMapVenues = useMemo(
+        () => filtered.map((v) => ({
+            id: v.id,
+            slug: v.slug,
+            lat: v.lat,
+            lng: v.lng,
+            name: v.name,
+            coverImage: v.coverImageUrl || "/venue-hero.webp",
+            city: v.city,
+            address: v.addressLine1,
+            rating: v.rating,
+            reviewCount: v.reviewCount,
+            amenities: v.amenities,
+            cuisineTags: v.cuisineTags,
+            priceRange: v.priceRange,
+            isVerified: v.isVerified,
+            isFeatured: v.isFeatured,
+            spotsRemaining: null,
+            nextEvent: `${v.upcomingEventsCount} upcoming events`,
+        })),
+        [filtered],
+    );
+
     useEffect(() => {
         if (requestedPage !== currentPage) {
             syncArchivePageRef.current(currentPage);
@@ -310,6 +333,7 @@ function VenuesPageContent() {
                             spotsRemaining: null,
                             nextEvent: `${v.upcomingEventsCount} upcoming events`,
                         }))}
+                        mapVenues={filteredMapVenues}
                         onVenueClick={(index) => {
                             const venue = paginatedVenues[index];
                             if (venue) window.location.href = `/venues/${venue.slug}`;
