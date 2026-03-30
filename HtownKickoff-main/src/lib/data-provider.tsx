@@ -776,7 +776,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             addressLine1: v.addressLine1 || "",
             addressLine2: "",
             city: v.city || "",
-            state: "",
+            state: v.stateProvince || "",
             postalCode: "",
             lat: Number(v.lat || 0),
             lng: Number(v.lng || 0),

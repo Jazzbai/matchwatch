@@ -69,6 +69,7 @@ venueRoutes.get('/', async (c) => {
             shortDescription: v.shortDescription,
             addressLine1: v.addressLine1,
             city: v.city,
+            stateProvince: v.stateProvince,
             lat: Number(v.lat),
             lng: Number(v.lng),
             coverImageUrl,
