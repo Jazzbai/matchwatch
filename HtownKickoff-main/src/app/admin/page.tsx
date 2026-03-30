@@ -149,9 +149,22 @@ type VenueProfile = {
   ratingOverride?: string | null;
   reviewCountOverride?: number | null;
   coverImageUrl?: string | null;
+  resolvedCoverImageUrl?: string | null;
   coverImageS3Key?: string | null;
   galleryImageUrls?: string[];
+  resolvedGalleryImageUrls?: string[];
   galleryS3Keys?: string[];
+  imageSource?: "manual" | "google" | "none";
+  coverImageAttributions?: Array<{
+    displayName: string;
+    uri?: string | null;
+    photoUri?: string | null;
+  }>;
+  galleryImageAttributions?: Array<Array<{
+    displayName: string;
+    uri?: string | null;
+    photoUri?: string | null;
+  }>>;
   promotedVenueEventId?: string | null;
   approvalStatus?: "PENDING" | "APPROVED" | "REJECTED";
   approvalNotes?: string | null;
@@ -415,8 +428,10 @@ export default function AdminPage() {
   const [refreshingGoogleData, setRefreshingGoogleData] = React.useState(false);
   const [revertingGoogleData, setRevertingGoogleData] = React.useState(false);
   const [coverImageUrl, setCoverImageUrl] = React.useState("");
+  const [resolvedCoverImageUrl, setResolvedCoverImageUrl] = React.useState("");
   const [coverImageS3Key, setCoverImageS3Key] = React.useState("");
   const [galleryItems, setGalleryItems] = React.useState<GalleryItem[]>([]);
+  const [googleImageActionKey, setGoogleImageActionKey] = React.useState<string | null>(null);
   const [promotedEventId, setPromotedEventId] = React.useState<string | null>(null);
   const coverInputRef = React.useRef<HTMLInputElement | null>(null);
   const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -569,6 +584,7 @@ export default function AdminPage() {
         setMenuSourceState("none");
         setGoogleDefaults(null);
         setCoverImageUrl("");
+        setResolvedCoverImageUrl("");
         setCoverImageS3Key("");
         setGalleryItems([]);
         setLoading(false);
@@ -620,6 +636,7 @@ export default function AdminPage() {
       setMenuSourceState(profile.menuSourceState || "none");
       setGoogleDefaults(profile.googleDefaults || null);
       setCoverImageUrl(normalizeImageUrl(profile.coverImageUrl));
+      setResolvedCoverImageUrl(normalizeImageUrl(profile.resolvedCoverImageUrl));
       setCoverImageS3Key(profile.coverImageS3Key || "");
       setGalleryItems(parseGalleryItems(profile.galleryImageUrls, profile.galleryS3Keys));
       setPromotedEventId(typeof profile.promotedVenueEventId === "string" ? profile.promotedVenueEventId : null);
@@ -1017,6 +1034,27 @@ export default function AdminPage() {
     }
   };
 
+  const updateGoogleImageSelection = async (
+    action: "cover" | "gallery" | "revert",
+    photoName?: string,
+  ) => {
+    if (!selectedVenueId) return;
+    const actionKey = `${action}:${photoName || "default"}`;
+    setGoogleImageActionKey(actionKey);
+    setError(null);
+    try {
+      await api.post(dashboardPath("/dashboard/venue/google/images"), {
+        action,
+        photoName,
+      });
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update Google image selection");
+    } finally {
+      setGoogleImageActionKey(null);
+    }
+  };
+
   const deleteOwnedVenue = async () => {
     if (!selectedVenueId) {
       setError("Select a business venue first.");
@@ -1202,6 +1240,9 @@ export default function AdminPage() {
     { id: "menu", label: "Menu" },
     { id: "settings", label: "Venue Settings" },
   ];
+
+  const googleSuggestedImages = googleDefaults?.googleSuggestedImages || [];
+  const effectiveCoverPreview = coverImageUrl || resolvedCoverImageUrl;
 
   return (
       <AppShell>
@@ -1731,7 +1772,74 @@ export default function AdminPage() {
                     <button style={btnOutline(revertingGoogleData || !googleDefaults)} disabled={revertingGoogleData || !googleDefaults} onClick={() => void revertVenueToGoogleDefaults()}>
                       {revertingGoogleData ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Reverting</> : "Revert to Google Defaults"}
                     </button>
+                    <button
+                      style={btnOutline(googleImageActionKey === "revert:default" || !googleSuggestedImages.length)}
+                      disabled={googleImageActionKey === "revert:default" || !googleSuggestedImages.length}
+                      onClick={() => void updateGoogleImageSelection("revert")}
+                    >
+                      {googleImageActionKey === "revert:default" ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Resetting</> : "Revert Suggested Images"}
+                    </button>
                   </div>
+                </div>
+
+                <div style={{ marginBottom: 20, padding: 16, borderRadius: 14, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline", marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--foreground)" }}>Google Suggested Images</div>
+                      <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)", maxWidth: 720 }}>
+                        Manual cover and gallery uploads always override these Google defaults. Use the controls below to pick the best Google cover and gallery fallback set without downloading images into storage.
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                      {googleSuggestedImages.length ? `${googleSuggestedImages.length} Google photos available` : "No Google photos stored for this venue yet"}
+                    </div>
+                  </div>
+
+                  {googleSuggestedImages.length ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                      {googleSuggestedImages.map((photo) => {
+                        const actionKeyPrefix = photo.name;
+                        const dimensionLabel = photo.widthPx && photo.heightPx ? `${photo.widthPx}×${photo.heightPx}` : "Unknown size";
+                        return (
+                          <div key={photo.name} style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", overflow: "hidden" }}>
+                            <img src={photo.previewUrl} alt={`${venueName || "Venue"} Google suggestion`} style={{ width: "100%", height: 148, objectFit: "cover" }} loading="lazy" />
+                            <div style={{ padding: 12, display: "grid", gap: 10 }}>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {photo.isSelectedCover && <span style={badgeStyle}>Selected Cover</span>}
+                                {photo.isSelectedGallery && <span style={badgeStyle}>In Gallery</span>}
+                                <span style={badgeStyle}>{dimensionLabel}</span>
+                              </div>
+                              {photo.authorAttributions?.length ? (
+                                <div style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                                  Photo credit: {photo.authorAttributions.map((author) => author.displayName).join(", ")}
+                                </div>
+                              ) : null}
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                <button
+                                  style={btnOutline(googleImageActionKey === `cover:${actionKeyPrefix}` || photo.isSelectedCover)}
+                                  disabled={googleImageActionKey === `cover:${actionKeyPrefix}` || photo.isSelectedCover}
+                                  onClick={() => void updateGoogleImageSelection("cover", photo.name)}
+                                >
+                                  {googleImageActionKey === `cover:${actionKeyPrefix}` ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving</> : "Use as Cover"}
+                                </button>
+                                <button
+                                  style={btnOutline(googleImageActionKey === `gallery:${actionKeyPrefix}` || photo.isSelectedGallery)}
+                                  disabled={googleImageActionKey === `gallery:${actionKeyPrefix}` || photo.isSelectedGallery}
+                                  onClick={() => void updateGoogleImageSelection("gallery", photo.name)}
+                                >
+                                  {googleImageActionKey === `gallery:${actionKeyPrefix}` ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving</> : "Add to Gallery"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ borderRadius: 12, border: "1px dashed var(--border)", padding: 16, fontSize: 12, color: "var(--muted-foreground)" }}>
+                      Refresh Google data after linking a Google Business profile to fetch and score photo suggestions automatically.
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 20 }}>
@@ -1805,7 +1913,7 @@ export default function AdminPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, marginBottom: 20 }}>
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <label style={labelStyle}>Cover image</label>
+                      <label style={labelStyle}>Manual cover image</label>
                       <div style={{ display: "flex", gap: 8 }}>
                         {coverImageUrl && (
                           <button style={btnDestructive()} onClick={() => { setCoverImageUrl(""); setCoverImageS3Key(""); }}>
@@ -1818,9 +1926,14 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void onUploadCover(file); e.currentTarget.value = ""; }} />
+                    {!coverImageUrl && resolvedCoverImageUrl ? (
+                      <div style={{ marginBottom: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        No manual cover uploaded. The public venue page is currently using the selected Google cover.
+                      </div>
+                    ) : null}
                     <div style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", overflow: "hidden" }}>
-                      {coverImageUrl ? (
-                        <img src={coverImageUrl} alt="Venue cover" style={{ width: "100%", height: 192, objectFit: "cover" }} />
+                      {effectiveCoverPreview ? (
+                        <img src={effectiveCoverPreview} alt="Venue cover" style={{ width: "100%", height: 192, objectFit: "cover" }} />
                       ) : (
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 192, fontSize: 13, color: "var(--muted-foreground)" }}>No cover image uploaded</div>
                       )}
@@ -1829,11 +1942,16 @@ export default function AdminPage() {
 
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <label style={labelStyle}>Gallery images ({galleryItems.length}/{MAX_GALLERY_IMAGES})</label>
+                      <label style={labelStyle}>Manual gallery images ({galleryItems.length}/{MAX_GALLERY_IMAGES})</label>
                       <button style={btnOutline(uploadingGallery || galleryItems.length >= MAX_GALLERY_IMAGES)} disabled={uploadingGallery || galleryItems.length >= MAX_GALLERY_IMAGES} onClick={() => galleryInputRef.current?.click()}>
                         {uploadingGallery ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Uploading</> : <><ImagePlus size={14} /> Add Images</>}
                       </button>
                     </div>
+                    {galleryItems.length === 0 && googleDefaults?.googleImageSelection?.galleryPhotoNames?.length ? (
+                      <div style={{ marginBottom: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        No manual gallery images uploaded. The public venue page is currently using the selected Google gallery fallback.
+                      </div>
+                    ) : null}
                     <input ref={galleryInputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => { const files = Array.from(e.target.files || []); if (files.length) void onUploadGallery(files); e.currentTarget.value = ""; }} />
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       {galleryItems.map((item, idx) => (

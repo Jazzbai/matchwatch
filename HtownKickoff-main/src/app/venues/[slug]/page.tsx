@@ -222,6 +222,8 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
     const bookingLeagueVisual = getLeagueVisual(bookingLeague);
     const heroImage = venue?.coverImageUrl || "/venue-hero.webp";
     const galleryImages = venue?.galleryImageUrls?.length ? venue.galleryImageUrls : [];
+    const coverAttributions = venue?.coverImageAttributions || [];
+    const galleryImageAttributions = venue?.galleryImageAttributions || [];
 
     const mainEvent = useMemo(() => {
         if (matchEvents.length === 0) return null;
@@ -309,6 +311,11 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                             </div>
                         </div>
                     </section>
+                    {coverAttributions.length > 0 && (
+                        <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
+                            Photo credit: {coverAttributions.map((author) => author.displayName).join(", ")}
+                        </div>
+                    )}
 
                     {bannerEvent && (
                         <section className={styles.panel} style={{ marginTop: "16px" }}>
@@ -371,7 +378,12 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                         <section className={styles.galleryStrip}>
                             {galleryImages.slice(0, 5).map((img, idx) => (
                                 <div key={`${img}-${idx}`} className={styles.galleryItem} onClick={() => setLightboxIndex(idx)}>
-                                    <img src={img} alt={`${venue.name} photo ${idx + 1}`} className={styles.galleryImage} />
+                                    <img src={img} alt={`${venue.name} photo ${idx + 1}`} className={styles.galleryImage} loading="lazy" />
+                                    {(galleryImageAttributions[idx] || []).length > 0 && (
+                                        <div style={{ padding: "6px 8px", fontSize: 11, color: "var(--muted-foreground)", backgroundColor: "var(--card)" }}>
+                                            Photo credit: {galleryImageAttributions[idx]!.map((author) => author.displayName).join(", ")}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </section>

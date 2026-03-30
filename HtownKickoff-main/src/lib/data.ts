@@ -179,6 +179,17 @@ export interface Venue {
     description: string;
     coverImageUrl?: string;
     galleryImageUrls?: string[];
+    imageSource?: "manual" | "google" | "none";
+    coverImageAttributions?: Array<{
+        displayName: string;
+        uri?: string | null;
+        photoUri?: string | null;
+    }>;
+    galleryImageAttributions?: Array<Array<{
+        displayName: string;
+        uri?: string | null;
+        photoUri?: string | null;
+    }>>;
     addressLine1: string;
     addressLine2: string;
     city: string;

@@ -16,7 +16,14 @@ import { authMiddleware, requireRole } from '../middleware';
 import { z } from 'zod';
 import { deleteStorageObjects } from '../lib/storage';
 import { getGooglePlaceDetails, type GoogleSourceSnapshot } from '../lib/googlePlaces';
-import { applyGoogleMenuSnapshot, buildGoogleVenueFields, findExistingVenueMatch, getVenueMenuSourceState } from '../lib/venueOnboarding';
+import { applyGoogleMenuSnapshot, buildGoogleVenueFields, buildVenueGoogleDefaults, findExistingVenueMatch, getVenueMenuSourceState } from '../lib/venueOnboarding';
+import {
+    appendGoogleGalleryPhoto,
+    buildVenueImageRenderPayload,
+    normalizeGoogleSourceSnapshot,
+    resetGoogleImageSelection,
+    setGoogleCoverPhoto,
+} from '../lib/venueImages';
 
 const dashboardRoutes = new Hono();
 
@@ -179,6 +186,15 @@ function googleSnapshotFromVenue(venue: { googleSourceSnapshot?: unknown }): Goo
     return venue.googleSourceSnapshot as GoogleSourceSnapshot;
 }
 
+function venueImagePayloadForOwnedVenue(venue: typeof venues.$inferSelect) {
+    return buildVenueImageRenderPayload({
+        slugOrId: venue.slug || venue.id,
+        coverImageUrl: venue.coverImageUrl,
+        manualGalleryImageUrls: galleryImageUrlsFromMetadata(venue.metadata),
+        snapshot: googleSnapshotFromVenue(venue),
+    });
+}
+
 async function deactivateExpiredCustomEvents(venueId: string) {
     await db.update(venueCustomEvents).set({
         isActive: false,
@@ -224,12 +240,12 @@ async function getOverviewHandler(c: any) {
         .where(and(eq(venueEvents.venueId, venue.id), eq(venueEvents.isActive, true), gte(matches.matchDateUtc, now)))
         .orderBy(asc(matches.matchDateUtc))
         .limit(5);
+    const imagePayload = venueImagePayloadForOwnedVenue(venue);
 
     return c.json(apiResponse({
         venue: {
             ...venue,
-            coverImageUrl: venue.coverImageUrl || galleryImageUrlsFromMetadata(venue.metadata)[0] || null,
-            galleryImageUrls: galleryImageUrlsFromMetadata(venue.metadata),
+            ...imagePayload,
             menuSourceState: getVenueMenuSourceState(venue),
         },
         stats: {
@@ -508,13 +524,21 @@ dashboardRoutes.get('/venue', async (c) => {
     const context = await getVenueOr404(c);
     if ('error' in context) return context.error;
     const venue = context.venue;
+    const imagePayload = venueImagePayloadForOwnedVenue(venue);
+    const googleSnapshot = googleSnapshotFromVenue(venue);
+    const manualGalleryImageUrls = galleryImageUrlsFromMetadata(venue.metadata);
     return c.json(apiResponse({
         ...venue,
-        coverImageUrl: venue.coverImageUrl || galleryImageUrlsFromMetadata(venue.metadata)[0] || null,
-        galleryImageUrls: galleryImageUrlsFromMetadata(venue.metadata),
+        coverImageUrl: venue.coverImageUrl || null,
+        galleryImageUrls: manualGalleryImageUrls,
+        resolvedCoverImageUrl: imagePayload.coverImageUrl,
+        resolvedGalleryImageUrls: imagePayload.galleryImageUrls,
+        imageSource: imagePayload.imageSource,
+        coverImageAttributions: imagePayload.coverImageAttributions,
+        galleryImageAttributions: imagePayload.galleryImageAttributions,
         promotedVenueEventId: promotedVenueEventIdFromMetadata(venue.metadata),
         menuSourceState: getVenueMenuSourceState(venue),
-        googleDefaults: googleSnapshotFromVenue(venue),
+        googleDefaults: googleSnapshot ? buildVenueGoogleDefaults(googleSnapshot, { slugOrId: venue.slug || venue.id }) : null,
     }));
 });
 
@@ -640,6 +664,19 @@ const createVenueClaimSchema = z.object({
 
 const revertVenueGoogleSchema = z.object({
     includeMenu: z.boolean().default(false),
+});
+
+const venueGoogleImageActionSchema = z.object({
+    action: z.enum(['cover', 'gallery', 'revert']),
+    photoName: z.string().min(3).max(500).optional(),
+}).superRefine((value, ctx) => {
+    if ((value.action === 'cover' || value.action === 'gallery') && !value.photoName?.trim()) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['photoName'],
+            message: 'photoName is required for this action',
+        });
+    }
 });
 
 dashboardRoutes.put('/venue/promotion', async (c) => {
@@ -865,7 +902,7 @@ async function refreshVenueGoogleHandler(c: any) {
 
     await db.transaction(async (tx) => {
         await tx.update(venues).set({
-            googleSourceSnapshot: snapshot,
+            googleSourceSnapshot: googleFields.googleSourceSnapshot,
             googlePlaceId: googleFields.googlePlaceId,
             googleLastSyncedAt: new Date(),
             googleSyncStatus: 'SYNCED',
@@ -896,7 +933,8 @@ async function refreshVenueGoogleHandler(c: any) {
 
     return c.json(apiResponse({
         message: 'Google venue data refreshed',
-        snapshot,
+        snapshot: googleFields.googleSourceSnapshot,
+        defaults: buildVenueGoogleDefaults(googleFields.googleSourceSnapshot, { slugOrId: venue.slug || venue.id }),
     }));
 }
 
@@ -918,9 +956,10 @@ dashboardRoutes.post('/venue/google/revert', async (c) => {
         return c.json(apiError('NOT_FOUND', 'No Google defaults stored for this venue'), 404);
     }
 
-    const googleFields = buildGoogleVenueFields(snapshot);
+    const normalizedSnapshot = normalizeGoogleSourceSnapshot(snapshot);
+    const googleFields = buildGoogleVenueFields(normalizedSnapshot);
     const updates: Record<string, unknown> = {
-        name: snapshot.displayName,
+        name: normalizedSnapshot.displayName,
         addressLine1: googleFields.addressLine1,
         city: googleFields.city,
         stateProvince: googleFields.stateProvince,
@@ -934,14 +973,15 @@ dashboardRoutes.post('/venue/google/revert', async (c) => {
         googleMapsUrl: googleFields.googleMapsUrl,
         ratingOverride: googleFields.ratingOverride,
         reviewCountOverride: googleFields.reviewCountOverride,
-        menuSource: snapshot.menu ? 'GOOGLE' : 'NONE',
+        menuSource: normalizedSnapshot.menu ? 'GOOGLE' : 'NONE',
+        googleSourceSnapshot: normalizedSnapshot,
         updatedAt: new Date(),
     };
 
     await db.transaction(async (tx) => {
         await tx.update(venues).set(updates).where(eq(venues.id, venue.id));
         if (parsed.data.includeMenu) {
-            await applyGoogleMenuSnapshot(tx, venue.id, snapshot);
+            await applyGoogleMenuSnapshot(tx, venue.id, normalizedSnapshot);
         }
     });
 
@@ -953,10 +993,70 @@ dashboardRoutes.post('/venue/google/revert', async (c) => {
         metadata: { includeMenu: parsed.data.includeMenu },
     });
 
-    return c.json(apiResponse({ message: 'Venue reverted to Google defaults' }));
+    return c.json(apiResponse({
+        message: 'Venue reverted to Google defaults',
+        snapshot: normalizedSnapshot,
+        defaults: buildVenueGoogleDefaults(normalizedSnapshot, { slugOrId: venue.slug || venue.id }),
+    }));
 });
 
 // ─── Events CRUD ────────────────────────────────
+
+
+dashboardRoutes.post('/venue/google/images', async (c) => {
+    const context = await getVenueOr404(c);
+    if ('error' in context) return context.error;
+    const { user, venue } = context;
+
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = venueGoogleImageActionSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const snapshot = googleSnapshotFromVenue(venue);
+    if (!snapshot) {
+        return c.json(apiError('NOT_FOUND', 'No Google defaults stored for this venue'), 404);
+    }
+
+    const normalizedSnapshot = normalizeGoogleSourceSnapshot(snapshot);
+    let nextSnapshot: GoogleSourceSnapshot;
+    switch (parsed.data.action) {
+        case 'cover':
+            nextSnapshot = setGoogleCoverPhoto(normalizedSnapshot, parsed.data.photoName!.trim());
+            break;
+        case 'gallery':
+            nextSnapshot = appendGoogleGalleryPhoto(normalizedSnapshot, parsed.data.photoName!.trim());
+            break;
+        case 'revert':
+            nextSnapshot = resetGoogleImageSelection(normalizedSnapshot);
+            break;
+    }
+
+    await db.update(venues).set({
+        googleSourceSnapshot: nextSnapshot,
+        updatedAt: new Date(),
+    }).where(eq(venues.id, venue.id));
+
+    await db.insert(auditLogs).values({
+        userId: user.id,
+        action: `VENUE_GOOGLE_IMAGE_${parsed.data.action.toUpperCase()}`,
+        entityType: 'Venue',
+        entityId: venue.id,
+        metadata: {
+            photoName: parsed.data.photoName?.trim() || null,
+        },
+    });
+
+    return c.json(apiResponse({
+        message: parsed.data.action === 'revert'
+            ? 'Google image defaults restored'
+            : parsed.data.action === 'cover'
+                ? 'Google image selected as cover'
+                : 'Google image added to gallery',
+        defaults: buildVenueGoogleDefaults(nextSnapshot, { slugOrId: venue.slug || venue.id }),
+    }));
+});
 
 dashboardRoutes.post('/events', async (c) => {
     const user = c.get('user');
@@ -1709,4 +1809,5 @@ dashboardRoutes.get('/analytics', async (c) => {
 });
 
 export default dashboardRoutes;
+
 

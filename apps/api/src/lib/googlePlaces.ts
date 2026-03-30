@@ -1,4 +1,10 @@
 import { logger } from './logger';
+import {
+    normalizeGooglePhotoSnapshots,
+    normalizeGoogleSourceSnapshot,
+    type GoogleImageSelectionSnapshot,
+    type GooglePlacePhotoSnapshot,
+} from './venueImages';
 
 export type GoogleMenuItemSnapshot = {
     name: string;
@@ -32,6 +38,9 @@ export type GoogleSourceSnapshot = {
     googleMapsUrl?: string | null;
     rating?: number | null;
     reviewCount?: number | null;
+    photos?: GooglePlacePhotoSnapshot[];
+    photosFetchedAt?: string | null;
+    googleImageSelection?: GoogleImageSelectionSnapshot | null;
     menu?: {
         sourceUrl?: string | null;
         categories: GoogleMenuCategorySnapshot[];
@@ -115,6 +124,10 @@ function extractMenuSnapshot(raw: Record<string, unknown>): GoogleSourceSnapshot
     };
 }
 
+function extractPhotos(raw: Record<string, unknown>) {
+    return normalizeGooglePhotoSnapshots(raw.photos);
+}
+
 function mapPlaceToSnapshot(place: Record<string, unknown>): GoogleSourceSnapshot {
     const location = isRecord(place.location) ? place.location : null;
     const addressComponents = place.addressComponents;
@@ -122,7 +135,7 @@ function mapPlaceToSnapshot(place: Record<string, unknown>): GoogleSourceSnapsho
         ? getString(place.displayName.text) || 'Unknown venue'
         : getString(place.displayName) || 'Unknown venue';
 
-    return {
+    return normalizeGoogleSourceSnapshot({
         placeId: getString(place.id) || '',
         displayName,
         formattedAddress: getString(place.formattedAddress),
@@ -141,9 +154,11 @@ function mapPlaceToSnapshot(place: Record<string, unknown>): GoogleSourceSnapsho
         googleMapsUrl: getString(place.googleMapsUri),
         rating: getNumber(place.rating),
         reviewCount: typeof place.userRatingCount === 'number' ? place.userRatingCount : null,
+        photos: extractPhotos(place),
+        photosFetchedAt: new Date().toISOString(),
         menu: extractMenuSnapshot(place),
         raw: place,
-    };
+    });
 }
 
 async function googleFetch<T>(url: string, init: RequestInit, context: string): Promise<T> {
@@ -232,6 +247,13 @@ export async function getGooglePlaceDetails(placeId: string): Promise<GoogleSour
         'googleMapsUri',
         'rating',
         'userRatingCount',
+        'photos',
+        'photos.name',
+        'photos.widthPx',
+        'photos.heightPx',
+        'photos.authorAttributions.displayName',
+        'photos.authorAttributions.uri',
+        'photos.authorAttributions.photoUri',
         'timeZone',
         'regularOpeningHours',
         'editorialSummary',
@@ -251,6 +273,33 @@ export async function getGooglePlaceDetails(placeId: string): Promise<GoogleSour
     );
 
     return mapPlaceToSnapshot(response);
+}
+
+export async function getGooglePhotoMediaUri(photoName: string, maxWidthPx = 1600) {
+    const trimmed = photoName.trim();
+    if (!trimmed) {
+        throw new Error('photoName is required');
+    }
+
+    const encodedName = trimmed
+        .split('/')
+        .map((segment) => encodeURIComponent(segment))
+        .join('/');
+
+    const response = await googleFetch<{ photoUri?: string }>(
+        `${GOOGLE_PLACES_BASE_URL}/${encodedName}/media?maxWidthPx=${Math.max(200, Math.min(4800, maxWidthPx))}&skipHttpRedirect=true`,
+        {
+            method: 'GET',
+        },
+        'getGooglePhotoMediaUri',
+    );
+
+    const photoUri = getString(response.photoUri);
+    if (!photoUri) {
+        throw new Error('Google photo media URI not available');
+    }
+
+    return photoUri;
 }
 
 export function hasGooglePlacesConfigured() {

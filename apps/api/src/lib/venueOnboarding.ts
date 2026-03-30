@@ -2,33 +2,35 @@ import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { menuCategories, menuItems, venues } from '../db/schema';
 import type { GoogleSourceSnapshot } from './googlePlaces';
+import { buildVenueImageRenderPayload, normalizeGoogleSourceSnapshot } from './venueImages';
 
 function normalizeText(value: string | null | undefined) {
     return (value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
 export function buildGoogleVenueFields(snapshot: GoogleSourceSnapshot) {
+    const normalizedSnapshot = normalizeGoogleSourceSnapshot(snapshot);
     return {
-        googlePlaceId: snapshot.placeId,
-        googleSourceSnapshot: snapshot,
+        googlePlaceId: normalizedSnapshot.placeId,
+        googleSourceSnapshot: normalizedSnapshot,
         googleLastSyncedAt: new Date(),
         googleSyncStatus: 'SYNCED' as const,
         googleSyncError: null,
-        name: snapshot.displayName,
-        addressLine1: snapshot.addressLine1 || snapshot.formattedAddress || '',
-        city: snapshot.city || '',
-        stateProvince: snapshot.stateProvince || null,
-        country: snapshot.country || '',
-        postalCode: snapshot.postalCode || null,
-        lat: snapshot.lat != null ? String(snapshot.lat) : null,
-        lng: snapshot.lng != null ? String(snapshot.lng) : null,
-        timezone: snapshot.timezone || 'America/Chicago',
-        phone: snapshot.phone || null,
-        website: snapshot.website || null,
-        googleMapsUrl: snapshot.googleMapsUrl || null,
-        ratingOverride: snapshot.rating != null ? String(snapshot.rating) : null,
-        reviewCountOverride: snapshot.reviewCount != null ? snapshot.reviewCount : null,
-        menuSource: snapshot.menu ? 'GOOGLE' as const : 'NONE' as const,
+        name: normalizedSnapshot.displayName,
+        addressLine1: normalizedSnapshot.addressLine1 || normalizedSnapshot.formattedAddress || '',
+        city: normalizedSnapshot.city || '',
+        stateProvince: normalizedSnapshot.stateProvince || null,
+        country: normalizedSnapshot.country || '',
+        postalCode: normalizedSnapshot.postalCode || null,
+        lat: normalizedSnapshot.lat != null ? String(normalizedSnapshot.lat) : null,
+        lng: normalizedSnapshot.lng != null ? String(normalizedSnapshot.lng) : null,
+        timezone: normalizedSnapshot.timezone || 'America/Chicago',
+        phone: normalizedSnapshot.phone || null,
+        website: normalizedSnapshot.website || null,
+        googleMapsUrl: normalizedSnapshot.googleMapsUrl || null,
+        ratingOverride: normalizedSnapshot.rating != null ? String(normalizedSnapshot.rating) : null,
+        reviewCountOverride: normalizedSnapshot.reviewCount != null ? normalizedSnapshot.reviewCount : null,
+        menuSource: normalizedSnapshot.menu ? 'GOOGLE' as const : 'NONE' as const,
     };
 }
 
@@ -132,25 +134,36 @@ export function getVenueMenuSourceState(venue: { menuSource?: string | null; goo
     return 'none';
 }
 
-export function buildVenueGoogleDefaults(snapshot: GoogleSourceSnapshot) {
+export function buildVenueGoogleDefaults(snapshot: GoogleSourceSnapshot, options?: { slugOrId?: string }) {
+    const normalizedSnapshot = normalizeGoogleSourceSnapshot(snapshot);
+    const imagePayload = buildVenueImageRenderPayload({
+        slugOrId: options?.slugOrId || normalizedSnapshot.placeId,
+        snapshot: normalizedSnapshot,
+        manualGalleryImageUrls: [],
+    });
+
     return {
-        placeId: snapshot.placeId,
-        displayName: snapshot.displayName,
-        formattedAddress: snapshot.formattedAddress || '',
-        name: snapshot.displayName,
-        addressLine1: snapshot.addressLine1 || snapshot.formattedAddress || '',
-        city: snapshot.city || '',
-        stateProvince: snapshot.stateProvince || '',
-        country: snapshot.country || '',
-        postalCode: snapshot.postalCode || '',
-        lat: snapshot.lat ?? undefined,
-        lng: snapshot.lng ?? undefined,
-        timezone: snapshot.timezone || 'America/Chicago',
-        phone: snapshot.phone || '',
-        website: snapshot.website || '',
-        googleMapsUrl: snapshot.googleMapsUrl || '',
-        rating: snapshot.rating ?? null,
-        reviewCount: snapshot.reviewCount ?? null,
-        menu: snapshot.menu || null,
+        placeId: normalizedSnapshot.placeId,
+        displayName: normalizedSnapshot.displayName,
+        formattedAddress: normalizedSnapshot.formattedAddress || '',
+        name: normalizedSnapshot.displayName,
+        addressLine1: normalizedSnapshot.addressLine1 || normalizedSnapshot.formattedAddress || '',
+        city: normalizedSnapshot.city || '',
+        stateProvince: normalizedSnapshot.stateProvince || '',
+        country: normalizedSnapshot.country || '',
+        postalCode: normalizedSnapshot.postalCode || '',
+        lat: normalizedSnapshot.lat ?? undefined,
+        lng: normalizedSnapshot.lng ?? undefined,
+        timezone: normalizedSnapshot.timezone || 'America/Chicago',
+        phone: normalizedSnapshot.phone || '',
+        website: normalizedSnapshot.website || '',
+        googleMapsUrl: normalizedSnapshot.googleMapsUrl || '',
+        rating: normalizedSnapshot.rating ?? null,
+        reviewCount: normalizedSnapshot.reviewCount ?? null,
+        menu: normalizedSnapshot.menu || null,
+        photos: normalizedSnapshot.photos || [],
+        photosFetchedAt: normalizedSnapshot.photosFetchedAt || null,
+        googleImageSelection: normalizedSnapshot.googleImageSelection || null,
+        googleSuggestedImages: imagePayload.googleSuggestedImages,
     };
 }

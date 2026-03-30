@@ -336,6 +336,36 @@ export interface GooglePlaceSnapshot {
         sections?: GooglePlaceMenuSection[];
         lastSyncedAt?: string | null;
     } | null;
+    photos?: Array<{
+        name: string;
+        widthPx?: number | null;
+        heightPx?: number | null;
+        authorAttributions?: Array<{
+            displayName: string;
+            uri?: string | null;
+            photoUri?: string | null;
+        }>;
+    }>;
+    photosFetchedAt?: string | null;
+    googleImageSelection?: {
+        coverPhotoName?: string | null;
+        galleryPhotoNames?: string[];
+        selectedAt?: string | null;
+        sourceHash?: string | null;
+    } | null;
+    googleSuggestedImages?: Array<{
+        name: string;
+        widthPx?: number | null;
+        heightPx?: number | null;
+        authorAttributions?: Array<{
+            displayName: string;
+            uri?: string | null;
+            photoUri?: string | null;
+        }>;
+        previewUrl: string;
+        isSelectedCover: boolean;
+        isSelectedGallery: boolean;
+    }>;
 }
 
 export interface GooglePlaceSearchResult {
@@ -388,8 +418,20 @@ export interface Venue {
     description?: string;
     addressLine1: string;
     city: string;
+    stateProvince?: string | null;
     coverImageUrl?: string;
     galleryImageUrls?: string[];
+    imageSource?: 'manual' | 'google' | 'none';
+    coverImageAttributions?: Array<{
+        displayName: string;
+        uri?: string | null;
+        photoUri?: string | null;
+    }>;
+    galleryImageAttributions?: Array<Array<{
+        displayName: string;
+        uri?: string | null;
+        photoUri?: string | null;
+    }>>;
     amenities: string[];
     cuisineTags: string[];
     priceRange: string;

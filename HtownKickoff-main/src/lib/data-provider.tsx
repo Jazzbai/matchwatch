@@ -773,6 +773,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
             galleryImageUrls: Array.isArray(withGallery.galleryImageUrls)
                 ? withGallery.galleryImageUrls.map((url: string) => normalizeImageUrl(url)).filter(Boolean)
                 : [],
+            imageSource: v.imageSource || "none",
+            coverImageAttributions: Array.isArray((v as { coverImageAttributions?: unknown[] }).coverImageAttributions)
+                ? ((v as { coverImageAttributions?: Array<{ displayName: string; uri?: string | null; photoUri?: string | null }> }).coverImageAttributions || [])
+                : [],
+            galleryImageAttributions: Array.isArray((v as { galleryImageAttributions?: unknown[] }).galleryImageAttributions)
+                ? ((v as { galleryImageAttributions?: Array<Array<{ displayName: string; uri?: string | null; photoUri?: string | null }>> }).galleryImageAttributions || [])
+                : [],
             addressLine1: v.addressLine1 || "",
             addressLine2: "",
             city: v.city || "",
@@ -848,6 +855,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 galleryImageUrls: Array.isArray(detail?.galleryImageUrls)
                     ? detail.galleryImageUrls.map((url: string) => normalizeImageUrl(url)).filter(Boolean)
                     : row.venue.galleryImageUrls || [],
+                imageSource: detail?.imageSource || row.venue.imageSource || "none",
+                coverImageAttributions: Array.isArray(detail?.coverImageAttributions)
+                    ? detail.coverImageAttributions
+                    : row.venue.coverImageAttributions || [],
+                galleryImageAttributions: Array.isArray(detail?.galleryImageAttributions)
+                    ? detail.galleryImageAttributions
+                    : row.venue.galleryImageAttributions || [],
                 addressLine2: detail?.addressLine2 || "",
                 state: detail?.stateProvince || row.venue.state || "",
                 postalCode: detail?.postalCode || "",
