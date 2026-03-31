@@ -169,11 +169,17 @@ function extractPhotos(raw: Record<string, unknown>) {
 export function deriveGoogleAmenitiesFromSnapshot(snapshot: GoogleSourceSnapshot) {
     const raw = isRecord(snapshot.raw) ? snapshot.raw : {};
     const amenityTags = new Set<string>();
+    const placeTypes = Array.isArray(raw.types)
+        ? raw.types.filter((value): value is string => typeof value === 'string')
+        : [];
 
     const servesBeer = getBoolean(raw.servesBeer);
     const servesWine = getBoolean(raw.servesWine);
     const servesCocktails = getBoolean(raw.servesCocktails);
     if (servesBeer || servesWine || servesCocktails) {
+        amenityTags.add('ALCOHOLIC');
+    }
+    if (placeTypes.some((type) => ['bar', 'pub', 'brewpub', 'night_club'].includes(type))) {
         amenityTags.add('ALCOHOLIC');
     }
 
@@ -194,6 +200,10 @@ export function deriveGoogleAmenitiesFromSnapshot(snapshot: GoogleSourceSnapshot
         ) {
             amenityTags.add('PARKING');
         }
+    }
+
+    if (placeTypes.some((type) => ['restaurant', 'food', 'cafe', 'meal_takeaway', 'meal_delivery'].includes(type))) {
+        amenityTags.add('FOOD');
     }
 
     return Array.from(amenityTags);
