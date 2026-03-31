@@ -2842,6 +2842,17 @@ export default function JazzbaiSuperAdminPage() {
                   style={smallBtn("primary", submittingAction === "create-venue")}
                   disabled={submittingAction === "create-venue"}
                   onClick={() => void runAction("create-venue", async () => {
+                    if (!newVenue.ownerId.trim()) {
+                      throw new Error("Select an owner before creating a venue.");
+                    }
+                    if (!newVenue.name.trim() || !newVenue.addressLine1.trim() || !newVenue.city.trim() || !newVenue.country.trim()) {
+                      throw new Error("Name, address, city, and country are required.");
+                    }
+                    const lat = Number(newVenue.lat);
+                    const lng = Number(newVenue.lng);
+                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                      throw new Error("Latitude and longitude must be valid numbers.");
+                    }
                     await superAdminFetch("/venues", {
                       method: "POST",
                       body: JSON.stringify({
@@ -2860,8 +2871,8 @@ export default function JazzbaiSuperAdminPage() {
                         googlePlaceId: newVenue.googlePlaceId || undefined,
                         coverImageUrl: newVenue.coverImageUrl || undefined,
                         coverImageS3Key: newVenue.coverImageS3Key || undefined,
-                        lat: Number(newVenue.lat),
-                        lng: Number(newVenue.lng),
+                        lat,
+                        lng,
                         capacity: newVenue.capacity ? Number(newVenue.capacity) : undefined,
                         ratingOverride: newVenue.ratingOverride ? Number(newVenue.ratingOverride) : undefined,
                         reviewCountOverride: newVenue.reviewCountOverride ? Number(newVenue.reviewCountOverride) : undefined,
