@@ -38,6 +38,13 @@ export type GoogleSourceSnapshot = {
     googleMapsUrl?: string | null;
     rating?: number | null;
     reviewCount?: number | null;
+    workingHours?: Array<{
+        day: string;
+        hours: string;
+        sortOrder: number;
+        isClosed?: boolean;
+        isTwentyFourHours?: boolean;
+    }>;
     photos?: GooglePlacePhotoSnapshot[];
     photosFetchedAt?: string | null;
     googleImageSelection?: GoogleImageSelectionSnapshot | null;
@@ -78,6 +85,10 @@ function getString(value: unknown) {
 
 function getNumber(value: unknown) {
     return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function getBoolean(value: unknown) {
+    return typeof value === 'boolean' ? value : null;
 }
 
 function getTimeZoneString(value: unknown) {
@@ -124,8 +135,84 @@ function extractMenuSnapshot(raw: Record<string, unknown>): GoogleSourceSnapshot
     };
 }
 
+function extractWorkingHours(raw: Record<string, unknown>): GoogleSourceSnapshot['workingHours'] {
+    const regularOpeningHours = isRecord(raw.regularOpeningHours) ? raw.regularOpeningHours : null;
+    const weekdayDescriptions = Array.isArray(regularOpeningHours?.weekdayDescriptions)
+        ? regularOpeningHours.weekdayDescriptions
+        : [];
+
+    const fallbackDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const rows = weekdayDescriptions.flatMap((entry, index) => {
+        const line = getString(entry);
+        if (!line) return [];
+
+        const separatorIndex = line.indexOf(':');
+        const day = separatorIndex >= 0 ? line.slice(0, separatorIndex).trim() : (fallbackDays[index] || `Day ${index + 1}`);
+        const hours = separatorIndex >= 0 ? line.slice(separatorIndex + 1).trim() : line.trim();
+
+        return [{
+            day,
+            hours: hours || 'Closed',
+            sortOrder: index,
+            isClosed: /closed/i.test(hours || ''),
+            isTwentyFourHours: /24\s*hours/i.test(hours || ''),
+        }];
+    });
+
+    return rows.length > 0 ? rows : [];
+}
+
 function extractPhotos(raw: Record<string, unknown>) {
     return normalizeGooglePhotoSnapshots(raw.photos);
+}
+
+export function deriveGoogleAmenitiesFromSnapshot(snapshot: GoogleSourceSnapshot) {
+    const raw = isRecord(snapshot.raw) ? snapshot.raw : {};
+    const amenityTags = new Set<string>();
+
+    const servesBeer = getBoolean(raw.servesBeer);
+    const servesWine = getBoolean(raw.servesWine);
+    const servesCocktails = getBoolean(raw.servesCocktails);
+    if (servesBeer || servesWine || servesCocktails) {
+        amenityTags.add('Full Bar Service');
+    }
+
+    if (getBoolean(raw.outdoorSeating)) {
+        amenityTags.add('Outdoor Seating / Patio');
+    }
+
+    if (getBoolean(raw.liveMusic)) {
+        amenityTags.add('Live Music / DJ');
+    }
+
+    const parkingOptions = isRecord(raw.parkingOptions) ? raw.parkingOptions : null;
+    if (parkingOptions) {
+        if (
+            getBoolean(parkingOptions.freeParkingLot)
+            || getBoolean(parkingOptions.freeStreetParking)
+            || getBoolean(parkingOptions.freeGarageParking)
+        ) {
+            amenityTags.add('Free Parking');
+        }
+        if (getBoolean(parkingOptions.valetParking)) {
+            amenityTags.add('Valet Parking');
+        }
+    }
+
+    const accessibilityOptions = isRecord(raw.accessibilityOptions) ? raw.accessibilityOptions : null;
+    if (
+        accessibilityOptions
+        && (
+            getBoolean(accessibilityOptions.wheelchairAccessibleEntrance)
+            || getBoolean(accessibilityOptions.wheelchairAccessibleRestroom)
+            || getBoolean(accessibilityOptions.wheelchairAccessibleSeating)
+            || getBoolean(accessibilityOptions.wheelchairAccessibleParking)
+        )
+    ) {
+        amenityTags.add('Wheelchair Accessible');
+    }
+
+    return Array.from(amenityTags);
 }
 
 function mapPlaceToSnapshot(place: Record<string, unknown>): GoogleSourceSnapshot {
@@ -154,6 +241,7 @@ function mapPlaceToSnapshot(place: Record<string, unknown>): GoogleSourceSnapsho
         googleMapsUrl: getString(place.googleMapsUri),
         rating: getNumber(place.rating),
         reviewCount: typeof place.userRatingCount === 'number' ? place.userRatingCount : null,
+        workingHours: extractWorkingHours(place),
         photos: extractPhotos(place),
         photosFetchedAt: new Date().toISOString(),
         menu: extractMenuSnapshot(place),
@@ -256,6 +344,22 @@ export async function getGooglePlaceDetails(placeId: string): Promise<GoogleSour
         'photos.authorAttributions.photoUri',
         'timeZone',
         'regularOpeningHours',
+        'regularOpeningHours.weekdayDescriptions',
+        'outdoorSeating',
+        'liveMusic',
+        'servesBeer',
+        'servesWine',
+        'servesCocktails',
+        'parkingOptions',
+        'parkingOptions.freeParkingLot',
+        'parkingOptions.freeStreetParking',
+        'parkingOptions.freeGarageParking',
+        'parkingOptions.valetParking',
+        'accessibilityOptions',
+        'accessibilityOptions.wheelchairAccessibleEntrance',
+        'accessibilityOptions.wheelchairAccessibleRestroom',
+        'accessibilityOptions.wheelchairAccessibleSeating',
+        'accessibilityOptions.wheelchairAccessibleParking',
         'editorialSummary',
         'priceLevel',
         'primaryType',

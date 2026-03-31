@@ -15,7 +15,7 @@ import {
 import { authMiddleware, requireRole } from '../middleware';
 import { z } from 'zod';
 import { deleteStorageObjects } from '../lib/storage';
-import { getGooglePlaceDetails, type GoogleSourceSnapshot } from '../lib/googlePlaces';
+import { deriveGoogleAmenitiesFromSnapshot, getGooglePlaceDetails, type GoogleSourceSnapshot } from '../lib/googlePlaces';
 import { applyGoogleMenuSnapshot, buildGoogleVenueFields, buildVenueGoogleDefaults, findExistingVenueMatch, getVenueMenuSourceState } from '../lib/venueOnboarding';
 import {
     appendGoogleGalleryPhoto,
@@ -315,6 +315,7 @@ dashboardRoutes.post('/venues', async (c) => {
         const snapshot = await getGooglePlaceDetails(parsed.data.googlePlaceId.trim());
         googleFields = buildGoogleVenueFields(snapshot);
     }
+    const googleAmenities = googleFields ? deriveGoogleAmenitiesFromSnapshot(googleFields.googleSourceSnapshot as GoogleSourceSnapshot) : [];
 
     const existingVenue = await findExistingVenueMatch({
         googlePlaceId: parsed.data.googlePlaceId,
@@ -348,7 +349,7 @@ dashboardRoutes.post('/venues', async (c) => {
             timezone: parsed.data.timezone.trim(),
             phone: parsed.data.phone || null,
             capacity: parsed.data.capacity || null,
-            amenities: parsed.data.amenities,
+            amenities: Array.from(new Set([...(parsed.data.amenities || []), ...googleAmenities])),
             vibes: parsed.data.vibes,
             cuisineTags: parsed.data.cuisineTags,
             priceRange: parsed.data.priceRange,
@@ -572,6 +573,7 @@ async function updateVenueHandler(c: any) {
         }
         googleFields = buildGoogleVenueFields(snapshot);
     }
+    const googleAmenities = googleFields ? deriveGoogleAmenitiesFromSnapshot(googleFields.googleSourceSnapshot as GoogleSourceSnapshot) : [];
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (parsed.data.name !== undefined) updates.name = parsed.data.name;
@@ -591,7 +593,9 @@ async function updateVenueHandler(c: any) {
     if (parsed.data.instagramHandle !== undefined) updates.instagramHandle = parsed.data.instagramHandle;
     if (parsed.data.googleMapsUrl !== undefined) updates.googleMapsUrl = parsed.data.googleMapsUrl;
     if (parsed.data.capacity !== undefined) updates.capacity = parsed.data.capacity;
-    if (parsed.data.amenities !== undefined) updates.amenities = parsed.data.amenities;
+    if (parsed.data.amenities !== undefined) {
+        updates.amenities = Array.from(new Set([...(parsed.data.amenities || []), ...googleAmenities]));
+    }
     if (parsed.data.vibes !== undefined) updates.vibes = parsed.data.vibes;
     if (parsed.data.cuisineTags !== undefined) updates.cuisineTags = parsed.data.cuisineTags;
     if (parsed.data.priceRange !== undefined) updates.priceRange = parsed.data.priceRange;
@@ -618,6 +622,9 @@ async function updateVenueHandler(c: any) {
         if (parsed.data.googleMapsUrl === undefined) updates.googleMapsUrl = googleFields.googleMapsUrl;
         if (venue.menuSource !== 'MANUAL') {
             updates.menuSource = googleFields.googleSourceSnapshot.menu ? 'GOOGLE' : 'NONE';
+        }
+        if (parsed.data.amenities === undefined && googleAmenities.length > 0) {
+            updates.amenities = Array.from(new Set([...(venue.amenities || []), ...googleAmenities]));
         }
     }
 
@@ -899,6 +906,7 @@ async function refreshVenueGoogleHandler(c: any) {
 
     const snapshot = await getGooglePlaceDetails(venue.googlePlaceId);
     const googleFields = buildGoogleVenueFields(snapshot);
+    const googleAmenities = deriveGoogleAmenitiesFromSnapshot(googleFields.googleSourceSnapshot as GoogleSourceSnapshot);
 
     await db.transaction(async (tx) => {
         await tx.update(venues).set({
@@ -909,6 +917,9 @@ async function refreshVenueGoogleHandler(c: any) {
             googleSyncError: null,
             ratingOverride: googleFields.ratingOverride,
             reviewCountOverride: googleFields.reviewCountOverride,
+            amenities: googleAmenities.length > 0
+                ? Array.from(new Set([...(venue.amenities || []), ...googleAmenities]))
+                : venue.amenities,
             phone: venue.phone || googleFields.phone,
             website: venue.website || googleFields.website,
             googleMapsUrl: venue.googleMapsUrl || googleFields.googleMapsUrl,
@@ -958,6 +969,7 @@ dashboardRoutes.post('/venue/google/revert', async (c) => {
 
     const normalizedSnapshot = normalizeGoogleSourceSnapshot(snapshot);
     const googleFields = buildGoogleVenueFields(normalizedSnapshot);
+    const googleAmenities = deriveGoogleAmenitiesFromSnapshot(normalizedSnapshot);
     const updates: Record<string, unknown> = {
         name: normalizedSnapshot.displayName,
         addressLine1: googleFields.addressLine1,
@@ -973,6 +985,7 @@ dashboardRoutes.post('/venue/google/revert', async (c) => {
         googleMapsUrl: googleFields.googleMapsUrl,
         ratingOverride: googleFields.ratingOverride,
         reviewCountOverride: googleFields.reviewCountOverride,
+        amenities: googleAmenities,
         menuSource: normalizedSnapshot.menu ? 'GOOGLE' : 'NONE',
         googleSourceSnapshot: normalizedSnapshot,
         updatedAt: new Date(),

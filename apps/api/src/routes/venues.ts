@@ -41,6 +41,11 @@ function venueImagePayloadForRow(venue: typeof venues.$inferSelect) {
     });
 }
 
+function venueWorkingHoursForRow(venue: typeof venues.$inferSelect) {
+    const normalizedSnapshot = normalizeGoogleSourceSnapshot((venue.googleSourceSnapshot || {}) as GoogleSourceSnapshot);
+    return Array.isArray(normalizedSnapshot.workingHours) ? normalizedSnapshot.workingHours : [];
+}
+
 async function getPublicVenueBySlugOrId(slugOrId: string) {
     const [venue] = await db.select().from(venues).where(
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
@@ -317,6 +322,7 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
         return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
     }
     const { googleSuggestedImages: _googleSuggestedImages, ...imagePayload } = venueImagePayloadForRow(venue);
+    const workingHours = venueWorkingHoursForRow(venue);
 
     const upcomingEvents = await db.select({
         event: venueEvents,
@@ -375,6 +381,7 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
     return c.json(apiResponse({
         ...venue,
         ...imagePayload,
+        workingHours,
         promotedVenueEventId,
         followerCount: Number(followerResult?.count ?? 0),
         isFollowing,

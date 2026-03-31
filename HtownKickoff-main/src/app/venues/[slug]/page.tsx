@@ -224,6 +224,7 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
     const galleryImages = venue?.galleryImageUrls?.length ? venue.galleryImageUrls : [];
     const coverAttributions = venue?.coverImageAttributions || [];
     const galleryImageAttributions = venue?.galleryImageAttributions || [];
+    const workingHours = venue?.workingHours || [];
 
     const mainEvent = useMemo(() => {
         if (matchEvents.length === 0) return null;
@@ -447,6 +448,22 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                                                 </div>
                                             ))}
                                         </div>
+                                    </section>
+
+                                    <section className={styles.panel}>
+                                        <h2 className={styles.panelTitle}>Working Hours</h2>
+                                        {workingHours.length === 0 ? (
+                                            <p className={styles.panelSubtle}>Working hours are not available yet.</p>
+                                        ) : (
+                                            <div className={styles.hoursTable}>
+                                                {workingHours.map((entry) => (
+                                                    <div key={`${entry.day}-${entry.sortOrder}`} className={styles.hoursRow}>
+                                                        <span className={styles.hoursDay}>{entry.day}</span>
+                                                        <span>{entry.hours}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </section>
 
                                     <section className={styles.panel}>

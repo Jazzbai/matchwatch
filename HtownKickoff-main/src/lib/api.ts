@@ -331,6 +331,13 @@ export interface GooglePlaceSnapshot {
     googleMapsUrl?: string | null;
     rating?: string | number | null;
     reviewCount?: number | null;
+    workingHours?: Array<{
+        day: string;
+        hours: string;
+        sortOrder: number;
+        isClosed?: boolean;
+        isTwentyFourHours?: boolean;
+    }>;
     menu?: {
         url?: string | null;
         sections?: GooglePlaceMenuSection[];
@@ -419,6 +426,13 @@ export interface Venue {
     addressLine1: string;
     city: string;
     stateProvince?: string | null;
+    workingHours?: Array<{
+        day: string;
+        hours: string;
+        sortOrder: number;
+        isClosed?: boolean;
+        isTwentyFourHours?: boolean;
+    }>;
     coverImageUrl?: string;
     galleryImageUrls?: string[];
     imageSource?: 'manual' | 'google' | 'none';

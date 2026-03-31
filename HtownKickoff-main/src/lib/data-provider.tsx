@@ -780,6 +780,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             galleryImageAttributions: Array.isArray((v as { galleryImageAttributions?: unknown[] }).galleryImageAttributions)
                 ? ((v as { galleryImageAttributions?: Array<Array<{ displayName: string; uri?: string | null; photoUri?: string | null }>> }).galleryImageAttributions || [])
                 : [],
+            workingHours: [],
             addressLine1: v.addressLine1 || "",
             addressLine2: "",
             city: v.city || "",
@@ -862,6 +863,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 galleryImageAttributions: Array.isArray(detail?.galleryImageAttributions)
                     ? detail.galleryImageAttributions
                     : row.venue.galleryImageAttributions || [],
+                workingHours: Array.isArray(detail?.workingHours) ? detail.workingHours : row.venue.workingHours || [],
                 addressLine2: detail?.addressLine2 || "",
                 state: detail?.stateProvince || row.venue.state || "",
                 postalCode: detail?.postalCode || "",

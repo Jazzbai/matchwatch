@@ -160,6 +160,7 @@ export function buildVenueGoogleDefaults(snapshot: GoogleSourceSnapshot, options
         googleMapsUrl: normalizedSnapshot.googleMapsUrl || '',
         rating: normalizedSnapshot.rating ?? null,
         reviewCount: normalizedSnapshot.reviewCount ?? null,
+        workingHours: normalizedSnapshot.workingHours || [],
         menu: normalizedSnapshot.menu || null,
         photos: normalizedSnapshot.photos || [],
         photosFetchedAt: normalizedSnapshot.photosFetchedAt || null,

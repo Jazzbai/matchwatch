@@ -190,6 +190,13 @@ export interface Venue {
         uri?: string | null;
         photoUri?: string | null;
     }>>;
+    workingHours?: Array<{
+        day: string;
+        hours: string;
+        sortOrder: number;
+        isClosed?: boolean;
+        isTwentyFourHours?: boolean;
+    }>;
     addressLine1: string;
     addressLine2: string;
     city: string;
