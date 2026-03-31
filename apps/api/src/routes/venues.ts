@@ -6,7 +6,8 @@ import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDista
 import { venueQuerySchema, paginationSchema } from '@matchwatch/shared';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware';
 import { buildGoogleVenueFields } from '../lib/venueOnboarding';
-import { getGooglePhotoMediaUri, getGooglePlaceDetails, type GoogleSourceSnapshot } from '../lib/googlePlaces';
+import { getGooglePhotoMediaUri, type GoogleSourceSnapshot } from '../lib/googlePlaces';
+import { getPublicGoogleReviews, isGoogleSyncStale, refreshVenueFromGoogle } from '../lib/googleVenueSync';
 import {
     buildVenueImageRenderPayload,
     normalizeGoogleSourceSnapshot,
@@ -60,30 +61,23 @@ async function getPublicVenueBySlugOrId(slugOrId: string) {
 
 async function refreshVenueGoogleSnapshot(venue: typeof venues.$inferSelect) {
     if (!venue.googlePlaceId) return venue;
-
-    const snapshot = await getGooglePlaceDetails(venue.googlePlaceId);
-    const googleFields = buildGoogleVenueFields(snapshot);
-
-    await db.update(venues).set({
-        googlePlaceId: googleFields.googlePlaceId,
-        googleSourceSnapshot: googleFields.googleSourceSnapshot,
-        googleLastSyncedAt: new Date(),
-        googleSyncStatus: 'SYNCED',
-        googleSyncError: null,
-        ratingOverride: googleFields.ratingOverride,
-        reviewCountOverride: googleFields.reviewCountOverride,
-        updatedAt: new Date(),
-    }).where(eq(venues.id, venue.id));
-
+    const refreshed = await refreshVenueFromGoogle(venue);
+    const googleFields = buildGoogleVenueFields(refreshed.snapshot);
     return {
         ...venue,
         googlePlaceId: googleFields.googlePlaceId,
-        googleSourceSnapshot: googleFields.googleSourceSnapshot as typeof venue.googleSourceSnapshot,
+        googleSourceSnapshot: refreshed.snapshot as typeof venue.googleSourceSnapshot,
         googleLastSyncedAt: new Date(),
         googleSyncStatus: 'SYNCED' as typeof venue.googleSyncStatus,
         googleSyncError: null,
         ratingOverride: googleFields.ratingOverride,
         reviewCountOverride: googleFields.reviewCountOverride,
+        description: (refreshed.updates.description as typeof venue.description | undefined) ?? venue.description,
+        shortDescription: (refreshed.updates.shortDescription as typeof venue.shortDescription | undefined) ?? venue.shortDescription,
+        priceRange: (refreshed.updates.priceRange as typeof venue.priceRange | undefined) ?? venue.priceRange,
+        descriptionSource: (refreshed.updates.descriptionSource as typeof venue.descriptionSource | undefined) ?? venue.descriptionSource,
+        shortDescriptionSource: (refreshed.updates.shortDescriptionSource as typeof venue.shortDescriptionSource | undefined) ?? venue.shortDescriptionSource,
+        priceRangeSource: (refreshed.updates.priceRangeSource as typeof venue.priceRangeSource | undefined) ?? venue.priceRangeSource,
     };
 }
 
@@ -321,8 +315,13 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
     if (!venue) {
         return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
     }
+    if (venue.googlePlaceId && isGoogleSyncStale(venue.googleLastSyncedAt)) {
+        void refreshVenueFromGoogle(venue).catch(() => undefined);
+    }
     const { googleSuggestedImages: _googleSuggestedImages, ...imagePayload } = venueImagePayloadForRow(venue);
     const workingHours = venueWorkingHoursForRow(venue);
+    const normalizedSnapshot = normalizeGoogleSourceSnapshot((venue.googleSourceSnapshot || {}) as GoogleSourceSnapshot);
+    const googleReviews = getPublicGoogleReviews(normalizedSnapshot);
 
     const upcomingEvents = await db.select({
         event: venueEvents,
@@ -382,6 +381,9 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
         ...venue,
         ...imagePayload,
         workingHours,
+        googleEditorialSummary: normalizedSnapshot.editorialSummary || null,
+        googlePriceLevel: normalizedSnapshot.priceLevel || null,
+        googleReviews,
         promotedVenueEventId,
         followerCount: Number(followerResult?.count ?? 0),
         isFollowing,

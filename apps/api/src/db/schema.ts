@@ -22,6 +22,7 @@ export const claimStatusEnum = pgEnum('claim_status', ['PENDING', 'APPROVED', 'R
 export const approvalStatusEnum = pgEnum('approval_status', ['PENDING', 'APPROVED', 'REJECTED']);
 export const googleSyncStatusEnum = pgEnum('google_sync_status', ['NEVER_SYNCED', 'SYNCED', 'ERROR']);
 export const venueMenuSourceEnum = pgEnum('venue_menu_source', ['NONE', 'GOOGLE', 'MANUAL']);
+export const googleFieldSourceEnum = pgEnum('google_field_source', ['NONE', 'GOOGLE', 'MANUAL']);
 export const discountTypeEnum = pgEnum('discount_type', ['PERCENTAGE', 'FIXED', 'FREE_ITEM']);
 export const matchEventFormatEnum = pgEnum('match_event_format', ['HEAD_TO_HEAD', 'SINGLE_EVENT']);
 export const motorsportEntryStatusEnum = pgEnum('motorsport_entry_status', ['ENTERED', 'ACTIVE', 'FINISHED', 'DNF', 'DNS', 'DSQ', 'WITHDRAWN']);
@@ -292,6 +293,8 @@ export const venues = pgTable('venues', {
     googleLastSyncedAt: timestamp('google_last_synced_at'),
     googleSyncStatus: googleSyncStatusEnum('google_sync_status').default('NEVER_SYNCED').notNull(),
     googleSyncError: text('google_sync_error'),
+    descriptionSource: googleFieldSourceEnum('description_source').default('NONE').notNull(),
+    shortDescriptionSource: googleFieldSourceEnum('short_description_source').default('NONE').notNull(),
     approvalStatus: approvalStatusEnum('approval_status').default('PENDING').notNull(),
     approvalNotes: text('approval_notes'),
     approvedAt: timestamp('approved_at'),
@@ -306,6 +309,7 @@ export const venues = pgTable('venues', {
     vibes: text('vibes').array().notNull().default([]),
     cuisineTags: text('cuisine_tags').array().notNull().default([]),
     priceRange: priceRangeEnum('price_range').default('MID'),
+    priceRangeSource: googleFieldSourceEnum('price_range_source').default('NONE').notNull(),
     isVerified: boolean('is_verified').default(false).notNull(),
     isActive: boolean('is_active').default(true).notNull(),
     isFeatured: boolean('is_featured').default(false).notNull(),

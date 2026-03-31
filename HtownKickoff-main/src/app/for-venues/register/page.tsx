@@ -311,7 +311,7 @@ export default function VenueRegisterPage() {
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Menu</div>
                     <div className="mt-1 text-sm font-medium text-[var(--foreground)]">
-                      {googleDefaults.menu?.sections?.length || googleDefaults.menu?.url ? "Imported from Google" : "Not available from Google"}
+                      {googleDefaults.menu?.categories?.length || googleDefaults.menu?.sourceUrl ? "Imported from Google" : "Not available from Google"}
                     </div>
                   </div>
                   <div>

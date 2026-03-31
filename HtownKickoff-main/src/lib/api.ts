@@ -314,6 +314,17 @@ export interface GooglePlaceMenuSection {
     items: GooglePlaceMenuItem[];
 }
 
+export interface GooglePlaceReview {
+    authorName: string;
+    rating: number;
+    text?: string | null;
+    publishedAt?: string | null;
+    relativePublishTimeText?: string | null;
+    authorUrl?: string | null;
+    profilePhotoUrl?: string | null;
+    sourceUrl?: string | null;
+}
+
 export interface GooglePlaceSnapshot {
     placeId: string;
     displayName: string;
@@ -331,6 +342,9 @@ export interface GooglePlaceSnapshot {
     googleMapsUrl?: string | null;
     rating?: string | number | null;
     reviewCount?: number | null;
+    editorialSummary?: string | null;
+    priceLevel?: string | null;
+    googleReviews?: GooglePlaceReview[];
     workingHours?: Array<{
         day: string;
         hours: string;
@@ -339,9 +353,11 @@ export interface GooglePlaceSnapshot {
         isTwentyFourHours?: boolean;
     }>;
     menu?: {
-        url?: string | null;
-        sections?: GooglePlaceMenuSection[];
-        lastSyncedAt?: string | null;
+        sourceUrl?: string | null;
+        categories?: GooglePlaceMenuSection[];
+        scrapeStatus?: 'UNAVAILABLE' | 'PENDING' | 'SYNCED' | 'ERROR' | null;
+        scrapedAt?: string | null;
+        error?: string | null;
     } | null;
     photos?: Array<{
         name: string;
@@ -433,6 +449,9 @@ export interface Venue {
         isClosed?: boolean;
         isTwentyFourHours?: boolean;
     }>;
+    googleEditorialSummary?: string | null;
+    googlePriceLevel?: string | null;
+    googleReviews?: GooglePlaceReview[];
     coverImageUrl?: string;
     galleryImageUrls?: string[];
     imageSource?: 'manual' | 'google' | 'none';
@@ -462,6 +481,9 @@ export interface Venue {
     approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
     googlePlaceId?: string | null;
     menuSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
+    descriptionSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
+    shortDescriptionSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
+    priceRangeSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
 }
 
 export interface BlogCategory {

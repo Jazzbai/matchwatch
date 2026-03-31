@@ -15,7 +15,17 @@ import {
 import { authMiddleware, requireRole } from '../middleware';
 import { z } from 'zod';
 import { deleteStorageObjects } from '../lib/storage';
-import { deriveGoogleAmenitiesFromSnapshot, getGooglePlaceDetails, type GoogleSourceSnapshot } from '../lib/googlePlaces';
+import { type GoogleSourceSnapshot } from '../lib/googlePlaces';
+import {
+    buildGoogleSyncUpdates,
+    enrichGoogleMenuSnapshot,
+    getAllowedGoogleAmenities,
+    getEnrichedGooglePlaceDetails,
+    mapGooglePriceLevelToPriceRange,
+    mergeAmenitySets,
+    refreshVenueFromGoogle,
+    sanitizeAmenities,
+} from '../lib/googleVenueSync';
 import { applyGoogleMenuSnapshot, buildGoogleVenueFields, buildVenueGoogleDefaults, findExistingVenueMatch, getVenueMenuSourceState } from '../lib/venueOnboarding';
 import {
     appendGoogleGalleryPhoto,
@@ -62,40 +72,6 @@ async function getOwnedVenues(userId: string) {
     }).from(venues)
         .where(and(eq(venues.ownerId, userId), eq(venues.isActive, true)))
         .orderBy(desc(venues.createdAt));
-}
-
-async function getActiveAmenitySlugs() {
-    const rows = await db.select({ slug: venueAttributes.slug }).from(venueAttributes)
-        .where(and(eq(venueAttributes.type, 'AMENITY'), eq(venueAttributes.isActive, true)));
-    return new Set(rows.map((row) => row.slug));
-}
-
-async function getAllowedGoogleAmenities(snapshot?: GoogleSourceSnapshot | null) {
-    if (!snapshot) return [] as string[];
-    const derivedAmenities = deriveGoogleAmenitiesFromSnapshot(snapshot);
-    if (derivedAmenities.length === 0) return [];
-    const allowedAmenitySlugs = await getActiveAmenitySlugs();
-    return derivedAmenities.filter((amenity) => allowedAmenitySlugs.has(amenity));
-}
-
-async function sanitizeAmenities(values: string[] | null | undefined) {
-    const amenityValues = Array.isArray(values) ? values : [];
-    if (amenityValues.length === 0) return [] as string[];
-    const allowedAmenitySlugs = await getActiveAmenitySlugs();
-    return amenityValues.filter((amenity) => allowedAmenitySlugs.has(amenity));
-}
-
-async function mergeAmenitySets(...groups: Array<string[] | null | undefined>) {
-    const allowedAmenitySlugs = await getActiveAmenitySlugs();
-    const merged = new Set<string>();
-    for (const group of groups) {
-        for (const amenity of Array.isArray(group) ? group : []) {
-            if (allowedAmenitySlugs.has(amenity)) {
-                merged.add(amenity);
-            }
-        }
-    }
-    return Array.from(merged);
 }
 
 function getRequestedVenueId(c: any) {
@@ -345,9 +321,10 @@ dashboardRoutes.post('/venues', async (c) => {
     }
 
     let googleFields: ReturnType<typeof buildGoogleVenueFields> | null = null;
+    let googleSnapshot: GoogleSourceSnapshot | null = null;
     if (parsed.data.googlePlaceId?.trim()) {
-        const snapshot = await getGooglePlaceDetails(parsed.data.googlePlaceId.trim());
-        googleFields = buildGoogleVenueFields(snapshot);
+        googleSnapshot = await getEnrichedGooglePlaceDetails(parsed.data.googlePlaceId.trim());
+        googleFields = buildGoogleVenueFields(googleSnapshot);
     }
     const googleAmenities = await getAllowedGoogleAmenities(
         googleFields ? (googleFields.googleSourceSnapshot as GoogleSourceSnapshot) : null,
@@ -377,6 +354,8 @@ dashboardRoutes.post('/venues', async (c) => {
             slug: generateUniqueSlug(parsed.data.name.trim()),
             description: parsed.data.description || null,
             shortDescription: parsed.data.shortDescription || null,
+            descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
+            shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
             addressLine1: parsed.data.addressLine1.trim(),
             city: parsed.data.city.trim(),
             stateProvince: parsed.data.stateProvince || null,
@@ -391,6 +370,7 @@ dashboardRoutes.post('/venues', async (c) => {
             vibes: parsed.data.vibes,
             cuisineTags: parsed.data.cuisineTags,
             priceRange: parsed.data.priceRange,
+            priceRangeSource: 'MANUAL',
             approvalStatus: 'PENDING',
             approvalNotes: null,
             isActive: true,
@@ -407,7 +387,42 @@ dashboardRoutes.post('/venues', async (c) => {
             venueInsert.googleMapsUrl = googleFields.googleMapsUrl;
             venueInsert.ratingOverride = googleFields.ratingOverride;
             venueInsert.reviewCountOverride = googleFields.reviewCountOverride;
-            venueInsert.menuSource = googleFields.googleSourceSnapshot.menu ? 'GOOGLE' : 'NONE';
+            venueInsert.menuSource = googleFields.googleSourceSnapshot.menu?.categories?.length ? 'GOOGLE' : 'NONE';
+
+            const googlePriceRange = mapGooglePriceLevelToPriceRange(googleSnapshot?.priceLevel);
+            if (!parsed.data.description?.trim() && googleSnapshot) {
+                const syncPayload = await buildGoogleSyncUpdates({
+                    id: 'pending',
+                    slug: '',
+                    name: parsed.data.name.trim(),
+                    description: null,
+                    shortDescription: null,
+                    descriptionSource: 'NONE',
+                    shortDescriptionSource: 'NONE',
+                    priceRange: parsed.data.priceRange,
+                    priceRangeSource: 'NONE',
+                    menuSource: 'NONE',
+                    phone: null,
+                    website: null,
+                    googleMapsUrl: null,
+                    googlePlaceId: googleFields.googlePlaceId,
+                    googleSourceSnapshot: {},
+                    googleLastSyncedAt: null,
+                    googleSyncStatus: 'NEVER_SYNCED',
+                    googleSyncError: null,
+                    ratingOverride: null,
+                    reviewCountOverride: null,
+                    amenities: nextAmenities,
+                }, googleSnapshot);
+                venueInsert.description = (syncPayload.updates.description as string | null | undefined) || venueInsert.description;
+                venueInsert.shortDescription = (syncPayload.updates.shortDescription as string | null | undefined) || venueInsert.shortDescription;
+                venueInsert.descriptionSource = (syncPayload.updates.descriptionSource as 'NONE' | 'GOOGLE' | 'MANUAL' | undefined) || venueInsert.descriptionSource;
+                venueInsert.shortDescriptionSource = (syncPayload.updates.shortDescriptionSource as 'NONE' | 'GOOGLE' | 'MANUAL' | undefined) || venueInsert.shortDescriptionSource;
+            }
+            if (googlePriceRange) {
+                venueInsert.priceRange = googlePriceRange;
+                venueInsert.priceRangeSource = 'GOOGLE';
+            }
         }
 
         const [createdVenue] = await tx.insert(venues).values(venueInsert).returning({
@@ -419,7 +434,7 @@ dashboardRoutes.post('/venues', async (c) => {
             approvalStatus: venues.approvalStatus,
         });
 
-        if (googleFields?.googleSourceSnapshot) {
+        if (googleFields?.googleSourceSnapshot.menu?.categories?.length) {
             await applyGoogleMenuSnapshot(tx, createdVenue.id, googleFields.googleSourceSnapshot as GoogleSourceSnapshot);
         }
 
@@ -593,13 +608,15 @@ async function updateVenueHandler(c: any) {
     }
 
     let googleFields: ReturnType<typeof buildGoogleVenueFields> | null = null;
+    let googleSnapshot: GoogleSourceSnapshot | null = null;
+    let googleManagedUpdates: Record<string, unknown> = { updatedAt: new Date() };
     if (parsed.data.googlePlaceId?.trim()) {
-        const snapshot = await getGooglePlaceDetails(parsed.data.googlePlaceId.trim());
+        googleSnapshot = await getEnrichedGooglePlaceDetails(parsed.data.googlePlaceId.trim());
         const existingVenue = await findExistingVenueMatch({
-            googlePlaceId: snapshot.placeId,
-            name: snapshot.displayName,
-            addressLine1: snapshot.addressLine1,
-            city: snapshot.city,
+            googlePlaceId: googleSnapshot.placeId,
+            name: googleSnapshot.displayName,
+            addressLine1: googleSnapshot.addressLine1,
+            city: googleSnapshot.city,
         });
         if (existingVenue && existingVenue.id !== venue.id) {
             return c.json(apiError('CONFLICT', 'This venue already exists. Own this business? Claim it now!', {
@@ -609,16 +626,20 @@ async function updateVenueHandler(c: any) {
                 venueCity: existingVenue.city,
             }), 409);
         }
-        googleFields = buildGoogleVenueFields(snapshot);
+        googleFields = buildGoogleVenueFields(googleSnapshot);
+        googleManagedUpdates = (await buildGoogleSyncUpdates(venue, googleSnapshot)).updates;
     }
-    const googleAmenities = await getAllowedGoogleAmenities(
-        googleFields ? (googleFields.googleSourceSnapshot as GoogleSourceSnapshot) : null,
-    );
 
-    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    const updates: Record<string, unknown> = { ...googleManagedUpdates, updatedAt: new Date() };
     if (parsed.data.name !== undefined) updates.name = parsed.data.name;
-    if (parsed.data.description !== undefined) updates.description = parsed.data.description;
-    if (parsed.data.shortDescription !== undefined) updates.shortDescription = parsed.data.shortDescription;
+    if (parsed.data.description !== undefined) {
+        updates.description = parsed.data.description;
+        updates.descriptionSource = 'MANUAL';
+    }
+    if (parsed.data.shortDescription !== undefined) {
+        updates.shortDescription = parsed.data.shortDescription;
+        updates.shortDescriptionSource = 'MANUAL';
+    }
     if (parsed.data.addressLine1 !== undefined) updates.addressLine1 = parsed.data.addressLine1;
     if (parsed.data.addressLine2 !== undefined) updates.addressLine2 = parsed.data.addressLine2;
     if (parsed.data.city !== undefined) updates.city = parsed.data.city;
@@ -634,11 +655,15 @@ async function updateVenueHandler(c: any) {
     if (parsed.data.googleMapsUrl !== undefined) updates.googleMapsUrl = parsed.data.googleMapsUrl;
     if (parsed.data.capacity !== undefined) updates.capacity = parsed.data.capacity;
     if (parsed.data.amenities !== undefined) {
+        const googleAmenities = await getAllowedGoogleAmenities(googleSnapshot);
         updates.amenities = await mergeAmenitySets(parsed.data.amenities || [], googleAmenities);
     }
     if (parsed.data.vibes !== undefined) updates.vibes = parsed.data.vibes;
     if (parsed.data.cuisineTags !== undefined) updates.cuisineTags = parsed.data.cuisineTags;
-    if (parsed.data.priceRange !== undefined) updates.priceRange = parsed.data.priceRange;
+    if (parsed.data.priceRange !== undefined) {
+        updates.priceRange = parsed.data.priceRange;
+        updates.priceRangeSource = 'MANUAL';
+    }
     if (parsed.data.coverImageUrl !== undefined) updates.coverImageUrl = parsed.data.coverImageUrl;
     if (parsed.data.coverImageS3Key !== undefined) updates.coverImageS3Key = parsed.data.coverImageS3Key;
     if (parsed.data.galleryS3Keys !== undefined) updates.galleryS3Keys = parsed.data.galleryS3Keys.slice(0, 5);
@@ -649,29 +674,17 @@ async function updateVenueHandler(c: any) {
             galleryImageUrls: parsed.data.galleryImageUrls.slice(0, 5),
         };
     }
-    if (googleFields) {
-        updates.googlePlaceId = googleFields.googlePlaceId;
-        updates.googleSourceSnapshot = googleFields.googleSourceSnapshot;
-        updates.googleLastSyncedAt = new Date();
-        updates.googleSyncStatus = 'SYNCED';
-        updates.googleSyncError = null;
-        updates.ratingOverride = googleFields.ratingOverride;
-        updates.reviewCountOverride = googleFields.reviewCountOverride;
-        if (parsed.data.phone === undefined) updates.phone = googleFields.phone;
-        if (parsed.data.website === undefined) updates.website = googleFields.website;
-        if (parsed.data.googleMapsUrl === undefined) updates.googleMapsUrl = googleFields.googleMapsUrl;
-        if (venue.menuSource !== 'MANUAL') {
-            updates.menuSource = googleFields.googleSourceSnapshot.menu ? 'GOOGLE' : 'NONE';
-        }
-        if (parsed.data.amenities === undefined && googleAmenities.length > 0) {
+    if (googleFields && parsed.data.amenities === undefined) {
+        const googleAmenities = await getAllowedGoogleAmenities(googleSnapshot);
+        if (googleAmenities.length > 0) {
             updates.amenities = await mergeAmenitySets(venue.amenities || [], googleAmenities);
         }
     }
 
     await db.transaction(async (tx) => {
         await tx.update(venues).set(updates).where(eq(venues.id, venue.id));
-        if (googleFields && venue.menuSource !== 'MANUAL' && googleFields.googleSourceSnapshot.menu) {
-            await applyGoogleMenuSnapshot(tx, venue.id, googleFields.googleSourceSnapshot);
+        if (googleFields && venue.menuSource !== 'MANUAL' && googleSnapshot?.menu?.categories?.length) {
+            await applyGoogleMenuSnapshot(tx, venue.id, googleSnapshot);
         }
     });
     await cleanupRemovedVenueMedia({
@@ -944,36 +957,7 @@ async function refreshVenueGoogleHandler(c: any) {
         return c.json(apiError('VALIDATION_ERROR', 'This venue is not linked to a Google Place'), 400);
     }
 
-    const snapshot = await getGooglePlaceDetails(venue.googlePlaceId);
-    const googleFields = buildGoogleVenueFields(snapshot);
-    const googleAmenities = await getAllowedGoogleAmenities(googleFields.googleSourceSnapshot as GoogleSourceSnapshot);
-
-    await db.transaction(async (tx) => {
-        await tx.update(venues).set({
-            googleSourceSnapshot: googleFields.googleSourceSnapshot,
-            googlePlaceId: googleFields.googlePlaceId,
-            googleLastSyncedAt: new Date(),
-            googleSyncStatus: 'SYNCED',
-            googleSyncError: null,
-            ratingOverride: googleFields.ratingOverride,
-            reviewCountOverride: googleFields.reviewCountOverride,
-            amenities: googleAmenities.length > 0
-                ? await mergeAmenitySets(venue.amenities || [], googleAmenities)
-                : await sanitizeAmenities(venue.amenities),
-            phone: venue.phone || googleFields.phone,
-            website: venue.website || googleFields.website,
-            googleMapsUrl: venue.googleMapsUrl || googleFields.googleMapsUrl,
-            updatedAt: new Date(),
-        }).where(eq(venues.id, venue.id));
-
-        if (venue.menuSource !== 'MANUAL' && snapshot.menu) {
-            await applyGoogleMenuSnapshot(tx, venue.id, snapshot);
-            await tx.update(venues).set({
-                menuSource: 'GOOGLE',
-                updatedAt: new Date(),
-            }).where(eq(venues.id, venue.id));
-        }
-    });
+    const { snapshot, defaults } = await refreshVenueFromGoogle(venue);
 
     await db.insert(auditLogs).values({
         userId: user.id,
@@ -984,8 +968,8 @@ async function refreshVenueGoogleHandler(c: any) {
 
     return c.json(apiResponse({
         message: 'Google venue data refreshed',
-        snapshot: googleFields.googleSourceSnapshot,
-        defaults: buildVenueGoogleDefaults(googleFields.googleSourceSnapshot, { slugOrId: venue.slug || venue.id }),
+        snapshot,
+        defaults,
     }));
 }
 
@@ -1007,10 +991,18 @@ dashboardRoutes.post('/venue/google/revert', async (c) => {
         return c.json(apiError('NOT_FOUND', 'No Google defaults stored for this venue'), 404);
     }
 
-    const normalizedSnapshot = normalizeGoogleSourceSnapshot(snapshot);
+    const normalizedSnapshot = await enrichGoogleMenuSnapshot(normalizeGoogleSourceSnapshot(snapshot));
     const googleFields = buildGoogleVenueFields(normalizedSnapshot);
     const googleAmenities = await getAllowedGoogleAmenities(normalizedSnapshot);
-    const updates: Record<string, unknown> = {
+    const googleDescriptions = await buildGoogleSyncUpdates({
+        ...venue,
+        googleSourceSnapshot: normalizedSnapshot,
+        descriptionSource: 'NONE',
+        shortDescriptionSource: 'NONE',
+        priceRangeSource: 'NONE',
+        menuSource: parsed.data.includeMenu ? 'NONE' : venue.menuSource,
+    }, normalizedSnapshot);
+    const revertUpdates: Record<string, unknown> = {
         name: normalizedSnapshot.displayName,
         addressLine1: googleFields.addressLine1,
         city: googleFields.city,
@@ -1026,13 +1018,22 @@ dashboardRoutes.post('/venue/google/revert', async (c) => {
         ratingOverride: googleFields.ratingOverride,
         reviewCountOverride: googleFields.reviewCountOverride,
         amenities: await sanitizeAmenities(googleAmenities),
-        menuSource: normalizedSnapshot.menu ? 'GOOGLE' : 'NONE',
         googleSourceSnapshot: normalizedSnapshot,
+        description: googleDescriptions.updates.description ?? null,
+        shortDescription: googleDescriptions.updates.shortDescription ?? null,
+        descriptionSource: googleDescriptions.updates.description ? 'GOOGLE' : 'NONE',
+        shortDescriptionSource: googleDescriptions.updates.shortDescription ? 'GOOGLE' : 'NONE',
+        priceRange: googleDescriptions.updates.priceRange ?? null,
+        priceRangeSource: googleDescriptions.updates.priceRange ? 'GOOGLE' : 'NONE',
         updatedAt: new Date(),
     };
 
+    if (parsed.data.includeMenu) {
+        revertUpdates.menuSource = normalizedSnapshot.menu?.categories?.length ? 'GOOGLE' : 'NONE';
+    }
+
     await db.transaction(async (tx) => {
-        await tx.update(venues).set(updates).where(eq(venues.id, venue.id));
+        await tx.update(venues).set(revertUpdates).where(eq(venues.id, venue.id));
         if (parsed.data.includeMenu) {
             await applyGoogleMenuSnapshot(tx, venue.id, normalizedSnapshot);
         }

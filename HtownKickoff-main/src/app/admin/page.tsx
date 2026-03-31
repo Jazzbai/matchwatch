@@ -139,7 +139,9 @@ type UpcomingMatch = {
 type VenueProfile = {
   name?: string | null;
   description?: string | null;
+  descriptionSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
   shortDescription?: string | null;
+  shortDescriptionSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
   amenities?: string[];
   phone?: string | null;
   addressLine1?: string | null;
@@ -154,6 +156,8 @@ type VenueProfile = {
   googleMapsUrl?: string | null;
   ratingOverride?: string | null;
   reviewCountOverride?: number | null;
+  priceRange?: "BUDGET" | "MID" | "UPSCALE" | "LUXURY" | null;
+  priceRangeSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
   coverImageUrl?: string | null;
   resolvedCoverImageUrl?: string | null;
   coverImageS3Key?: string | null;
@@ -430,6 +434,9 @@ export default function AdminPage() {
   const [venueGooglePlaceId, setVenueGooglePlaceId] = React.useState("");
   const [venueApprovalStatus, setVenueApprovalStatus] = React.useState<"PENDING" | "APPROVED" | "REJECTED" | null>(null);
   const [venueApprovalNotes, setVenueApprovalNotes] = React.useState<string | null>(null);
+  const [descriptionSource, setDescriptionSource] = React.useState<"NONE" | "GOOGLE" | "MANUAL" | null>(null);
+  const [shortDescriptionSource, setShortDescriptionSource] = React.useState<"NONE" | "GOOGLE" | "MANUAL" | null>(null);
+  const [priceRangeSource, setPriceRangeSource] = React.useState<"NONE" | "GOOGLE" | "MANUAL" | null>(null);
   const [menuSourceState, setMenuSourceState] = React.useState<"google" | "manual" | "none">("none");
   const [googleDefaults, setGoogleDefaults] = React.useState<GooglePlaceSnapshot | null>(null);
   const [linkingGooglePlace, setLinkingGooglePlace] = React.useState(false);
@@ -643,6 +650,9 @@ export default function AdminPage() {
       setVenueGooglePlaceId(profile.googlePlaceId || "");
       setVenueApprovalStatus(profile.approvalStatus || null);
       setVenueApprovalNotes(profile.approvalNotes || null);
+      setDescriptionSource(profile.descriptionSource || null);
+      setShortDescriptionSource(profile.shortDescriptionSource || null);
+      setPriceRangeSource(profile.priceRangeSource || null);
       setMenuSourceState(profile.menuSourceState || "none");
       setGoogleDefaults(profile.googleDefaults || null);
       setCoverImageUrl(normalizeImageUrl(profile.coverImageUrl));
@@ -1275,6 +1285,8 @@ export default function AdminPage() {
   ];
 
   const googleSuggestedImages = googleDefaults?.googleSuggestedImages || [];
+  const googleMenuCategories = googleDefaults?.menu?.categories || [];
+  const googleReviews = googleDefaults?.googleReviews || [];
   const effectiveCoverPreview = coverImageUrl || resolvedCoverImageUrl;
 
   return (
@@ -1788,7 +1800,21 @@ export default function AdminPage() {
                       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Menu source</div>
                       <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800, color: "var(--foreground)" }}>{menuSourceState.toUpperCase()}</div>
                       <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>
-                        {googleDefaults?.menu?.sections?.length || googleDefaults?.menu?.url ? "Google menu is available for revert." : "No Google menu snapshot stored."}
+                        {googleMenuCategories.length || googleDefaults?.menu?.sourceUrl ? "Google menu is available for revert." : "No Google menu snapshot stored."}
+                      </div>
+                    </div>
+                    <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>About source</div>
+                      <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800, color: "var(--foreground)" }}>{(descriptionSource || shortDescriptionSource || "NONE").toUpperCase()}</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        {googleDefaults?.editorialSummary ? "Google editorial summary is stored." : "Fallback Google summary will be generated on refresh."}
+                      </div>
+                    </div>
+                    <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Google price</div>
+                      <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800, color: "var(--foreground)" }}>{googleDefaults?.priceLevel || "Unavailable"}</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        Price source: {(priceRangeSource || "NONE").toUpperCase()}
                       </div>
                     </div>
                   </div>
@@ -1823,6 +1849,33 @@ export default function AdminPage() {
                 </div>
 
                 <div style={{ marginBottom: 20, padding: 16, borderRadius: 14, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 16 }}>
+                    <div style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>Google About Default</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                        {googleDefaults?.editorialSummary || "No editorial summary in the Google snapshot yet. Re-sync will fall back to deterministic venue copy."}
+                      </div>
+                    </div>
+                    <div style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>Google Menu Snapshot</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                        {googleDefaults?.menu?.sourceUrl ? (
+                          <>
+                            Status: {googleDefaults.menu.scrapeStatus || "PENDING"}<br />
+                            Categories: {googleMenuCategories.length}<br />
+                            {googleDefaults.menu.error ? `Last error: ${googleDefaults.menu.error}` : "Menu import is ready to use when manual menu is not active."}
+                          </>
+                        ) : "No Google-linked menu URL stored yet."}
+                      </div>
+                    </div>
+                    <div style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>Google Reviews Snapshot</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                        {googleReviews.length ? `${googleReviews.length} Google reviews stored. Average rating uses the Google refresh values shown on the public page.` : "No Google reviews stored yet."}
+                      </div>
+                    </div>
+                  </div>
+
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline", marginBottom: 12 }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 800, color: "var(--foreground)" }}>Google Suggested Images</div>

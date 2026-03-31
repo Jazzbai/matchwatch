@@ -781,6 +781,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 ? ((v as { galleryImageAttributions?: Array<Array<{ displayName: string; uri?: string | null; photoUri?: string | null }>> }).galleryImageAttributions || [])
                 : [],
             workingHours: [],
+            googleEditorialSummary: null,
+            googlePriceLevel: null,
+            googleReviews: [],
             addressLine1: v.addressLine1 || "",
             addressLine2: "",
             city: v.city || "",
@@ -807,6 +810,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
             ownerName: "",
             ownerEmail: "",
             promotedVenueEventId: null,
+            descriptionSource: null,
+            shortDescriptionSource: null,
+            priceRangeSource: null,
         } satisfies Venue);
         });
 
@@ -864,6 +870,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
                     ? detail.galleryImageAttributions
                     : row.venue.galleryImageAttributions || [],
                 workingHours: Array.isArray(detail?.workingHours) ? detail.workingHours : row.venue.workingHours || [],
+                googleEditorialSummary: detail?.googleEditorialSummary ?? row.venue.googleEditorialSummary ?? null,
+                googlePriceLevel: detail?.googlePriceLevel ?? row.venue.googlePriceLevel ?? null,
+                googleReviews: Array.isArray(detail?.googleReviews) ? detail.googleReviews : row.venue.googleReviews || [],
                 addressLine2: detail?.addressLine2 || "",
                 state: detail?.stateProvince || row.venue.state || "",
                 postalCode: detail?.postalCode || "",
@@ -885,6 +894,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 promotedVenueEventId: typeof detail?.promotedVenueEventId === "string"
                     ? detail.promotedVenueEventId
                     : null,
+                descriptionSource: detail?.descriptionSource ?? row.venue.descriptionSource ?? null,
+                shortDescriptionSource: detail?.shortDescriptionSource ?? row.venue.shortDescriptionSource ?? null,
+                priceRangeSource: detail?.priceRangeSource ?? row.venue.priceRangeSource ?? null,
             });
 
             for (const ev of events) {

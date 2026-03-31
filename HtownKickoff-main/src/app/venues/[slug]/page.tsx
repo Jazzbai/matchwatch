@@ -38,7 +38,7 @@ type VenueCustomEvent = {
     bookingNotes?: string | null;
 };
 
-type ActiveTab = "overview" | "menu" | "reviews" | "posts";
+type ActiveTab = "overview" | "menu" | "google-reviews" | "reviews" | "posts";
 
 function normalizeImage(value?: string | null) {
     const raw = (value || "").trim();
@@ -225,6 +225,14 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
     const coverAttributions = venue?.coverImageAttributions || [];
     const galleryImageAttributions = venue?.galleryImageAttributions || [];
     const workingHours = venue?.workingHours || [];
+    const googleReviews = venue?.googleReviews || [];
+    const tabs: Array<{ id: ActiveTab; label: string }> = [
+        { id: "overview", label: "Overview" },
+        { id: "menu", label: "Menu" },
+        ...(googleReviews.length > 0 ? [{ id: "google-reviews" as ActiveTab, label: `Google Reviews (${googleReviews.length})` }] : []),
+        ...(reviews.length > 0 ? [{ id: "reviews" as ActiveTab, label: `Reviews (${reviews.length})` }] : []),
+        { id: "posts", label: `Posts (${posts.length})` },
+    ];
 
     const mainEvent = useMemo(() => {
         if (matchEvents.length === 0) return null;
@@ -413,16 +421,11 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                     {actionError && <div className={styles.alert}>{actionError}</div>}
 
                     <nav className={styles.tabRail}>
-                        {[
-                            { id: "overview", label: "Overview" },
-                            { id: "menu", label: "Menu" },
-                            { id: "reviews", label: `Reviews (${reviews.length})` },
-                            { id: "posts", label: `Posts (${posts.length})` },
-                        ].map((tab) => (
+                        {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 className={`${styles.tabButton} ${activeTab === tab.id ? styles.tabButtonActive : ""}`}
-                                onClick={() => setActiveTab(tab.id as ActiveTab)}
+                                onClick={() => setActiveTab(tab.id)}
                             >
                                 {tab.label}
                             </button>
@@ -550,6 +553,35 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
                                         </div>
                                     ))}
                                 </section>
+                            )}
+
+                            {activeTab === "google-reviews" && (
+                                <div className={styles.overviewGrid}>
+                                    {googleReviews.length === 0 && <div className={styles.emptyState}>No Google reviews are available for this venue.</div>}
+                                    {googleReviews.map((review, idx) => (
+                                        <article key={`${review.authorName}-${review.publishedAt || idx}`} className={styles.reviewCard}>
+                                            <header className={styles.eventTop}>
+                                                <div>
+                                                    <h3 className={styles.panelTitle}>{review.authorName}</h3>
+                                                    <p className={styles.panelSubtle}>
+                                                        {review.relativePublishTimeText || (review.publishedAt ? new Date(review.publishedAt).toLocaleDateString("en-US") : "Google review")}
+                                                    </p>
+                                                </div>
+                                                <div className={styles.teamMeta} style={{ display: "inline-flex", gap: "2px" }}>
+                                                    {Array.from({ length: Math.max(1, review.rating || 0) }).map((_, starIdx) => (
+                                                        <Star key={starIdx} size={12} fill="currentColor" />
+                                                    ))}
+                                                </div>
+                                            </header>
+                                            <p className={styles.panelSubtle}>{review.text || "No review text provided."}</p>
+                                            {review.sourceUrl && (
+                                                <a href={review.sourceUrl} target="_blank" rel="noreferrer" className={styles.mapLink}>
+                                                    View on Google
+                                                </a>
+                                            )}
+                                        </article>
+                                    ))}
+                                </div>
                             )}
 
                             {activeTab === "reviews" && (

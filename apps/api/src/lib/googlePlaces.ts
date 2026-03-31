@@ -21,6 +21,18 @@ export type GoogleMenuCategorySnapshot = {
     items: GoogleMenuItemSnapshot[];
 };
 
+export type GoogleReviewSnapshot = {
+    authorName: string;
+    authorUri?: string | null;
+    authorPhotoUri?: string | null;
+    rating?: number | null;
+    text?: string | null;
+    originalText?: string | null;
+    publishTime?: string | null;
+    relativePublishTimeDescription?: string | null;
+    googleMapsUri?: string | null;
+};
+
 export type GoogleSourceSnapshot = {
     placeId: string;
     displayName: string;
@@ -38,6 +50,9 @@ export type GoogleSourceSnapshot = {
     googleMapsUrl?: string | null;
     rating?: number | null;
     reviewCount?: number | null;
+    editorialSummary?: string | null;
+    priceLevel?: string | null;
+    googleReviews?: GoogleReviewSnapshot[];
     workingHours?: Array<{
         day: string;
         hours: string;
@@ -51,6 +66,9 @@ export type GoogleSourceSnapshot = {
     menu?: {
         sourceUrl?: string | null;
         categories: GoogleMenuCategorySnapshot[];
+        scrapeStatus?: 'UNAVAILABLE' | 'PENDING' | 'SYNCED' | 'ERROR';
+        scrapedAt?: string | null;
+        error?: string | null;
         raw?: Record<string, unknown> | null;
     } | null;
     raw?: Record<string, unknown> | null;
@@ -123,12 +141,15 @@ function extractAddressLine1(addressComponents: unknown) {
 function extractMenuSnapshot(raw: Record<string, unknown>): GoogleSourceSnapshot['menu'] {
     const websiteUri = getString(raw.websiteUri);
     const websiteLooksLikeMenu = websiteUri && /menu/i.test(websiteUri) ? websiteUri : null;
-    const sourceUrl = websiteLooksLikeMenu || null;
+    const sourceUrl = websiteLooksLikeMenu || websiteUri || null;
 
     if (!sourceUrl) return null;
     return {
         sourceUrl,
         categories: [],
+        scrapeStatus: 'PENDING',
+        scrapedAt: null,
+        error: null,
         raw: {
             websiteUri,
         },
@@ -164,6 +185,45 @@ function extractWorkingHours(raw: Record<string, unknown>): GoogleSourceSnapshot
 
 function extractPhotos(raw: Record<string, unknown>) {
     return normalizeGooglePhotoSnapshots(raw.photos);
+}
+
+function extractEditorialSummary(raw: Record<string, unknown>) {
+    const summary = isRecord(raw.editorialSummary) ? raw.editorialSummary : null;
+    return getString(summary?.text) || getString(raw.editorialSummary);
+}
+
+function extractPriceLevel(raw: Record<string, unknown>) {
+    if (typeof raw.priceLevel === 'string') {
+        return getString(raw.priceLevel);
+    }
+    if (typeof raw.priceLevel === 'number' && Number.isFinite(raw.priceLevel)) {
+        return String(raw.priceLevel);
+    }
+    return null;
+}
+
+function extractGoogleReviews(raw: Record<string, unknown>): GoogleReviewSnapshot[] {
+    if (!Array.isArray(raw.reviews)) return [];
+
+    return raw.reviews.flatMap((entry) => {
+        if (!isRecord(entry)) return [];
+        const author = isRecord(entry.authorAttribution) ? entry.authorAttribution : null;
+        const textRecord = isRecord(entry.text) ? entry.text : null;
+        const originalTextRecord = isRecord(entry.originalText) ? entry.originalText : null;
+        const authorName = getString(author?.displayName) || 'Google user';
+
+        return [{
+            authorName,
+            authorUri: getString(author?.uri),
+            authorPhotoUri: getString(author?.photoUri),
+            rating: getNumber(entry.rating),
+            text: getString(textRecord?.text) || getString(entry.text),
+            originalText: getString(originalTextRecord?.text) || getString(entry.originalText),
+            publishTime: getString(entry.publishTime),
+            relativePublishTimeDescription: getString(entry.relativePublishTimeDescription),
+            googleMapsUri: getString(entry.googleMapsUri),
+        }];
+    });
 }
 
 export function deriveGoogleAmenitiesFromSnapshot(snapshot: GoogleSourceSnapshot) {
@@ -235,6 +295,9 @@ function mapPlaceToSnapshot(place: Record<string, unknown>): GoogleSourceSnapsho
         googleMapsUrl: getString(place.googleMapsUri),
         rating: getNumber(place.rating),
         reviewCount: typeof place.userRatingCount === 'number' ? place.userRatingCount : null,
+        editorialSummary: extractEditorialSummary(place),
+        priceLevel: extractPriceLevel(place),
+        googleReviews: extractGoogleReviews(place),
         workingHours: extractWorkingHours(place),
         photos: extractPhotos(place),
         photosFetchedAt: new Date().toISOString(),
@@ -329,6 +392,7 @@ export async function getGooglePlaceDetails(placeId: string): Promise<GoogleSour
         'googleMapsUri',
         'rating',
         'userRatingCount',
+        'reviews',
         'photos',
         'photos.name',
         'photos.widthPx',

@@ -30,7 +30,7 @@ export function buildGoogleVenueFields(snapshot: GoogleSourceSnapshot) {
         googleMapsUrl: normalizedSnapshot.googleMapsUrl || null,
         ratingOverride: normalizedSnapshot.rating != null ? String(normalizedSnapshot.rating) : null,
         reviewCountOverride: normalizedSnapshot.reviewCount != null ? normalizedSnapshot.reviewCount : null,
-        menuSource: normalizedSnapshot.menu ? 'GOOGLE' as const : 'NONE' as const,
+        menuSource: normalizedSnapshot.menu?.categories?.length ? 'GOOGLE' as const : 'NONE' as const,
     };
 }
 
@@ -160,6 +160,9 @@ export function buildVenueGoogleDefaults(snapshot: GoogleSourceSnapshot, options
         googleMapsUrl: normalizedSnapshot.googleMapsUrl || '',
         rating: normalizedSnapshot.rating ?? null,
         reviewCount: normalizedSnapshot.reviewCount ?? null,
+        editorialSummary: normalizedSnapshot.editorialSummary || null,
+        priceLevel: normalizedSnapshot.priceLevel || null,
+        googleReviews: normalizedSnapshot.googleReviews || [],
         workingHours: normalizedSnapshot.workingHours || [],
         menu: normalizedSnapshot.menu || null,
         photos: normalizedSnapshot.photos || [],

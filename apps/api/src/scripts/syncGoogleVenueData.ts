@@ -3,17 +3,33 @@ import 'dotenv/config';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { db } from '../db/client';
 import { venues } from '../db/schema';
-import { buildGoogleVenueFields, applyGoogleMenuSnapshot } from '../lib/venueOnboarding';
-import { getGooglePlaceDetails } from '../lib/googlePlaces';
+import { isGoogleSyncStale, refreshVenueFromGoogle } from '../lib/googleVenueSync';
 
 async function main() {
     const rows = await db.select({
         id: venues.id,
+        slug: venues.slug,
         name: venues.name,
+        description: venues.description,
+        shortDescription: venues.shortDescription,
         googlePlaceId: venues.googlePlaceId,
+        googleSourceSnapshot: venues.googleSourceSnapshot,
+        googleLastSyncedAt: venues.googleLastSyncedAt,
+        googleSyncStatus: venues.googleSyncStatus,
+        googleSyncError: venues.googleSyncError,
         approvalStatus: venues.approvalStatus,
         isActive: venues.isActive,
         menuSource: venues.menuSource,
+        descriptionSource: venues.descriptionSource,
+        shortDescriptionSource: venues.shortDescriptionSource,
+        priceRange: venues.priceRange,
+        priceRangeSource: venues.priceRangeSource,
+        phone: venues.phone,
+        website: venues.website,
+        googleMapsUrl: venues.googleMapsUrl,
+        ratingOverride: venues.ratingOverride,
+        reviewCountOverride: venues.reviewCountOverride,
+        amenities: venues.amenities,
     })
         .from(venues)
         .where(and(
@@ -25,38 +41,21 @@ async function main() {
 
     const summary = {
         total: rows.length,
+        stale: 0,
         synced: 0,
+        skipped: 0,
         failed: 0,
-        menuUpdated: 0,
     };
 
     for (const venue of rows) {
+        if (!isGoogleSyncStale(venue.googleLastSyncedAt)) {
+            summary.skipped += 1;
+            continue;
+        }
+        summary.stale += 1;
+
         try {
-            const snapshot = await getGooglePlaceDetails(String(venue.googlePlaceId));
-            const googleFields = buildGoogleVenueFields(snapshot);
-
-            await db.transaction(async (tx) => {
-                await tx.update(venues).set({
-                    googlePlaceId: googleFields.googlePlaceId,
-                    googleSourceSnapshot: googleFields.googleSourceSnapshot,
-                    googleLastSyncedAt: new Date(),
-                    googleSyncStatus: 'SYNCED',
-                    googleSyncError: null,
-                    ratingOverride: googleFields.ratingOverride,
-                    reviewCountOverride: googleFields.reviewCountOverride,
-                    updatedAt: new Date(),
-                }).where(eq(venues.id, venue.id));
-
-                if (venue.menuSource !== 'MANUAL' && snapshot.menu) {
-                    await applyGoogleMenuSnapshot(tx, venue.id, snapshot);
-                    await tx.update(venues).set({
-                        menuSource: 'GOOGLE',
-                        updatedAt: new Date(),
-                    }).where(eq(venues.id, venue.id));
-                    summary.menuUpdated += 1;
-                }
-            });
-
+            await refreshVenueFromGoogle(venue);
             summary.synced += 1;
             console.log(`synced ${venue.name}`);
         } catch (error) {

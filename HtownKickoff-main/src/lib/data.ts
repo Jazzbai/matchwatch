@@ -197,6 +197,18 @@ export interface Venue {
         isClosed?: boolean;
         isTwentyFourHours?: boolean;
     }>;
+    googleEditorialSummary?: string | null;
+    googlePriceLevel?: string | null;
+    googleReviews?: Array<{
+        authorName: string;
+        rating: number;
+        text?: string | null;
+        publishedAt?: string | null;
+        relativePublishTimeText?: string | null;
+        authorUrl?: string | null;
+        profilePhotoUrl?: string | null;
+        sourceUrl?: string | null;
+    }>;
     addressLine1: string;
     addressLine2: string;
     city: string;
@@ -223,6 +235,9 @@ export interface Venue {
     ownerName: string;
     ownerEmail: string;
     promotedVenueEventId?: string | null;
+    descriptionSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+    shortDescriptionSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+    priceRangeSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
 }
 
 export const AMENITY_LABELS: Record<string, { icon: string; label: string }> = {
