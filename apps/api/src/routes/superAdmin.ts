@@ -37,7 +37,7 @@ import { apiError, apiResponse, generateUniqueSlug, paginationMeta, paginationOf
 import { hashPassword } from '../lib/auth';
 import { authRateLimit } from '../middleware';
 import { createPresignedUpload as createStoragePresignedUpload, deleteStorageObjects, STORAGE_MAX_FILE_SIZE } from '../lib/storage';
-import { getGooglePlaceDetails } from '../lib/googlePlaces';
+import { deriveGoogleAmenitiesFromSnapshot, getGooglePlaceDetails, type GoogleSourceSnapshot } from '../lib/googlePlaces';
 import { applyGoogleMenuSnapshot, buildGoogleVenueFields } from '../lib/venueOnboarding';
 import { presignedUploadSchema } from '@matchwatch/shared';
 
@@ -72,6 +72,40 @@ const createUserSchema = z.object({
     password: z.string().min(10).max(200),
     role: z.enum(['USER', 'VENUE_OWNER', 'BUSINESS', 'ADMIN', 'SUPER_ADMIN']).default('USER'),
 });
+
+async function getActiveAmenitySlugs() {
+    const rows = await db.select({ slug: venueAttributes.slug }).from(venueAttributes)
+        .where(and(eq(venueAttributes.type, 'AMENITY'), eq(venueAttributes.isActive, true)));
+    return new Set(rows.map((row) => row.slug));
+}
+
+async function getAllowedGoogleAmenities(snapshot?: GoogleSourceSnapshot | null) {
+    if (!snapshot) return [] as string[];
+    const derivedAmenities = deriveGoogleAmenitiesFromSnapshot(snapshot);
+    if (derivedAmenities.length === 0) return [];
+    const allowedAmenitySlugs = await getActiveAmenitySlugs();
+    return derivedAmenities.filter((amenity) => allowedAmenitySlugs.has(amenity));
+}
+
+async function sanitizeAmenities(values: string[] | null | undefined) {
+    const amenityValues = Array.isArray(values) ? values : [];
+    if (amenityValues.length === 0) return [] as string[];
+    const allowedAmenitySlugs = await getActiveAmenitySlugs();
+    return amenityValues.filter((amenity) => allowedAmenitySlugs.has(amenity));
+}
+
+async function mergeAmenitySets(...groups: Array<string[] | null | undefined>) {
+    const allowedAmenitySlugs = await getActiveAmenitySlugs();
+    const merged = new Set<string>();
+    for (const group of groups) {
+        for (const amenity of Array.isArray(group) ? group : []) {
+            if (allowedAmenitySlugs.has(amenity)) {
+                merged.add(amenity);
+            }
+        }
+    }
+    return Array.from(merged);
+}
 
 const updateUserSchema = z.object({
     email: z.string().email().optional(),
@@ -3556,6 +3590,7 @@ superAdminRoutes.post('/venues/:venueId/google/refresh', async (c) => {
     const [venue] = await db.select({
         id: venues.id,
         googlePlaceId: venues.googlePlaceId,
+        amenities: venues.amenities,
         menuSource: venues.menuSource,
         phone: venues.phone,
         website: venues.website,
@@ -3566,6 +3601,7 @@ superAdminRoutes.post('/venues/:venueId/google/refresh', async (c) => {
 
     const snapshot = await getGooglePlaceDetails(venue.googlePlaceId);
     const googleFields = buildGoogleVenueFields(snapshot);
+    const googleAmenities = await getAllowedGoogleAmenities(googleFields.googleSourceSnapshot as GoogleSourceSnapshot);
 
     await db.transaction(async (tx) => {
         await tx.update(venues).set({
@@ -3576,6 +3612,9 @@ superAdminRoutes.post('/venues/:venueId/google/refresh', async (c) => {
             googleSyncError: null,
             ratingOverride: googleFields.ratingOverride,
             reviewCountOverride: googleFields.reviewCountOverride,
+            amenities: googleAmenities.length > 0
+                ? await mergeAmenitySets(venue.amenities || [], googleAmenities)
+                : await sanitizeAmenities(venue.amenities),
             phone: venue.phone || googleFields.phone,
             website: venue.website || googleFields.website,
             googleMapsUrl: venue.googleMapsUrl || googleFields.googleMapsUrl,
@@ -3608,6 +3647,7 @@ superAdminRoutes.post('/venues/:venueId/google/revert', async (c) => {
 
     const snapshot = venue.googleSourceSnapshot as Parameters<typeof applyGoogleMenuSnapshot>[2];
     const googleFields = buildGoogleVenueFields(snapshot);
+    const googleAmenities = await getAllowedGoogleAmenities(snapshot as GoogleSourceSnapshot);
 
     await db.transaction(async (tx) => {
         await tx.update(venues).set({
@@ -3625,6 +3665,7 @@ superAdminRoutes.post('/venues/:venueId/google/revert', async (c) => {
             googleMapsUrl: googleFields.googleMapsUrl,
             ratingOverride: googleFields.ratingOverride,
             reviewCountOverride: googleFields.reviewCountOverride,
+            amenities: await sanitizeAmenities(googleAmenities),
             menuSource: snapshot.menu ? 'GOOGLE' : 'NONE',
             updatedAt: new Date(),
         }).where(eq(venues.id, venueId));
