@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../db/client';
 import {
     venues, venueEvents, bookings, matches, posts, menuCategories, menuItems,
-    follows, notifications, auditLogs, users, venueCustomEvents, venueClaims,
+    follows, notifications, auditLogs, users, venueCustomEvents, venueClaims, venueAttributes,
 } from '../db/schema';
 import { eq, and, count, desc, asc, sql, gte, lt } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, generateUniqueSlug } from '../lib/utils';
@@ -62,6 +62,40 @@ async function getOwnedVenues(userId: string) {
     }).from(venues)
         .where(and(eq(venues.ownerId, userId), eq(venues.isActive, true)))
         .orderBy(desc(venues.createdAt));
+}
+
+async function getActiveAmenitySlugs() {
+    const rows = await db.select({ slug: venueAttributes.slug }).from(venueAttributes)
+        .where(and(eq(venueAttributes.type, 'AMENITY'), eq(venueAttributes.isActive, true)));
+    return new Set(rows.map((row) => row.slug));
+}
+
+async function getAllowedGoogleAmenities(snapshot?: GoogleSourceSnapshot | null) {
+    if (!snapshot) return [] as string[];
+    const derivedAmenities = deriveGoogleAmenitiesFromSnapshot(snapshot);
+    if (derivedAmenities.length === 0) return [];
+    const allowedAmenitySlugs = await getActiveAmenitySlugs();
+    return derivedAmenities.filter((amenity) => allowedAmenitySlugs.has(amenity));
+}
+
+async function sanitizeAmenities(values: string[] | null | undefined) {
+    const amenityValues = Array.isArray(values) ? values : [];
+    if (amenityValues.length === 0) return [] as string[];
+    const allowedAmenitySlugs = await getActiveAmenitySlugs();
+    return amenityValues.filter((amenity) => allowedAmenitySlugs.has(amenity));
+}
+
+async function mergeAmenitySets(...groups: Array<string[] | null | undefined>) {
+    const allowedAmenitySlugs = await getActiveAmenitySlugs();
+    const merged = new Set<string>();
+    for (const group of groups) {
+        for (const amenity of Array.isArray(group) ? group : []) {
+            if (allowedAmenitySlugs.has(amenity)) {
+                merged.add(amenity);
+            }
+        }
+    }
+    return Array.from(merged);
 }
 
 function getRequestedVenueId(c: any) {
@@ -315,7 +349,9 @@ dashboardRoutes.post('/venues', async (c) => {
         const snapshot = await getGooglePlaceDetails(parsed.data.googlePlaceId.trim());
         googleFields = buildGoogleVenueFields(snapshot);
     }
-    const googleAmenities = googleFields ? deriveGoogleAmenitiesFromSnapshot(googleFields.googleSourceSnapshot as GoogleSourceSnapshot) : [];
+    const googleAmenities = await getAllowedGoogleAmenities(
+        googleFields ? (googleFields.googleSourceSnapshot as GoogleSourceSnapshot) : null,
+    );
 
     const existingVenue = await findExistingVenueMatch({
         googlePlaceId: parsed.data.googlePlaceId,
@@ -331,6 +367,8 @@ dashboardRoutes.post('/venues', async (c) => {
             venueCity: existingVenue.city,
         }), 409);
     }
+
+    const nextAmenities = await mergeAmenitySets(parsed.data.amenities || [], googleAmenities);
 
     const created = await db.transaction(async (tx) => {
         const venueInsert: typeof venues.$inferInsert = {
@@ -349,7 +387,7 @@ dashboardRoutes.post('/venues', async (c) => {
             timezone: parsed.data.timezone.trim(),
             phone: parsed.data.phone || null,
             capacity: parsed.data.capacity || null,
-            amenities: Array.from(new Set([...(parsed.data.amenities || []), ...googleAmenities])),
+            amenities: nextAmenities,
             vibes: parsed.data.vibes,
             cuisineTags: parsed.data.cuisineTags,
             priceRange: parsed.data.priceRange,
@@ -445,7 +483,7 @@ dashboardRoutes.patch('/venues/:venueId', async (c) => {
     if (parsed.data.instagramHandle !== undefined) updates.instagramHandle = parsed.data.instagramHandle;
     if (parsed.data.googleMapsUrl !== undefined) updates.googleMapsUrl = parsed.data.googleMapsUrl;
     if (parsed.data.capacity !== undefined) updates.capacity = parsed.data.capacity;
-    if (parsed.data.amenities !== undefined) updates.amenities = parsed.data.amenities;
+    if (parsed.data.amenities !== undefined) updates.amenities = await sanitizeAmenities(parsed.data.amenities);
     if (parsed.data.vibes !== undefined) updates.vibes = parsed.data.vibes;
     if (parsed.data.cuisineTags !== undefined) updates.cuisineTags = parsed.data.cuisineTags;
     if (parsed.data.priceRange !== undefined) updates.priceRange = parsed.data.priceRange;
@@ -573,7 +611,9 @@ async function updateVenueHandler(c: any) {
         }
         googleFields = buildGoogleVenueFields(snapshot);
     }
-    const googleAmenities = googleFields ? deriveGoogleAmenitiesFromSnapshot(googleFields.googleSourceSnapshot as GoogleSourceSnapshot) : [];
+    const googleAmenities = await getAllowedGoogleAmenities(
+        googleFields ? (googleFields.googleSourceSnapshot as GoogleSourceSnapshot) : null,
+    );
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (parsed.data.name !== undefined) updates.name = parsed.data.name;
@@ -594,7 +634,7 @@ async function updateVenueHandler(c: any) {
     if (parsed.data.googleMapsUrl !== undefined) updates.googleMapsUrl = parsed.data.googleMapsUrl;
     if (parsed.data.capacity !== undefined) updates.capacity = parsed.data.capacity;
     if (parsed.data.amenities !== undefined) {
-        updates.amenities = Array.from(new Set([...(parsed.data.amenities || []), ...googleAmenities]));
+        updates.amenities = await mergeAmenitySets(parsed.data.amenities || [], googleAmenities);
     }
     if (parsed.data.vibes !== undefined) updates.vibes = parsed.data.vibes;
     if (parsed.data.cuisineTags !== undefined) updates.cuisineTags = parsed.data.cuisineTags;
@@ -624,7 +664,7 @@ async function updateVenueHandler(c: any) {
             updates.menuSource = googleFields.googleSourceSnapshot.menu ? 'GOOGLE' : 'NONE';
         }
         if (parsed.data.amenities === undefined && googleAmenities.length > 0) {
-            updates.amenities = Array.from(new Set([...(venue.amenities || []), ...googleAmenities]));
+            updates.amenities = await mergeAmenitySets(venue.amenities || [], googleAmenities);
         }
     }
 
@@ -906,7 +946,7 @@ async function refreshVenueGoogleHandler(c: any) {
 
     const snapshot = await getGooglePlaceDetails(venue.googlePlaceId);
     const googleFields = buildGoogleVenueFields(snapshot);
-    const googleAmenities = deriveGoogleAmenitiesFromSnapshot(googleFields.googleSourceSnapshot as GoogleSourceSnapshot);
+    const googleAmenities = await getAllowedGoogleAmenities(googleFields.googleSourceSnapshot as GoogleSourceSnapshot);
 
     await db.transaction(async (tx) => {
         await tx.update(venues).set({
@@ -918,8 +958,8 @@ async function refreshVenueGoogleHandler(c: any) {
             ratingOverride: googleFields.ratingOverride,
             reviewCountOverride: googleFields.reviewCountOverride,
             amenities: googleAmenities.length > 0
-                ? Array.from(new Set([...(venue.amenities || []), ...googleAmenities]))
-                : venue.amenities,
+                ? await mergeAmenitySets(venue.amenities || [], googleAmenities)
+                : await sanitizeAmenities(venue.amenities),
             phone: venue.phone || googleFields.phone,
             website: venue.website || googleFields.website,
             googleMapsUrl: venue.googleMapsUrl || googleFields.googleMapsUrl,
@@ -969,7 +1009,7 @@ dashboardRoutes.post('/venue/google/revert', async (c) => {
 
     const normalizedSnapshot = normalizeGoogleSourceSnapshot(snapshot);
     const googleFields = buildGoogleVenueFields(normalizedSnapshot);
-    const googleAmenities = deriveGoogleAmenitiesFromSnapshot(normalizedSnapshot);
+    const googleAmenities = await getAllowedGoogleAmenities(normalizedSnapshot);
     const updates: Record<string, unknown> = {
         name: normalizedSnapshot.displayName,
         addressLine1: googleFields.addressLine1,
@@ -985,7 +1025,7 @@ dashboardRoutes.post('/venue/google/revert', async (c) => {
         googleMapsUrl: googleFields.googleMapsUrl,
         ratingOverride: googleFields.ratingOverride,
         reviewCountOverride: googleFields.reviewCountOverride,
-        amenities: googleAmenities,
+        amenities: await sanitizeAmenities(googleAmenities),
         menuSource: normalizedSnapshot.menu ? 'GOOGLE' : 'NONE',
         googleSourceSnapshot: normalizedSnapshot,
         updatedAt: new Date(),

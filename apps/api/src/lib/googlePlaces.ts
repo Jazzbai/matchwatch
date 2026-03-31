@@ -174,15 +174,15 @@ export function deriveGoogleAmenitiesFromSnapshot(snapshot: GoogleSourceSnapshot
     const servesWine = getBoolean(raw.servesWine);
     const servesCocktails = getBoolean(raw.servesCocktails);
     if (servesBeer || servesWine || servesCocktails) {
-        amenityTags.add('Full Bar Service');
+        amenityTags.add('ALCOHOLIC');
     }
 
     if (getBoolean(raw.outdoorSeating)) {
-        amenityTags.add('Outdoor Seating / Patio');
+        amenityTags.add('OUTDOOR');
     }
 
     if (getBoolean(raw.liveMusic)) {
-        amenityTags.add('Live Music / DJ');
+        amenityTags.add('LIVE_MUSIC');
     }
 
     const parkingOptions = isRecord(raw.parkingOptions) ? raw.parkingOptions : null;
@@ -192,24 +192,8 @@ export function deriveGoogleAmenitiesFromSnapshot(snapshot: GoogleSourceSnapshot
             || getBoolean(parkingOptions.freeStreetParking)
             || getBoolean(parkingOptions.freeGarageParking)
         ) {
-            amenityTags.add('Free Parking');
+            amenityTags.add('PARKING');
         }
-        if (getBoolean(parkingOptions.valetParking)) {
-            amenityTags.add('Valet Parking');
-        }
-    }
-
-    const accessibilityOptions = isRecord(raw.accessibilityOptions) ? raw.accessibilityOptions : null;
-    if (
-        accessibilityOptions
-        && (
-            getBoolean(accessibilityOptions.wheelchairAccessibleEntrance)
-            || getBoolean(accessibilityOptions.wheelchairAccessibleRestroom)
-            || getBoolean(accessibilityOptions.wheelchairAccessibleSeating)
-            || getBoolean(accessibilityOptions.wheelchairAccessibleParking)
-        )
-    ) {
-        amenityTags.add('Wheelchair Accessible');
     }
 
     return Array.from(amenityTags);
