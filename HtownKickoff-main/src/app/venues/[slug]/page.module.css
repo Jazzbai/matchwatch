@@ -164,6 +164,17 @@
   font-size: 0.84rem;
 }
 
+.reviewSampleNote {
+  grid-column: 1 / -1;
+  border: 1px solid color-mix(in oklch, var(--border) 70%, var(--primary) 30%);
+  background: color-mix(in oklch, var(--card) 85%, var(--primary) 15%);
+  color: var(--foreground);
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .galleryStrip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

@@ -61,6 +61,18 @@ function compactSentences(input: string, maxLength: number) {
     return (built || normalized.slice(0, maxLength)).trim();
 }
 
+function ensureSentence(value: string) {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    return /[.!?]$/.test(normalized) ? normalized : `${normalized}.`;
+}
+
+function joinNatural(values: string[]) {
+    if (values.length <= 1) return values[0] || '';
+    if (values.length === 2) return `${values[0]} and ${values[1]}`;
+    return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`;
+}
+
 function uniqueStrings(values: Array<string | null | undefined>) {
     return Array.from(new Set(values.map((value) => (value || '').trim()).filter(Boolean)));
 }
@@ -117,13 +129,6 @@ function inferVenueKind(snapshot: GoogleSourceSnapshot) {
 
 export function buildGoogleVenueDescriptions(snapshot: GoogleSourceSnapshot, amenitySlugs: string[]) {
     const editorialSummary = asNonEmptyString(snapshot.editorialSummary);
-    if (editorialSummary) {
-        return {
-            shortDescription: compactSentences(editorialSummary, 150),
-            description: editorialSummary,
-        };
-    }
-
     const placeName = snapshot.displayName || 'This venue';
     const venueKind = inferVenueKind(snapshot);
     const location = uniqueStrings([snapshot.city, snapshot.stateProvince]).join(', ');
@@ -139,17 +144,31 @@ export function buildGoogleVenueDescriptions(snapshot: GoogleSourceSnapshot, ame
         amenityLabels.length ? `known for ${amenityLabels.join(', ')}` : null,
     ]);
 
+    const shortSummaryBase = editorialSummary
+        ? editorialSummary
+        : `${placeName} is a ${summaryParts.join(' with ')}.`;
+
     const shortDescription = compactSentences(
-        `${placeName} is a ${summaryParts.join(' with ')}.`.replace(/\s+/g, ' ').trim(),
-        150,
+        shortSummaryBase.replace(/\s+/g, ' ').trim(),
+        115,
     );
 
-    const descriptionParts = [
-        `${placeName} is a ${venueKind}${location ? ` in ${location}` : ''}.`,
+    const detailsParts = [
         priceLabel ? `Google lists it as ${priceLabel}.` : null,
-        amenityLabels.length ? `Current Google signals highlight ${amenityLabels.join(', ')}.` : null,
+        amenityLabels.length ? `Current Google signals highlight ${joinNatural(amenityLabels)}.` : null,
         hoursHint ? `${placeName} also has ${hoursHint}.` : null,
     ].filter(Boolean);
+
+    const descriptionParts = editorialSummary
+        ? [
+            ensureSentence(editorialSummary),
+            ensureSentence(`${placeName} is a ${venueKind}${location ? ` in ${location}` : ''}`),
+            ...detailsParts,
+        ]
+        : [
+            `${placeName} is a ${venueKind}${location ? ` in ${location}` : ''}.`,
+            ...detailsParts,
+        ];
 
     return {
         shortDescription,

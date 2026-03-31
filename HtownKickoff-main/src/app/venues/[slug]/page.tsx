@@ -557,6 +557,11 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
 
                             {activeTab === "google-reviews" && (
                                 <div className={styles.overviewGrid}>
+                                    {venue.reviewCount > googleReviews.length && googleReviews.length > 0 && (
+                                        <div className={styles.reviewSampleNote}>
+                                            Showing {googleReviews.length} Google review samples. Google reports {venue.reviewCount.toLocaleString("en-US")} total reviews for this venue.
+                                        </div>
+                                    )}
                                     {googleReviews.length === 0 && <div className={styles.emptyState}>No Google reviews are available for this venue.</div>}
                                     {googleReviews.map((review, idx) => (
                                         <article key={`${review.authorName}-${review.publishedAt || idx}`} className={styles.reviewCard}>
