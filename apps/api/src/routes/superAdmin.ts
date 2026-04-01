@@ -24,7 +24,10 @@ import {
     manufacturers,
     stadiums,
     matches,
+    matchPredictions,
     menuCategories,
+    players,
+    staticPages,
     teams,
     users,
     venueClaims,
@@ -47,6 +50,9 @@ import {
 } from '../lib/googleVenueSync';
 import { applyGoogleMenuSnapshot, buildGoogleVenueFields } from '../lib/venueOnboarding';
 import { presignedUploadSchema } from '@matchwatch/shared';
+import { buildEntityEnrichment, type EntityBaseRecord, type EntityEnrichmentResult, type EntityKind } from '../lib/entityEnrichment';
+import { getLatestLeagueStandings, refreshLeagueStandingsSnapshot } from '../lib/standings';
+import { getMatchPrediction, refreshMatchPrediction } from '../lib/predictions';
 
 declare module 'hono' {
     interface ContextVariableMap {
@@ -769,6 +775,7 @@ async function resolveDriver(values: {
 
     const [created] = await db.insert(drivers).values({
         name: driverName,
+        slug: generateUniqueSlug(driverName),
         shortName: values.driverShortName?.trim() || null,
         nationality: values.driverNationality?.trim() || null,
         countryCode: values.driverCountryCode?.trim().toUpperCase() || null,
@@ -804,6 +811,7 @@ async function resolveEntrant(leagueId: string | null | undefined, values: {
     const [created] = await db.insert(entrants).values({
         leagueId: leagueId ?? null,
         name: entrantName,
+        slug: generateUniqueSlug(entrantName),
         shortName: values.entrantShortName?.trim() || null,
         brandColor: values.entrantBrandColor?.trim() || null,
         logoUrl: values.entrantLogoUrl?.trim() || null,
@@ -837,6 +845,7 @@ async function resolveManufacturer(leagueId: string | null | undefined, values: 
     const [created] = await db.insert(manufacturers).values({
         leagueId: leagueId ?? null,
         name: manufacturerName,
+        slug: generateUniqueSlug(manufacturerName),
         shortName: values.manufacturerShortName?.trim() || null,
         logoUrl: values.manufacturerLogoUrl?.trim() || null,
     }).returning({ id: manufacturers.id });
@@ -1774,6 +1783,7 @@ superAdminRoutes.post('/teams', async (c) => {
     const [created] = await db.insert(teams).values({
         leagueId: parsed.data.leagueId || null,
         name: trimmedName,
+        slug: generateUniqueSlug(trimmedName),
         shortName: parsed.data.shortName?.trim() || null,
         crestUrl: parsed.data.crestUrl?.trim() || null,
         externalId: parsed.data.externalId?.trim() || null,
@@ -2054,6 +2064,7 @@ superAdminRoutes.post('/leagues', async (c) => {
     const [created] = await db.insert(leagues).values({
         sportId: parsed.data.sportId,
         name: parsed.data.name.trim(),
+        slug: generateUniqueSlug(parsed.data.name.trim()),
         shortName: parsed.data.shortName?.trim() || null,
         logoUrl: parsed.data.logoUrl || null,
         externalId: parsed.data.externalId?.trim() || null,
@@ -3743,6 +3754,488 @@ superAdminRoutes.post('/venues/:venueId/google/revert', async (c) => {
     });
 
     return c.json(apiResponse({ message: 'Venue reverted to Google defaults', snapshot, defaults: googleDefaults.defaults }));
+});
+
+const createPlayerSchema = z.object({
+    sportId: z.string().uuid().nullable().optional(),
+    leagueId: z.string().uuid().nullable().optional(),
+    name: z.string().min(2).max(150),
+    shortName: z.string().max(60).nullable().optional(),
+    nationality: z.string().max(80).nullable().optional(),
+    countryCode: z.string().max(3).nullable().optional(),
+    headshotUrl: z.string().url().nullable().optional(),
+    externalId: z.string().max(80).nullable().optional(),
+    isActive: z.boolean().default(true),
+});
+
+const updatePlayerSchema = z.object({
+    sportId: z.string().uuid().nullable().optional(),
+    leagueId: z.string().uuid().nullable().optional(),
+    name: z.string().min(2).max(150).optional(),
+    shortName: z.string().max(60).nullable().optional(),
+    nationality: z.string().max(80).nullable().optional(),
+    countryCode: z.string().max(3).nullable().optional(),
+    headshotUrl: z.string().url().nullable().optional(),
+    externalId: z.string().max(80).nullable().optional(),
+    isActive: z.boolean().optional(),
+}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const staticPageSchema = z.object({
+    slug: z.string().min(2).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    title: z.string().min(2).max(200),
+    excerpt: z.string().max(500).nullable().optional(),
+    contentHtml: z.string().max(100_000).default(''),
+    contentJson: z.unknown().optional(),
+    status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),
+    seoTitle: z.string().max(220).nullable().optional(),
+    seoDescription: z.string().max(320).nullable().optional(),
+});
+
+const staticPageUpdateSchema = staticPageSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+const enrichmentKindSchema = z.enum(['league', 'team', 'player', 'driver', 'entrant', 'manufacturer']);
+
+superAdminRoutes.get('/players', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+    }
+
+    const { page, limit, search } = parsed.data;
+    const offset = paginationOffset(page, limit);
+    const where = search
+        ? or(
+            ilike(players.name, `%${search}%`),
+            ilike(players.shortName, `%${search}%`),
+            ilike(players.slug, `%${search}%`),
+            ilike(players.nationality, `%${search}%`),
+        )
+        : undefined;
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: players.id,
+            sportId: players.sportId,
+            sportName: sports.name,
+            leagueId: players.leagueId,
+            leagueName: leagues.name,
+            name: players.name,
+            slug: players.slug,
+            shortName: players.shortName,
+            nationality: players.nationality,
+            countryCode: players.countryCode,
+            headshotUrl: players.headshotUrl,
+            shortDescription: players.shortDescription,
+            description: players.description,
+            isActive: players.isActive,
+            createdAt: players.createdAt,
+            updatedAt: players.updatedAt,
+        })
+            .from(players)
+            .leftJoin(sports, eq(players.sportId, sports.id))
+            .leftJoin(leagues, eq(players.leagueId, leagues.id))
+            .where(where)
+            .orderBy(players.name)
+            .limit(limit)
+            .offset(offset),
+        db.select({ count: count() }).from(players).where(where),
+    ]);
+
+    return c.json(apiResponse(rows, paginationMeta(page, limit, Number(totalResult?.count || 0))));
+});
+
+superAdminRoutes.post('/players', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createPlayerSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const trimmedName = parsed.data.name.trim();
+    const [created] = await db.insert(players).values({
+        sportId: parsed.data.sportId || null,
+        leagueId: parsed.data.leagueId || null,
+        name: trimmedName,
+        slug: generateUniqueSlug(trimmedName),
+        shortName: parsed.data.shortName?.trim() || null,
+        nationality: parsed.data.nationality?.trim() || null,
+        countryCode: parsed.data.countryCode?.trim().toUpperCase() || null,
+        headshotUrl: parsed.data.headshotUrl?.trim() || null,
+        externalId: parsed.data.externalId?.trim() || null,
+        isActive: parsed.data.isActive,
+    }).returning();
+
+    return c.json(apiResponse(created), 201);
+});
+
+superAdminRoutes.patch('/players/:playerId', async (c) => {
+    const playerId = c.req.param('playerId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updatePlayerSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const [existing] = await db.select({ id: players.id }).from(players).where(eq(players.id, playerId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Player not found'), 404);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.sportId !== undefined) updates.sportId = parsed.data.sportId || null;
+    if (parsed.data.leagueId !== undefined) updates.leagueId = parsed.data.leagueId || null;
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
+    if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
+    if (parsed.data.nationality !== undefined) updates.nationality = parsed.data.nationality?.trim() || null;
+    if (parsed.data.countryCode !== undefined) updates.countryCode = parsed.data.countryCode?.trim().toUpperCase() || null;
+    if (parsed.data.headshotUrl !== undefined) updates.headshotUrl = parsed.data.headshotUrl?.trim() || null;
+    if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
+    if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+
+    await db.update(players).set(updates).where(eq(players.id, playerId));
+    return c.json(apiResponse({ message: 'Player updated' }));
+});
+
+superAdminRoutes.get('/pages', async () => {
+    const rows = await db.select().from(staticPages).orderBy(staticPages.slug);
+    return new Response(JSON.stringify(apiResponse(rows)), { headers: { 'Content-Type': 'application/json' } });
+});
+
+superAdminRoutes.get('/pages/:slug', async (c) => {
+    const slug = c.req.param('slug');
+    const [page] = await db.select().from(staticPages).where(eq(staticPages.slug, slug)).limit(1);
+    if (!page) return c.json(apiError('NOT_FOUND', 'Page not found'), 404);
+    return c.json(apiResponse(page));
+});
+
+superAdminRoutes.post('/pages', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = staticPageSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const [created] = await db.insert(staticPages).values({
+        slug: parsed.data.slug,
+        title: parsed.data.title.trim(),
+        excerpt: parsed.data.excerpt?.trim() || null,
+        contentHtml: DOMPurify.sanitize(parsed.data.contentHtml || ''),
+        contentJson: parsed.data.contentJson ?? {},
+        status: parsed.data.status,
+        seoTitle: parsed.data.seoTitle?.trim() || null,
+        seoDescription: parsed.data.seoDescription?.trim() || null,
+        updatedBy: null,
+        publishedAt: parsed.data.status === 'PUBLISHED' ? new Date() : null,
+    }).onConflictDoUpdate({
+        target: staticPages.slug,
+        set: {
+            title: parsed.data.title.trim(),
+            excerpt: parsed.data.excerpt?.trim() || null,
+            contentHtml: DOMPurify.sanitize(parsed.data.contentHtml || ''),
+            contentJson: parsed.data.contentJson ?? {},
+            status: parsed.data.status,
+            seoTitle: parsed.data.seoTitle?.trim() || null,
+            seoDescription: parsed.data.seoDescription?.trim() || null,
+            updatedAt: new Date(),
+            publishedAt: parsed.data.status === 'PUBLISHED' ? new Date() : null,
+        },
+    }).returning();
+
+    return c.json(apiResponse(created), 201);
+});
+
+superAdminRoutes.patch('/pages/:slug', async (c) => {
+    const slug = c.req.param('slug');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = staticPageUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const [existing] = await db.select({ id: staticPages.id }).from(staticPages).where(eq(staticPages.slug, slug)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Page not found'), 404);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.title !== undefined) updates.title = parsed.data.title.trim();
+    if (parsed.data.excerpt !== undefined) updates.excerpt = parsed.data.excerpt?.trim() || null;
+    if (parsed.data.contentHtml !== undefined) updates.contentHtml = DOMPurify.sanitize(parsed.data.contentHtml || '');
+    if (parsed.data.contentJson !== undefined) updates.contentJson = parsed.data.contentJson ?? {};
+    if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+    if (parsed.data.seoTitle !== undefined) updates.seoTitle = parsed.data.seoTitle?.trim() || null;
+    if (parsed.data.seoDescription !== undefined) updates.seoDescription = parsed.data.seoDescription?.trim() || null;
+    if (parsed.data.status !== undefined) updates.publishedAt = parsed.data.status === 'PUBLISHED' ? new Date() : null;
+
+    await db.update(staticPages).set(updates).where(eq(staticPages.slug, slug));
+    const [updated] = await db.select().from(staticPages).where(eq(staticPages.slug, slug)).limit(1);
+    return c.json(apiResponse(updated));
+});
+
+superAdminRoutes.get('/standings/:leagueId', async (c) => {
+    const leagueId = c.req.param('leagueId');
+    const [existing] = await db.select({ id: leagues.id }).from(leagues).where(eq(leagues.id, leagueId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'League not found'), 404);
+    return c.json(apiResponse(await getLatestLeagueStandings(leagueId)));
+});
+
+superAdminRoutes.post('/standings/:leagueId/refresh', async (c) => {
+    const leagueId = c.req.param('leagueId');
+    const [existing] = await db.select({ id: leagues.id }).from(leagues).where(eq(leagues.id, leagueId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'League not found'), 404);
+    return c.json(apiResponse(await refreshLeagueStandingsSnapshot(leagueId)));
+});
+
+superAdminRoutes.get('/predictions/:matchId', async (c) => {
+    const matchId = c.req.param('matchId');
+    const [existing] = await db.select({ id: matches.id }).from(matches).where(eq(matches.id, matchId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Match not found'), 404);
+    const prediction = await getMatchPrediction(matchId);
+    if (!prediction) return c.json(apiError('NOT_AVAILABLE', 'Prediction unavailable'), 404);
+    return c.json(apiResponse(prediction));
+});
+
+superAdminRoutes.post('/predictions/:matchId/refresh', async (c) => {
+    const matchId = c.req.param('matchId');
+    const [existing] = await db.select({ id: matches.id }).from(matches).where(eq(matches.id, matchId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Match not found'), 404);
+    const prediction = await refreshMatchPrediction(matchId);
+    if (!prediction) return c.json(apiError('NOT_AVAILABLE', 'Prediction unavailable'), 404);
+    return c.json(apiResponse(prediction));
+});
+
+async function resolveEnrichmentRecord(kind: EntityKind, id: string): Promise<{ record: EntityBaseRecord | null; apply: (updates: EntityEnrichmentResult['updates'], snapshot: Record<string, unknown>) => Promise<void> }> {
+    if (kind === 'league') {
+        const [row] = await db.select({
+            id: leagues.id,
+            name: leagues.name,
+            shortName: leagues.shortName,
+            sportName: sports.name,
+            country: leagues.country,
+            website: leagues.website,
+            shortDescription: leagues.shortDescription,
+            description: leagues.description,
+            primaryImageUrl: leagues.logoUrl,
+            heroImageUrl: leagues.heroImageUrl,
+            shortDescriptionSource: leagues.shortDescriptionSource,
+            descriptionSource: leagues.descriptionSource,
+            primaryImageSource: leagues.logoSource,
+            heroImageSource: leagues.heroImageSource,
+            websiteSource: leagues.websiteSource,
+        }).from(leagues).leftJoin(sports, eq(leagues.sportId, sports.id)).where(eq(leagues.id, id)).limit(1);
+        return {
+            record: row || null,
+            apply: async (updates, snapshot) => {
+                await db.update(leagues).set({
+                    shortDescription: updates.shortDescription ?? undefined,
+                    description: updates.description ?? undefined,
+                    logoUrl: updates.primaryImageUrl ?? undefined,
+                    heroImageUrl: updates.heroImageUrl ?? undefined,
+                    website: updates.website ?? undefined,
+                    aliases: updates.aliases ?? undefined,
+                    enrichmentSnapshot: snapshot,
+                    enrichmentStatus: 'SYNCED',
+                    enrichedAt: new Date(),
+                    enrichmentError: null,
+                    shortDescriptionSource: updates.shortDescription ? 'GOOGLE' : undefined,
+                    descriptionSource: updates.description ? 'GOOGLE' : undefined,
+                    logoSource: updates.primaryImageUrl ? 'GOOGLE' : undefined,
+                    heroImageSource: updates.heroImageUrl ? 'GOOGLE' : undefined,
+                    websiteSource: updates.website ? 'GOOGLE' : undefined,
+                    updatedAt: new Date(),
+                }).where(eq(leagues.id, id));
+            },
+        };
+    }
+
+    if (kind === 'team') {
+        const [row] = await db.select({
+            id: teams.id,
+            name: teams.name,
+            shortName: teams.shortName,
+            sportName: sports.name,
+            leagueName: leagues.name,
+            country: teams.country,
+            website: teams.website,
+            shortDescription: teams.shortDescription,
+            description: teams.description,
+            primaryImageUrl: teams.crestUrl,
+            heroImageUrl: teams.heroImageUrl,
+            shortDescriptionSource: teams.shortDescriptionSource,
+            descriptionSource: teams.descriptionSource,
+            primaryImageSource: teams.crestSource,
+            heroImageSource: teams.heroImageSource,
+            websiteSource: teams.websiteSource,
+        }).from(teams).leftJoin(leagues, eq(teams.leagueId, leagues.id)).leftJoin(sports, eq(leagues.sportId, sports.id)).where(eq(teams.id, id)).limit(1);
+        return {
+            record: row || null,
+            apply: async (updates, snapshot) => {
+                await db.update(teams).set({
+                    shortDescription: updates.shortDescription ?? undefined,
+                    description: updates.description ?? undefined,
+                    crestUrl: updates.primaryImageUrl ?? undefined,
+                    heroImageUrl: updates.heroImageUrl ?? undefined,
+                    website: updates.website ?? undefined,
+                    aliases: updates.aliases ?? undefined,
+                    enrichmentSnapshot: snapshot,
+                    enrichmentStatus: 'SYNCED',
+                    enrichedAt: new Date(),
+                    enrichmentError: null,
+                    shortDescriptionSource: updates.shortDescription ? 'GOOGLE' : undefined,
+                    descriptionSource: updates.description ? 'GOOGLE' : undefined,
+                    crestSource: updates.primaryImageUrl ? 'GOOGLE' : undefined,
+                    heroImageSource: updates.heroImageUrl ? 'GOOGLE' : undefined,
+                    websiteSource: updates.website ? 'GOOGLE' : undefined,
+                }).where(eq(teams.id, id));
+            },
+        };
+    }
+
+    if (kind === 'player') {
+        const [row] = await db.select({
+            id: players.id,
+            name: players.name,
+            shortName: players.shortName,
+            sportName: sports.name,
+            leagueName: leagues.name,
+            country: players.nationality,
+            nationality: players.nationality,
+            website: players.website,
+            shortDescription: players.shortDescription,
+            description: players.description,
+            primaryImageUrl: players.headshotUrl,
+            heroImageUrl: players.heroImageUrl,
+            shortDescriptionSource: players.shortDescriptionSource,
+            descriptionSource: players.descriptionSource,
+            primaryImageSource: players.headshotSource,
+            heroImageSource: players.heroImageSource,
+            websiteSource: players.websiteSource,
+        }).from(players).leftJoin(sports, eq(players.sportId, sports.id)).leftJoin(leagues, eq(players.leagueId, leagues.id)).where(eq(players.id, id)).limit(1);
+        return {
+            record: row || null,
+            apply: async (updates, snapshot) => {
+                await db.update(players).set({
+                    shortDescription: updates.shortDescription ?? undefined,
+                    description: updates.description ?? undefined,
+                    headshotUrl: updates.primaryImageUrl ?? undefined,
+                    heroImageUrl: updates.heroImageUrl ?? undefined,
+                    website: updates.website ?? undefined,
+                    aliases: updates.aliases ?? undefined,
+                    enrichmentSnapshot: snapshot,
+                    enrichmentStatus: 'SYNCED',
+                    enrichedAt: new Date(),
+                    enrichmentError: null,
+                    shortDescriptionSource: updates.shortDescription ? 'GOOGLE' : undefined,
+                    descriptionSource: updates.description ? 'GOOGLE' : undefined,
+                    headshotSource: updates.primaryImageUrl ? 'GOOGLE' : undefined,
+                    heroImageSource: updates.heroImageUrl ? 'GOOGLE' : undefined,
+                    websiteSource: updates.website ? 'GOOGLE' : undefined,
+                    updatedAt: new Date(),
+                }).where(eq(players.id, id));
+            },
+        };
+    }
+
+    if (kind === 'driver') {
+        const [row] = await db.select({
+            id: drivers.id,
+            name: drivers.name,
+            shortName: drivers.shortName,
+            country: drivers.nationality,
+            nationality: drivers.nationality,
+            website: drivers.website,
+            shortDescription: drivers.shortDescription,
+            description: drivers.description,
+            primaryImageUrl: drivers.headshotUrl,
+            heroImageUrl: drivers.heroImageUrl,
+            shortDescriptionSource: drivers.shortDescriptionSource,
+            descriptionSource: drivers.descriptionSource,
+            primaryImageSource: drivers.headshotSource,
+            heroImageSource: drivers.heroImageSource,
+            websiteSource: drivers.websiteSource,
+        }).from(drivers).where(eq(drivers.id, id)).limit(1);
+        return {
+            record: row || null,
+            apply: async (updates, snapshot) => {
+                await db.update(drivers).set({
+                    shortDescription: updates.shortDescription ?? undefined,
+                    description: updates.description ?? undefined,
+                    headshotUrl: updates.primaryImageUrl ?? undefined,
+                    heroImageUrl: updates.heroImageUrl ?? undefined,
+                    website: updates.website ?? undefined,
+                    aliases: updates.aliases ?? undefined,
+                    enrichmentSnapshot: snapshot,
+                    enrichmentStatus: 'SYNCED',
+                    enrichedAt: new Date(),
+                    enrichmentError: null,
+                    shortDescriptionSource: updates.shortDescription ? 'GOOGLE' : undefined,
+                    descriptionSource: updates.description ? 'GOOGLE' : undefined,
+                    headshotSource: updates.primaryImageUrl ? 'GOOGLE' : undefined,
+                    heroImageSource: updates.heroImageUrl ? 'GOOGLE' : undefined,
+                    websiteSource: updates.website ? 'GOOGLE' : undefined,
+                    updatedAt: new Date(),
+                }).where(eq(drivers.id, id));
+            },
+        };
+    }
+
+    if (kind === 'entrant' || kind === 'manufacturer') {
+        const table = kind === 'entrant' ? entrants : manufacturers;
+        const [row] = await db.select({
+            id: table.id,
+            name: table.name,
+            shortName: table.shortName,
+            leagueName: leagues.name,
+            website: table.website,
+            shortDescription: table.shortDescription,
+            description: table.description,
+            primaryImageUrl: table.logoUrl,
+            heroImageUrl: table.heroImageUrl,
+            shortDescriptionSource: table.shortDescriptionSource,
+            descriptionSource: table.descriptionSource,
+            primaryImageSource: table.logoSource,
+            heroImageSource: table.heroImageSource,
+            websiteSource: table.websiteSource,
+        }).from(table).leftJoin(leagues, eq(table.leagueId, leagues.id)).where(eq(table.id, id)).limit(1);
+        return {
+            record: row || null,
+            apply: async (updates, snapshot) => {
+                await db.update(table).set({
+                    shortDescription: updates.shortDescription ?? undefined,
+                    description: updates.description ?? undefined,
+                    logoUrl: updates.primaryImageUrl ?? undefined,
+                    heroImageUrl: updates.heroImageUrl ?? undefined,
+                    website: updates.website ?? undefined,
+                    aliases: updates.aliases ?? undefined,
+                    enrichmentSnapshot: snapshot,
+                    enrichmentStatus: 'SYNCED',
+                    enrichedAt: new Date(),
+                    enrichmentError: null,
+                    shortDescriptionSource: updates.shortDescription ? 'GOOGLE' : undefined,
+                    descriptionSource: updates.description ? 'GOOGLE' : undefined,
+                    logoSource: updates.primaryImageUrl ? 'GOOGLE' : undefined,
+                    heroImageSource: updates.heroImageUrl ? 'GOOGLE' : undefined,
+                    websiteSource: updates.website ? 'GOOGLE' : undefined,
+                    updatedAt: new Date(),
+                }).where(eq(table.id, id));
+            },
+        };
+    }
+
+    return { record: null, apply: async () => undefined };
+}
+
+superAdminRoutes.post('/enrichment/:kind/:id/refresh', async (c) => {
+    const parsed = enrichmentKindSchema.safeParse(c.req.param('kind'));
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid enrichment target'), 400);
+    }
+
+    const kind = parsed.data;
+    const id = c.req.param('id');
+    const target = await resolveEnrichmentRecord(kind, id);
+    if (!target.record) {
+        return c.json(apiError('NOT_FOUND', 'Entity not found'), 404);
+    }
+
+    const enrichment = await buildEntityEnrichment(kind, target.record);
+    await target.apply(enrichment.updates, enrichment.snapshot);
+    return c.json(apiResponse({ kind, id, enrichment }));
 });
 
 export default superAdminRoutes;

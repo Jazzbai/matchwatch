@@ -1,58 +1,24 @@
 "use client";
 
-import { AppShell } from "../../components/AppShell";
-import Link from "next/link";
-import { CalendarDays, MapPin } from "lucide-react";
+import { StaticCmsPage } from "../../components/StaticCmsPage";
+
+const fallbackHtml = `
+  <h2 style="color: var(--foreground); margin: 0 0 12px; font-size: 1.25rem;">Our mission</h2>
+  <p style="margin: 0 0 18px;">MatchWatch helps fans discover the best places to watch live sports, book ahead, and follow leagues, teams, and players in one product.</p>
+  <h2 style="color: var(--foreground); margin: 24px 0 12px; font-size: 1.25rem;">What we do</h2>
+  <p style="margin: 0 0 18px;">We combine sports schedules, venue watch-party listings, editorial content, and booking tools so the path from fixture to seat is direct.</p>
+  <h2 style="color: var(--foreground); margin: 24px 0 12px; font-size: 1.25rem;">Coverage</h2>
+  <p style="margin: 0;">The platform is expanding league by league. Official sports data stays source-managed, while MatchWatch editorial and venue content are managed through the dashboard.</p>
+`;
 
 export default function AboutPage() {
-    return (
-        
-            <AppShell>
-                <section style={{ padding: "48px 20px", maxWidth: "700px", margin: "0 auto" }}>
-                    <div className="section-label" style={{ marginBottom: "8px" }}>ABOUT US</div>
-                    <h1 className="font-display text-display animate-fade-up" style={{ color: "var(--foreground)", marginBottom: "16px" }}>
-                        MATCHWATCH<br /><span style={{ color: "var(--primary)" }}>WATCHPARTY</span>
-                    </h1>
-
-                    <div className="animate-fade-up stagger-1" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                        <p className="text-body" style={{ color: "var(--muted-foreground)", lineHeight: 1.7 }}>
-                            MatchWatch is Houston&apos;s premier football watch-party directory. We connect fans with the best bars, lounges, and restaurants hosting live match screenings across the city.
-                        </p>
-
-                        <div className="card-flat" style={{ padding: "20px" }}>
-                            <h2 className="font-display text-h3" style={{ color: "var(--foreground)", marginBottom: "8px" }}>OUR MISSION</h2>
-                            <p className="text-sm" style={{ color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-                                To make every major match an unforgettable experience by helping fans find the perfect venue, book their spot, and join the action in one place.
-                            </p>
-                        </div>
-
-                        <div className="card-flat" style={{ padding: "20px" }}>
-                            <h2 className="font-display text-h3" style={{ color: "var(--foreground)", marginBottom: "8px" }}>WHY HOUSTON?</h2>
-                            <p className="text-sm" style={{ color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-                                Houston has incredible diversity, a world-class dining scene, and a passionate sports culture, which makes it a top destination for the beautiful game.
-                            </p>
-                        </div>
-
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
-                            {[
-                                { value: "8+", label: "Partner Venues" },
-                                { value: "15+", label: "Matches Covered" },
-                                { value: "1.2K+", label: "Fans Connected" },
-                            ].map((s, i) => (
-                                <div key={i} className={`card-flat animate-fade-up stagger-${i + 2}`} style={{ padding: "16px", textAlign: "center" }}>
-                                    <div className="font-mono" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--primary)" }}>{s.value}</div>
-                                    <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{s.label}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div style={{ marginTop: "32px", display: "flex", gap: "12px" }}>
-                        <Link href="/matches" className="btn-primary" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "8px" }}><CalendarDays size={16} />Browse Matches</Link>
-                        <Link href="/venues" className="btn-ghost" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "8px" }}><MapPin size={16} />Explore Venues</Link>
-                    </div>
-                </section>
-            </AppShell>
-        
-    );
+  return (
+    <StaticCmsPage
+      slug="about"
+      label="About"
+      fallbackTitle="About MatchWatch"
+      fallbackExcerpt="MatchWatch is building the sports watch-party layer for live fixtures, teams, players, and venues."
+      fallbackHtml={fallbackHtml}
+    />
+  );
 }

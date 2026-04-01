@@ -4,6 +4,7 @@ import { db } from '../db/client';
 import { sports, leagues, matches, teams, syncHistory } from '../db/schema';
 import { and, eq, inArray, lt, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { generateUniqueSlug } from '../lib/utils';
 
 const QUEUE_NAME = 'matchSync';
 const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
@@ -666,6 +667,7 @@ async function upsertTeamRecord(input: {
 
     const inserted = await db.insert(teams).values({
         name: trimText(input.name, 150),
+        slug: generateUniqueSlug(trimText(input.name, 150)),
         shortName: trimText(input.shortName || input.name, 30),
         externalId: safeExternalId,
         crestUrl: trimText(input.crestUrl || '', 1000) || null,

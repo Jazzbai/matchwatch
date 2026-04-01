@@ -2,10 +2,14 @@
 
 import * as React from "react";
 import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
+import { PlayersAdminPanel } from "../../components/admin/PlayersAdminPanel";
+import { PredictionsAdminPanel } from "../../components/admin/PredictionsAdminPanel";
+import { StandingsAdminPanel } from "../../components/admin/StandingsAdminPanel";
+import { StaticPagesAdminPanel } from "../../components/admin/StaticPagesAdminPanel";
 import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import type { GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../lib/api";
 
-type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches" | "motorsportEntries" | "blog";
+type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "players" | "events" | "customEvents" | "sports" | "leagues" | "standings" | "imports" | "matches" | "predictions" | "motorsportEntries" | "pages" | "blog";
 
 type ApiListMeta = {
   page: number;
@@ -1605,6 +1609,9 @@ export default function JazzbaiSuperAdminPage() {
       await Promise.all([loadTeamsAdmin(), loadLookups()]);
       return;
     }
+    if (tab === "players" || tab === "standings" || tab === "predictions" || tab === "pages") {
+      return;
+    }
     if (tab === "events") {
       await Promise.all([loadEvents(), loadLookups()]);
       return;
@@ -2341,13 +2348,17 @@ export default function JazzbaiSuperAdminPage() {
             ["venues", "Venues"],
             ["attributes", "Attributes"],
             ["teams", "Teams"],
+            ["players", "Players"],
             ["events", "Match Events"],
             ["customEvents", "Custom Events"],
             ["sports", "Sports"],
             ["leagues", "Leagues"],
+            ["standings", "Standings"],
             ["imports", "CSV Import"],
             ["matches", "Matches"],
+            ["predictions", "Predictions"],
             ["motorsportEntries", "Motorsport Entries"],
+            ["pages", "Static Pages"],
             ["blog", "Blog"],
           ] as Array<[TabId, string]>).map(([id, label]) => (
             <button
@@ -4911,6 +4922,30 @@ export default function JazzbaiSuperAdminPage() {
         {activeTab === "blog" && (
           <section style={{ display: "grid", gap: 14 }}>
             <BlogAdminPanel />
+          </section>
+        )}
+
+        {activeTab === "players" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <PlayersAdminPanel />
+          </section>
+        )}
+
+        {activeTab === "standings" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <StandingsAdminPanel />
+          </section>
+        )}
+
+        {activeTab === "predictions" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <PredictionsAdminPanel />
+          </section>
+        )}
+
+        {activeTab === "pages" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <StaticPagesAdminPanel />
           </section>
         )}
       </main>

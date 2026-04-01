@@ -4,6 +4,7 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { leagues, teams } from '../db/schema';
 import { fetchFootballDataCompetitionTeams } from '../workers/matchSync';
+import { generateUniqueSlug } from '../lib/utils';
 
 function parseArgs(argv: string[]) {
     const args = new Map<string, string | boolean>();
@@ -57,6 +58,7 @@ async function main() {
                 const [inserted] = await db.insert(teams).values({
                     leagueId: league.id,
                     name: remote.name,
+                    slug: generateUniqueSlug(remote.name),
                     shortName: remote.shortName || remote.name,
                     crestUrl: remote.crest || null,
                     externalId: String(remote.id),
