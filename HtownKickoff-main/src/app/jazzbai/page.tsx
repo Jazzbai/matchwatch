@@ -893,6 +893,7 @@ function SuperAdminShell({ children }: { children: React.ReactNode }) {
 
 function buildVenueEditorDraft(row: VenueRow): VenueEditorDraft {
   const googleImagePreviews = getGoogleImagePreviewState(row.googleSourceSnapshot, { slugOrId: row.slug });
+  const approvalStatus = row.approvalStatus || "PENDING";
   return {
     ownerId: row.ownerId,
     name: row.name,
@@ -924,14 +925,14 @@ function buildVenueEditorDraft(row: VenueRow): VenueEditorDraft {
     googleSourceSnapshot: row.googleSourceSnapshot || null,
     resolvedCoverImageUrl: googleImagePreviews.coverImageUrl,
     resolvedGalleryImageUrls: googleImagePreviews.galleryImageUrls,
-    approvalStatus: row.approvalStatus || "PENDING",
+    approvalStatus,
     approvalNotes: row.approvalNotes || "",
     menuSource: row.menuSource || "NONE",
     amenities: row.amenities || [],
     vibes: row.vibes || [],
     cuisineTags: row.cuisineTags || [],
     isVerified: row.isVerified,
-    isActive: row.isActive,
+    isActive: approvalStatus === "APPROVED" ? row.isActive : false,
     isFeatured: row.isFeatured,
   };
 }
@@ -1098,7 +1099,7 @@ export default function JazzbaiSuperAdminPage() {
     approvalStatus: "PENDING",
     approvalNotes: "",
     isVerified: false,
-    isActive: true,
+    isActive: false,
     isFeatured: false,
   });
   const [uploadingNewVenueCover, setUploadingNewVenueCover] = React.useState(false);
@@ -2860,7 +2861,14 @@ export default function JazzbaiSuperAdminPage() {
                   </div>
                 </div>
                 <input style={inputStyle} placeholder="Capacity" value={newVenue.capacity} onChange={(e) => setNewVenue((prev) => ({ ...prev, capacity: e.target.value }))} />
-                <select style={inputStyle} value={newVenue.approvalStatus} onChange={(e) => setNewVenue((prev) => ({ ...prev, approvalStatus: e.target.value as "PENDING" | "APPROVED" | "REJECTED" }))}>
+                <select style={inputStyle} value={newVenue.approvalStatus} onChange={(e) => setNewVenue((prev) => {
+                  const approvalStatus = e.target.value as "PENDING" | "APPROVED" | "REJECTED";
+                  return {
+                    ...prev,
+                    approvalStatus,
+                    isActive: approvalStatus === "APPROVED" ? prev.isActive : false,
+                  };
+                })}>
                   <option value="PENDING">PENDING</option>
                   <option value="APPROVED">APPROVED</option>
                   <option value="REJECTED">REJECTED</option>
@@ -2876,12 +2884,20 @@ export default function JazzbaiSuperAdminPage() {
                 </select>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                   <input type="checkbox" checked={newVenue.isVerified} onChange={(e) => setNewVenue((prev) => ({ ...prev, isVerified: e.target.checked }))} />
-                  Verified
+                  Verified badge
                 </label>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                  <input type="checkbox" checked={newVenue.isActive} onChange={(e) => setNewVenue((prev) => ({ ...prev, isActive: e.target.checked }))} />
-                  Active
+                  <input
+                    type="checkbox"
+                    checked={newVenue.isActive}
+                    disabled={newVenue.approvalStatus !== "APPROVED"}
+                    onChange={(e) => setNewVenue((prev) => ({ ...prev, isActive: e.target.checked }))}
+                  />
+                  Published
                 </label>
+                <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                  Only approved venues can be published publicly. Pending or rejected venues are automatically kept unpublished.
+                </div>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                   <input type="checkbox" checked={newVenue.isFeatured} onChange={(e) => setNewVenue((prev) => ({ ...prev, isFeatured: e.target.checked }))} />
                   Featured
@@ -2996,7 +3012,7 @@ export default function JazzbaiSuperAdminPage() {
                       approvalStatus: "PENDING",
                       approvalNotes: "",
                       isVerified: false,
-                      isActive: true,
+                      isActive: false,
                       isFeatured: false,
                     });
                     await Promise.all([loadVenues(), loadLookups(), loadOverview(), loadApprovalQueues()]);
@@ -3252,7 +3268,17 @@ export default function JazzbaiSuperAdminPage() {
                           </div>
                         </div>
                         <input style={inputStyle} value={String(draft.capacity ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, capacity: e.target.value } }))} placeholder="Capacity" />
-                        <select style={inputStyle} value={String(draft.approvalStatus ?? "PENDING")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, approvalStatus: e.target.value as "PENDING" | "APPROVED" | "REJECTED" } }))}>
+                        <select style={inputStyle} value={String(draft.approvalStatus ?? "PENDING")} onChange={(e) => setVenueDrafts((prev) => {
+                          const approvalStatus = e.target.value as "PENDING" | "APPROVED" | "REJECTED";
+                          return {
+                            ...prev,
+                            [row.id]: {
+                              ...draft,
+                              approvalStatus,
+                              isActive: approvalStatus === "APPROVED" ? Boolean(draft.isActive) : false,
+                            },
+                          };
+                        })}>
                           <option value="PENDING">PENDING</option>
                           <option value="APPROVED">APPROVED</option>
                           <option value="REJECTED">REJECTED</option>
@@ -3268,12 +3294,20 @@ export default function JazzbaiSuperAdminPage() {
                         </select>
                         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                           <input type="checkbox" checked={Boolean(draft.isVerified)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isVerified: e.target.checked } }))} />
-                          Verified
+                          Verified badge
                         </label>
                         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                          <input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} />
-                          Active
+                          <input
+                            type="checkbox"
+                            checked={Boolean(draft.isActive)}
+                            disabled={draft.approvalStatus !== "APPROVED"}
+                            onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))}
+                          />
+                          Published
                         </label>
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                          Only approved venues can be published publicly. Pending or rejected venues remain unpublished.
+                        </div>
                         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                           <input type="checkbox" checked={Boolean(draft.isFeatured)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isFeatured: e.target.checked } }))} />
                           Featured

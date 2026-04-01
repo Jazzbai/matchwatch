@@ -204,6 +204,8 @@ const createVenueSchema = z.object({
     cuisineTags: venueArraySchema.default([]),
     priceRange: z.enum(['BUDGET', 'MID', 'UPSCALE', 'LUXURY']).default('MID'),
     capacity: z.coerce.number().int().positive().optional(),
+    approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'),
+    approvalNotes: z.string().max(2000).optional(),
     isVerified: z.boolean().default(false),
     isActive: z.boolean().default(true),
     isFeatured: z.boolean().default(false),
@@ -964,6 +966,22 @@ function galleryImageUrlsFromMetadata(metadata: unknown): string[] {
 function metadataRecord(metadata: unknown): Record<string, unknown> {
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
     return metadata as Record<string, unknown>;
+}
+
+function normalizeVenueModerationState<T extends {
+    approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+    isActive?: boolean;
+}>(
+    input: T,
+    fallbackApprovalStatus: 'PENDING' | 'APPROVED' | 'REJECTED' = 'PENDING',
+    fallbackIsActive = false,
+) {
+    const approvalStatus = input.approvalStatus ?? fallbackApprovalStatus;
+    const requestedIsActive = input.isActive ?? fallbackIsActive;
+    return {
+        approvalStatus,
+        isActive: approvalStatus === 'APPROVED' ? requestedIsActive : false,
+    };
 }
 
 function formatVenueMutationError(error: unknown) {
@@ -2302,6 +2320,7 @@ superAdminRoutes.post('/venues', async (c) => {
 
     let created: { id: string; slug: string; name: string };
     try {
+        const moderationState = normalizeVenueModerationState(parsed.data, parsed.data.approvalStatus, parsed.data.isActive);
         [created] = await db.insert(venues).values({
             ownerId: owner.id,
             name: parsed.data.name.trim(),
@@ -2334,9 +2353,11 @@ superAdminRoutes.post('/venues', async (c) => {
             priceRangeSource: parsed.data.priceRange ? 'MANUAL' : 'NONE',
             capacity: parsed.data.capacity || null,
             isVerified: parsed.data.isVerified,
-            isActive: parsed.data.isActive,
+            isActive: moderationState.isActive,
             isFeatured: parsed.data.isFeatured,
-            approvalStatus: parsed.data.isActive ? 'APPROVED' : 'PENDING',
+            approvalStatus: moderationState.approvalStatus,
+            approvalNotes: parsed.data.approvalNotes?.trim() || null,
+            approvedAt: moderationState.approvalStatus === 'APPROVED' ? new Date() : null,
             ratingOverride: null,
             reviewCountOverride: null,
             metadata: {
@@ -2369,6 +2390,8 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
         metadata: venues.metadata,
         coverImageS3Key: venues.coverImageS3Key,
         galleryS3Keys: venues.galleryS3Keys,
+        approvalStatus: venues.approvalStatus,
+        isActive: venues.isActive,
     }).from(venues).where(eq(venues.id, venueId)).limit(1);
     if (!existingVenue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
 
@@ -2439,6 +2462,18 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
     }
     if (parsed.data.approvalNotes !== undefined) {
         updates.approvalNotes = parsed.data.approvalNotes;
+    }
+    if (parsed.data.approvalStatus !== undefined || parsed.data.isActive !== undefined) {
+        const moderationState = normalizeVenueModerationState(
+            parsed.data,
+            existingVenue.approvalStatus,
+            existingVenue.isActive,
+        );
+        updates.approvalStatus = moderationState.approvalStatus;
+        updates.isActive = moderationState.isActive;
+        if (parsed.data.approvalStatus !== undefined) {
+            updates.approvedAt = moderationState.approvalStatus === 'APPROVED' ? new Date() : null;
+        }
     }
 
     try {
@@ -3487,14 +3522,20 @@ superAdminRoutes.patch('/venues/:venueId/approval', async (c) => {
     const parsed = reviewVenueApprovalSchema.safeParse(body);
     if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
 
-    const [existing] = await db.select({ id: venues.id }).from(venues).where(eq(venues.id, venueId)).limit(1);
+    const [existing] = await db.select({ id: venues.id, isActive: venues.isActive }).from(venues).where(eq(venues.id, venueId)).limit(1);
     if (!existing) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
 
-    await db.update(venues).set({
+    const moderationState = normalizeVenueModerationState({
         approvalStatus: parsed.data.status,
+        isActive: existing.isActive,
+    }, parsed.data.status, existing.isActive);
+
+    await db.update(venues).set({
+        approvalStatus: moderationState.approvalStatus,
         approvalNotes: parsed.data.notes ?? null,
-        approvedAt: parsed.data.status === 'APPROVED' ? new Date() : null,
+        approvedAt: moderationState.approvalStatus === 'APPROVED' ? new Date() : null,
         isVerified: parsed.data.isVerified ?? (parsed.data.status === 'APPROVED'),
+        isActive: moderationState.isActive,
         updatedAt: new Date(),
     }).where(eq(venues.id, venueId));
 
