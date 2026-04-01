@@ -188,6 +188,7 @@ type VenueRow = {
   priceRange?: "BUDGET" | "MID" | "UPSCALE" | "LUXURY" | null;
   ratingOverride?: string | null;
   reviewCountOverride?: number | null;
+  googleSourceSnapshot?: GooglePlaceSnapshot | null;
   isActive: boolean;
   isVerified: boolean;
   isFeatured: boolean;
@@ -232,6 +233,9 @@ type VenueEditorDraft = {
   priceRange?: VenuePriceRange | null;
   ratingOverride?: string | number | null;
   reviewCountOverride?: string | number | null;
+  googleSourceSnapshot?: GooglePlaceSnapshot | null;
+  resolvedCoverImageUrl?: string | null;
+  resolvedGalleryImageUrls?: string[];
   approvalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
   approvalNotes?: string | null;
   menuSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
@@ -273,6 +277,9 @@ type NewVenueForm = {
   cuisineTags: string[];
   ratingOverride: string;
   reviewCountOverride: string;
+  googleSourceSnapshot?: GooglePlaceSnapshot | null;
+  resolvedCoverImageUrl?: string | null;
+  resolvedGalleryImageUrls?: string[];
   approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
   approvalNotes: string;
   isVerified: boolean;
@@ -824,6 +831,50 @@ function resolveVenueGalleryDisplayItems(
   }));
 }
 
+function buildGoogleCoverPreviewUrl(slugOrId: string) {
+  return `/api/v1/venues/${encodeURIComponent(slugOrId)}/cover-image`;
+}
+
+function buildGoogleGalleryPreviewUrl(slugOrId: string, index: number) {
+  return `/api/v1/venues/${encodeURIComponent(slugOrId)}/gallery/${index}`;
+}
+
+function getGoogleImagePreviewState(
+  snapshot?: GooglePlaceSnapshot | null,
+  options?: { slugOrId?: string | null },
+) {
+  const suggested = Array.isArray(snapshot?.googleSuggestedImages)
+    ? snapshot.googleSuggestedImages.filter((photo) => photo.previewUrl)
+    : [];
+  const selectedCover = suggested.find((photo) => photo.isSelectedCover);
+  const selectedGallery = suggested.filter((photo) => photo.isSelectedGallery);
+  const fallbackGalleryCount = Math.min(
+    MAX_GALLERY_IMAGES,
+    Math.max(
+      selectedGallery.length,
+      Array.isArray(snapshot?.googleImageSelection?.galleryPhotoNames) ? snapshot!.googleImageSelection!.galleryPhotoNames!.length : 0,
+      Array.isArray(snapshot?.photos) ? snapshot!.photos!.length : 0,
+    ),
+  );
+
+  if (options?.slugOrId?.trim()) {
+    return {
+      coverImageUrl: fallbackGalleryCount > 0 || suggested.length > 0 ? buildGoogleCoverPreviewUrl(options.slugOrId) : "",
+      galleryImageUrls: Array.from({ length: fallbackGalleryCount }, (_, index) => buildGoogleGalleryPreviewUrl(options.slugOrId!, index)),
+    };
+  }
+
+  return {
+    coverImageUrl: normalizeImageUrl(
+      selectedCover?.previewUrl || selectedGallery[0]?.previewUrl || suggested[0]?.previewUrl || "",
+    ),
+    galleryImageUrls: selectedGallery
+      .map((photo) => normalizeImageUrl(photo.previewUrl))
+      .filter(Boolean)
+      .slice(0, MAX_GALLERY_IMAGES),
+  };
+}
+
 function SuperAdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -841,6 +892,7 @@ function SuperAdminShell({ children }: { children: React.ReactNode }) {
 }
 
 function buildVenueEditorDraft(row: VenueRow): VenueEditorDraft {
+  const googleImagePreviews = getGoogleImagePreviewState(row.googleSourceSnapshot, { slugOrId: row.slug });
   return {
     ownerId: row.ownerId,
     name: row.name,
@@ -869,6 +921,9 @@ function buildVenueEditorDraft(row: VenueRow): VenueEditorDraft {
     priceRange: row.priceRange || "MID",
     ratingOverride: row.ratingOverride ?? "",
     reviewCountOverride: row.reviewCountOverride ?? "",
+    googleSourceSnapshot: row.googleSourceSnapshot || null,
+    resolvedCoverImageUrl: googleImagePreviews.coverImageUrl,
+    resolvedGalleryImageUrls: googleImagePreviews.galleryImageUrls,
     approvalStatus: row.approvalStatus || "PENDING",
     approvalNotes: row.approvalNotes || "",
     menuSource: row.menuSource || "NONE",
@@ -1037,6 +1092,9 @@ export default function JazzbaiSuperAdminPage() {
     cuisineTags: [] as string[],
     ratingOverride: "",
     reviewCountOverride: "",
+    googleSourceSnapshot: null,
+    resolvedCoverImageUrl: "",
+    resolvedGalleryImageUrls: [] as string[],
     approvalStatus: "PENDING",
     approvalNotes: "",
     isVerified: false,
@@ -1098,12 +1156,16 @@ export default function JazzbaiSuperAdminPage() {
   }, []);
 
   const newVenueCoverDisplayUrl = React.useMemo(
-    () => resolveImageDisplayUrl(newVenue.coverImageUrl, newVenue.coverImageS3Key, localImagePreviews),
-    [localImagePreviews, newVenue.coverImageS3Key, newVenue.coverImageUrl],
+    () => resolveImageDisplayUrl(newVenue.coverImageUrl, newVenue.coverImageS3Key, localImagePreviews) || normalizeImageUrl(newVenue.resolvedCoverImageUrl),
+    [localImagePreviews, newVenue.coverImageS3Key, newVenue.coverImageUrl, newVenue.resolvedCoverImageUrl],
   );
   const newVenueGalleryDisplayItems = React.useMemo(
-    () => resolveVenueGalleryDisplayItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys, localImagePreviews),
-    [localImagePreviews, newVenue.galleryImageUrls, newVenue.galleryS3Keys],
+    () => {
+      const manualItems = resolveVenueGalleryDisplayItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys, localImagePreviews);
+      if (manualItems.length > 0) return manualItems;
+      return (newVenue.resolvedGalleryImageUrls || []).map((url) => ({ url: normalizeImageUrl(url), key: "" })).filter((item) => item.url);
+    },
+    [localImagePreviews, newVenue.galleryImageUrls, newVenue.galleryS3Keys, newVenue.resolvedGalleryImageUrls],
   );
 
   const [attributesRows, setAttributesRows] = React.useState<VenueAttributeRow[]>([]);
@@ -1693,6 +1755,7 @@ export default function JazzbaiSuperAdminPage() {
 
   const applyGoogleDetailsToNewVenue = React.useCallback((details: GooglePlaceDetailsResponse) => {
     const defaults = details.defaults;
+    const imagePreviews = getGoogleImagePreviewState(defaults);
     const placeId = details.googlePlaceId || defaults.placeId;
     const displayName = defaults.displayName || (defaults as GooglePlaceSnapshot & { name?: string }).name;
     const addressLine1 = defaults.addressLine1
@@ -1715,11 +1778,15 @@ export default function JazzbaiSuperAdminPage() {
       googleMapsUrl: defaults.googleMapsUrl || prev.googleMapsUrl,
       ratingOverride: defaults.rating == null ? prev.ratingOverride : String(defaults.rating),
       reviewCountOverride: defaults.reviewCount == null ? prev.reviewCountOverride : String(defaults.reviewCount),
+      googleSourceSnapshot: defaults,
+      resolvedCoverImageUrl: imagePreviews.coverImageUrl || prev.resolvedCoverImageUrl,
+      resolvedGalleryImageUrls: imagePreviews.galleryImageUrls.length ? imagePreviews.galleryImageUrls : prev.resolvedGalleryImageUrls,
     }));
   }, []);
 
   const applyGoogleDetailsToVenueDraft = React.useCallback((venueId: string, details: GooglePlaceDetailsResponse) => {
     const defaults = details.defaults;
+    const imagePreviews = getGoogleImagePreviewState(defaults);
     const placeId = details.googlePlaceId || defaults.placeId;
     const displayName = defaults.displayName || (defaults as GooglePlaceSnapshot & { name?: string }).name;
     const addressLine1 = defaults.addressLine1
@@ -1746,6 +1813,9 @@ export default function JazzbaiSuperAdminPage() {
           googleMapsUrl: defaults.googleMapsUrl || draft.googleMapsUrl,
           ratingOverride: defaults.rating == null ? draft.ratingOverride : String(defaults.rating),
           reviewCountOverride: defaults.reviewCount == null ? draft.reviewCountOverride : String(defaults.reviewCount),
+          googleSourceSnapshot: defaults,
+          resolvedCoverImageUrl: imagePreviews.coverImageUrl || draft.resolvedCoverImageUrl,
+          resolvedGalleryImageUrls: imagePreviews.galleryImageUrls.length ? imagePreviews.galleryImageUrls : draft.resolvedGalleryImageUrls,
         },
       };
     });
@@ -2720,6 +2790,11 @@ export default function JazzbaiSuperAdminPage() {
                           e.currentTarget.value = "";
                         }}
                       />
+                      {!newVenue.coverImageUrl && newVenue.resolvedCoverImageUrl ? (
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                          Google-selected cover is shown here until a manual upload replaces it.
+                        </div>
+                      ) : null}
                       <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", overflow: "hidden", minHeight: 160 }}>
                         {newVenueCoverDisplayUrl ? (
                           <img src={newVenueCoverDisplayUrl} alt="Venue cover" style={{ width: "100%", height: 160, objectFit: "cover" }} />
@@ -2755,17 +2830,24 @@ export default function JazzbaiSuperAdminPage() {
                           e.currentTarget.value = "";
                         }}
                       />
+                      {(!newVenue.galleryImageUrls || newVenue.galleryImageUrls.length === 0) && newVenue.resolvedGalleryImageUrls?.length ? (
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                          Google-selected gallery images are shown here until manual uploads replace them.
+                        </div>
+                      ) : null}
                       <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
                         {newVenueGalleryDisplayItems.map((item, idx) => (
                           <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", background: "var(--secondary)" }}>
                             <img src={item.url} alt={`Gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
-                            <button
-                              type="button"
-                              style={{ position: "absolute", top: 6, right: 6, border: "none", borderRadius: 6, padding: "4px 6px", background: "rgba(239,68,68,0.92)", color: "#fff", cursor: "pointer", fontSize: 11 }}
-                              onClick={() => void removeNewVenueGalleryImage(idx)}
-                            >
-                              Remove
-                            </button>
+                            {idx < parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length ? (
+                              <button
+                                type="button"
+                                style={{ position: "absolute", top: 6, right: 6, border: "none", borderRadius: 6, padding: "4px 6px", background: "rgba(239,68,68,0.92)", color: "#fff", cursor: "pointer", fontSize: 11 }}
+                                onClick={() => void removeNewVenueGalleryImage(idx)}
+                              >
+                                Remove
+                              </button>
+                            ) : null}
                           </div>
                         ))}
                         {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - newVenueGalleryDisplayItems.length) }).map((_, idx) => (
@@ -2936,16 +3018,19 @@ export default function JazzbaiSuperAdminPage() {
               <div style={{ padding: 14, display: "grid", gap: 12 }}>
                 {venues.map((row) => {
                   const draft = venueDrafts[row.id] ?? buildVenueEditorDraft(row);
-                  const draftGalleryItems = resolveVenueGalleryDisplayItems(
+                  const manualDraftGalleryItems = resolveVenueGalleryDisplayItems(
                     Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [],
                     Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [],
                     localImagePreviews,
                   );
+                  const draftGalleryItems = manualDraftGalleryItems.length > 0
+                    ? manualDraftGalleryItems
+                    : (draft.resolvedGalleryImageUrls || []).map((url) => ({ url: normalizeImageUrl(url), key: "" })).filter((item) => item.url);
                   const draftCoverDisplayUrl = resolveImageDisplayUrl(
                     draft.coverImageUrl,
                     draft.coverImageS3Key,
                     localImagePreviews,
-                  );
+                  ) || normalizeImageUrl(draft.resolvedCoverImageUrl);
                   return (
                     <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 14, display: "grid", gap: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
@@ -3097,6 +3182,11 @@ export default function JazzbaiSuperAdminPage() {
                                   e.currentTarget.value = "";
                                 }}
                               />
+                              {!draft.coverImageUrl && draft.resolvedCoverImageUrl ? (
+                                <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                                  Google-selected cover is shown here until a manual upload replaces it.
+                                </div>
+                              ) : null}
                               <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", overflow: "hidden", minHeight: 160 }}>
                                 {draftCoverDisplayUrl ? (
                                   <img src={draftCoverDisplayUrl} alt={`${row.name} cover`} style={{ width: "100%", height: 160, objectFit: "cover" }} />
@@ -3132,17 +3222,24 @@ export default function JazzbaiSuperAdminPage() {
                                   e.currentTarget.value = "";
                                 }}
                               />
+                              {manualDraftGalleryItems.length === 0 && draft.resolvedGalleryImageUrls?.length ? (
+                                <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                                  Google-selected gallery images are shown here until manual uploads replace them.
+                                </div>
+                              ) : null}
                               <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
                                 {draftGalleryItems.map((item, idx) => (
                                   <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", background: "var(--secondary)" }}>
                                     <img src={item.url} alt={`${row.name} gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
-                                    <button
-                                      type="button"
-                                      style={{ position: "absolute", top: 6, right: 6, border: "none", borderRadius: 6, padding: "4px 6px", background: "rgba(239,68,68,0.92)", color: "#fff", cursor: "pointer", fontSize: 11 }}
-                                      onClick={() => void removeVenueDraftGalleryImage(row.id, idx)}
-                                    >
-                                      Remove
-                                    </button>
+                                    {idx < manualDraftGalleryItems.length ? (
+                                      <button
+                                        type="button"
+                                        style={{ position: "absolute", top: 6, right: 6, border: "none", borderRadius: 6, padding: "4px 6px", background: "rgba(239,68,68,0.92)", color: "#fff", cursor: "pointer", fontSize: 11 }}
+                                        onClick={() => void removeVenueDraftGalleryImage(row.id, idx)}
+                                      >
+                                        Remove
+                                      </button>
+                                    ) : null}
                                   </div>
                                 ))}
                                 {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - draftGalleryItems.length) }).map((_, idx) => (
