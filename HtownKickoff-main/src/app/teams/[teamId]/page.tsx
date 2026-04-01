@@ -1,184 +1,154 @@
 "use client";
 
-import React from "react";
-import { AppShell } from "../../../components/AppShell";
+import * as React from "react";
 import Link from "next/link";
-import { useData } from "../../../lib/data-provider";
 import { use } from "react";
-import { CircleDot, ShieldOff } from "lucide-react";
+import { AppShell } from "../../../components/AppShell";
+import { api } from "../../../lib/api";
+
+type TeamDetail = {
+  id: string;
+  name: string;
+  slug: string;
+  shortName?: string | null;
+  crestUrl?: string | null;
+  heroImageUrl?: string | null;
+  shortDescription?: string | null;
+  description?: string | null;
+  country?: string | null;
+  league?: { id: string; name: string; slug: string; shortName?: string | null; logoUrl?: string | null } | null;
+  standingsRow?: {
+    rank: number;
+    played: number;
+    wins: number;
+    draws: number;
+    losses: number;
+    points: number;
+    goalDifference: number;
+    form?: string | null;
+  } | null;
+  recentMatches: Array<{ id: string; homeTeamName?: string | null; awayTeamName?: string | null; homeScore?: number | null; awayScore?: number | null; matchDateUtc: string; status: string }>;
+  upcomingMatches: Array<{ id: string; homeTeamName?: string | null; awayTeamName?: string | null; matchDateUtc: string; status: string }>;
+};
 
 export default function TeamPage({ params }: { params: Promise<{ teamId: string }> }) {
-    const { teamId } = use(params);
-    const { teams: ALL_TEAMS, matches: MATCHES, getTeam, getLeague } = useData();
-    const team = getTeam(teamId) || ALL_TEAMS.find((t: any) => t.id === teamId);
+  const { teamId } = use(params);
+  const [team, setTeam] = React.useState<TeamDetail | null>(null);
+  const [loading, setLoading] = React.useState(true);
 
-    if (!team) {
-        return (
-            
-                <AppShell>
-                    <div style={{ padding: "80px 20px", textAlign: "center" }}>
-                        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
-                            <ShieldOff size={56} style={{ color: "var(--muted-foreground)" }} />
-                        </div>
-                        <h1 className="font-display text-h1" style={{ color: "var(--foreground)" }}>TEAM NOT FOUND</h1>
-                        <p className="text-body" style={{ color: "var(--muted-foreground)", margin: "8px 0 24px" }}>This team doesn't exist in our system.</p>
-                        <Link href="/matches" className="btn-primary" style={{ textDecoration: "none" }}>← Back to Matches</Link>
-                    </div>
-                </AppShell>
-            
-        );
+  React.useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      try {
+        const response = await api.get<TeamDetail>(`/teams/${teamId}`);
+        if (!cancelled) setTeam(response.data || null);
+      } catch {
+        if (!cancelled) setTeam(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId]);
 
-    const league = getLeague(team.leagueId);
-    const teamMatches = MATCHES.filter((m) => m.homeTeamId === team.id || m.awayTeamId === team.id);
-    const wins = teamMatches.filter((m) => {
-        if (m.status !== "FINISHED") return false;
-        if (m.homeTeamId === team.id && (m.homeScore ?? 0) > (m.awayScore ?? 0)) return true;
-        if (m.awayTeamId === team.id && (m.awayScore ?? 0) > (m.homeScore ?? 0)) return true;
-        return false;
-    }).length;
-    const draws = teamMatches.filter((m) => m.status === "FINISHED" && m.homeScore === m.awayScore).length;
-    const losses = teamMatches.filter((m) => m.status === "FINISHED").length - wins - draws;
+  if (loading) {
+    return <AppShell><section style={{ padding: "64px 20px", textAlign: "center", color: "var(--muted-foreground)" }}>Loading team...</section></AppShell>;
+  }
 
-    return (
-        
-            <AppShell>
-                {/* Team Hero */}
-                <section style={{
-                    padding: "48px 20px 36px",
-                    background: `linear-gradient(135deg, ${team.color}22, var(--bg-primary))`,
-                    textAlign: "center",
-                    position: "relative",
-                }}>
-                    <div style={{ position: "absolute", top: "-30px", left: "50%", transform: "translateX(-50%)", width: "300px", height: "300px", borderRadius: "50%", background: team.color, opacity: 0.06, filter: "blur(80px)" }} />
-                    <div style={{ position: "relative", zIndex: 2 }}>
-                        <div style={{ fontSize: "5rem", marginBottom: "12px", filter: "drop-shadow(0 6px 20px rgba(0,0,0,0.3))" }} className="animate-fade-up">
-                            {team.crest}
-                        </div>
-                        <h1 className="font-display text-display animate-fade-up stagger-1" style={{ color: "var(--foreground)", marginBottom: "4px" }}>
-                            {team.name.toUpperCase()}
-                        </h1>
-                        <div className="animate-fade-up stagger-2" style={{ display: "flex", justifyContent: "center", gap: "12px", alignItems: "center", marginBottom: "16px" }}>
-                            {league && (
-                                <span className="badge badge-accent" style={{ fontSize: "0.85rem", padding: "6px 14px", display: "inline-flex", alignItems: "center", gap: "6px" }}>{league.image ? <img src={league.image} alt="" style={{ width: "22px", height: "22px", objectFit: "contain" }} /> : league.logo} {league.shortName}</span>
-                            )}
-                            <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>{team.country}</span>
-                        </div>
+  if (!team) {
+    return <AppShell><section style={{ padding: "64px 20px", textAlign: "center", color: "var(--muted-foreground)" }}>Team not found.</section></AppShell>;
+  }
 
-                        {/* Quick Stats */}
-                        <div className="animate-fade-up stagger-3" style={{ display: "flex", justifyContent: "center", gap: "24px" }}>
-                            {[
-                                { label: "Matches", value: teamMatches.length.toString() },
-                                { label: "W", value: wins.toString() },
-                                { label: "D", value: draws.toString() },
-                                { label: "L", value: losses.toString() },
-                            ].map((s, i) => (
-                                <div key={i} style={{ textAlign: "center" }}>
-                                    <div className="font-mono" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--primary)" }}>{s.value}</div>
-                                    <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{s.label}</div>
-                                </div>
-                            ))}
-                        </div>
+  return (
+    <AppShell>
+      <section
+        style={{
+          padding: "56px 20px 32px",
+          background: team.heroImageUrl
+            ? `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.7)), url(${team.heroImageUrl}) center / cover`
+            : "linear-gradient(135deg, color-mix(in oklch, var(--primary) 18%, transparent), var(--background))",
+        }}
+      >
+        <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+          <div className="section-label" style={{ marginBottom: 12, color: team.heroImageUrl ? "rgba(255,255,255,0.72)" : "var(--primary)" }}>Team</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+            {team.crestUrl ? <img src={team.crestUrl} alt="" style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 16, background: "rgba(255,255,255,0.9)", padding: 10 }} /> : null}
+            <div>
+              <h1 className="font-display text-display" style={{ color: team.heroImageUrl ? "#fff" : "var(--foreground)", margin: 0 }}>{team.name}</h1>
+              <p style={{ margin: "10px 0 0", maxWidth: 720, color: team.heroImageUrl ? "rgba(255,255,255,0.86)" : "var(--muted-foreground)", lineHeight: 1.7 }}>
+                {team.shortDescription || team.description || "Profile and recent form for this team."}
+              </p>
+              {team.league ? (
+                <Link href={`/leagues/${team.league.slug}`} style={{ display: "inline-flex", marginTop: 14, color: team.heroImageUrl ? "#fff" : "var(--primary)", fontWeight: 700, textDecoration: "none" }}>
+                  {team.league.name}
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ padding: "24px 20px 48px", maxWidth: 1120, margin: "0 auto", display: "grid", gap: 20 }}>
+        {team.standingsRow ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+            {[
+              { label: "Rank", value: team.standingsRow.rank },
+              { label: "Played", value: team.standingsRow.played },
+              { label: "Points", value: team.standingsRow.points },
+              { label: "Form", value: team.standingsRow.form || "-" },
+            ].map((item) => (
+              <div key={item.label} className="card-flat" style={{ padding: 16 }}>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted-foreground)", marginBottom: 8 }}>{item.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: "var(--foreground)" }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {team.description ? (
+          <div className="card-flat" style={{ padding: 20 }}>
+            <h2 className="font-display text-h3" style={{ color: "var(--foreground)", margin: "0 0 10px" }}>About</h2>
+            <p style={{ margin: 0, lineHeight: 1.8, color: "var(--muted-foreground)" }}>{team.description}</p>
+          </div>
+        ) : null}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }}>
+          <div className="card-flat" style={{ padding: 20 }}>
+            <h2 className="font-display text-h3" style={{ color: "var(--foreground)", margin: "0 0 14px" }}>Upcoming Fixtures</h2>
+            <div style={{ display: "grid", gap: 10 }}>
+              {team.upcomingMatches.length === 0 ? <p style={{ margin: 0, color: "var(--muted-foreground)" }}>No upcoming fixtures.</p> : team.upcomingMatches.map((match) => (
+                <Link key={match.id} href={`/matches/${match.id}`} style={{ textDecoration: "none", color: "inherit", border: "1px solid var(--border)", borderRadius: 12, padding: 12, background: "var(--secondary)" }}>
+                  <div style={{ fontWeight: 700, color: "var(--foreground)" }}>{match.homeTeamName} vs {match.awayTeamName}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>{new Date(match.matchDateUtc).toLocaleString()}</div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="card-flat" style={{ padding: 20 }}>
+            <h2 className="font-display text-h3" style={{ color: "var(--foreground)", margin: "0 0 14px" }}>Recent Results</h2>
+            <div style={{ display: "grid", gap: 10 }}>
+              {team.recentMatches.length === 0 ? <p style={{ margin: 0, color: "var(--muted-foreground)" }}>No recent results.</p> : team.recentMatches.map((match) => (
+                <Link key={match.id} href={`/matches/${match.id}`} style={{ textDecoration: "none", color: "inherit", border: "1px solid var(--border)", borderRadius: 12, padding: 12, background: "var(--secondary)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: "var(--foreground)" }}>{match.homeTeamName} vs {match.awayTeamName}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>{new Date(match.matchDateUtc).toLocaleDateString()}</div>
                     </div>
-                </section>
-
-                {/* Team Matches */}
-                <section style={{ padding: "24px 20px" }}>
-                    <div className="section-label" style={{ marginBottom: "16px" }}>FIXTURES & RESULTS</div>
-                    {teamMatches.length === 0 ? (
-                        <div className="card-flat" style={{ padding: "40px 20px", textAlign: "center" }}>
-                            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>No matches scheduled for this team yet.</p>
-                        </div>
-                    ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                            {teamMatches.map((m, i) => {
-                                const home = getTeam(m.homeTeamId) || {
-                                    id: m.homeTeamId || `${m.id}-home`,
-                                    name: m.homeTeamName || "Home Team",
-                                    shortName: m.homeTeamName || "Home Team",
-                                    crest: "TEAM",
-                                    color: "var(--primary)",
-                                    leagueId: m.leagueId,
-                                    country: "INT",
-                                    image: "",
-                                };
-                                const away = getTeam(m.awayTeamId) || {
-                                    id: m.awayTeamId || `${m.id}-away`,
-                                    name: m.awayTeamName || "Away Team",
-                                    shortName: m.awayTeamName || "Away Team",
-                                    crest: "TEAM",
-                                    color: "var(--primary)",
-                                    leagueId: m.leagueId,
-                                    country: "INT",
-                                    image: "",
-                                };
-                                const lg = getLeague(m.leagueId);
-                                const d = new Date(m.matchDateUTC);
-                                const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
-                                const isFinished = m.status === "FINISHED";
-                                return (
-                                    <Link
-                                        key={m.id}
-                                        href={`/matches/${m.id}`}
-                                        className={`card-flat animate-fade-up stagger-${Math.min(i + 1, 6)}`}
-                                        style={{ padding: "14px 16px", textDecoration: "none", color: "inherit", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                                    >
-                                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                            <span style={{ fontSize: "1.4rem" }}>{home.crest}</span>
-                                            <div>
-                                                <div className="text-sm font-body" style={{ fontWeight: 600, color: "var(--foreground)" }}>
-                                                    {home.shortName} vs {away.shortName}
-                                                </div>
-                                                <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                                                    {lg?.logo} {lg?.shortName} · {m.stage}
-                                                </div>
-                                            </div>
-                                            <span style={{ fontSize: "1.4rem" }}>{away.crest}</span>
-                                        </div>
-                                        <div style={{ textAlign: "right" }}>
-                                            {(isLive || isFinished) && m.homeScore !== null ? (
-                                                <span className="font-mono text-sm" style={{ fontWeight: 700, color: isLive ? "var(--live-pulse)" : "var(--foreground)" }}>
-                                                    {m.homeScore} - {m.awayScore}
-                                                </span>
-                                            ) : (
-                                                <span className="font-mono text-xs" style={{ color: "var(--primary)" }}>
-                                                    {d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                                                </span>
-                                            )}
-                                            {isLive && (
-                                                <div className="text-xs" style={{ color: "var(--live-pulse)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                                                    <CircleDot size={11} />
-                                                    LIVE
-                                                </div>
-                                            )}
-                                        </div>
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    )}
-                </section>
-
-                {/* Related Teams in Same League */}
-                {league && (
-                    <section style={{ padding: "0 20px 40px" }}>
-                        <div className="section-label" style={{ marginBottom: "12px" }}>MORE TEAMS IN {league.shortName.toUpperCase()}</div>
-                        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                            {ALL_TEAMS.filter((t) => t.leagueId === team.leagueId && t.id !== team.id).slice(0, 8).map((t) => (
-                                <Link
-                                    key={t.id}
-                                    href={`/teams/${t.id}`}
-                                    className="card-flat"
-                                    style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "8px", textDecoration: "none", color: "inherit" }}
-                                >
-                                    <span style={{ fontSize: "1.3rem" }}>{t.crest}</span>
-                                    <span className="text-sm font-body" style={{ fontWeight: 600, color: "var(--foreground)" }}>{t.shortName}</span>
-                                </Link>
-                            ))}
-                        </div>
-                    </section>
-                )}
-            </AppShell>
-        
-    );
+                    <div style={{ fontSize: 22, fontWeight: 900, color: "var(--foreground)" }}>
+                      {match.homeScore} - {match.awayScore}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </AppShell>
+  );
 }
