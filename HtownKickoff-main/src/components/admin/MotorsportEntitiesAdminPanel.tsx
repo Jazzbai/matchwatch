@@ -12,6 +12,9 @@ type DriverRow = {
   nationality?: string | null;
   countryCode?: string | null;
   headshotUrl?: string | null;
+  enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  enrichedAt?: string | null;
+  enrichmentError?: string | null;
   isActive: boolean;
 };
 type EntrantRow = {
@@ -23,6 +26,9 @@ type EntrantRow = {
   shortName?: string | null;
   brandColor?: string | null;
   logoUrl?: string | null;
+  enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  enrichedAt?: string | null;
+  enrichmentError?: string | null;
   isActive: boolean;
 };
 type ManufacturerRow = {
@@ -33,6 +39,9 @@ type ManufacturerRow = {
   slug: string;
   shortName?: string | null;
   logoUrl?: string | null;
+  enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  enrichedAt?: string | null;
+  enrichmentError?: string | null;
   isActive: boolean;
 };
 
@@ -62,6 +71,12 @@ const btnStyle = (kind: "primary" | "outline" = "outline"): React.CSSProperties 
 function formatError(error: unknown, fallback: string) {
   if (error instanceof ApiClientError) return error.message || fallback;
   return error instanceof Error ? error.message : fallback;
+}
+
+function formatEnrichmentStatus(value?: "NEVER_SYNCED" | "SYNCED" | "ERROR") {
+  if (!value || value === "NEVER_SYNCED") return "Never synced";
+  if (value === "SYNCED") return "Synced";
+  return "Error";
 }
 
 export function MotorsportEntitiesAdminPanel() {
@@ -216,6 +231,7 @@ export function MotorsportEntitiesAdminPanel() {
             <button key={row.id} onClick={() => setSelectedId(row.id)} style={btnStyle(selectedId === row.id ? "primary" : "outline")}>
               <div>{row.name}</div>
               <div style={{ fontSize: 11, opacity: 0.8 }}>{row.leagueName || row.slug}</div>
+              <div style={{ fontSize: 10, opacity: 0.75 }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
             </button>
           ))}
         </div>
@@ -243,6 +259,12 @@ export function MotorsportEntitiesAdminPanel() {
             )}
             <input value={draft.externalId} onChange={(e) => setDraft((prev) => ({ ...prev, externalId: e.target.value }))} placeholder="External ID" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
           </div>
+          {selectedId ? (
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+              Enrichment: {formatEnrichmentStatus((currentRows.find((item: any) => item.id === selectedId) as any)?.enrichmentStatus)}
+              {(currentRows.find((item: any) => item.id === selectedId) as any)?.enrichedAt ? ` • ${new Date((currentRows.find((item: any) => item.id === selectedId) as any).enrichedAt).toLocaleString()}` : ""}
+            </div>
+          ) : null}
           <label style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--foreground)", fontSize: 14 }}>
             <input type="checkbox" checked={draft.isActive} onChange={(e) => setDraft((prev) => ({ ...prev, isActive: e.target.checked }))} />
             Active

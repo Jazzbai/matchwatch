@@ -4207,6 +4207,25 @@ export default function JazzbaiSuperAdminPage() {
                                 Refresh Enrichment
                               </button>
                               <button
+                                style={smallBtn("outline", submittingAction === `batch-league-enrichment-${row.id}`)}
+                                disabled={submittingAction === `batch-league-enrichment-${row.id}`}
+                                onClick={() => void runAction(`batch-league-enrichment-${row.id}`, async () => {
+                                  await superAdminFetch(`/enrichment/league/${row.id}/batch`, {
+                                    method: "POST",
+                                    body: JSON.stringify({
+                                      includeLeague: true,
+                                      includeTeams: true,
+                                      includePlayers: true,
+                                      includeEntrants: true,
+                                      includeManufacturers: true,
+                                    }),
+                                  });
+                                  await Promise.all([loadLeaguesAdmin(), loadTeamsAdmin()]);
+                                })}
+                              >
+                                Run League Batch
+                              </button>
+                              <button
                                 style={smallBtn("danger", submittingAction === `archive-league-${row.id}`)}
                                 disabled={submittingAction === `archive-league-${row.id}`}
                                 onClick={() => void runAction(`archive-league-${row.id}`, async () => {

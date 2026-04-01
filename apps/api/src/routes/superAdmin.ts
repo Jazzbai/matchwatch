@@ -3799,6 +3799,13 @@ const staticPageSchema = z.object({
 
 const staticPageUpdateSchema = staticPageSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 const enrichmentKindSchema = z.enum(['league', 'team', 'player', 'driver', 'entrant', 'manufacturer']);
+const enrichmentBatchSchema = z.object({
+    includeLeague: z.boolean().optional(),
+    includeTeams: z.boolean().optional(),
+    includePlayers: z.boolean().optional(),
+    includeEntrants: z.boolean().optional(),
+    includeManufacturers: z.boolean().optional(),
+});
 const createDriverSchema = z.object({
     name: z.string().min(2).max(150),
     shortName: z.string().max(60).nullable().optional(),
@@ -3948,7 +3955,21 @@ superAdminRoutes.get('/drivers', async (c) => {
         : undefined;
 
     const [rows, [totalResult]] = await Promise.all([
-        db.select().from(drivers).where(where).orderBy(drivers.name).limit(limit).offset(offset),
+        db.select({
+            id: drivers.id,
+            name: drivers.name,
+            slug: drivers.slug,
+            shortName: drivers.shortName,
+            nationality: drivers.nationality,
+            countryCode: drivers.countryCode,
+            headshotUrl: drivers.headshotUrl,
+            enrichmentStatus: drivers.enrichmentStatus,
+            enrichedAt: drivers.enrichedAt,
+            enrichmentError: drivers.enrichmentError,
+            isActive: drivers.isActive,
+            createdAt: drivers.createdAt,
+            updatedAt: drivers.updatedAt,
+        }).from(drivers).where(where).orderBy(drivers.name).limit(limit).offset(offset),
         db.select({ count: count() }).from(drivers).where(where),
     ]);
 
@@ -4026,6 +4047,9 @@ superAdminRoutes.get('/entrants', async (c) => {
             shortName: entrants.shortName,
             logoUrl: entrants.logoUrl,
             brandColor: entrants.brandColor,
+            enrichmentStatus: entrants.enrichmentStatus,
+            enrichedAt: entrants.enrichedAt,
+            enrichmentError: entrants.enrichmentError,
             isActive: entrants.isActive,
             createdAt: entrants.createdAt,
             updatedAt: entrants.updatedAt,
@@ -4103,6 +4127,9 @@ superAdminRoutes.get('/manufacturers', async (c) => {
             slug: manufacturers.slug,
             shortName: manufacturers.shortName,
             logoUrl: manufacturers.logoUrl,
+            enrichmentStatus: manufacturers.enrichmentStatus,
+            enrichedAt: manufacturers.enrichedAt,
+            enrichmentError: manufacturers.enrichmentError,
             isActive: manufacturers.isActive,
             createdAt: manufacturers.createdAt,
             updatedAt: manufacturers.updatedAt,
@@ -4481,6 +4508,17 @@ async function resolveEnrichmentRecord(kind: EntityKind, id: string): Promise<{ 
     return { record: null, apply: async () => undefined };
 }
 
+async function refreshEnrichmentTarget(kind: EntityKind, id: string) {
+    const target = await resolveEnrichmentRecord(kind, id);
+    if (!target.record) {
+        throw new Error('Entity not found');
+    }
+
+    const enrichment = await buildEntityEnrichment(kind, target.record);
+    await target.apply(enrichment.updates, enrichment.snapshot);
+    return enrichment;
+}
+
 superAdminRoutes.post('/enrichment/:kind/:id/refresh', async (c) => {
     const parsed = enrichmentKindSchema.safeParse(c.req.param('kind'));
     if (!parsed.success) {
@@ -4489,14 +4527,86 @@ superAdminRoutes.post('/enrichment/:kind/:id/refresh', async (c) => {
 
     const kind = parsed.data;
     const id = c.req.param('id');
-    const target = await resolveEnrichmentRecord(kind, id);
-    if (!target.record) {
-        return c.json(apiError('NOT_FOUND', 'Entity not found'), 404);
+    let enrichment: EntityEnrichmentResult;
+    try {
+        enrichment = await refreshEnrichmentTarget(kind, id);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to refresh enrichment';
+        if (message === 'Entity not found') {
+            return c.json(apiError('NOT_FOUND', 'Entity not found'), 404);
+        }
+        return c.json(apiError('INTERNAL_ERROR', message), 500);
+    }
+    return c.json(apiResponse({ kind, id, enrichment }));
+});
+
+superAdminRoutes.post('/enrichment/league/:leagueId/batch', async (c) => {
+    const leagueId = c.req.param('leagueId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = enrichmentBatchSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid batch options', parsed.error.issues), 400);
     }
 
-    const enrichment = await buildEntityEnrichment(kind, target.record);
-    await target.apply(enrichment.updates, enrichment.snapshot);
-    return c.json(apiResponse({ kind, id, enrichment }));
+    const [league] = await db.select({ id: leagues.id, name: leagues.name }).from(leagues).where(eq(leagues.id, leagueId)).limit(1);
+    if (!league) {
+        return c.json(apiError('NOT_FOUND', 'League not found'), 404);
+    }
+
+    const options = {
+        includeLeague: parsed.data.includeLeague ?? true,
+        includeTeams: parsed.data.includeTeams ?? true,
+        includePlayers: parsed.data.includePlayers ?? true,
+        includeEntrants: parsed.data.includeEntrants ?? true,
+        includeManufacturers: parsed.data.includeManufacturers ?? true,
+    };
+
+    const [teamRows, playerRows, entrantRows, manufacturerRows] = await Promise.all([
+        options.includeTeams
+            ? db.select({ id: teams.id }).from(teams).where(and(eq(teams.leagueId, leagueId), eq(teams.isActive, true))).orderBy(teams.name)
+            : Promise.resolve([] as Array<{ id: string }>),
+        options.includePlayers
+            ? db.select({ id: players.id }).from(players).where(and(eq(players.leagueId, leagueId), eq(players.isActive, true))).orderBy(players.name)
+            : Promise.resolve([] as Array<{ id: string }>),
+        options.includeEntrants
+            ? db.select({ id: entrants.id }).from(entrants).where(and(eq(entrants.leagueId, leagueId), eq(entrants.isActive, true))).orderBy(entrants.name)
+            : Promise.resolve([] as Array<{ id: string }>),
+        options.includeManufacturers
+            ? db.select({ id: manufacturers.id }).from(manufacturers).where(and(eq(manufacturers.leagueId, leagueId), eq(manufacturers.isActive, true))).orderBy(manufacturers.name)
+            : Promise.resolve([] as Array<{ id: string }>),
+    ]);
+
+    const queue: Array<{ kind: EntityKind; id: string }> = [];
+    if (options.includeLeague) queue.push({ kind: 'league', id: leagueId });
+    queue.push(...teamRows.map((row) => ({ kind: 'team' as const, id: row.id })));
+    queue.push(...playerRows.map((row) => ({ kind: 'player' as const, id: row.id })));
+    queue.push(...entrantRows.map((row) => ({ kind: 'entrant' as const, id: row.id })));
+    queue.push(...manufacturerRows.map((row) => ({ kind: 'manufacturer' as const, id: row.id })));
+
+    const results: Array<{ kind: EntityKind; id: string; ok: boolean; error?: string }> = [];
+    for (const item of queue) {
+        try {
+            await refreshEnrichmentTarget(item.kind, item.id);
+            results.push({ kind: item.kind, id: item.id, ok: true });
+        } catch (error) {
+            results.push({
+                kind: item.kind,
+                id: item.id,
+                ok: false,
+                error: error instanceof Error ? error.message : 'Failed to refresh enrichment',
+            });
+        }
+    }
+
+    return c.json(apiResponse({
+        leagueId,
+        leagueName: league.name,
+        options,
+        processed: results.length,
+        succeeded: results.filter((item) => item.ok).length,
+        failed: results.filter((item) => !item.ok).length,
+        results,
+    }));
 });
 
 export default superAdminRoutes;
