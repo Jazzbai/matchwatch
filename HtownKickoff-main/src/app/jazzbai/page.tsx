@@ -145,6 +145,9 @@ type AdminLeagueRow = {
   logoUrl?: string | null;
   externalId?: string | null;
   country?: string | null;
+  enrichedAt?: string | null;
+  enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  enrichmentError?: string | null;
   sortOrder: number;
   isActive: boolean;
   createdAt: string;
@@ -357,6 +360,9 @@ type TeamAdminRow = {
   shortName?: string | null;
   crestUrl?: string | null;
   externalId?: string | null;
+  enrichedAt?: string | null;
+  enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  enrichmentError?: string | null;
   isActive: boolean;
   createdAt: string;
 };
@@ -721,6 +727,13 @@ function formatDateTime(value?: string | null) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatEnrichmentStatus(value?: "NEVER_SYNCED" | "SYNCED" | "ERROR" | null) {
+  if (!value) return "Never synced";
+  if (value === "NEVER_SYNCED") return "Never synced";
+  if (value === "SYNCED") return "Synced";
+  return "Error";
 }
 
 function dedupeById<T extends { id: string }>(rows: T[]) {
@@ -3558,6 +3571,7 @@ export default function JazzbaiSuperAdminPage() {
                       <th style={thStyle}>Short</th>
                       <th style={thStyle}>Crest URL</th>
                       <th style={thStyle}>External</th>
+                      <th style={thStyle}>Enrichment</th>
                       <th style={thStyle}>Active</th>
                       <th style={thStyle}>Created</th>
                       <th style={thStyle}>Actions</th>
@@ -3588,6 +3602,10 @@ export default function JazzbaiSuperAdminPage() {
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.crestUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, crestUrl: e.target.value } }))} /></td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
+                            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{row.enrichedAt ? formatDateTime(row.enrichedAt) : "Not run"}</div>
+                          </td>
                           <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
                           <td style={tdStyle}>{formatDateTime(row.createdAt)}</td>
                           <td style={tdStyle}>
@@ -3611,6 +3629,16 @@ export default function JazzbaiSuperAdminPage() {
                                 })}
                               >
                                 Save
+                              </button>
+                              <button
+                                style={smallBtn("outline", submittingAction === `refresh-team-enrichment-${row.id}`)}
+                                disabled={submittingAction === `refresh-team-enrichment-${row.id}`}
+                                onClick={() => void runAction(`refresh-team-enrichment-${row.id}`, async () => {
+                                  await superAdminFetch(`/enrichment/team/${row.id}/refresh`, { method: "POST" });
+                                  await loadTeamsAdmin();
+                                })}
+                              >
+                                Refresh Enrichment
                               </button>
                               <button
                                 style={smallBtn("danger", submittingAction === `archive-team-${row.id}`)}
@@ -4108,6 +4136,7 @@ export default function JazzbaiSuperAdminPage() {
                       <th style={thStyle}>Short</th>
                       <th style={thStyle}>External ID</th>
                       <th style={thStyle}>Country</th>
+                      <th style={thStyle}>Enrichment</th>
                       <th style={thStyle}>Sort</th>
                       <th style={thStyle}>Active</th>
                       <th style={thStyle}>Actions</th>
@@ -4138,6 +4167,10 @@ export default function JazzbaiSuperAdminPage() {
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
+                            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{row.enrichedAt ? formatDateTime(row.enrichedAt) : "Not run"}</div>
+                          </td>
                           <td style={tdStyle}><input style={inputStyle} type="number" value={String(draft.sortOrder ?? 0)} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, sortOrder: Number(e.target.value || 0) } }))} /></td>
                           <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
                           <td style={tdStyle}>
@@ -4162,6 +4195,16 @@ export default function JazzbaiSuperAdminPage() {
                                 })}
                               >
                                 Save
+                              </button>
+                              <button
+                                style={smallBtn("outline", submittingAction === `refresh-league-enrichment-${row.id}`)}
+                                disabled={submittingAction === `refresh-league-enrichment-${row.id}`}
+                                onClick={() => void runAction(`refresh-league-enrichment-${row.id}`, async () => {
+                                  await superAdminFetch(`/enrichment/league/${row.id}/refresh`, { method: "POST" });
+                                  await loadLeaguesAdmin();
+                                })}
+                              >
+                                Refresh Enrichment
                               </button>
                               <button
                                 style={smallBtn("danger", submittingAction === `archive-league-${row.id}`)}

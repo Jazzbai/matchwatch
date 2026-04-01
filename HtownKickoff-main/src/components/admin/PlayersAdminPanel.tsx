@@ -17,6 +17,9 @@ type PlayerRow = {
   headshotUrl?: string | null;
   shortDescription?: string | null;
   description?: string | null;
+  enrichedAt?: string | null;
+  enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  enrichmentError?: string | null;
   isActive: boolean;
 };
 
@@ -141,6 +144,19 @@ export function PlayersAdminPanel() {
     }
   }
 
+  async function refreshEnrichment() {
+    if (!selectedId) return;
+    setError(null);
+    setMessage(null);
+    try {
+      await api.post(`/super-admin/enrichment/player/${selectedId}/refresh`);
+      setMessage("Player enrichment refreshed.");
+      await load();
+    } catch (err) {
+      setError(formatError(err, "Failed to refresh player enrichment."));
+    }
+  }
+
   return (
     <section style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -182,12 +198,19 @@ export function PlayersAdminPanel() {
             <input value={draft.headshotUrl} onChange={(e) => setDraft((prev) => ({ ...prev, headshotUrl: e.target.value }))} placeholder="Headshot URL" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
             <input value={draft.externalId} onChange={(e) => setDraft((prev) => ({ ...prev, externalId: e.target.value }))} placeholder="External ID" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
           </div>
+          {selectedId ? (
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+              Enrichment: {players.find((item) => item.id === selectedId)?.enrichmentStatus || "NEVER_SYNCED"}
+              {players.find((item) => item.id === selectedId)?.enrichedAt ? ` • ${new Date(players.find((item) => item.id === selectedId)?.enrichedAt as string).toLocaleString()}` : ""}
+            </div>
+          ) : null}
           <label style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--foreground)", fontSize: 14 }}>
             <input type="checkbox" checked={draft.isActive} onChange={(e) => setDraft((prev) => ({ ...prev, isActive: e.target.checked }))} />
             Active
           </label>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button style={btnStyle("primary")} onClick={() => void save()}>Save Player</button>
+            <button style={btnStyle()} onClick={() => void refreshEnrichment()} disabled={!selectedId}>Refresh Enrichment</button>
             {selectedId ? <button style={btnStyle()} onClick={() => setSelectedId(null)}>Clear</button> : null}
           </div>
         </div>
