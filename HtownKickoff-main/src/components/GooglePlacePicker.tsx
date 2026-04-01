@@ -13,6 +13,8 @@ type GooglePlacePickerProps = {
   disabled?: boolean;
   className?: string;
   buttonClassName?: string;
+  inputClassName?: string;
+  variant?: "default" | "archive";
   onPlaceResolved: (details: GooglePlaceDetailsResponse) => void | Promise<void>;
 };
 
@@ -23,6 +25,8 @@ export function GooglePlacePicker({
   disabled = false,
   className,
   buttonClassName,
+  inputClassName,
+  variant = "default",
   onPlaceResolved,
 }: GooglePlacePickerProps) {
   const [query, setQuery] = React.useState("");
@@ -68,25 +72,45 @@ export function GooglePlacePicker({
     }
   }, [onPlaceResolved]);
 
+  const archiveVariant = variant === "archive";
+
   return (
-    <div className={["rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4", className].filter(Boolean).join(" ")}>
-      <div className="mb-3">
-        <div className="text-sm font-semibold text-[var(--foreground)]">{title}</div>
-        <div className="text-xs text-[var(--muted-foreground)]">{description}</div>
+    <div
+      className={[
+        archiveVariant
+          ? "rounded-2xl border border-[var(--border)] bg-transparent p-0"
+          : "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4",
+        className,
+      ].filter(Boolean).join(" ")}
+    >
+      <div className={archiveVariant ? "mb-4 px-4 pt-4 sm:px-5 sm:pt-5" : "mb-3"}>
+        <div className={archiveVariant ? "text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--muted-foreground)]" : "text-sm font-semibold text-[var(--foreground)]"}>
+          {title}
+        </div>
+        <div className={archiveVariant ? "mt-1 max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]" : "text-xs text-[var(--muted-foreground)]"}>
+          {description}
+        </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+      <div className={archiveVariant ? "grid gap-3 px-4 pb-4 sm:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.85fr)] sm:px-5 sm:pb-5" : "grid gap-3 md:grid-cols-[1fr_auto]"}>
         <div className="flex gap-2">
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search venue name"
             disabled={disabled || loading}
+            className={[
+              archiveVariant ? "h-11 rounded-xl border-[var(--border)] bg-[var(--secondary)] px-4 text-sm shadow-none" : "",
+              inputClassName,
+            ].filter(Boolean).join(" ")}
           />
           <Button
             type="button"
             variant="outline"
-            className={buttonClassName}
+            className={[
+              archiveVariant ? "h-11 rounded-xl border-[var(--border)] bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--secondary)]" : "",
+              buttonClassName,
+            ].filter(Boolean).join(" ")}
             onClick={() => void search()}
             disabled={disabled || loading || !query.trim()}
           >
@@ -100,11 +124,18 @@ export function GooglePlacePicker({
             onChange={(event) => setPlaceId(event.target.value)}
             placeholder="Google Places ID"
             disabled={disabled || !!resolvingPlaceId}
+            className={[
+              archiveVariant ? "h-11 rounded-xl border-[var(--border)] bg-[var(--secondary)] px-4 text-sm shadow-none" : "",
+              inputClassName,
+            ].filter(Boolean).join(" ")}
           />
           <Button
             type="button"
             variant="outline"
-            className={buttonClassName}
+            className={[
+              archiveVariant ? "h-11 rounded-xl border-[var(--border)] bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--secondary)]" : "",
+              buttonClassName,
+            ].filter(Boolean).join(" ")}
             onClick={() => void resolve(placeId)}
             disabled={disabled || !!resolvingPlaceId || !placeId.trim()}
           >
@@ -114,19 +145,19 @@ export function GooglePlacePicker({
       </div>
 
       {error ? (
-        <div className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-600">
+        <div className={archiveVariant ? "mx-4 mt-1 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 sm:mx-5" : "mt-3 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-600"}>
           {error}
         </div>
       ) : null}
 
       {selectedVenue ? (
-        <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+        <div className={archiveVariant ? "mx-4 mt-1 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 sm:mx-5" : "mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700"}>
           Existing venue detected: <strong>{selectedVenue.name}</strong> in {selectedVenue.city}. Claim flow should be used instead of creating a duplicate.
         </div>
       ) : null}
 
       {results.length > 0 ? (
-        <div className="mt-3 grid gap-2">
+        <div className={archiveVariant ? "mt-3 grid gap-2 px-4 pb-4 sm:px-5 sm:pb-5" : "mt-3 grid gap-2"}>
           {results.map((result) => {
             const busy = resolvingPlaceId === result.placeId;
             return (
@@ -135,7 +166,10 @@ export function GooglePlacePicker({
                 type="button"
                 onClick={() => void resolve(result.placeId)}
                 disabled={disabled || !!resolvingPlaceId}
-                className="flex items-start justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-3 text-left transition hover:border-[var(--primary)]/40"
+                className={[
+                  "flex items-start justify-between gap-3 rounded-xl border border-[var(--border)] px-3 py-3 text-left transition hover:border-[var(--primary)]/40",
+                  archiveVariant ? "bg-[var(--secondary)]" : "bg-[var(--background)]",
+                ].join(" ")}
               >
                 <div>
                   <div className="text-sm font-semibold text-[var(--foreground)]">{result.name}</div>
