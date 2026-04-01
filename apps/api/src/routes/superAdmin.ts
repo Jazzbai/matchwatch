@@ -3793,6 +3793,35 @@ const staticPageSchema = z.object({
 
 const staticPageUpdateSchema = staticPageSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 const enrichmentKindSchema = z.enum(['league', 'team', 'player', 'driver', 'entrant', 'manufacturer']);
+const createDriverSchema = z.object({
+    name: z.string().min(2).max(150),
+    shortName: z.string().max(60).nullable().optional(),
+    nationality: z.string().max(80).nullable().optional(),
+    countryCode: z.string().max(3).nullable().optional(),
+    headshotUrl: z.string().url().nullable().optional(),
+    externalId: z.string().max(80).nullable().optional(),
+    isActive: z.boolean().default(true),
+});
+const updateDriverSchema = createDriverSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+const createEntrantSchema = z.object({
+    leagueId: z.string().uuid().nullable().optional(),
+    name: z.string().min(2).max(150),
+    shortName: z.string().max(60).nullable().optional(),
+    brandColor: z.string().max(20).nullable().optional(),
+    logoUrl: z.string().url().nullable().optional(),
+    externalId: z.string().max(80).nullable().optional(),
+    isActive: z.boolean().default(true),
+});
+const updateEntrantSchema = createEntrantSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+const createManufacturerSchema = z.object({
+    leagueId: z.string().uuid().nullable().optional(),
+    name: z.string().min(2).max(150),
+    shortName: z.string().max(60).nullable().optional(),
+    logoUrl: z.string().url().nullable().optional(),
+    externalId: z.string().max(80).nullable().optional(),
+    isActive: z.boolean().default(true),
+});
+const updateManufacturerSchema = createManufacturerSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
 superAdminRoutes.get('/players', async (c) => {
     const parsed = paginationQuerySchema.safeParse(c.req.query());
@@ -3891,6 +3920,229 @@ superAdminRoutes.patch('/players/:playerId', async (c) => {
 
     await db.update(players).set(updates).where(eq(players.id, playerId));
     return c.json(apiResponse({ message: 'Player updated' }));
+});
+
+superAdminRoutes.get('/drivers', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+    }
+    const { page, limit, search } = parsed.data;
+    const offset = paginationOffset(page, limit);
+    const where = search
+        ? or(
+            ilike(drivers.name, `%${search}%`),
+            ilike(drivers.shortName, `%${search}%`),
+            ilike(drivers.slug, `%${search}%`),
+            ilike(drivers.nationality, `%${search}%`),
+        )
+        : undefined;
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select().from(drivers).where(where).orderBy(drivers.name).limit(limit).offset(offset),
+        db.select({ count: count() }).from(drivers).where(where),
+    ]);
+
+    return c.json(apiResponse(rows, paginationMeta(page, limit, Number(totalResult?.count || 0))));
+});
+
+superAdminRoutes.post('/drivers', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createDriverSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const trimmedName = parsed.data.name.trim();
+    const [created] = await db.insert(drivers).values({
+        name: trimmedName,
+        slug: generateUniqueSlug(trimmedName),
+        shortName: parsed.data.shortName?.trim() || null,
+        nationality: parsed.data.nationality?.trim() || null,
+        countryCode: parsed.data.countryCode?.trim().toUpperCase() || null,
+        headshotUrl: parsed.data.headshotUrl?.trim() || null,
+        externalId: parsed.data.externalId?.trim() || null,
+        isActive: parsed.data.isActive,
+    }).returning();
+
+    return c.json(apiResponse(created), 201);
+});
+
+superAdminRoutes.patch('/drivers/:driverId', async (c) => {
+    const driverId = c.req.param('driverId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateDriverSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const [existing] = await db.select({ id: drivers.id }).from(drivers).where(eq(drivers.id, driverId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Driver not found'), 404);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
+    if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
+    if (parsed.data.nationality !== undefined) updates.nationality = parsed.data.nationality?.trim() || null;
+    if (parsed.data.countryCode !== undefined) updates.countryCode = parsed.data.countryCode?.trim().toUpperCase() || null;
+    if (parsed.data.headshotUrl !== undefined) updates.headshotUrl = parsed.data.headshotUrl?.trim() || null;
+    if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
+    if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+
+    await db.update(drivers).set(updates).where(eq(drivers.id, driverId));
+    return c.json(apiResponse({ message: 'Driver updated' }));
+});
+
+superAdminRoutes.get('/entrants', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+    }
+    const { page, limit, search } = parsed.data;
+    const offset = paginationOffset(page, limit);
+    const where = search
+        ? or(
+            ilike(entrants.name, `%${search}%`),
+            ilike(entrants.shortName, `%${search}%`),
+            ilike(entrants.slug, `%${search}%`),
+        )
+        : undefined;
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: entrants.id,
+            leagueId: entrants.leagueId,
+            leagueName: leagues.name,
+            name: entrants.name,
+            slug: entrants.slug,
+            shortName: entrants.shortName,
+            logoUrl: entrants.logoUrl,
+            brandColor: entrants.brandColor,
+            isActive: entrants.isActive,
+            createdAt: entrants.createdAt,
+            updatedAt: entrants.updatedAt,
+        }).from(entrants).leftJoin(leagues, eq(entrants.leagueId, leagues.id)).where(where).orderBy(entrants.name).limit(limit).offset(offset),
+        db.select({ count: count() }).from(entrants).where(where),
+    ]);
+
+    return c.json(apiResponse(rows, paginationMeta(page, limit, Number(totalResult?.count || 0))));
+});
+
+superAdminRoutes.post('/entrants', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createEntrantSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+    const trimmedName = parsed.data.name.trim();
+    const [created] = await db.insert(entrants).values({
+        leagueId: parsed.data.leagueId || null,
+        name: trimmedName,
+        slug: generateUniqueSlug(trimmedName),
+        shortName: parsed.data.shortName?.trim() || null,
+        brandColor: parsed.data.brandColor?.trim() || null,
+        logoUrl: parsed.data.logoUrl?.trim() || null,
+        externalId: parsed.data.externalId?.trim() || null,
+        isActive: parsed.data.isActive,
+    }).returning();
+    return c.json(apiResponse(created), 201);
+});
+
+superAdminRoutes.patch('/entrants/:entrantId', async (c) => {
+    const entrantId = c.req.param('entrantId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateEntrantSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+    const [existing] = await db.select({ id: entrants.id }).from(entrants).where(eq(entrants.id, entrantId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Motorsport team not found'), 404);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.leagueId !== undefined) updates.leagueId = parsed.data.leagueId || null;
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
+    if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
+    if (parsed.data.brandColor !== undefined) updates.brandColor = parsed.data.brandColor?.trim() || null;
+    if (parsed.data.logoUrl !== undefined) updates.logoUrl = parsed.data.logoUrl?.trim() || null;
+    if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
+    if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+
+    await db.update(entrants).set(updates).where(eq(entrants.id, entrantId));
+    return c.json(apiResponse({ message: 'Motorsport team updated' }));
+});
+
+superAdminRoutes.get('/manufacturers', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+    }
+    const { page, limit, search } = parsed.data;
+    const offset = paginationOffset(page, limit);
+    const where = search
+        ? or(
+            ilike(manufacturers.name, `%${search}%`),
+            ilike(manufacturers.shortName, `%${search}%`),
+            ilike(manufacturers.slug, `%${search}%`),
+        )
+        : undefined;
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: manufacturers.id,
+            leagueId: manufacturers.leagueId,
+            leagueName: leagues.name,
+            name: manufacturers.name,
+            slug: manufacturers.slug,
+            shortName: manufacturers.shortName,
+            logoUrl: manufacturers.logoUrl,
+            isActive: manufacturers.isActive,
+            createdAt: manufacturers.createdAt,
+            updatedAt: manufacturers.updatedAt,
+        }).from(manufacturers).leftJoin(leagues, eq(manufacturers.leagueId, leagues.id)).where(where).orderBy(manufacturers.name).limit(limit).offset(offset),
+        db.select({ count: count() }).from(manufacturers).where(where),
+    ]);
+
+    return c.json(apiResponse(rows, paginationMeta(page, limit, Number(totalResult?.count || 0))));
+});
+
+superAdminRoutes.post('/manufacturers', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createManufacturerSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+    const trimmedName = parsed.data.name.trim();
+    const [created] = await db.insert(manufacturers).values({
+        leagueId: parsed.data.leagueId || null,
+        name: trimmedName,
+        slug: generateUniqueSlug(trimmedName),
+        shortName: parsed.data.shortName?.trim() || null,
+        logoUrl: parsed.data.logoUrl?.trim() || null,
+        externalId: parsed.data.externalId?.trim() || null,
+        isActive: parsed.data.isActive,
+    }).returning();
+    return c.json(apiResponse(created), 201);
+});
+
+superAdminRoutes.patch('/manufacturers/:manufacturerId', async (c) => {
+    const manufacturerId = c.req.param('manufacturerId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateManufacturerSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+    const [existing] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, manufacturerId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Manufacturer not found'), 404);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.leagueId !== undefined) updates.leagueId = parsed.data.leagueId || null;
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
+    if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
+    if (parsed.data.logoUrl !== undefined) updates.logoUrl = parsed.data.logoUrl?.trim() || null;
+    if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
+    if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+
+    await db.update(manufacturers).set(updates).where(eq(manufacturers.id, manufacturerId));
+    return c.json(apiResponse({ message: 'Manufacturer updated' }));
 });
 
 superAdminRoutes.get('/pages', async () => {

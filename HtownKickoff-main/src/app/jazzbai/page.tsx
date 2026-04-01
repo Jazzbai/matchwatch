@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
+import { MotorsportEntitiesAdminPanel } from "../../components/admin/MotorsportEntitiesAdminPanel";
 import { PlayersAdminPanel } from "../../components/admin/PlayersAdminPanel";
 import { PredictionsAdminPanel } from "../../components/admin/PredictionsAdminPanel";
 import { StandingsAdminPanel } from "../../components/admin/StandingsAdminPanel";
@@ -9,7 +10,7 @@ import { StaticPagesAdminPanel } from "../../components/admin/StaticPagesAdminPa
 import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import type { GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../lib/api";
 
-type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "players" | "events" | "customEvents" | "sports" | "leagues" | "standings" | "imports" | "matches" | "predictions" | "motorsportEntries" | "pages" | "blog";
+type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "players" | "motorsportEntities" | "events" | "customEvents" | "sports" | "leagues" | "standings" | "imports" | "matches" | "predictions" | "motorsportEntries" | "pages" | "blog";
 
 type ApiListMeta = {
   page: number;
@@ -1609,7 +1610,7 @@ export default function JazzbaiSuperAdminPage() {
       await Promise.all([loadTeamsAdmin(), loadLookups()]);
       return;
     }
-    if (tab === "players" || tab === "standings" || tab === "predictions" || tab === "pages") {
+    if (tab === "players" || tab === "motorsportEntities" || tab === "standings" || tab === "predictions" || tab === "pages") {
       return;
     }
     if (tab === "events") {
@@ -2349,6 +2350,7 @@ export default function JazzbaiSuperAdminPage() {
             ["attributes", "Attributes"],
             ["teams", "Teams"],
             ["players", "Players"],
+            ["motorsportEntities", "Motorsport Entities"],
             ["events", "Match Events"],
             ["customEvents", "Custom Events"],
             ["sports", "Sports"],
@@ -4928,6 +4930,12 @@ export default function JazzbaiSuperAdminPage() {
         {activeTab === "players" && (
           <section style={{ display: "grid", gap: 14 }}>
             <PlayersAdminPanel />
+          </section>
+        )}
+
+        {activeTab === "motorsportEntities" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <MotorsportEntitiesAdminPanel />
           </section>
         )}
 
