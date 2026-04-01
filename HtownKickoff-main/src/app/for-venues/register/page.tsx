@@ -128,8 +128,8 @@ export default function VenueRegisterPage() {
   const sectionEyebrowClassName = "text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--muted-foreground)]";
   const sectionTitleClassName = "text-xl font-semibold text-[var(--foreground)]";
   const sectionBodyClassName = "text-sm leading-6 text-[var(--muted-foreground)]";
-  const secondaryButtonClassName = "h-10 rounded-xl border-[var(--border)] bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--secondary)]";
-  const primaryButtonClassName = "h-10 rounded-xl px-5 text-sm font-bold";
+  const secondaryButtonClassName = "h-10 min-w-[110px] shrink-0 justify-center rounded-xl border-[var(--border)] bg-[var(--secondary)] px-5 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--secondary)]";
+  const primaryButtonClassName = "h-10 min-w-[170px] shrink-0 justify-center rounded-xl px-6 text-sm font-bold";
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -221,7 +221,7 @@ export default function VenueRegisterPage() {
         </section>
 
         <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 20px" }}>
-          <div className="rounded-[20px] border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:p-6 lg:p-7">
+          <div className="rounded-[20px] border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm sm:p-7 lg:p-8">
             {formError ? (
               <Alert variant="destructive" className="mb-4">
                 <CircleAlert className="h-4 w-4" />
@@ -238,7 +238,7 @@ export default function VenueRegisterPage() {
               </Alert>
             ) : null}
 
-            <form onSubmit={handleSubmit} className="grid gap-0">
+            <form onSubmit={handleSubmit} className="grid gap-0 sm:px-1">
               <section className="grid gap-4 border-b border-[var(--border)] pb-6">
                 <div className="grid gap-1">
                   <div className={sectionEyebrowClassName}>Owner account</div>
