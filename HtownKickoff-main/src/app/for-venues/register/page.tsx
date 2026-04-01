@@ -195,43 +195,47 @@ export default function VenueRegisterPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto w-full max-w-4xl px-5 py-12 sm:px-6">
-        <div className="mx-auto mb-8 max-w-2xl text-center">
-          <div className="mb-3 flex justify-center">
-            <Badge variant="secondary" className="gap-1">
-              <Building2 className="h-3.5 w-3.5" />
-              Venue onboarding
-            </Badge>
+      <main className="w-full py-10 sm:py-12">
+        <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 20px" }}>
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="mb-3 flex justify-center">
+              <Badge variant="secondary" className="gap-1">
+                <Building2 className="h-3.5 w-3.5" />
+                Venue onboarding
+              </Badge>
+            </div>
+            <h1 className="font-display text-3xl text-[var(--foreground)] md:text-4xl">Register Your Business Venue</h1>
+            <p className="mt-3 text-sm text-[var(--muted-foreground)] md:text-base">
+              Search the venue from Google, review the defaults, adjust the editable business details, and submit for admin approval.
+            </p>
+            <div className="mt-4">
+              <Link href="/login" className="text-sm font-semibold text-[var(--primary)]">
+                Back to login
+              </Link>
+            </div>
           </div>
-          <h1 className="font-display text-3xl text-[var(--foreground)] md:text-4xl">Register Your Business Venue</h1>
-          <p className="mt-3 text-sm text-[var(--muted-foreground)] md:text-base">
-            Search the venue from Google, review the defaults, adjust the editable business details, and submit for admin approval.
-          </p>
-          <div className="mt-4">
-            <Link href="/login" className="text-sm font-semibold text-[var(--primary)]">
-              Back to login
-            </Link>
-          </div>
-        </div>
+        </section>
 
-        {formError ? (
-          <Alert variant="destructive" className="mb-4">
-            <CircleAlert className="h-4 w-4" />
-            <AlertTitle>Registration blocked</AlertTitle>
-            <AlertDescription>{formError}</AlertDescription>
-          </Alert>
-        ) : null}
+        <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 20px" }}>
+          <div className="mx-auto max-w-5xl rounded-[20px] border border-[var(--border)] bg-card px-4 py-5 shadow-sm sm:px-6 sm:py-6 lg:px-8">
+            {formError ? (
+              <Alert variant="destructive" className="mb-4">
+                <CircleAlert className="h-4 w-4" />
+                <AlertTitle>Registration blocked</AlertTitle>
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            ) : null}
 
-        {successMessage ? (
-          <Alert className="mb-4 border-emerald-400/40 bg-emerald-500/10 text-emerald-700">
-            <BadgeCheck className="h-4 w-4" />
-            <AlertTitle>Submitted</AlertTitle>
-            <AlertDescription>{successMessage}</AlertDescription>
-          </Alert>
-        ) : null}
+            {successMessage ? (
+              <Alert className="mb-4 border-emerald-400/40 bg-emerald-500/10 text-emerald-700">
+                <BadgeCheck className="h-4 w-4" />
+                <AlertTitle>Submitted</AlertTitle>
+                <AlertDescription>{successMessage}</AlertDescription>
+              </Alert>
+            ) : null}
 
-        <form onSubmit={handleSubmit} className="mx-auto flex w-full flex-col gap-6">
-          <Card className="border-[var(--border)]/70 bg-card shadow-sm">
+            <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+              <Card className="border-[var(--border)]/70 bg-card shadow-sm">
             <CardHeader>
               <CardTitle>Owner account</CardTitle>
               <CardDescription>This account stays pending until admin approves the business profile.</CardDescription>
@@ -252,52 +256,52 @@ export default function VenueRegisterPage() {
             </CardContent>
           </Card>
 
-          <GooglePlacePicker
-            className="p-6"
-            buttonClassName="h-11 rounded-xl px-5 text-sm font-semibold"
-            initialPlaceId={venueForm.googlePlaceId}
-            onPlaceResolved={handlePlaceResolved}
-          />
+              <GooglePlacePicker
+                className="p-6"
+                buttonClassName="h-11 rounded-xl px-5 text-sm font-semibold"
+                initialPlaceId={venueForm.googlePlaceId}
+                onPlaceResolved={handlePlaceResolved}
+              />
 
-          {existingVenue ? (
-            <Alert className="border-amber-400/30 bg-amber-500/10 text-amber-700">
-              <CircleAlert className="h-4 w-4" />
-              <AlertTitle>This venue already exists. Own this business? Claim it now!</AlertTitle>
-              <AlertDescription>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span>{existingVenue.name} in {existingVenue.city}</span>
-                  <Link href={`/venues/${existingVenue.slug}`} className="inline-flex items-center gap-1 font-semibold underline">
-                    View venue
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          <Card className="border-[var(--border)]/70 bg-card shadow-sm">
-            <CardHeader className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-              <div>
-                <CardTitle>{claimMode ? "Claim request" : "Venue defaults and editable profile"}</CardTitle>
-                <CardDescription>
-                  {claimMode
-                    ? "This venue is already on MatchWatch. Submit proof and admin will review the claim."
-                    : "Ratings and review counts come from Google. Contact and location fields are preloaded and can be adjusted."}
-                </CardDescription>
-              </div>
-              {googleDefaults ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11 rounded-xl px-5 text-sm font-semibold"
-                  onClick={resetToGoogleDefaults}
-                >
-                  <RefreshCcw className="h-4 w-4" />
-                  Revert to Google defaults
-                </Button>
+              {existingVenue ? (
+                <Alert className="border-amber-400/30 bg-amber-500/10 text-amber-700">
+                  <CircleAlert className="h-4 w-4" />
+                  <AlertTitle>This venue already exists. Own this business? Claim it now!</AlertTitle>
+                  <AlertDescription>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>{existingVenue.name} in {existingVenue.city}</span>
+                      <Link href={`/venues/${existingVenue.slug}`} className="inline-flex items-center gap-1 font-semibold underline">
+                        View venue
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  </AlertDescription>
+                </Alert>
               ) : null}
-            </CardHeader>
-            <CardContent className="grid gap-5">
+
+              <Card className="border-[var(--border)]/70 bg-card shadow-sm">
+                <CardHeader className="flex flex-col items-start justify-between gap-4 sm:flex-row">
+                  <div>
+                    <CardTitle>{claimMode ? "Claim request" : "Venue defaults and editable profile"}</CardTitle>
+                    <CardDescription>
+                      {claimMode
+                        ? "This venue is already on MatchWatch. Submit proof and admin will review the claim."
+                        : "Ratings and review counts come from Google. Contact and location fields are preloaded and can be adjusted."}
+                    </CardDescription>
+                  </div>
+                  {googleDefaults ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 rounded-xl px-5 text-sm font-semibold"
+                      onClick={resetToGoogleDefaults}
+                    >
+                      <RefreshCcw className="h-4 w-4" />
+                      Revert to Google defaults
+                    </Button>
+                  ) : null}
+                </CardHeader>
+                <CardContent className="grid gap-5">
               {googleDefaults ? (
                 <div className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 md:grid-cols-4">
                   <div>
@@ -429,23 +433,25 @@ export default function VenueRegisterPage() {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          <div className="flex flex-col items-center gap-3 pt-2 text-center sm:flex-row sm:flex-wrap sm:justify-center">
-            {recaptchaEnabled ? (
-              <p className="text-xs text-[var(--muted-foreground)] sm:basis-full">
-                Protected by Google reCAPTCHA.
-              </p>
-            ) : null}
-            <Button type="button" variant="outline" className="h-11 rounded-xl px-5 text-sm font-semibold" asChild>
-              <Link href="/for-venues">Cancel</Link>
-            </Button>
-            <Button type="submit" className="h-11 rounded-xl px-6 text-sm font-bold" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : claimMode ? "Submit claim" : "Submit for approval"}
-            </Button>
+              <div className="flex flex-col items-center gap-3 pt-2 text-center sm:flex-row sm:flex-wrap sm:justify-center">
+                {recaptchaEnabled ? (
+                  <p className="text-xs text-[var(--muted-foreground)] sm:basis-full">
+                    Protected by Google reCAPTCHA.
+                  </p>
+                ) : null}
+                <Button type="button" variant="outline" className="h-11 rounded-xl px-5 text-sm font-semibold" asChild>
+                  <Link href="/for-venues">Cancel</Link>
+                </Button>
+                <Button type="submit" className="h-11 rounded-xl px-6 text-sm font-bold" disabled={isSubmitting}>
+                  {isSubmitting ? "Submitting..." : claimMode ? "Submit claim" : "Submit for approval"}
+                </Button>
+              </div>
+            </form>
           </div>
-        </form>
+        </section>
       </main>
     </AppShell>
   );
