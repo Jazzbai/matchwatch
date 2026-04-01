@@ -291,6 +291,26 @@ function parseGalleryItems(urls?: string[] | null, keys?: string[] | null): Gall
     .slice(0, MAX_GALLERY_IMAGES);
 }
 
+function getGoogleImagePreviewState(snapshot?: GooglePlaceSnapshot | null) {
+  const suggested = Array.isArray(snapshot?.googleSuggestedImages)
+    ? snapshot.googleSuggestedImages.filter((photo) => photo.previewUrl)
+    : [];
+  const selectedCover = suggested.find((photo) => photo.isSelectedCover);
+  const selectedGallery = suggested.filter((photo) => photo.isSelectedGallery);
+  const coverPreviewUrl = normalizeImageUrl(
+    selectedCover?.previewUrl || selectedGallery[0]?.previewUrl || suggested[0]?.previewUrl || "",
+  );
+  const galleryPreviewUrls = selectedGallery
+    .map((photo) => normalizeImageUrl(photo.previewUrl))
+    .filter(Boolean)
+    .slice(0, MAX_GALLERY_IMAGES);
+
+  return {
+    coverPreviewUrl,
+    galleryPreviewUrls,
+  };
+}
+
 async function uploadVenueImage(file: File, purpose: "venue_cover" | "venue_gallery" | "post") {
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
     throw new Error("Only JPG, PNG, WEBP, and GIF files are allowed.");
@@ -446,6 +466,7 @@ export default function AdminPage() {
   const [resolvedCoverImageUrl, setResolvedCoverImageUrl] = React.useState("");
   const [coverImageS3Key, setCoverImageS3Key] = React.useState("");
   const [galleryItems, setGalleryItems] = React.useState<GalleryItem[]>([]);
+  const [resolvedGalleryImageUrls, setResolvedGalleryImageUrls] = React.useState<string[]>([]);
   const [googleImageActionKey, setGoogleImageActionKey] = React.useState<string | null>(null);
   const [promotedEventId, setPromotedEventId] = React.useState<string | null>(null);
   const coverInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -659,6 +680,11 @@ export default function AdminPage() {
       setResolvedCoverImageUrl(normalizeImageUrl(profile.resolvedCoverImageUrl));
       setCoverImageS3Key(profile.coverImageS3Key || "");
       setGalleryItems(parseGalleryItems(profile.galleryImageUrls, profile.galleryS3Keys));
+      setResolvedGalleryImageUrls(
+        Array.isArray(profile.resolvedGalleryImageUrls)
+          ? profile.resolvedGalleryImageUrls.map((url) => normalizeImageUrl(url)).filter(Boolean).slice(0, MAX_GALLERY_IMAGES)
+          : [],
+      );
       setPromotedEventId(typeof profile.promotedVenueEventId === "string" ? profile.promotedVenueEventId : null);
 
       const groupedUpcomingMatches = upcomingMatchesRes.data || {};
@@ -714,6 +740,7 @@ export default function AdminPage() {
 
   const applyOwnerVenueGoogleDefaults = React.useCallback(async (details: GooglePlaceDetailsResponse) => {
     const defaults = applyGoogleDefaultsToVenueForm(details.defaults);
+    const imagePreviews = getGoogleImagePreviewState(details.defaults);
     setVenueGooglePlaceId(defaults.googlePlaceId);
     setVenueName(defaults.name);
     setVenueAddressLine1(defaults.addressLine1);
@@ -728,6 +755,8 @@ export default function AdminPage() {
     setVenueWebsite(defaults.website);
     setVenueGoogleMapsUrl(defaults.googleMapsUrl);
     setGoogleDefaults(details.defaults);
+    setResolvedCoverImageUrl(imagePreviews.coverPreviewUrl);
+    setResolvedGalleryImageUrls(imagePreviews.galleryPreviewUrls);
     if (!selectedVenueId || !details.googlePlaceId?.trim()) {
       return;
     }
@@ -1288,6 +1317,9 @@ export default function AdminPage() {
   const googleMenuCategories = googleDefaults?.menu?.categories || [];
   const googleReviews = googleDefaults?.googleReviews || [];
   const effectiveCoverPreview = coverImageUrl || resolvedCoverImageUrl;
+  const effectiveGalleryItems = galleryItems.length > 0
+    ? galleryItems.map((item) => ({ ...item, source: "manual" as const }))
+    : resolvedGalleryImageUrls.map((url) => ({ url, key: "", source: "google" as const }));
 
   return (
       <AppShell>
@@ -2057,7 +2089,7 @@ export default function AdminPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, marginBottom: 20 }}>
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <label style={labelStyle}>Manual cover image</label>
+                      <label style={labelStyle}>Cover image</label>
                       <div style={{ display: "flex", gap: 8 }}>
                         {coverImageUrl && (
                           <button style={btnDestructive()} onClick={() => { setCoverImageUrl(""); setCoverImageS3Key(""); }}>
@@ -2072,7 +2104,7 @@ export default function AdminPage() {
                     <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void onUploadCover(file); e.currentTarget.value = ""; }} />
                     {!coverImageUrl && resolvedCoverImageUrl ? (
                       <div style={{ marginBottom: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
-                        No manual cover uploaded. The public venue page is currently using the selected Google cover.
+                        Google-selected cover is shown here until you upload a manual replacement.
                       </div>
                     ) : null}
                     <div style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", overflow: "hidden" }}>
@@ -2086,30 +2118,32 @@ export default function AdminPage() {
 
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <label style={labelStyle}>Manual gallery images ({galleryItems.length}/{MAX_GALLERY_IMAGES})</label>
+                      <label style={labelStyle}>Gallery images ({effectiveGalleryItems.length}/{MAX_GALLERY_IMAGES})</label>
                       <button style={btnOutline(uploadingGallery || galleryItems.length >= MAX_GALLERY_IMAGES)} disabled={uploadingGallery || galleryItems.length >= MAX_GALLERY_IMAGES} onClick={() => galleryInputRef.current?.click()}>
                         {uploadingGallery ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Uploading</> : <><ImagePlus size={14} /> Add Images</>}
                       </button>
                     </div>
-                    {galleryItems.length === 0 && googleDefaults?.googleImageSelection?.galleryPhotoNames?.length ? (
+                    {galleryItems.length === 0 && resolvedGalleryImageUrls.length > 0 ? (
                       <div style={{ marginBottom: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
-                        No manual gallery images uploaded. The public venue page is currently using the selected Google gallery fallback.
+                        Google-selected gallery images are shown here until you upload manual replacements.
                       </div>
                     ) : null}
                     <input ref={galleryInputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => { const files = Array.from(e.target.files || []); if (files.length) void onUploadGallery(files); e.currentTarget.value = ""; }} />
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      {galleryItems.map((item, idx) => (
+                      {effectiveGalleryItems.map((item, idx) => (
                         <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden" }}>
                           <img src={item.url} alt={`Gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
-                          <button
-                            style={{ position: "absolute", top: 4, right: 4, width: 28, height: 28, borderRadius: 6, border: "none", backgroundColor: "rgba(239,68,68,0.9)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                            onClick={() => setGalleryItems((prev) => prev.filter((_, i) => i !== idx))}
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          {item.source === "manual" ? (
+                            <button
+                              style={{ position: "absolute", top: 4, right: 4, width: 28, height: 28, borderRadius: 6, border: "none", backgroundColor: "rgba(239,68,68,0.9)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                              onClick={() => setGalleryItems((prev) => prev.filter((_, i) => i !== idx))}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          ) : null}
                         </div>
                       ))}
-                      {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - galleryItems.length) }).map((_, idx) => (
+                      {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - effectiveGalleryItems.length) }).map((_, idx) => (
                         <div key={`empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 96, borderRadius: 10, border: "1px dashed var(--border)", fontSize: 12, color: "var(--muted-foreground)" }}>
                           Empty slot
                         </div>
