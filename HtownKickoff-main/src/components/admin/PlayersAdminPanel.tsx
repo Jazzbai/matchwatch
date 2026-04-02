@@ -497,6 +497,11 @@ export function PlayersAdminPanel() {
           </label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button style={btnStyle("primary")} onClick={() => void save()}>Save Player</button>
+            {selectedId && selectedRow ? (
+              <a href={`/players/${selectedRow.slug}`} target="_blank" rel="noreferrer" style={{ ...btnStyle(), textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                Open Page
+              </a>
+            ) : null}
             <button style={btnStyle()} onClick={() => void refreshEnrichment()} disabled={!selectedId}>Autofill From Search</button>
             <button style={btnStyle()} onClick={() => void revertToDefaults()} disabled={!selectedId}>Revert to Defaults</button>
             {selectedId ? <button style={btnStyle()} onClick={() => setSelectedId(null)}>Clear</button> : null}

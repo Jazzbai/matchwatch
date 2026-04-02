@@ -141,6 +141,7 @@ type AdminLeagueRow = {
   sportId: string;
   sportName?: string | null;
   sportSlug?: string | null;
+  slug: string;
   name: string;
   shortName?: string | null;
   logoUrl?: string | null;
@@ -357,15 +358,37 @@ type TeamAdminRow = {
   id: string;
   leagueId?: string | null;
   leagueName?: string | null;
+  slug: string;
   name: string;
   shortName?: string | null;
   crestUrl?: string | null;
+  heroImageUrl?: string | null;
+  website?: string | null;
+  country?: string | null;
+  aliases?: string[] | null;
+  shortDescription?: string | null;
+  description?: string | null;
   externalId?: string | null;
   enrichedAt?: string | null;
   enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
   enrichmentError?: string | null;
   isActive: boolean;
   createdAt: string;
+};
+
+type TeamAdminDraft = {
+  leagueId?: string | null;
+  name?: string;
+  shortName?: string | null;
+  crestUrl?: string | null;
+  heroImageUrl?: string | null;
+  website?: string | null;
+  country?: string | null;
+  aliases?: string;
+  shortDescription?: string | null;
+  description?: string | null;
+  externalId?: string | null;
+  isActive?: boolean;
 };
 
 type RecommendationItem = {
@@ -1239,7 +1262,7 @@ export default function JazzbaiSuperAdminPage() {
   const [teamsMeta, setTeamsMeta] = React.useState<ApiListMeta | null>(null);
   const [teamsSearch, setTeamsSearch] = React.useState("");
   const [teamsLoading, setTeamsLoading] = React.useState(false);
-  const [teamDrafts, setTeamDrafts] = React.useState<Record<string, Partial<TeamAdminRow>>>({});
+  const [teamDrafts, setTeamDrafts] = React.useState<Record<string, TeamAdminDraft>>({});
   const [newAdminTeam, setNewAdminTeam] = React.useState({
     leagueId: "",
     name: "",
@@ -2218,6 +2241,20 @@ export default function JazzbaiSuperAdminPage() {
 
   const toCsvList = (values?: string[] | null) => (values || []).join(", ");
   const parseCsvList = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+  const buildTeamDraft = (row: TeamAdminRow): TeamAdminDraft => ({
+    leagueId: row.leagueId || "",
+    name: row.name,
+    shortName: row.shortName || "",
+    crestUrl: row.crestUrl || "",
+    heroImageUrl: row.heroImageUrl || "",
+    website: row.website || "",
+    country: row.country || "",
+    aliases: toCsvList(row.aliases),
+    shortDescription: row.shortDescription || "",
+    description: row.description || "",
+    externalId: row.externalId || "",
+    isActive: row.isActive,
+  });
   const ensureAttributeValues = (type: VenueAttributeType, values: string[] = []) => {
     const options = [...(attributeOptionsByType.get(type) || [])];
     for (const value of values) {
@@ -2330,14 +2367,7 @@ export default function JazzbaiSuperAdminPage() {
     try {
       const uploaded = await uploadSuperAdminImage(file, "entity_primary");
       setTeamDrafts((prev) => {
-        const baseDraft = prev[teamId] ?? {
-          leagueId: row.leagueId || "",
-          name: row.name,
-          shortName: row.shortName || "",
-          crestUrl: row.crestUrl || "",
-          externalId: row.externalId || "",
-          isActive: row.isActive,
-        };
+        const baseDraft = prev[teamId] ?? buildTeamDraft(row);
         return { ...prev, [teamId]: { ...baseDraft, crestUrl: uploaded.url } };
       });
     } catch (err) {
@@ -3826,106 +3856,122 @@ export default function JazzbaiSuperAdminPage() {
                   </thead>
                   <tbody>
                     {teamsRows.map((row) => {
-                      const draft = teamDrafts[row.id] ?? {
-                        leagueId: row.leagueId || "",
-                        name: row.name,
-                        shortName: row.shortName || "",
-                        crestUrl: row.crestUrl || "",
-                        externalId: row.externalId || "",
-                        isActive: row.isActive,
-                      };
+                      const draft = teamDrafts[row.id] ?? buildTeamDraft(row);
                       return (
-                        <tr key={row.id}>
-                          <td style={tdStyle}>{row.id}</td>
-                          <td style={tdStyle}>
-                            <select style={inputStyle} value={String(draft.leagueId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, leagueId: e.target.value } }))}>
-                              <option value="">No league</option>
-                              {lookupLeagues.map((league) => (
-                                <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} /></td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
-                          <td style={tdStyle}>
-                            <div style={{ display: "grid", gap: 6 }}>
-                              <input style={inputStyle} value={String(draft.crestUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, crestUrl: e.target.value } }))} />
-                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                <button
-                                  type="button"
-                                  style={smallBtn("outline", uploadingTeamCrestId === row.id)}
-                                  disabled={uploadingTeamCrestId === row.id}
-                                  onClick={() => document.getElementById(`team-crest-upload-${row.id}`)?.click()}
-                                >
-                                  {uploadingTeamCrestId === row.id ? "Uploading..." : "Upload Crest"}
-                                </button>
-                                <input
-                                  id={`team-crest-upload-${row.id}`}
-                                  type="file"
-                                  accept="image/jpeg,image/png,image/webp,image/gif"
-                                  style={{ display: "none" }}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) void uploadTeamDraftCrest(row.id, file);
-                                    e.currentTarget.value = "";
-                                  }}
-                                />
-                                {draft.crestUrl ? <img src={String(draft.crestUrl)} alt={`${row.name} crest preview`} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /> : null}
+                        <React.Fragment key={row.id}>
+                          <tr>
+                            <td style={tdStyle}>{row.id}</td>
+                            <td style={tdStyle}>
+                              <select style={inputStyle} value={String(draft.leagueId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, leagueId: e.target.value } }))}>
+                                <option value="">No league</option>
+                                {lookupLeagues.map((league) => (
+                                  <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td style={tdStyle}><input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} /></td>
+                            <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
+                            <td style={tdStyle}>
+                              <div style={{ display: "grid", gap: 6 }}>
+                                <input style={inputStyle} value={String(draft.crestUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, crestUrl: e.target.value } }))} />
+                                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                  <button
+                                    type="button"
+                                    style={smallBtn("outline", uploadingTeamCrestId === row.id)}
+                                    disabled={uploadingTeamCrestId === row.id}
+                                    onClick={() => document.getElementById(`team-crest-upload-${row.id}`)?.click()}
+                                  >
+                                    {uploadingTeamCrestId === row.id ? "Uploading..." : "Upload Crest"}
+                                  </button>
+                                  <input
+                                    id={`team-crest-upload-${row.id}`}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/gif"
+                                    style={{ display: "none" }}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) void uploadTeamDraftCrest(row.id, file);
+                                      e.currentTarget.value = "";
+                                    }}
+                                  />
+                                  {draft.crestUrl ? <img src={String(draft.crestUrl)} alt={`${row.name} crest preview`} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /> : null}
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
-                          <td style={tdStyle}>
-                            <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
-                            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{row.enrichedAt ? formatDateTime(row.enrichedAt) : "Not run"}</div>
-                          </td>
-                          <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
-                          <td style={tdStyle}>{formatDateTime(row.createdAt)}</td>
-                          <td style={tdStyle}>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <button
-                                style={smallBtn("primary", submittingAction === `save-team-${row.id}`)}
-                                disabled={submittingAction === `save-team-${row.id}`}
-                                onClick={() => void runAction(`save-team-${row.id}`, async () => {
-                                  await superAdminFetch(`/teams/${row.id}`, {
-                                    method: "PATCH",
-                                    body: JSON.stringify({
-                                      leagueId: draft.leagueId || null,
-                                      name: draft.name,
-                                      shortName: draft.shortName || null,
-                                      crestUrl: draft.crestUrl || null,
-                                      externalId: draft.externalId || null,
-                                      isActive: draft.isActive,
-                                    }),
-                                  });
-                                  await Promise.all([loadTeamsAdmin(), loadLookups()]);
-                                })}
-                              >
-                                Save
-                              </button>
-                              <button
-                                style={smallBtn("outline", submittingAction === `refresh-team-enrichment-${row.id}`)}
-                                disabled={submittingAction === `refresh-team-enrichment-${row.id}`}
-                                onClick={() => void runAction(`refresh-team-enrichment-${row.id}`, async () => {
-                                  await superAdminFetch(`/enrichment/team/${row.id}/refresh`, { method: "POST" });
-                                  await loadTeamsAdmin();
-                                })}
-                              >
-                                Autofill From Search
-                              </button>
-                              <button
-                                style={smallBtn("danger", submittingAction === `archive-team-${row.id}`)}
-                                disabled={submittingAction === `archive-team-${row.id}`}
-                                onClick={() => void runAction(`archive-team-${row.id}`, async () => {
-                                  await superAdminFetch(`/teams/${row.id}`, { method: "DELETE" });
-                                  await Promise.all([loadTeamsAdmin(), loadLookups()]);
-                                })}
-                              >
-                                Archive
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
+                            <td style={tdStyle}>
+                              <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{row.enrichedAt ? formatDateTime(row.enrichedAt) : "Not run"}</div>
+                            </td>
+                            <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
+                            <td style={tdStyle}>{formatDateTime(row.createdAt)}</td>
+                            <td style={tdStyle}>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                <button
+                                  style={smallBtn("primary", submittingAction === `save-team-${row.id}`)}
+                                  disabled={submittingAction === `save-team-${row.id}`}
+                                  onClick={() => void runAction(`save-team-${row.id}`, async () => {
+                                    await superAdminFetch(`/teams/${row.id}`, {
+                                      method: "PATCH",
+                                      body: JSON.stringify({
+                                        leagueId: draft.leagueId || null,
+                                        name: draft.name,
+                                        shortName: draft.shortName || null,
+                                        crestUrl: draft.crestUrl || null,
+                                        heroImageUrl: draft.heroImageUrl || null,
+                                        website: draft.website || null,
+                                        country: draft.country || null,
+                                        aliases: parseCsvList(String(draft.aliases || "")),
+                                        shortDescription: draft.shortDescription || null,
+                                        description: draft.description || null,
+                                        externalId: draft.externalId || null,
+                                        isActive: draft.isActive,
+                                      }),
+                                    });
+                                    await Promise.all([loadTeamsAdmin(), loadLookups()]);
+                                  })}
+                                >
+                                  Save
+                                </button>
+                                <a href={`/teams/${row.slug}`} target="_blank" rel="noreferrer" style={{ ...smallBtn("outline"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                                  Open Page
+                                </a>
+                                <button
+                                  style={smallBtn("outline", submittingAction === `refresh-team-enrichment-${row.id}`)}
+                                  disabled={submittingAction === `refresh-team-enrichment-${row.id}`}
+                                  onClick={() => void runAction(`refresh-team-enrichment-${row.id}`, async () => {
+                                    await superAdminFetch(`/enrichment/team/${row.id}/refresh`, { method: "POST" });
+                                    await loadTeamsAdmin();
+                                  })}
+                                >
+                                  Autofill From Search
+                                </button>
+                                <button
+                                  style={smallBtn("danger", submittingAction === `archive-team-${row.id}`)}
+                                  disabled={submittingAction === `archive-team-${row.id}`}
+                                  onClick={() => void runAction(`archive-team-${row.id}`, async () => {
+                                    await superAdminFetch(`/teams/${row.id}`, { method: "DELETE" });
+                                    await Promise.all([loadTeamsAdmin(), loadLookups()]);
+                                  })}
+                                >
+                                  Archive
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ ...tdStyle, background: "color-mix(in oklch, var(--secondary) 92%, transparent)" }} colSpan={10}>
+                              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                                <input style={inputStyle} value={String(draft.website ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, website: e.target.value } }))} placeholder="Website" />
+                                <input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} placeholder="Country" />
+                                <input style={{ ...inputStyle, gridColumn: "1 / -1" }} value={String(draft.heroImageUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, heroImageUrl: e.target.value } }))} placeholder="Hero image URL" />
+                                <input style={{ ...inputStyle, gridColumn: "1 / -1" }} value={String(draft.aliases ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, aliases: e.target.value } }))} placeholder="Aliases (comma separated)" />
+                                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 72 }} value={String(draft.shortDescription ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortDescription: e.target.value } }))} placeholder="Short description" />
+                                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 120 }} value={String(draft.description ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, description: e.target.value } }))} placeholder="Description" />
+                              </div>
+                            </td>
+                          </tr>
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -4519,6 +4565,9 @@ export default function JazzbaiSuperAdminPage() {
                               >
                                 Save
                               </button>
+                              <a href={`/leagues/${row.slug}`} target="_blank" rel="noreferrer" style={{ ...smallBtn("outline"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                                Open Page
+                              </a>
                               <button
                                 style={smallBtn("outline", submittingAction === `refresh-league-enrichment-${row.id}`)}
                                 disabled={submittingAction === `refresh-league-enrichment-${row.id}`}

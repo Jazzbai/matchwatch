@@ -153,18 +153,17 @@ const createTeamSchema = z.object({
     name: z.string().min(2).max(150),
     shortName: z.string().max(30).nullable().optional(),
     crestUrl: z.string().url().nullable().optional(),
+    heroImageUrl: z.string().url().nullable().optional(),
+    website: z.string().url().nullable().optional(),
+    country: z.string().max(80).nullable().optional(),
+    shortDescription: z.string().max(280).nullable().optional(),
+    description: z.string().max(4000).nullable().optional(),
+    aliases: z.array(z.string().max(120)).max(10).optional(),
     externalId: z.string().max(20).nullable().optional(),
     isActive: z.boolean().default(true),
 });
 
-const updateTeamSchema = z.object({
-    leagueId: z.string().uuid().nullable().optional(),
-    name: z.string().min(2).max(150).optional(),
-    shortName: z.string().max(30).nullable().optional(),
-    crestUrl: z.string().url().nullable().optional(),
-    externalId: z.string().max(20).nullable().optional(),
-    isActive: z.boolean().optional(),
-}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+const updateTeamSchema = createTeamSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
 const stadiumSearchQuerySchema = z.object({
     search: z.string().trim().default(''),
@@ -1726,9 +1725,16 @@ superAdminRoutes.get('/teams', async (c) => {
                 id: teams.id,
                 leagueId: teams.leagueId,
                 leagueName: leagues.name,
+                slug: teams.slug,
                 name: teams.name,
                 shortName: teams.shortName,
                 crestUrl: teams.crestUrl,
+                heroImageUrl: teams.heroImageUrl,
+                website: teams.website,
+                country: teams.country,
+                aliases: teams.aliases,
+                shortDescription: teams.shortDescription,
+                description: teams.description,
                 externalId: teams.externalId,
                 enrichedAt: teams.enrichedAt,
                 enrichmentStatus: teams.enrichmentStatus,
@@ -1794,12 +1800,23 @@ superAdminRoutes.post('/teams', async (c) => {
         slug: await allocateCanonicalSlug('team', trimmedName, { shortName: parsed.data.shortName?.trim() || null }),
         shortName: parsed.data.shortName?.trim() || null,
         crestUrl: parsed.data.crestUrl?.trim() || null,
+        heroImageUrl: parsed.data.heroImageUrl?.trim() || null,
+        website: parsed.data.website?.trim() || null,
+        country: parsed.data.country?.trim() || null,
+        shortDescription: parsed.data.shortDescription?.trim() || null,
+        description: parsed.data.description?.trim() || null,
+        aliases: parsed.data.aliases?.map((item) => item.trim()).filter(Boolean) || [],
+        shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
+        descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
         crestSource: parsed.data.crestUrl?.trim() ? 'MANUAL' : 'NONE',
+        heroImageSource: parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE',
+        websiteSource: parsed.data.website?.trim() ? 'MANUAL' : 'NONE',
         externalId: parsed.data.externalId?.trim() || null,
         isActive: parsed.data.isActive,
     }).returning({
         id: teams.id,
         leagueId: teams.leagueId,
+        slug: teams.slug,
         name: teams.name,
         shortName: teams.shortName,
         crestUrl: teams.crestUrl,
@@ -1820,6 +1837,14 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
         id: teams.id,
         crestUrl: teams.crestUrl,
         crestSource: teams.crestSource,
+        heroImageUrl: teams.heroImageUrl,
+        heroImageSource: teams.heroImageSource,
+        website: teams.website,
+        websiteSource: teams.websiteSource,
+        shortDescription: teams.shortDescription,
+        shortDescriptionSource: teams.shortDescriptionSource,
+        description: teams.description,
+        descriptionSource: teams.descriptionSource,
     }).from(teams).where(eq(teams.id, teamId)).limit(1);
     if (!existing) return c.json(apiError('NOT_FOUND', 'Team not found'), 404);
 
@@ -1838,6 +1863,24 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
         updates.crestUrl = parsed.data.crestUrl?.trim() || null;
         updates.crestSource = resolveUpdatedFieldSource(parsed.data.crestUrl, existing.crestUrl, existing.crestSource);
     }
+    if (parsed.data.heroImageUrl !== undefined) {
+        updates.heroImageUrl = parsed.data.heroImageUrl?.trim() || null;
+        updates.heroImageSource = resolveUpdatedFieldSource(parsed.data.heroImageUrl, existing.heroImageUrl, existing.heroImageSource);
+    }
+    if (parsed.data.website !== undefined) {
+        updates.website = parsed.data.website?.trim() || null;
+        updates.websiteSource = resolveUpdatedFieldSource(parsed.data.website, existing.website, existing.websiteSource);
+    }
+    if (parsed.data.country !== undefined) updates.country = parsed.data.country?.trim() || null;
+    if (parsed.data.shortDescription !== undefined) {
+        updates.shortDescription = parsed.data.shortDescription?.trim() || null;
+        updates.shortDescriptionSource = resolveUpdatedFieldSource(parsed.data.shortDescription, existing.shortDescription, existing.shortDescriptionSource);
+    }
+    if (parsed.data.description !== undefined) {
+        updates.description = parsed.data.description?.trim() || null;
+        updates.descriptionSource = resolveUpdatedFieldSource(parsed.data.description, existing.description, existing.descriptionSource);
+    }
+    if (parsed.data.aliases !== undefined) updates.aliases = parsed.data.aliases.map((item) => item.trim()).filter(Boolean);
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
     if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
 
@@ -2042,6 +2085,7 @@ superAdminRoutes.get('/leagues', async (c) => {
             sportId: leagues.sportId,
             sportName: sports.name,
             sportSlug: sports.slug,
+            slug: leagues.slug,
             name: leagues.name,
             shortName: leagues.shortName,
             logoUrl: leagues.logoUrl,
