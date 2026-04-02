@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { logger } from './logger';
 
 export type EntityKind = 'league' | 'team' | 'player' | 'driver' | 'entrant' | 'manufacturer';
 type EntityFieldSource = 'NONE' | 'GOOGLE' | 'MANUAL';
@@ -223,6 +224,30 @@ function extractSnippet(items: SearchItem[]) {
   return snippet || null;
 }
 
+function scoreImageUrl(kind: EntityKind, purpose: 'primary' | 'hero', url: string) {
+  const normalized = url.toLowerCase();
+  let score = 0;
+
+  if (/^https?:\/\//i.test(url)) score += 10;
+  if (normalized.includes('wikimedia') || normalized.includes('wikipedia')) score += purpose === 'primary' ? 18 : 4;
+  if (normalized.includes('logo')) score += purpose === 'primary' ? 16 : -2;
+  if (normalized.includes('headshot') || normalized.includes('portrait')) score += kind === 'player' || kind === 'driver' ? 16 : -2;
+  if (normalized.includes('hero') || normalized.includes('team-photo') || normalized.includes('action')) score += purpose === 'hero' ? 12 : 2;
+  if (normalized.includes('upload') || normalized.includes('thumb')) score -= 4;
+  if (normalized.endsWith('.svg')) score += purpose === 'primary' ? 12 : -4;
+  if (normalized.endsWith('.png')) score += purpose === 'primary' ? 6 : 2;
+  if (normalized.endsWith('.jpg') || normalized.endsWith('.jpeg') || normalized.endsWith('.webp')) score += purpose === 'hero' ? 6 : 2;
+
+  return score;
+}
+
+function rankImageUrls(kind: EntityKind, purpose: 'primary' | 'hero', urls: string[]) {
+  return uniqueStrings(urls)
+    .map((url) => ({ url, score: scoreImageUrl(kind, purpose, url) }))
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.url);
+}
+
 function buildQuery(kind: EntityKind, record: EntityBaseRecord) {
   return uniqueStrings([
     record.name,
@@ -295,6 +320,8 @@ export async function buildEntityEnrichment(kind: EntityKind, record: EntityBase
     heroImageUrls = extractImageUrls(heroImageResults);
   }
 
+  primaryImageUrls = rankImageUrls(kind, 'primary', primaryImageUrls).slice(0, 6);
+  heroImageUrls = rankImageUrls(kind, 'hero', heroImageUrls).slice(0, 6);
   const imageUrls = uniqueStrings([...primaryImageUrls, ...heroImageUrls]).slice(0, 6);
 
   const snippet = extractSnippet(webResults);
@@ -324,7 +351,7 @@ export async function buildEntityEnrichment(kind: EntityKind, record: EntityBase
     webResults[1]?.title,
   ]).filter((value) => value.toLowerCase() !== record.name.toLowerCase()).slice(0, 5);
 
-  return {
+  const result = {
     snapshot: {
       query,
       primaryImageQuery,
@@ -354,6 +381,28 @@ export async function buildEntityEnrichment(kind: EntityKind, record: EntityBase
       ...(aliases.length > 0 ? { aliases } : {}),
     },
   };
+
+  logger.info({
+    entityKind: kind,
+    entityId: record.id,
+    provider,
+    query,
+    primaryImageQuery,
+    heroImageQuery,
+    primaryCandidateCount: primaryImageUrls.length,
+    heroCandidateCount: heroImageUrls.length,
+    selectedPrimaryImageUrl: result.updates.primaryImageUrl || null,
+    selectedHeroImageUrl: result.updates.heroImageUrl || null,
+    skippedManualFields: {
+      shortDescription: record.shortDescriptionSource === 'MANUAL',
+      description: record.descriptionSource === 'MANUAL',
+      primaryImage: record.primaryImageSource === 'MANUAL',
+      heroImage: record.heroImageSource === 'MANUAL',
+      website: record.websiteSource === 'MANUAL',
+    },
+  }, 'Entity enrichment computed');
+
+  return result;
 }
 
 export function resolveEntityPresentation(kind: EntityKind, record: EntityBaseRecord) {

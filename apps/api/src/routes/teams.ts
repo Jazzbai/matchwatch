@@ -2,17 +2,16 @@ import { Hono } from 'hono';
 import { and, desc, eq, gte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { leagues, matches, teams } from '../db/schema';
+import { resolveCanonicalEntity } from '../lib/entitySlugs';
 import { getLatestLeagueStandings } from '../lib/standings';
 import { apiError, apiResponse } from '../lib/utils';
 
 const teamRoutes = new Hono();
 
-function isUuid(value: string) {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
 teamRoutes.get('/:slug', async (c) => {
     const slug = c.req.param('slug');
+    const resolved = await resolveCanonicalEntity('team', slug);
+    if (!resolved) return c.json(apiError('NOT_FOUND', 'Team not found'), 404);
     const [row] = await db
         .select({
             team: teams,
@@ -20,7 +19,7 @@ teamRoutes.get('/:slug', async (c) => {
         })
         .from(teams)
         .leftJoin(leagues, eq(teams.leagueId, leagues.id))
-        .where(isUuid(slug) ? eq(teams.id, slug) : eq(teams.slug, slug))
+        .where(eq(teams.id, resolved.entityId))
         .limit(1);
 
     if (!row) return c.json(apiError('NOT_FOUND', 'Team not found'), 404);
@@ -55,6 +54,9 @@ teamRoutes.get('/:slug', async (c) => {
     return c.json(apiResponse({
         ...row.team,
         league: row.league,
+        canonicalSlug: row.team.slug,
+        canonicalPath: `/teams/${row.team.slug}`,
+        resolvedVia: resolved.matchedVia,
         standingsRow,
         recentMatches: teamRecent,
         upcomingMatches: teamUpcoming,

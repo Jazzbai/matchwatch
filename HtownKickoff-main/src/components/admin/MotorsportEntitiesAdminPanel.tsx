@@ -77,6 +77,34 @@ type ManufacturerRow = {
   enrichmentError?: string | null;
   isActive: boolean;
 };
+type RecommendationItem = {
+  id: string;
+  name: string;
+  shortName?: string | null;
+  leagueId?: string | null;
+  leagueLabel?: string | null;
+  sourceType: "catalog" | "provider" | "existing-db" | "external";
+  confidence: "high" | "medium" | "low";
+  website?: string | null;
+  aliases?: string[];
+  alreadyExists?: { id: string; slug?: string | null; name: string } | null;
+};
+type RecommendationPreview = {
+  recommendation: RecommendationItem;
+  prefill: {
+    name: string;
+    shortName?: string;
+    website?: string;
+    aliases?: string[];
+    externalId?: string;
+    imageCandidates?: string[];
+    brandColor?: string;
+    nationality?: string;
+    countryCode?: string;
+    shortDescription?: string;
+    description?: string;
+  };
+};
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -129,6 +157,13 @@ function sourceLabel(value?: SourceValue) {
   return { label: "None", color: "var(--muted-foreground)" };
 }
 
+function recommendationSourceLabel(value: RecommendationItem["sourceType"]) {
+  if (value === "catalog") return "Catalog";
+  if (value === "existing-db") return "Existing";
+  if (value === "provider") return "Provider";
+  return "External";
+}
+
 function SourceBadge({ value }: { value?: SourceValue }) {
   const source = sourceLabel(value);
   return <span style={{ ...sourceBadgeStyle, color: source.color }}>{source.label}</span>;
@@ -144,6 +179,9 @@ export function MotorsportEntitiesAdminPanel() {
   const [search, setSearch] = React.useState("");
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [recommendations, setRecommendations] = React.useState<RecommendationItem[]>([]);
+  const [recommendationLoading, setRecommendationLoading] = React.useState(false);
+  const [recommendationError, setRecommendationError] = React.useState<string | null>(null);
   const [uploadingPrimary, setUploadingPrimary] = React.useState(false);
   const [uploadingHero, setUploadingHero] = React.useState(false);
   const primaryInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -166,6 +204,7 @@ export function MotorsportEntitiesAdminPanel() {
     isActive: true,
   }), []);
   const [draft, setDraft] = React.useState(emptyDraft);
+  const recommendationEntityType = mode === "drivers" ? "driver" : mode === "entrants" ? "entrant" : "manufacturer";
 
   const currentRows = mode === "drivers" ? drivers : mode === "entrants" ? entrants : manufacturers;
 
@@ -212,6 +251,46 @@ export function MotorsportEntitiesAdminPanel() {
       isActive: row.isActive,
     });
   }, [currentRows, selectedId]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadRecommendations() {
+      setRecommendationError(null);
+      if (selectedId) {
+        setRecommendations([]);
+        return;
+      }
+      if (!draft.leagueId && (mode === "entrants" || mode === "manufacturers" || mode === "drivers")) {
+        setRecommendations([]);
+        return;
+      }
+
+      try {
+        setRecommendationLoading(true);
+        const response = await api.get<RecommendationItem[]>("/super-admin/recommendations", {
+          entityType: recommendationEntityType,
+          leagueId: draft.leagueId || undefined,
+          q: draft.name || undefined,
+        });
+        if (!cancelled) {
+          setRecommendations(response.data || []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setRecommendations([]);
+          setRecommendationError(formatError(err, "Recommendations unavailable. Manual entry is still available."));
+        }
+      } finally {
+        if (!cancelled) setRecommendationLoading(false);
+      }
+    }
+
+    void loadRecommendations();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.leagueId, draft.name, mode, recommendationEntityType, selectedId]);
 
   async function save() {
     setError(null);
@@ -272,6 +351,48 @@ export function MotorsportEntitiesAdminPanel() {
       await load();
     } catch (err) {
       setError(formatError(err, "Failed to save entity."));
+    }
+  }
+
+  async function applyRecommendation(recommendation: RecommendationItem) {
+    setError(null);
+    setMessage(null);
+    setRecommendationError(null);
+    try {
+      const response = await api.post<RecommendationPreview>("/super-admin/recommendations/preview", {
+        entityType: recommendationEntityType,
+        leagueId: draft.leagueId || undefined,
+        q: draft.name || undefined,
+        recommendationId: recommendation.id,
+      });
+      const preview = response.data;
+      if (!preview) return;
+
+      if (preview.recommendation.alreadyExists?.id) {
+        setSelectedId(preview.recommendation.alreadyExists.id);
+        setMessage(`${preview.recommendation.name} already exists. Opened the existing record instead of creating a duplicate.`);
+        return;
+      }
+
+      setDraft((prev) => ({
+        ...prev,
+        name: preview.prefill.name || prev.name,
+        shortName: preview.prefill.shortName || prev.shortName,
+        website: preview.prefill.website || prev.website,
+        aliases: preview.prefill.aliases?.join(", ") || prev.aliases,
+        externalId: preview.prefill.externalId || prev.externalId,
+        brandColor: preview.prefill.brandColor || prev.brandColor,
+        nationality: preview.prefill.nationality || prev.nationality,
+        countryCode: preview.prefill.countryCode || prev.countryCode,
+        shortDescription: preview.prefill.shortDescription || prev.shortDescription,
+        description: preview.prefill.description || prev.description,
+        logoUrl: (mode !== "drivers" && preview.prefill.imageCandidates?.[0]) ? preview.prefill.imageCandidates[0] : prev.logoUrl,
+        headshotUrl: (mode === "drivers" && preview.prefill.imageCandidates?.[0]) ? preview.prefill.imageCandidates[0] : prev.headshotUrl,
+        heroImageUrl: preview.prefill.imageCandidates?.[1] || prev.heroImageUrl,
+      }));
+      setMessage(`Applied ${recommendationSourceLabel(preview.recommendation.sourceType).toLowerCase()} recommendation for ${preview.recommendation.name}. Review the fields, then save explicitly.`);
+    } catch (err) {
+      setRecommendationError(formatError(err, "Failed to preview recommendation. Manual entry is still available."));
     }
   }
 
@@ -341,12 +462,12 @@ export function MotorsportEntitiesAdminPanel() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {[
+          {[ 
             ["drivers", "Drivers"],
             ["entrants", "Motorsport Teams"],
             ["manufacturers", "Manufacturers"],
           ].map(([id, label]) => (
-            <button key={id} onClick={() => { setMode(id as typeof mode); setSelectedId(null); setDraft(emptyDraft); }} style={btnStyle(mode === id ? "primary" : "outline")}>{label}</button>
+            <button key={id} onClick={() => { setMode(id as typeof mode); setSelectedId(null); setRecommendations([]); setRecommendationError(null); setDraft(emptyDraft); }} style={btnStyle(mode === id ? "primary" : "outline")}>{label}</button>
           ))}
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" style={{ ...inputStyle, width: 180 }} />
           <button style={btnStyle()} onClick={() => void load()}>Refresh</button>
@@ -365,15 +486,53 @@ export function MotorsportEntitiesAdminPanel() {
           ))}
         </div>
         <div className="card-flat" style={{ padding: 16, display: "grid", gap: 12 }}>
-          {(mode === "entrants" || mode === "manufacturers") ? (
-            <select value={draft.leagueId} onChange={(e) => setDraft((prev) => ({ ...prev, leagueId: e.target.value }))} style={inputStyle}>
-              <option value="">League</option>
+          <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{mode === "drivers" ? "Recommendation league" : "League / championship"}</div>
+            <select value={draft.leagueId} onChange={(e) => {
+              const nextLeagueId = e.target.value;
+              setSelectedId(null);
+              setRecommendations([]);
+              setDraft((prev) => ({ ...emptyDraft, leagueId: nextLeagueId, name: prev.name }));
+            }} style={inputStyle}>
+              <option value="">{mode === "drivers" ? "Select a league to load driver recommendations" : "League"}</option>
               {leagues.map((league) => <option key={league.id} value={league.id}>{league.name}</option>)}
             </select>
-          ) : null}
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
             <input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Name" style={inputStyle} />
             <input value={draft.shortName} onChange={(e) => setDraft((prev) => ({ ...prev, shortName: e.target.value }))} placeholder="Short name" style={inputStyle} />
+            <div style={{ gridColumn: "1 / -1", display: "grid", gap: 8 }}>
+              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                Recommended candidates for the selected championship appear here. Choosing one only prefills the form; it never saves automatically.
+              </div>
+              {recommendationError ? <div style={{ color: "#f59e0b", fontSize: 12 }}>{recommendationError}</div> : null}
+              {recommendationLoading ? <div style={{ color: "var(--muted-foreground)", fontSize: 12 }}>Loading recommendations...</div> : null}
+              {!recommendationLoading && !recommendationError && recommendations.length === 0 && draft.leagueId ? (
+                <div style={{ color: "var(--muted-foreground)", fontSize: 12 }}>No verified suggestions yet. Continue with manual entry if needed.</div>
+              ) : null}
+              {recommendations.length > 0 ? (
+                <div style={{ display: "grid", gap: 8, maxHeight: 220, overflowY: "auto", paddingRight: 4 }}>
+                  {recommendations.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => void applyRecommendation(item)}
+                      style={{ ...btnStyle("outline"), textAlign: "left", display: "grid", gap: 4 }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 800 }}>{item.name}</span>
+                        <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{recommendationSourceLabel(item.sourceType)} · {item.confidence}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                        {item.leagueLabel || "League not specified"}
+                        {item.shortName ? ` · ${item.shortName}` : ""}
+                        {item.alreadyExists ? " · already exists" : ""}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             {mode === "drivers" ? (
               <>
                 <input value={draft.nationality} onChange={(e) => setDraft((prev) => ({ ...prev, nationality: e.target.value }))} placeholder="Nationality" style={inputStyle} />
@@ -474,7 +633,7 @@ export function MotorsportEntitiesAdminPanel() {
             <button style={btnStyle("primary")} onClick={() => void save()}>Save</button>
             <button style={btnStyle()} onClick={() => void refreshEnrichment()} disabled={!selectedId}>Autofill From Search</button>
             <button style={btnStyle()} onClick={() => void revertToDefaults()} disabled={!selectedId}>Revert to Defaults</button>
-            <button style={btnStyle()} onClick={() => { setSelectedId(null); setDraft(emptyDraft); }}>Clear</button>
+            <button style={btnStyle()} onClick={() => { setSelectedId(null); setRecommendations([]); setRecommendationError(null); setDraft(emptyDraft); }}>Clear</button>
           </div>
         </div>
       </div>

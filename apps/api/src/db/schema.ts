@@ -325,6 +325,18 @@ export const manufacturers = pgTable('manufacturers', {
     index('manufacturers_name_idx').on(table.name),
 ]);
 
+export const entitySlugRedirects = pgTable('entity_slug_redirects', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    entityType: varchar('entity_type', { length: 40 }).notNull(),
+    entityId: uuid('entity_id').notNull(),
+    slug: varchar('slug', { length: 180 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('entity_slug_redirects_type_slug_unique').on(table.entityType, table.slug),
+    index('entity_slug_redirects_entity_idx').on(table.entityType, table.entityId),
+]);
+
 export const eventEntries = pgTable('event_entries', {
     id: uuid('id').primaryKey().defaultRandom(),
     matchId: uuid('match_id').notNull().references(() => matches.id, { onDelete: 'cascade' }),

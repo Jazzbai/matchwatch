@@ -34,6 +34,33 @@ type PlayerRow = {
 };
 
 type Lookup = { id: string; name: string };
+type RecommendationItem = {
+  id: string;
+  name: string;
+  shortName?: string | null;
+  leagueId?: string | null;
+  leagueLabel?: string | null;
+  sourceType: "catalog" | "provider" | "existing-db" | "external";
+  confidence: "high" | "medium" | "low";
+  website?: string | null;
+  aliases?: string[];
+  alreadyExists?: { id: string; slug?: string | null; name: string } | null;
+};
+type RecommendationPreview = {
+  recommendation: RecommendationItem;
+  prefill: {
+    name: string;
+    shortName?: string;
+    website?: string;
+    aliases?: string[];
+    externalId?: string;
+    imageCandidates?: string[];
+    nationality?: string;
+    countryCode?: string;
+    shortDescription?: string;
+    description?: string;
+  };
+};
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -80,6 +107,13 @@ function sourceLabel(value?: "NONE" | "GOOGLE" | "MANUAL" | null) {
   return { label: "None", color: "var(--muted-foreground)" };
 }
 
+function recommendationSourceLabel(value: RecommendationItem["sourceType"]) {
+  if (value === "catalog") return "Catalog";
+  if (value === "existing-db") return "Existing";
+  if (value === "provider") return "Provider";
+  return "External";
+}
+
 function SourceBadge({ value }: { value?: "NONE" | "GOOGLE" | "MANUAL" | null }) {
   const source = sourceLabel(value);
   return <span style={{ ...sourceBadgeStyle, color: source.color }}>{source.label}</span>;
@@ -94,6 +128,9 @@ export function PlayersAdminPanel() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const [recommendations, setRecommendations] = React.useState<RecommendationItem[]>([]);
+  const [recommendationLoading, setRecommendationLoading] = React.useState(false);
+  const [recommendationError, setRecommendationError] = React.useState<string | null>(null);
   const [uploadingHeadshot, setUploadingHeadshot] = React.useState(false);
   const [uploadingHero, setUploadingHero] = React.useState(false);
   const headshotInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -160,6 +197,44 @@ export function PlayersAdminPanel() {
     });
   }, [players, selectedId]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadRecommendations() {
+      setRecommendationError(null);
+      if (selectedId) {
+        setRecommendations([]);
+        return;
+      }
+      if (!draft.leagueId) {
+        setRecommendations([]);
+        return;
+      }
+
+      try {
+        setRecommendationLoading(true);
+        const response = await api.get<RecommendationItem[]>("/super-admin/recommendations", {
+          entityType: "player",
+          leagueId: draft.leagueId || undefined,
+          q: draft.name || undefined,
+        });
+        if (!cancelled) setRecommendations(response.data || []);
+      } catch (err) {
+        if (!cancelled) {
+          setRecommendations([]);
+          setRecommendationError(formatError(err, "Recommendations unavailable. Manual entry is still available."));
+        }
+      } finally {
+        if (!cancelled) setRecommendationLoading(false);
+      }
+    }
+
+    void loadRecommendations();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.leagueId, draft.name, selectedId]);
+
   async function save() {
     setError(null);
     setMessage(null);
@@ -191,6 +266,46 @@ export function PlayersAdminPanel() {
       if (!selectedId) setDraft(emptyDraft);
     } catch (err) {
       setError(formatError(err, "Failed to save player."));
+    }
+  }
+
+  async function applyRecommendation(recommendation: RecommendationItem) {
+    setError(null);
+    setMessage(null);
+    setRecommendationError(null);
+    try {
+      const response = await api.post<RecommendationPreview>("/super-admin/recommendations/preview", {
+        entityType: "player",
+        leagueId: draft.leagueId || undefined,
+        q: draft.name || undefined,
+        recommendationId: recommendation.id,
+      });
+      const preview = response.data;
+      if (!preview) return;
+
+      if (preview.recommendation.alreadyExists?.id) {
+        setSelectedId(preview.recommendation.alreadyExists.id);
+        setMessage(`${preview.recommendation.name} already exists. Opened the existing record instead of creating a duplicate.`);
+        return;
+      }
+
+      setDraft((prev) => ({
+        ...prev,
+        name: preview.prefill.name || prev.name,
+        shortName: preview.prefill.shortName || prev.shortName,
+        website: preview.prefill.website || prev.website,
+        aliases: preview.prefill.aliases?.join(", ") || prev.aliases,
+        externalId: preview.prefill.externalId || prev.externalId,
+        nationality: preview.prefill.nationality || prev.nationality,
+        countryCode: preview.prefill.countryCode || prev.countryCode,
+        shortDescription: preview.prefill.shortDescription || prev.shortDescription,
+        description: preview.prefill.description || prev.description,
+        headshotUrl: preview.prefill.imageCandidates?.[0] || prev.headshotUrl,
+        heroImageUrl: preview.prefill.imageCandidates?.[1] || prev.heroImageUrl,
+      }));
+      setMessage(`Applied ${recommendationSourceLabel(preview.recommendation.sourceType).toLowerCase()} recommendation for ${preview.recommendation.name}. Review the fields, then save explicitly.`);
+    } catch (err) {
+      setRecommendationError(formatError(err, "Failed to preview recommendation. Manual entry is still available."));
     }
   }
 
@@ -277,7 +392,40 @@ export function PlayersAdminPanel() {
               <option value="">League</option>
               {leagues.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
-            <input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Name" style={inputStyle} />
+            <div style={{ display: "grid", gap: 8 }}>
+              <input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Name" style={inputStyle} />
+              {!selectedId ? (
+                <div style={{ display: "grid", gap: 8, padding: 10, borderRadius: 12, border: "1px solid var(--border)", background: "rgba(255,255,255,0.02)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                      {draft.leagueId ? "Recommendations for the selected league." : "Select a league to load recommended player names."}
+                    </div>
+                    {recommendationLoading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Loading…</div> : null}
+                  </div>
+                  {recommendationError ? <div style={{ color: "#f59e0b", fontSize: 12 }}>{recommendationError}</div> : null}
+                  {draft.leagueId && !recommendationLoading && recommendations.length === 0 && !recommendationError ? (
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No verified suggestions. Manual entry is still available.</div>
+                  ) : null}
+                  {recommendations.slice(0, 6).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => void applyRecommendation(item)}
+                      style={{ ...btnStyle("outline"), textAlign: "left", display: "grid", gap: 4 }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span>{item.name}</span>
+                        <span style={{ fontSize: 11, opacity: 0.8 }}>{recommendationSourceLabel(item.sourceType)} | {item.confidence}</span>
+                      </div>
+                      <div style={{ fontSize: 11, opacity: 0.75 }}>
+                        {item.leagueLabel || "League recommendation"}
+                        {item.alreadyExists ? ` | already exists as ${item.alreadyExists.name}` : ""}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <input value={draft.shortName} onChange={(e) => setDraft((prev) => ({ ...prev, shortName: e.target.value }))} placeholder="Short name" style={inputStyle} />
             <input value={draft.nationality} onChange={(e) => setDraft((prev) => ({ ...prev, nationality: e.target.value }))} placeholder="Nationality" style={inputStyle} />
             <input value={draft.countryCode} onChange={(e) => setDraft((prev) => ({ ...prev, countryCode: e.target.value }))} placeholder="Country code" style={inputStyle} />

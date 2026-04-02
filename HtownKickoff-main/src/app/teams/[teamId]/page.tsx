@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { use } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "../../../components/AppShell";
 import { api } from "../../../lib/api";
 
@@ -15,7 +16,10 @@ type TeamDetail = {
   heroImageUrl?: string | null;
   shortDescription?: string | null;
   description?: string | null;
+  website?: string | null;
   country?: string | null;
+  canonicalSlug?: string;
+  canonicalPath?: string;
   league?: { id: string; name: string; slug: string; shortName?: string | null; logoUrl?: string | null } | null;
   standingsRow?: {
     rank: number;
@@ -33,6 +37,7 @@ type TeamDetail = {
 
 export default function TeamPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = use(params);
+  const router = useRouter();
   const [team, setTeam] = React.useState<TeamDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -54,6 +59,12 @@ export default function TeamPage({ params }: { params: Promise<{ teamId: string 
       cancelled = true;
     };
   }, [teamId]);
+
+  React.useEffect(() => {
+    if (team?.canonicalSlug && team.canonicalSlug !== teamId && team.canonicalPath) {
+      router.replace(team.canonicalPath);
+    }
+  }, [router, team?.canonicalPath, team?.canonicalSlug, teamId]);
 
   if (loading) {
     return <AppShell><section style={{ padding: "64px 20px", textAlign: "center", color: "var(--muted-foreground)" }}>Loading team...</section></AppShell>;
@@ -93,6 +104,14 @@ export default function TeamPage({ params }: { params: Promise<{ teamId: string 
       </section>
 
       <section style={{ padding: "24px 20px 48px", maxWidth: 1120, margin: "0 auto", display: "grid", gap: 20 }}>
+        {(team.country || team.website || team.league) ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            {team.country ? <div className="card-flat" style={{ padding: 16 }}><div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>Country</div><div style={{ marginTop: 8, color: "var(--foreground)", fontWeight: 800 }}>{team.country}</div></div> : null}
+            {team.website ? <div className="card-flat" style={{ padding: 16 }}><div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>Website</div><a href={team.website} target="_blank" rel="noreferrer" style={{ marginTop: 8, display: "inline-block", color: "var(--primary)", fontWeight: 800, textDecoration: "none" }}>{team.website.replace(/^https?:\/\//, "")}</a></div> : null}
+            {team.league ? <div className="card-flat" style={{ padding: 16 }}><div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>League</div><Link href={`/leagues/${team.league.slug}`} style={{ marginTop: 8, display: "inline-block", color: "var(--primary)", fontWeight: 800, textDecoration: "none" }}>{team.league.name}</Link></div> : null}
+          </div>
+        ) : null}
+
         {team.standingsRow ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
             {[

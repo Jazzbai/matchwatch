@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { use } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "../../../components/AppShell";
 import { api } from "../../../lib/api";
 
@@ -15,7 +16,10 @@ type LeagueDetail = {
   heroImageUrl?: string | null;
   shortDescription?: string | null;
   description?: string | null;
+  website?: string | null;
   country?: string | null;
+  canonicalSlug?: string;
+  canonicalPath?: string;
   sport?: { id: string; name: string; slug: string } | null;
   teams: Array<{ id: string; name: string; slug: string; shortName?: string | null; crestUrl?: string | null }>;
   standings: {
@@ -27,6 +31,7 @@ type LeagueDetail = {
 
 export default function LeaguePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
+  const router = useRouter();
   const [league, setLeague] = React.useState<LeagueDetail | null>(null);
 
   React.useEffect(() => {
@@ -44,6 +49,12 @@ export default function LeaguePage({ params }: { params: Promise<{ slug: string 
       cancelled = true;
     };
   }, [slug]);
+
+  React.useEffect(() => {
+    if (league?.canonicalSlug && league.canonicalSlug !== slug && league.canonicalPath) {
+      router.replace(league.canonicalPath);
+    }
+  }, [league?.canonicalPath, league?.canonicalSlug, router, slug]);
 
   if (!league) {
     return <AppShell><section style={{ padding: "64px 20px", textAlign: "center", color: "var(--muted-foreground)" }}>League not found.</section></AppShell>;
@@ -67,6 +78,21 @@ export default function LeaguePage({ params }: { params: Promise<{ slug: string 
       </section>
 
       <section style={{ padding: "24px 20px 48px", maxWidth: 1180, margin: "0 auto", display: "grid", gap: 20 }}>
+        {(league.country || league.website || league.teams.length > 0) ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            {league.country ? <div className="card-flat" style={{ padding: 16 }}><div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>Country</div><div style={{ marginTop: 8, color: "var(--foreground)", fontWeight: 800 }}>{league.country}</div></div> : null}
+            {league.website ? <div className="card-flat" style={{ padding: 16 }}><div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>Website</div><a href={league.website} target="_blank" rel="noreferrer" style={{ marginTop: 8, display: "inline-block", color: "var(--primary)", fontWeight: 800, textDecoration: "none" }}>{league.website.replace(/^https?:\/\//, "")}</a></div> : null}
+            <div className="card-flat" style={{ padding: 16 }}><div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>Teams</div><div style={{ marginTop: 8, color: "var(--foreground)", fontWeight: 800 }}>{league.teams.length}</div></div>
+          </div>
+        ) : null}
+
+        {league.description ? (
+          <div className="card-flat" style={{ padding: 20 }}>
+            <h2 className="font-display text-h3" style={{ margin: "0 0 12px", color: "var(--foreground)" }}>About</h2>
+            <p style={{ margin: 0, color: "var(--muted-foreground)", lineHeight: 1.8 }}>{league.description}</p>
+          </div>
+        ) : null}
+
         <div className="card-flat" style={{ padding: 20 }}>
           <h2 className="font-display text-h3" style={{ margin: "0 0 14px", color: "var(--foreground)" }}>Standings</h2>
           <div style={{ overflowX: "auto" }}>
@@ -132,6 +158,23 @@ export default function LeaguePage({ params }: { params: Promise<{ slug: string 
             </div>
           </div>
         </div>
+
+        {league.teams.length > 0 ? (
+          <div className="card-flat" style={{ padding: 20 }}>
+            <h2 className="font-display text-h3" style={{ margin: "0 0 14px", color: "var(--foreground)" }}>Teams</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+              {league.teams.slice(0, 12).map((team) => (
+                <Link key={team.id} href={`/teams/${team.slug}`} style={{ textDecoration: "none", color: "inherit", border: "1px solid var(--border)", borderRadius: 12, padding: 14, background: "var(--secondary)", display: "flex", gap: 12, alignItems: "center" }}>
+                  {team.crestUrl ? <img src={team.crestUrl} alt="" style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 10, background: "rgba(255,255,255,0.9)", padding: 6 }} /> : null}
+                  <div>
+                    <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{team.name}</div>
+                    {team.shortName ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{team.shortName}</div> : null}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
     </AppShell>
   );

@@ -2,16 +2,15 @@ import { Hono } from 'hono';
 import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { leagues, matches, sports, teams } from '../db/schema';
+import { resolveCanonicalEntity } from '../lib/entitySlugs';
 import { getLatestLeagueStandings } from '../lib/standings';
 import { apiError, apiResponse } from '../lib/utils';
 
 const leagueRoutes = new Hono();
 
-function isUuid(value: string) {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
 async function resolveLeague(slugOrId: string) {
+    const resolved = await resolveCanonicalEntity('league', slugOrId);
+    if (!resolved) return null;
     const [row] = await db
         .select({
             league: leagues,
@@ -19,9 +18,9 @@ async function resolveLeague(slugOrId: string) {
         })
         .from(leagues)
         .leftJoin(sports, eq(leagues.sportId, sports.id))
-        .where(isUuid(slugOrId) ? eq(leagues.id, slugOrId) : eq(leagues.slug, slugOrId))
+        .where(eq(leagues.id, resolved.entityId))
         .limit(1);
-    return row || null;
+    return row ? { ...row, resolved } : null;
 }
 
 async function loadLeagueMatches(leagueId: string, mode: 'fixtures' | 'results', limit = 12) {
@@ -78,6 +77,9 @@ leagueRoutes.get('/:slug', async (c) => {
     return c.json(apiResponse({
         ...row.league,
         sport: row.sport,
+        canonicalSlug: row.league.slug,
+        canonicalPath: `/leagues/${row.league.slug}`,
+        resolvedVia: row.resolved.matchedVia,
         teams: memberTeams,
         standings,
         fixtures,

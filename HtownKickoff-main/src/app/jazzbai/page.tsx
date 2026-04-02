@@ -368,6 +368,33 @@ type TeamAdminRow = {
   createdAt: string;
 };
 
+type RecommendationItem = {
+  id: string;
+  name: string;
+  shortName?: string | null;
+  leagueId?: string | null;
+  leagueLabel?: string | null;
+  sourceType: "catalog" | "provider" | "existing-db" | "external";
+  confidence: "high" | "medium" | "low";
+  website?: string | null;
+  aliases?: string[];
+  alreadyExists?: { id: string; slug?: string | null; name: string } | null;
+};
+
+type RecommendationPreview = {
+  recommendation: RecommendationItem;
+  prefill: {
+    name: string;
+    shortName?: string;
+    website?: string;
+    aliases?: string[];
+    externalId?: string;
+    imageCandidates?: string[];
+    shortDescription?: string;
+    description?: string;
+  };
+};
+
 type MatchEventRow = {
   id: string;
   venueId: string;
@@ -735,6 +762,13 @@ function formatEnrichmentStatus(value?: "NEVER_SYNCED" | "SYNCED" | "ERROR" | nu
   if (value === "NEVER_SYNCED") return "Never synced";
   if (value === "SYNCED") return "Synced";
   return "Error";
+}
+
+function recommendationSourceLabel(value: RecommendationItem["sourceType"]) {
+  if (value === "catalog") return "Catalog";
+  if (value === "existing-db") return "Existing";
+  if (value === "provider") return "Provider";
+  return "External";
 }
 
 function dedupeById<T extends { id: string }>(rows: T[]) {
@@ -1214,6 +1248,9 @@ export default function JazzbaiSuperAdminPage() {
     externalId: "",
     isActive: true,
   });
+  const [newTeamRecommendations, setNewTeamRecommendations] = React.useState<RecommendationItem[]>([]);
+  const [newTeamRecommendationsLoading, setNewTeamRecommendationsLoading] = React.useState(false);
+  const [newTeamRecommendationsError, setNewTeamRecommendationsError] = React.useState<string | null>(null);
   const [uploadingNewTeamCrest, setUploadingNewTeamCrest] = React.useState(false);
   const [uploadingTeamCrestId, setUploadingTeamCrestId] = React.useState<string | null>(null);
 
@@ -1689,6 +1726,50 @@ export default function JazzbaiSuperAdminPage() {
   }, [lookupSports, newLeague.sportId]);
 
   React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadTeamRecommendations() {
+      setNewTeamRecommendationsError(null);
+      if (!authenticated) return;
+      if (!newAdminTeam.leagueId) {
+        setNewTeamRecommendations([]);
+        return;
+      }
+
+      try {
+        setNewTeamRecommendationsLoading(true);
+        const params = new URLSearchParams({
+          entityType: "team",
+          leagueId: newAdminTeam.leagueId,
+        });
+        if (newAdminTeam.name.trim()) params.set("q", newAdminTeam.name.trim());
+        const response = await fetch(`/api/v1/super-admin/recommendations?${params.toString()}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.error || "Recommendations unavailable. Manual entry is still available.");
+        }
+        const data = await response.json() as { data?: RecommendationItem[] };
+        if (!cancelled) setNewTeamRecommendations(data.data || []);
+      } catch (err) {
+        if (!cancelled) {
+          setNewTeamRecommendations([]);
+          setNewTeamRecommendationsError(err instanceof Error ? err.message : "Recommendations unavailable. Manual entry is still available.");
+        }
+      } finally {
+        if (!cancelled) setNewTeamRecommendationsLoading(false);
+      }
+    }
+
+    void loadTeamRecommendations();
+    return () => {
+      cancelled = true;
+    };
+  }, [authenticated, newAdminTeam.leagueId, newAdminTeam.name]);
+
+  React.useEffect(() => {
     if (motorsportLookupMatches.length === 0) return;
     if (!newMotorsportEntry.matchId) {
       setNewMotorsportEntry((prev) => ({ ...prev, matchId: motorsportLookupMatches[0].id }));
@@ -1752,6 +1833,37 @@ export default function JazzbaiSuperAdminPage() {
       setError(err instanceof Error ? err.message : "Action failed");
     } finally {
       setSubmittingAction(null);
+    }
+  };
+
+  const applyNewTeamRecommendation = async (recommendation: RecommendationItem) => {
+    setError(null);
+    setNewTeamRecommendationsError(null);
+    try {
+      const preview = await superAdminFetch<RecommendationPreview>("/recommendations/preview", {
+        method: "POST",
+        body: JSON.stringify({
+          entityType: "team",
+          leagueId: newAdminTeam.leagueId || undefined,
+          q: newAdminTeam.name || undefined,
+          recommendationId: recommendation.id,
+        }),
+      });
+
+      if (preview.recommendation.alreadyExists?.id) {
+        setError(`${preview.recommendation.name} already exists. Open the existing team from the Teams table instead of creating a duplicate.`);
+        return;
+      }
+
+      setNewAdminTeam((prev) => ({
+        ...prev,
+        name: preview.prefill.name || prev.name,
+        shortName: preview.prefill.shortName || prev.shortName,
+        crestUrl: preview.prefill.imageCandidates?.[0] || prev.crestUrl,
+        externalId: preview.prefill.externalId || prev.externalId,
+      }));
+    } catch (err) {
+      setNewTeamRecommendationsError(err instanceof Error ? err.message : "Failed to preview recommendation. Manual entry is still available.");
     }
   };
 
@@ -3604,7 +3716,38 @@ export default function JazzbaiSuperAdminPage() {
                     <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
                   ))}
                 </select>
-                <input style={inputStyle} placeholder="Team name" value={newAdminTeam.name} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, name: e.target.value }))} />
+                <div style={{ display: "grid", gap: 6 }}>
+                  <input style={inputStyle} placeholder="Team name" value={newAdminTeam.name} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, name: e.target.value }))} />
+                  <div style={{ display: "grid", gap: 6, padding: 10, borderRadius: 12, border: "1px solid var(--border)", background: "rgba(255,255,255,0.02)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                        {newAdminTeam.leagueId ? "Recommended teams for the selected league." : "Select a league to load recommended team names."}
+                      </div>
+                      {newTeamRecommendationsLoading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Loading…</div> : null}
+                    </div>
+                    {newTeamRecommendationsError ? <div style={{ fontSize: 12, color: "#f59e0b" }}>{newTeamRecommendationsError}</div> : null}
+                    {newAdminTeam.leagueId && !newTeamRecommendationsLoading && newTeamRecommendations.length === 0 && !newTeamRecommendationsError ? (
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No verified suggestions. Manual entry is still available.</div>
+                    ) : null}
+                    {newTeamRecommendations.slice(0, 6).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        style={{ ...smallBtn("outline"), textAlign: "left" }}
+                        onClick={() => void applyNewTeamRecommendation(item)}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                          <span>{item.name}</span>
+                          <span style={{ fontSize: 11, opacity: 0.8 }}>{recommendationSourceLabel(item.sourceType)} | {item.confidence}</span>
+                        </div>
+                        <div style={{ fontSize: 11, opacity: 0.75, marginTop: 4 }}>
+                          {item.leagueLabel || "League recommendation"}
+                          {item.alreadyExists ? ` | already exists as ${item.alreadyExists.name}` : ""}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <input style={inputStyle} placeholder="Short name" value={newAdminTeam.shortName} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, shortName: e.target.value }))} />
                 <div style={{ display: "grid", gap: 6 }}>
                   <input style={inputStyle} placeholder="Crest URL" value={newAdminTeam.crestUrl} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, crestUrl: e.target.value }))} />
@@ -3647,6 +3790,8 @@ export default function JazzbaiSuperAdminPage() {
                       }),
                     });
                     setNewAdminTeam({ leagueId: "", name: "", shortName: "", crestUrl: "", externalId: "", isActive: true });
+                    setNewTeamRecommendations([]);
+                    setNewTeamRecommendationsError(null);
                     await Promise.all([loadTeamsAdmin(), loadLookups()]);
                   })}
                 >

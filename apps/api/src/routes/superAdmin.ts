@@ -51,6 +51,8 @@ import {
 import { applyGoogleMenuSnapshot, buildGoogleVenueFields } from '../lib/venueOnboarding';
 import { presignedUploadSchema } from '@matchwatch/shared';
 import { buildEntityEnrichment, type EntityBaseRecord, type EntityEnrichmentResult, type EntityKind } from '../lib/entityEnrichment';
+import { allocateCanonicalSlug } from '../lib/entitySlugs';
+import { getRecommendationPreview, getRecommendations } from '../lib/entityRecommendations';
 import { getLatestLeagueStandings, refreshLeagueStandingsSnapshot } from '../lib/standings';
 import { getMatchPrediction, refreshMatchPrediction } from '../lib/predictions';
 
@@ -773,9 +775,10 @@ async function resolveDriver(values: {
         .limit(1);
     if (existing) return existing.id;
 
+    const slug = await allocateCanonicalSlug('driver', driverName, { shortName: values.driverShortName?.trim() || null });
     const [created] = await db.insert(drivers).values({
         name: driverName,
-        slug: generateUniqueSlug(driverName),
+        slug,
         shortName: values.driverShortName?.trim() || null,
         nationality: values.driverNationality?.trim() || null,
         countryCode: values.driverCountryCode?.trim().toUpperCase() || null,
@@ -808,10 +811,11 @@ async function resolveEntrant(leagueId: string | null | undefined, values: {
         .limit(1);
     if (existing) return existing.id;
 
+    const slug = await allocateCanonicalSlug('entrant', entrantName, { shortName: values.entrantShortName?.trim() || null });
     const [created] = await db.insert(entrants).values({
         leagueId: leagueId ?? null,
         name: entrantName,
-        slug: generateUniqueSlug(entrantName),
+        slug,
         shortName: values.entrantShortName?.trim() || null,
         brandColor: values.entrantBrandColor?.trim() || null,
         logoUrl: values.entrantLogoUrl?.trim() || null,
@@ -842,10 +846,11 @@ async function resolveManufacturer(leagueId: string | null | undefined, values: 
         .limit(1);
     if (existing) return existing.id;
 
+    const slug = await allocateCanonicalSlug('manufacturer', manufacturerName, { shortName: values.manufacturerShortName?.trim() || null });
     const [created] = await db.insert(manufacturers).values({
         leagueId: leagueId ?? null,
         name: manufacturerName,
-        slug: generateUniqueSlug(manufacturerName),
+        slug,
         shortName: values.manufacturerShortName?.trim() || null,
         logoUrl: values.manufacturerLogoUrl?.trim() || null,
     }).returning({ id: manufacturers.id });
@@ -1786,7 +1791,7 @@ superAdminRoutes.post('/teams', async (c) => {
     const [created] = await db.insert(teams).values({
         leagueId: parsed.data.leagueId || null,
         name: trimmedName,
-        slug: generateUniqueSlug(trimmedName),
+        slug: await allocateCanonicalSlug('team', trimmedName, { shortName: parsed.data.shortName?.trim() || null }),
         shortName: parsed.data.shortName?.trim() || null,
         crestUrl: parsed.data.crestUrl?.trim() || null,
         crestSource: parsed.data.crestUrl?.trim() ? 'MANUAL' : 'NONE',
@@ -2075,10 +2080,11 @@ superAdminRoutes.post('/leagues', async (c) => {
     const [sport] = await db.select({ id: sports.id }).from(sports).where(and(eq(sports.id, parsed.data.sportId), eq(sports.isActive, true))).limit(1);
     if (!sport) return c.json(apiError('NOT_FOUND', 'Sport not found'), 404);
 
+    const trimmedName = parsed.data.name.trim();
     const [created] = await db.insert(leagues).values({
         sportId: parsed.data.sportId,
-        name: parsed.data.name.trim(),
-        slug: generateUniqueSlug(parsed.data.name.trim()),
+        name: trimmedName,
+        slug: await allocateCanonicalSlug('league', trimmedName, { shortName: parsed.data.shortName?.trim() || null }),
         shortName: parsed.data.shortName?.trim() || null,
         logoUrl: parsed.data.logoUrl || null,
         logoSource: parsed.data.logoUrl?.trim() ? 'MANUAL' : 'NONE',
@@ -3853,6 +3859,14 @@ const enrichmentBatchSchema = z.object({
     includeEntrants: z.boolean().optional(),
     includeManufacturers: z.boolean().optional(),
 });
+const recommendationQuerySchema = z.object({
+    entityType: z.enum(['team', 'player', 'driver', 'entrant', 'manufacturer']),
+    leagueId: z.string().uuid().optional(),
+    q: z.string().trim().optional(),
+});
+const recommendationPreviewSchema = recommendationQuerySchema.extend({
+    recommendationId: z.string().min(1),
+});
 const createDriverSchema = z.object({
     name: z.string().min(2).max(150),
     shortName: z.string().max(60).nullable().optional(),
@@ -3971,7 +3985,7 @@ superAdminRoutes.post('/players', async (c) => {
         sportId: parsed.data.sportId || null,
         leagueId: parsed.data.leagueId || null,
         name: trimmedName,
-        slug: generateUniqueSlug(trimmedName),
+        slug: await allocateCanonicalSlug('player', trimmedName, { shortName: parsed.data.shortName?.trim() || null }),
         shortName: parsed.data.shortName?.trim() || null,
         nationality: parsed.data.nationality?.trim() || null,
         countryCode: parsed.data.countryCode?.trim().toUpperCase() || null,
@@ -4110,7 +4124,7 @@ superAdminRoutes.post('/drivers', async (c) => {
     const trimmedName = parsed.data.name.trim();
     const [created] = await db.insert(drivers).values({
         name: trimmedName,
-        slug: generateUniqueSlug(trimmedName),
+        slug: await allocateCanonicalSlug('driver', trimmedName, { shortName: parsed.data.shortName?.trim() || null }),
         shortName: parsed.data.shortName?.trim() || null,
         nationality: parsed.data.nationality?.trim() || null,
         countryCode: parsed.data.countryCode?.trim().toUpperCase() || null,
@@ -4247,7 +4261,7 @@ superAdminRoutes.post('/entrants', async (c) => {
     const [created] = await db.insert(entrants).values({
         leagueId: parsed.data.leagueId || null,
         name: trimmedName,
-        slug: generateUniqueSlug(trimmedName),
+        slug: await allocateCanonicalSlug('entrant', trimmedName, { shortName: parsed.data.shortName?.trim() || null }),
         shortName: parsed.data.shortName?.trim() || null,
         brandColor: parsed.data.brandColor?.trim() || null,
         logoUrl: parsed.data.logoUrl?.trim() || null,
@@ -4380,7 +4394,7 @@ superAdminRoutes.post('/manufacturers', async (c) => {
     const [created] = await db.insert(manufacturers).values({
         leagueId: parsed.data.leagueId || null,
         name: trimmedName,
-        slug: generateUniqueSlug(trimmedName),
+        slug: await allocateCanonicalSlug('manufacturer', trimmedName, { shortName: parsed.data.shortName?.trim() || null }),
         shortName: parsed.data.shortName?.trim() || null,
         logoUrl: parsed.data.logoUrl?.trim() || null,
         heroImageUrl: parsed.data.heroImageUrl?.trim() || null,
@@ -4451,6 +4465,38 @@ superAdminRoutes.patch('/manufacturers/:manufacturerId', async (c) => {
 
     await db.update(manufacturers).set(updates).where(eq(manufacturers.id, manufacturerId));
     return c.json(apiResponse({ message: 'Manufacturer updated' }));
+});
+
+superAdminRoutes.get('/recommendations', async (c) => {
+    const parsed = recommendationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid recommendation query', parsed.error.issues), 400);
+    }
+
+    try {
+        const recommendations = await getRecommendations(parsed.data);
+        return c.json(apiResponse(recommendations));
+    } catch (error) {
+        return c.json(apiError('INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to load recommendations'), 500);
+    }
+});
+
+superAdminRoutes.post('/recommendations/preview', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = recommendationPreviewSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid recommendation preview request', parsed.error.issues), 400);
+    }
+
+    try {
+        const preview = await getRecommendationPreview(parsed.data);
+        if (!preview) {
+            return c.json(apiError('NOT_FOUND', 'Recommendation not found'), 404);
+        }
+        return c.json(apiResponse(preview));
+    } catch (error) {
+        return c.json(apiError('INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to preview recommendation'), 500);
+    }
 });
 
 superAdminRoutes.get('/pages', async () => {

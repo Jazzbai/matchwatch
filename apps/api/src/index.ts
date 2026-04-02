@@ -28,6 +28,7 @@ import driverRoutes from './routes/drivers';
 import motorsportTeamRoutes from './routes/motorsportTeams';
 import pageRoutes from './routes/pages';
 import { logger } from './lib/logger';
+import { normalizeEntitySlugs } from './lib/entitySlugs';
 import { scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
 
 // Create App
@@ -112,6 +113,15 @@ async function start() {
         }
     } else {
         logger.warn('Startup auto-seed disabled via RUN_STARTUP_SEED=false');
+    }
+
+    try {
+        await normalizeEntitySlugs();
+    } catch (err) {
+        logger.error({ err }, 'Entity slug normalization failed');
+        if (process.env.NODE_ENV === 'production') {
+            process.exit(1);
+        }
     }
 
     serve(
