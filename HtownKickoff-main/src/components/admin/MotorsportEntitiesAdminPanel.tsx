@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { api, ApiClientError } from "../../lib/api";
+import { uploadSuperAdminImage } from "../../lib/superAdminUploads";
 
 type League = { id: string; name: string };
 type SourceValue = "NONE" | "GOOGLE" | "MANUAL" | null | undefined;
@@ -143,6 +144,10 @@ export function MotorsportEntitiesAdminPanel() {
   const [search, setSearch] = React.useState("");
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [uploadingPrimary, setUploadingPrimary] = React.useState(false);
+  const [uploadingHero, setUploadingHero] = React.useState(false);
+  const primaryInputRef = React.useRef<HTMLInputElement | null>(null);
+  const heroInputRef = React.useRef<HTMLInputElement | null>(null);
   const emptyDraft = React.useMemo(() => ({
     leagueId: "",
     name: "",
@@ -298,6 +303,31 @@ export function MotorsportEntitiesAdminPanel() {
     }
   }
 
+  async function uploadImage(kind: "primary" | "hero", file: File) {
+    setError(null);
+    setMessage(null);
+    const setUploading = kind === "primary" ? setUploadingPrimary : setUploadingHero;
+    try {
+      setUploading(true);
+      const uploaded = await uploadSuperAdminImage(file, kind === "primary" ? "entity_primary" : "entity_hero");
+      if (kind === "primary") {
+        if (mode === "drivers") {
+          setDraft((prev) => ({ ...prev, headshotUrl: uploaded.url }));
+        } else {
+          setDraft((prev) => ({ ...prev, logoUrl: uploaded.url }));
+        }
+        setMessage(mode === "drivers" ? "Headshot uploaded." : "Primary logo uploaded.");
+      } else {
+        setDraft((prev) => ({ ...prev, heroImageUrl: uploaded.url }));
+        setMessage("Hero image uploaded.");
+      }
+    } catch (err) {
+      setError(formatError(err, "Image upload failed."));
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const selectedRow = (currentRows.find((item: any) => item.id === selectedId) as any) || null;
 
   return (
@@ -306,6 +336,9 @@ export function MotorsportEntitiesAdminPanel() {
         <div>
           <div className="section-label" style={{ marginBottom: 8 }}>Motorsport</div>
           <h2 className="font-display text-h2" style={{ margin: 0, color: "var(--foreground)" }}>Drivers, Teams, Manufacturers</h2>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted-foreground)" }}>
+            Entities are reusable catalog records. Race Entries is the separate per-event layer for grid, finish, status, and points.
+          </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {[
@@ -345,15 +378,72 @@ export function MotorsportEntitiesAdminPanel() {
               <>
                 <input value={draft.nationality} onChange={(e) => setDraft((prev) => ({ ...prev, nationality: e.target.value }))} placeholder="Nationality" style={inputStyle} />
                 <input value={draft.countryCode} onChange={(e) => setDraft((prev) => ({ ...prev, countryCode: e.target.value }))} placeholder="Country code" style={inputStyle} />
-                <input value={draft.headshotUrl} onChange={(e) => setDraft((prev) => ({ ...prev, headshotUrl: e.target.value }))} placeholder="Headshot URL" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
+                <div style={{ gridColumn: "1 / -1", display: "grid", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <input value={draft.headshotUrl} onChange={(e) => setDraft((prev) => ({ ...prev, headshotUrl: e.target.value }))} placeholder="Headshot URL" style={{ ...inputStyle, flex: 1, minWidth: 240 }} />
+                    <button type="button" style={btnStyle()} disabled={uploadingPrimary} onClick={() => primaryInputRef.current?.click()}>
+                      {uploadingPrimary ? "Uploading..." : "Upload Headshot"}
+                    </button>
+                    <input
+                      ref={primaryInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void uploadImage("primary", file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </div>
+                  {draft.headshotUrl ? <img src={draft.headshotUrl} alt="Headshot preview" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 12, border: "1px solid var(--border)" }} /> : null}
+                </div>
               </>
             ) : (
               <>
                 {mode === "entrants" ? <input value={draft.brandColor} onChange={(e) => setDraft((prev) => ({ ...prev, brandColor: e.target.value }))} placeholder="Brand color" style={inputStyle} /> : null}
-                <input value={draft.logoUrl} onChange={(e) => setDraft((prev) => ({ ...prev, logoUrl: e.target.value }))} placeholder="Logo URL" style={mode === "entrants" ? inputStyle : { ...inputStyle, gridColumn: "1 / -1" }} />
+                <div style={mode === "entrants" ? { display: "grid", gap: 8 } : { display: "grid", gap: 8, gridColumn: "1 / -1" }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <input value={draft.logoUrl} onChange={(e) => setDraft((prev) => ({ ...prev, logoUrl: e.target.value }))} placeholder="Logo URL" style={{ ...inputStyle, flex: 1, minWidth: 240 }} />
+                    <button type="button" style={btnStyle()} disabled={uploadingPrimary} onClick={() => primaryInputRef.current?.click()}>
+                      {uploadingPrimary ? "Uploading..." : "Upload Logo"}
+                    </button>
+                    <input
+                      ref={primaryInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void uploadImage("primary", file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </div>
+                  {draft.logoUrl ? <img src={draft.logoUrl} alt="Logo preview" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 12, border: "1px solid var(--border)" }} /> : null}
+                </div>
               </>
             )}
-            <input value={draft.heroImageUrl} onChange={(e) => setDraft((prev) => ({ ...prev, heroImageUrl: e.target.value }))} placeholder="Hero image URL" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
+            <div style={{ gridColumn: "1 / -1", display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <input value={draft.heroImageUrl} onChange={(e) => setDraft((prev) => ({ ...prev, heroImageUrl: e.target.value }))} placeholder="Hero image URL" style={{ ...inputStyle, flex: 1, minWidth: 240 }} />
+                <button type="button" style={btnStyle()} disabled={uploadingHero} onClick={() => heroInputRef.current?.click()}>
+                  {uploadingHero ? "Uploading..." : "Upload Hero"}
+                </button>
+                <input
+                  ref={heroInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadImage("hero", file);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </div>
+              {draft.heroImageUrl ? <img src={draft.heroImageUrl} alt="Hero preview" style={{ width: "100%", maxWidth: 280, height: 140, objectFit: "cover", borderRadius: 12, border: "1px solid var(--border)" }} /> : null}
+            </div>
             <input value={draft.website} onChange={(e) => setDraft((prev) => ({ ...prev, website: e.target.value }))} placeholder="Website" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
             <input value={draft.aliases} onChange={(e) => setDraft((prev) => ({ ...prev, aliases: e.target.value }))} placeholder="Aliases (comma separated)" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
             <input value={draft.externalId} onChange={(e) => setDraft((prev) => ({ ...prev, externalId: e.target.value }))} placeholder="External ID" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
@@ -382,7 +472,7 @@ export function MotorsportEntitiesAdminPanel() {
           </label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button style={btnStyle("primary")} onClick={() => void save()}>Save</button>
-            <button style={btnStyle()} onClick={() => void refreshEnrichment()} disabled={!selectedId}>Refresh Enrichment</button>
+            <button style={btnStyle()} onClick={() => void refreshEnrichment()} disabled={!selectedId}>Autofill From Search</button>
             <button style={btnStyle()} onClick={() => void revertToDefaults()} disabled={!selectedId}>Revert to Defaults</button>
             <button style={btnStyle()} onClick={() => { setSelectedId(null); setDraft(emptyDraft); }}>Clear</button>
           </div>

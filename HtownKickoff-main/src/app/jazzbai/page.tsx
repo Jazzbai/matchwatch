@@ -9,6 +9,7 @@ import { StandingsAdminPanel } from "../../components/admin/StandingsAdminPanel"
 import { StaticPagesAdminPanel } from "../../components/admin/StaticPagesAdminPanel";
 import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import type { GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../lib/api";
+import { uploadSuperAdminImage } from "../../lib/superAdminUploads";
 
 type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "players" | "motorsportEntities" | "events" | "customEvents" | "sports" | "leagues" | "standings" | "imports" | "matches" | "predictions" | "motorsportEntries" | "pages" | "blog";
 
@@ -1213,6 +1214,8 @@ export default function JazzbaiSuperAdminPage() {
     externalId: "",
     isActive: true,
   });
+  const [uploadingNewTeamCrest, setUploadingNewTeamCrest] = React.useState(false);
+  const [uploadingTeamCrestId, setUploadingTeamCrestId] = React.useState<string | null>(null);
 
   const [events, setEvents] = React.useState<MatchEventRow[]>([]);
   const [eventsMeta, setEventsMeta] = React.useState<ApiListMeta | null>(null);
@@ -1313,6 +1316,8 @@ export default function JazzbaiSuperAdminPage() {
     sortOrder: "0",
     isActive: true,
   });
+  const [uploadingNewLeagueLogo, setUploadingNewLeagueLogo] = React.useState(false);
+  const [uploadingLeagueLogoId, setUploadingLeagueLogoId] = React.useState<string | null>(null);
 
   const [csvImportText, setCsvImportText] = React.useState("");
   const [csvImportDryRun, setCsvImportDryRun] = React.useState(true);
@@ -2192,6 +2197,84 @@ export default function JazzbaiSuperAdminPage() {
     setNewVenue((prev) => ({ ...prev, ...galleryFieldsFromItems(nextItems) }));
   };
 
+  const uploadNewAdminTeamCrest = async (file: File) => {
+    setUploadingNewTeamCrest(true);
+    setError(null);
+    try {
+      const uploaded = await uploadSuperAdminImage(file, "entity_primary");
+      setNewAdminTeam((prev) => ({ ...prev, crestUrl: uploaded.url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Team crest upload failed");
+    } finally {
+      setUploadingNewTeamCrest(false);
+    }
+  };
+
+  const uploadTeamDraftCrest = async (teamId: string, file: File) => {
+    const row = teamsRows.find((item) => item.id === teamId);
+    if (!row) return;
+    setUploadingTeamCrestId(teamId);
+    setError(null);
+    try {
+      const uploaded = await uploadSuperAdminImage(file, "entity_primary");
+      setTeamDrafts((prev) => {
+        const baseDraft = prev[teamId] ?? {
+          leagueId: row.leagueId || "",
+          name: row.name,
+          shortName: row.shortName || "",
+          crestUrl: row.crestUrl || "",
+          externalId: row.externalId || "",
+          isActive: row.isActive,
+        };
+        return { ...prev, [teamId]: { ...baseDraft, crestUrl: uploaded.url } };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Team crest upload failed");
+    } finally {
+      setUploadingTeamCrestId(null);
+    }
+  };
+
+  const uploadNewLeagueLogo = async (file: File) => {
+    setUploadingNewLeagueLogo(true);
+    setError(null);
+    try {
+      const uploaded = await uploadSuperAdminImage(file, "entity_primary");
+      setNewLeague((prev) => ({ ...prev, logoUrl: uploaded.url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "League logo upload failed");
+    } finally {
+      setUploadingNewLeagueLogo(false);
+    }
+  };
+
+  const uploadLeagueDraftLogo = async (leagueId: string, file: File) => {
+    const row = adminLeagues.find((item) => item.id === leagueId);
+    if (!row) return;
+    setUploadingLeagueLogoId(leagueId);
+    setError(null);
+    try {
+      const uploaded = await uploadSuperAdminImage(file, "entity_primary");
+      setLeagueDrafts((prev) => {
+        const baseDraft = prev[leagueId] ?? {
+          sportId: row.sportId,
+          name: row.name,
+          shortName: row.shortName || "",
+          logoUrl: row.logoUrl || "",
+          externalId: row.externalId || "",
+          country: row.country || "",
+          sortOrder: row.sortOrder,
+          isActive: row.isActive,
+        };
+        return { ...prev, [leagueId]: { ...baseDraft, logoUrl: uploaded.url } };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "League logo upload failed");
+    } finally {
+      setUploadingLeagueLogoId(null);
+    }
+  };
+
   const uploadVenueDraftCover = async (venueId: string, file: File) => {
     const row = venues.find((item) => item.id === venueId);
     const draft = row ? (venueDrafts[venueId] ?? buildVenueEditorDraft(row)) : undefined;
@@ -2363,7 +2446,7 @@ export default function JazzbaiSuperAdminPage() {
             ["attributes", "Attributes"],
             ["teams", "Teams"],
             ["players", "Players"],
-            ["motorsportEntities", "Motorsport Entities"],
+            ["motorsportEntities", "Motorsport Catalog"],
             ["events", "Match Events"],
             ["customEvents", "Custom Events"],
             ["sports", "Sports"],
@@ -2372,7 +2455,7 @@ export default function JazzbaiSuperAdminPage() {
             ["imports", "CSV Import"],
             ["matches", "Matches"],
             ["predictions", "Predictions"],
-            ["motorsportEntries", "Motorsport Entries"],
+            ["motorsportEntries", "Race Entries"],
             ["pages", "Static Pages"],
             ["blog", "Blog"],
           ] as Array<[TabId, string]>).map(([id, label]) => (
@@ -3523,7 +3606,26 @@ export default function JazzbaiSuperAdminPage() {
                 </select>
                 <input style={inputStyle} placeholder="Team name" value={newAdminTeam.name} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, name: e.target.value }))} />
                 <input style={inputStyle} placeholder="Short name" value={newAdminTeam.shortName} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, shortName: e.target.value }))} />
-                <input style={inputStyle} placeholder="Crest URL" value={newAdminTeam.crestUrl} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, crestUrl: e.target.value }))} />
+                <div style={{ display: "grid", gap: 6 }}>
+                  <input style={inputStyle} placeholder="Crest URL" value={newAdminTeam.crestUrl} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, crestUrl: e.target.value }))} />
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <button type="button" style={smallBtn("outline", uploadingNewTeamCrest)} disabled={uploadingNewTeamCrest} onClick={() => document.getElementById("new-team-crest-upload")?.click()}>
+                      {uploadingNewTeamCrest ? "Uploading..." : "Upload Crest"}
+                    </button>
+                    <input
+                      id="new-team-crest-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void uploadNewAdminTeamCrest(file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                    {newAdminTeam.crestUrl ? <img src={newAdminTeam.crestUrl} alt="New team crest preview" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /> : null}
+                  </div>
+                </div>
                 <input style={inputStyle} placeholder="External ID" value={newAdminTeam.externalId} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, externalId: e.target.value }))} />
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                   <input type="checkbox" checked={newAdminTeam.isActive} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, isActive: e.target.checked }))} />
@@ -3600,7 +3702,33 @@ export default function JazzbaiSuperAdminPage() {
                           </td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} /></td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.crestUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, crestUrl: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String(draft.crestUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, crestUrl: e.target.value } }))} />
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  style={smallBtn("outline", uploadingTeamCrestId === row.id)}
+                                  disabled={uploadingTeamCrestId === row.id}
+                                  onClick={() => document.getElementById(`team-crest-upload-${row.id}`)?.click()}
+                                >
+                                  {uploadingTeamCrestId === row.id ? "Uploading..." : "Upload Crest"}
+                                </button>
+                                <input
+                                  id={`team-crest-upload-${row.id}`}
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp,image/gif"
+                                  style={{ display: "none" }}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) void uploadTeamDraftCrest(row.id, file);
+                                    e.currentTarget.value = "";
+                                  }}
+                                />
+                                {draft.crestUrl ? <img src={String(draft.crestUrl)} alt={`${row.name} crest preview`} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /> : null}
+                              </div>
+                            </div>
+                          </td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
                           <td style={tdStyle}>
                             <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
@@ -3638,7 +3766,7 @@ export default function JazzbaiSuperAdminPage() {
                                   await loadTeamsAdmin();
                                 })}
                               >
-                                Refresh Enrichment
+                                Autofill From Search
                               </button>
                               <button
                                 style={smallBtn("danger", submittingAction === `archive-team-${row.id}`)}
@@ -4072,7 +4200,7 @@ export default function JazzbaiSuperAdminPage() {
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create League</h2>
               </div>
-              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.5fr 2fr 1.2fr 1.2fr 1.2fr 1fr auto" }}>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1.8fr 1.1fr 1.8fr 1.1fr 1.1fr 0.9fr auto" }}>
                 <select style={inputStyle} value={newLeague.sportId} onChange={(e) => setNewLeague((prev) => ({ ...prev, sportId: e.target.value }))}>
                   <option value="">Sport</option>
                   {lookupSports.map((sport) => (
@@ -4081,6 +4209,26 @@ export default function JazzbaiSuperAdminPage() {
                 </select>
                 <input style={inputStyle} placeholder="League name" value={newLeague.name} onChange={(e) => setNewLeague((prev) => ({ ...prev, name: e.target.value }))} />
                 <input style={inputStyle} placeholder="Short name" value={newLeague.shortName} onChange={(e) => setNewLeague((prev) => ({ ...prev, shortName: e.target.value }))} />
+                <div style={{ display: "grid", gap: 6 }}>
+                  <input style={inputStyle} placeholder="Logo URL" value={newLeague.logoUrl} onChange={(e) => setNewLeague((prev) => ({ ...prev, logoUrl: e.target.value }))} />
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <button type="button" style={smallBtn("outline", uploadingNewLeagueLogo)} disabled={uploadingNewLeagueLogo} onClick={() => document.getElementById("new-league-logo-upload")?.click()}>
+                      {uploadingNewLeagueLogo ? "Uploading..." : "Upload Logo"}
+                    </button>
+                    <input
+                      id="new-league-logo-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void uploadNewLeagueLogo(file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                    {newLeague.logoUrl ? <img src={newLeague.logoUrl} alt="New league logo preview" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /> : null}
+                  </div>
+                </div>
                 <input style={inputStyle} placeholder="External ID" value={newLeague.externalId} onChange={(e) => setNewLeague((prev) => ({ ...prev, externalId: e.target.value }))} />
                 <input style={inputStyle} placeholder="Country" value={newLeague.country} onChange={(e) => setNewLeague((prev) => ({ ...prev, country: e.target.value }))} />
                 <input style={inputStyle} type="number" placeholder="Sort" value={newLeague.sortOrder} onChange={(e) => setNewLeague((prev) => ({ ...prev, sortOrder: e.target.value }))} />
@@ -4134,6 +4282,7 @@ export default function JazzbaiSuperAdminPage() {
                       <th style={thStyle}>Sport</th>
                       <th style={thStyle}>Name</th>
                       <th style={thStyle}>Short</th>
+                      <th style={thStyle}>Logo</th>
                       <th style={thStyle}>External ID</th>
                       <th style={thStyle}>Country</th>
                       <th style={thStyle}>Enrichment</th>
@@ -4148,6 +4297,7 @@ export default function JazzbaiSuperAdminPage() {
                         sportId: row.sportId,
                         name: row.name,
                         shortName: row.shortName || "",
+                        logoUrl: row.logoUrl || "",
                         externalId: row.externalId || "",
                         country: row.country || "",
                         sortOrder: row.sortOrder,
@@ -4165,6 +4315,33 @@ export default function JazzbaiSuperAdminPage() {
                           </td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} /></td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String((draft as any).logoUrl ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, logoUrl: e.target.value } }))} />
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  style={smallBtn("outline", uploadingLeagueLogoId === row.id)}
+                                  disabled={uploadingLeagueLogoId === row.id}
+                                  onClick={() => document.getElementById(`league-logo-upload-${row.id}`)?.click()}
+                                >
+                                  {uploadingLeagueLogoId === row.id ? "Uploading..." : "Upload Logo"}
+                                </button>
+                                <input
+                                  id={`league-logo-upload-${row.id}`}
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp,image/gif"
+                                  style={{ display: "none" }}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) void uploadLeagueDraftLogo(row.id, file);
+                                    e.currentTarget.value = "";
+                                  }}
+                                />
+                                {(draft as any).logoUrl ? <img src={String((draft as any).logoUrl)} alt={`${row.name} logo preview`} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /> : null}
+                              </div>
+                            </div>
+                          </td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} /></td>
                           <td style={tdStyle}>
@@ -4185,6 +4362,7 @@ export default function JazzbaiSuperAdminPage() {
                                       sportId: draft.sportId,
                                       name: draft.name,
                                       shortName: draft.shortName || null,
+                                      logoUrl: (draft as any).logoUrl || null,
                                       externalId: draft.externalId || null,
                                       country: draft.country || null,
                                       sortOrder: Number(draft.sortOrder || 0),
@@ -4204,7 +4382,7 @@ export default function JazzbaiSuperAdminPage() {
                                   await loadLeaguesAdmin();
                                 })}
                               >
-                                Refresh Enrichment
+                                Autofill From Search
                               </button>
                               <button
                                 style={smallBtn("outline", submittingAction === `batch-league-enrichment-${row.id}`)}
@@ -4733,7 +4911,12 @@ export default function JazzbaiSuperAdminPage() {
           <section style={{ display: "grid", gap: 14 }}>
             <div style={{ ...cardStyle, overflow: "visible", position: "relative", zIndex: 20 }}>
               <div style={sectionHeadStyle}>
-                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Motorsport Entry</h2>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Race Entry</h2>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                    Use entries for event-specific participation and results. Drivers, teams, and manufacturers live in Motorsport Catalog.
+                  </div>
+                </div>
               </div>
               <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                 <select style={inputStyle} value={newMotorsportEntry.matchId} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, matchId: e.target.value }))}>
@@ -4818,7 +5001,12 @@ export default function JazzbaiSuperAdminPage() {
 
             <div style={cardStyle}>
               <div style={sectionHeadStyle}>
-                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Motorsport Entries ({motorsportEntriesCount})</h2>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Race Entries ({motorsportEntriesCount})</h2>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                    Entry rows are per event. Edit grid, start, finish, status, and points here.
+                  </div>
+                </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <select style={{ ...inputStyle, minWidth: 240 }} value={motorsportEntriesMatchId} onChange={(e) => setMotorsportEntriesMatchId(e.target.value)}>
                     <option value="">All motorsport events</option>

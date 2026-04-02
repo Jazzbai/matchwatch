@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { api, ApiClientError } from "../../lib/api";
+import { uploadSuperAdminImage } from "../../lib/superAdminUploads";
 
 type PlayerRow = {
   id: string;
@@ -93,6 +94,10 @@ export function PlayersAdminPanel() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const [uploadingHeadshot, setUploadingHeadshot] = React.useState(false);
+  const [uploadingHero, setUploadingHero] = React.useState(false);
+  const headshotInputRef = React.useRef<HTMLInputElement | null>(null);
+  const heroInputRef = React.useRef<HTMLInputElement | null>(null);
   const emptyDraft = React.useMemo(() => ({
     sportId: "",
     leagueId: "",
@@ -215,6 +220,23 @@ export function PlayersAdminPanel() {
     }
   }
 
+  async function uploadImage(kind: "headshot" | "hero", file: File) {
+    setError(null);
+    setMessage(null);
+    const setUploading = kind === "headshot" ? setUploadingHeadshot : setUploadingHero;
+    const field = kind === "headshot" ? "headshotUrl" : "heroImageUrl";
+    try {
+      setUploading(true);
+      const uploaded = await uploadSuperAdminImage(file, kind === "headshot" ? "entity_primary" : "entity_hero");
+      setDraft((prev) => ({ ...prev, [field]: uploaded.url }));
+      setMessage(kind === "headshot" ? "Headshot uploaded." : "Hero image uploaded.");
+    } catch (err) {
+      setError(formatError(err, "Image upload failed."));
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const selectedRow = players.find((item) => item.id === selectedId) || null;
 
   return (
@@ -223,6 +245,9 @@ export function PlayersAdminPanel() {
         <div>
           <div className="section-label" style={{ marginBottom: 8 }}>Players</div>
           <h2 className="font-display text-h2" style={{ margin: 0, color: "var(--foreground)" }}>Player Directory</h2>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted-foreground)" }}>
+            Autofill uses the saved player name plus sport and league context. Manual uploads and edits override autofill.
+          </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search players" style={{ ...inputStyle, width: 220 }} />
@@ -256,8 +281,46 @@ export function PlayersAdminPanel() {
             <input value={draft.shortName} onChange={(e) => setDraft((prev) => ({ ...prev, shortName: e.target.value }))} placeholder="Short name" style={inputStyle} />
             <input value={draft.nationality} onChange={(e) => setDraft((prev) => ({ ...prev, nationality: e.target.value }))} placeholder="Nationality" style={inputStyle} />
             <input value={draft.countryCode} onChange={(e) => setDraft((prev) => ({ ...prev, countryCode: e.target.value }))} placeholder="Country code" style={inputStyle} />
-            <input value={draft.headshotUrl} onChange={(e) => setDraft((prev) => ({ ...prev, headshotUrl: e.target.value }))} placeholder="Headshot URL" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
-            <input value={draft.heroImageUrl} onChange={(e) => setDraft((prev) => ({ ...prev, heroImageUrl: e.target.value }))} placeholder="Hero image URL" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
+            <div style={{ gridColumn: "1 / -1", display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <input value={draft.headshotUrl} onChange={(e) => setDraft((prev) => ({ ...prev, headshotUrl: e.target.value }))} placeholder="Headshot URL" style={{ ...inputStyle, flex: 1, minWidth: 240 }} />
+                <button type="button" style={btnStyle()} disabled={uploadingHeadshot} onClick={() => headshotInputRef.current?.click()}>
+                  {uploadingHeadshot ? "Uploading..." : "Upload Headshot"}
+                </button>
+                <input
+                  ref={headshotInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadImage("headshot", file);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </div>
+              {draft.headshotUrl ? <img src={draft.headshotUrl} alt="Headshot preview" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 12, border: "1px solid var(--border)" }} /> : null}
+            </div>
+            <div style={{ gridColumn: "1 / -1", display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <input value={draft.heroImageUrl} onChange={(e) => setDraft((prev) => ({ ...prev, heroImageUrl: e.target.value }))} placeholder="Hero image URL" style={{ ...inputStyle, flex: 1, minWidth: 240 }} />
+                <button type="button" style={btnStyle()} disabled={uploadingHero} onClick={() => heroInputRef.current?.click()}>
+                  {uploadingHero ? "Uploading..." : "Upload Hero"}
+                </button>
+                <input
+                  ref={heroInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadImage("hero", file);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </div>
+              {draft.heroImageUrl ? <img src={draft.heroImageUrl} alt="Hero preview" style={{ width: "100%", maxWidth: 280, height: 140, objectFit: "cover", borderRadius: 12, border: "1px solid var(--border)" }} /> : null}
+            </div>
             <input value={draft.website} onChange={(e) => setDraft((prev) => ({ ...prev, website: e.target.value }))} placeholder="Website" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
             <input value={draft.aliases} onChange={(e) => setDraft((prev) => ({ ...prev, aliases: e.target.value }))} placeholder="Aliases (comma separated)" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
             <input value={draft.externalId} onChange={(e) => setDraft((prev) => ({ ...prev, externalId: e.target.value }))} placeholder="External ID" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
@@ -286,7 +349,7 @@ export function PlayersAdminPanel() {
           </label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button style={btnStyle("primary")} onClick={() => void save()}>Save Player</button>
-            <button style={btnStyle()} onClick={() => void refreshEnrichment()} disabled={!selectedId}>Refresh Enrichment</button>
+            <button style={btnStyle()} onClick={() => void refreshEnrichment()} disabled={!selectedId}>Autofill From Search</button>
             <button style={btnStyle()} onClick={() => void revertToDefaults()} disabled={!selectedId}>Revert to Defaults</button>
             {selectedId ? <button style={btnStyle()} onClick={() => setSelectedId(null)}>Clear</button> : null}
           </div>
