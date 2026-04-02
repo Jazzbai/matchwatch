@@ -40,7 +40,7 @@ This repository is a monorepo with:
 - AWS S3 for uploads
 - Resend for email delivery
 - Google Places API for venue lookup and venue data enrichment
-- Google Custom Search JSON API + Programmable Search Engine for sports entity autofill
+- Provider-based entity autofill with deterministic fallback and optional SERP integration
 - Google reCAPTCHA for signup/login abuse protection
 
 ## Monorepo Layout
@@ -131,6 +131,9 @@ Key variables from `.env.example`:
 - `API_PROXY_TARGET`
 - `GOOGLE_PLACES_API_KEY`
 - `GOOGLE_PLACES_BASE_URL`
+- `ENTITY_ENRICHMENT_PROVIDER`
+- `SERPAPI_API_KEY`
+- `SERPAPI_LOCATION`
 - `GOOGLE_SEARCH_API_KEY`
 - `GOOGLE_SEARCH_ENGINE_ID`
 - `RECAPTCHA_SECRET_KEY`
@@ -225,14 +228,26 @@ Used for:
 
 Required env:
 
+- `ENTITY_ENRICHMENT_PROVIDER=generated` for internal fallback-only autofill
+
+Optional external provider env:
+
+- `ENTITY_ENRICHMENT_PROVIDER=serpapi`
+- `SERPAPI_API_KEY`
+- optional `SERPAPI_LOCATION`
+
+Legacy compatibility only:
+
+- `ENTITY_ENRICHMENT_PROVIDER=google-legacy`
 - `GOOGLE_SEARCH_API_KEY`
 - `GOOGLE_SEARCH_ENGINE_ID`
 
 Notes:
 
-- The API code calls `https://www.googleapis.com/customsearch/v1`
-- the search engine id is the `cx` value from your Programmable Search Engine
-- `docker-compose.yml` now passes these env vars into the API container
+- Generated fallback is the default and requires no external provider.
+- When `SERPAPI_API_KEY` is configured, autofill can use normalized web and image search results.
+- Legacy Google Custom Search env vars are only used when `ENTITY_ENRICHMENT_PROVIDER=google-legacy` is explicitly set.
+- `docker-compose.yml` now passes all enrichment env vars into the API container.
 
 ### Deployment Checklist
 
@@ -240,8 +255,9 @@ Add these to the server `.env` before rebuilding:
 
 ```env
 GOOGLE_PLACES_API_KEY=your_places_key
-GOOGLE_SEARCH_API_KEY=your_custom_search_key
-GOOGLE_SEARCH_ENGINE_ID=your_programmable_search_engine_id
+ENTITY_ENRICHMENT_PROVIDER=generated
+SERPAPI_API_KEY=
+SERPAPI_LOCATION=
 ```
 
 Then redeploy:

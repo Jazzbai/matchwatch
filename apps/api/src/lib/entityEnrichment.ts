@@ -1,6 +1,8 @@
-﻿import { nanoid } from 'nanoid';
+import { nanoid } from 'nanoid';
 
 export type EntityKind = 'league' | 'team' | 'player' | 'driver' | 'entrant' | 'manufacturer';
+type EntityFieldSource = 'NONE' | 'GOOGLE' | 'MANUAL';
+type EnrichmentProvider = 'generated' | 'serpapi' | 'google-legacy';
 
 type SearchItem = {
   title?: string;
@@ -8,6 +10,21 @@ type SearchItem = {
   link?: string;
   image?: { thumbnailLink?: string; contextLink?: string };
   pagemap?: Record<string, unknown>;
+};
+
+type SerpApiOrganicResult = {
+  title?: string;
+  snippet?: string;
+  link?: string;
+  source?: string;
+};
+
+type SerpApiImageResult = {
+  title?: string;
+  link?: string;
+  original?: string;
+  thumbnail?: string;
+  source?: string;
 };
 
 export type EntityBaseRecord = {
@@ -23,11 +40,11 @@ export type EntityBaseRecord = {
   description?: string | null;
   primaryImageUrl?: string | null;
   heroImageUrl?: string | null;
-  shortDescriptionSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
-  descriptionSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
-  primaryImageSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
-  heroImageSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
-  websiteSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
+  shortDescriptionSource?: EntityFieldSource | null;
+  descriptionSource?: EntityFieldSource | null;
+  primaryImageSource?: EntityFieldSource | null;
+  heroImageSource?: EntityFieldSource | null;
+  websiteSource?: EntityFieldSource | null;
 };
 
 export type EntityEnrichmentResult = {
@@ -65,27 +82,65 @@ function uniqueStrings(values: Array<string | null | undefined>) {
 }
 
 function deterministicDescription(kind: EntityKind, record: EntityBaseRecord) {
+  const location = uniqueStrings([record.country, record.nationality]).join(', ');
+  const competitionContext = uniqueStrings([record.leagueName, record.sportName]).join(' ');
   const descriptor = (() => {
+    if (kind === 'league') return record.sportName ? `${record.sportName} competition` : 'sports competition';
+    if (kind === 'team') return record.sportName ? `${record.sportName} team` : 'sports team';
+    if (kind === 'player') return record.sportName ? `${record.sportName} player` : 'athlete';
+    if (kind === 'driver') return 'racing driver';
+    if (kind === 'entrant') return 'motorsport team';
+    if (kind === 'manufacturer') return 'motorsport manufacturer';
+    return 'sports entity';
+  })();
+
+  const shortSentence = (() => {
     switch (kind) {
-      case 'league': return record.sportName ? `${record.sportName} competition` : 'sports competition';
-      case 'team': return record.sportName ? `${record.sportName} team` : 'sports team';
-      case 'player': return record.sportName ? `${record.sportName} player` : 'athlete';
-      case 'driver': return 'racing driver';
-      case 'entrant': return 'motorsport team';
-      case 'manufacturer': return 'motorsport manufacturer';
-      default: return 'sports entity';
+      case 'league':
+        return `${record.name} is a ${descriptor}${location ? ` based in ${location}` : ''}.`;
+      case 'team':
+        return `${record.name} is a ${descriptor}${competitionContext ? ` competing in ${competitionContext}` : ''}${location ? ` and associated with ${location}` : ''}.`;
+      case 'player':
+        return `${record.name} is a ${descriptor}${competitionContext ? ` active in ${competitionContext}` : ''}${location ? ` from ${location}` : ''}.`;
+      case 'driver':
+        return `${record.name} is a ${descriptor}${competitionContext ? ` competing in ${competitionContext}` : ''}${location ? ` from ${location}` : ''}.`;
+      case 'entrant':
+        return `${record.name} is a ${descriptor}${competitionContext ? ` active in ${competitionContext}` : ''}.`;
+      case 'manufacturer':
+        return `${record.name} is a ${descriptor}${competitionContext ? ` associated with ${competitionContext}` : ''}.`;
+      default:
+        return `${record.name} is a ${descriptor}.`;
     }
   })();
-  const context = uniqueStrings([record.leagueName, record.country || record.nationality]).join(' in ');
-  const sentence = `${record.name} is a ${descriptor}${context ? ` competing in ${context}` : ''}.`;
-  const long = `${sentence} MatchWatch tracks schedules, results, standings, and watchparty context for this ${kind === 'league' ? 'competition' : 'entity'}.`;
+
+  const long = (() => {
+    const scope = kind === 'league' ? 'competition' : 'entity';
+    const supportingContext = uniqueStrings([
+      competitionContext || null,
+      location || null,
+      record.shortName || null,
+    ]).join(' | ');
+    return `${shortSentence} MatchWatch tracks schedules, results, standings, rankings, and watchparty context for this ${scope}${supportingContext ? `, with catalog metadata seeded from ${supportingContext}` : ''}.`;
+  })();
+
   return {
-    shortDescription: compact(sentence, 140),
+    shortDescription: compact(shortSentence, 140),
     description: compact(long, 420),
   };
 }
 
-async function fetchCustomSearch(query: string, mode: 'web' | 'image') {
+function resolveProvider(): EnrichmentProvider {
+  const preferred = process.env.ENTITY_ENRICHMENT_PROVIDER?.trim().toLowerCase();
+  if (preferred === 'serpapi' && process.env.SERPAPI_API_KEY?.trim()) return 'serpapi';
+  if ((preferred === 'google' || preferred === 'google-legacy') && process.env.GOOGLE_SEARCH_API_KEY?.trim() && process.env.GOOGLE_SEARCH_ENGINE_ID?.trim()) {
+    return 'google-legacy';
+  }
+  if (preferred === 'generated') return 'generated';
+  if (process.env.SERPAPI_API_KEY?.trim()) return 'serpapi';
+  return 'generated';
+}
+
+async function fetchCustomSearchLegacy(query: string, mode: 'web' | 'image') {
   const key = process.env.GOOGLE_SEARCH_API_KEY?.trim();
   const cx = process.env.GOOGLE_SEARCH_ENGINE_ID?.trim();
   if (!key || !cx) return [] as SearchItem[];
@@ -102,6 +157,51 @@ async function fetchCustomSearch(query: string, mode: 'web' | 'image') {
   if (!response.ok) return [] as SearchItem[];
   const payload = await response.json() as { items?: SearchItem[] };
   return Array.isArray(payload.items) ? payload.items : [];
+}
+
+async function fetchSerpApiSearch(query: string, mode: 'web' | 'image') {
+  const apiKey = process.env.SERPAPI_API_KEY?.trim();
+  if (!apiKey) return { webResults: [] as SearchItem[], imageUrls: [] as string[] };
+
+  const params = new URLSearchParams({
+    engine: 'google',
+    q: query,
+    api_key: apiKey,
+    num: '5',
+    no_cache: 'true',
+    output: 'json',
+  });
+
+  if (process.env.SERPAPI_LOCATION?.trim()) params.set('location', process.env.SERPAPI_LOCATION.trim());
+  if (mode === 'image') params.set('tbm', 'isch');
+
+  const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
+  if (!response.ok) return { webResults: [] as SearchItem[], imageUrls: [] as string[] };
+
+  const payload = await response.json() as {
+    error?: string;
+    organic_results?: SerpApiOrganicResult[];
+    images_results?: SerpApiImageResult[];
+  };
+
+  if (payload.error) return { webResults: [] as SearchItem[], imageUrls: [] as string[] };
+
+  if (mode === 'image') {
+    const imageUrls = uniqueStrings((payload.images_results || []).flatMap((item) => [
+      item.original,
+      item.thumbnail,
+      item.link,
+      item.source,
+    ])).filter((value) => /^https?:\/\//i.test(value)).slice(0, 6);
+    return { webResults: [] as SearchItem[], imageUrls };
+  }
+
+  const webResults = (payload.organic_results || []).slice(0, 5).map((item) => ({
+    title: item.title,
+    snippet: item.snippet,
+    link: item.link,
+  }));
+  return { webResults, imageUrls: [] as string[] };
 }
 
 function extractImageUrls(items: SearchItem[]) {
@@ -137,15 +237,30 @@ function buildQuery(kind: EntityKind, record: EntityBaseRecord) {
 
 export async function buildEntityEnrichment(kind: EntityKind, record: EntityBaseRecord): Promise<EntityEnrichmentResult> {
   const query = buildQuery(kind, record);
-  const [webResults, imageResults] = await Promise.all([
-    fetchCustomSearch(query, 'web'),
-    fetchCustomSearch(query, 'image'),
-  ]);
+  const provider = resolveProvider();
+  let webResults: SearchItem[] = [];
+  let imageUrls: string[] = [];
+
+  if (provider === 'serpapi') {
+    const [webResultSet, imageResultSet] = await Promise.all([
+      fetchSerpApiSearch(query, 'web'),
+      fetchSerpApiSearch(query, 'image'),
+    ]);
+    webResults = webResultSet.webResults;
+    imageUrls = imageResultSet.imageUrls;
+  } else if (provider === 'google-legacy') {
+    const [legacyWebResults, imageResults] = await Promise.all([
+      fetchCustomSearchLegacy(query, 'web'),
+      fetchCustomSearchLegacy(query, 'image'),
+    ]);
+    webResults = legacyWebResults;
+    imageUrls = extractImageUrls(imageResults);
+  }
 
   const snippet = extractSnippet(webResults);
   const website = extractWebsite(webResults);
-  const imageUrls = extractImageUrls(imageResults);
   const fallback = deterministicDescription(kind, record);
+  const autoSource = 'GOOGLE' as const;
 
   const shortDescription = record.shortDescriptionSource === 'MANUAL'
     ? undefined
@@ -172,6 +287,7 @@ export async function buildEntityEnrichment(kind: EntityKind, record: EntityBase
   return {
     snapshot: {
       query,
+      provider,
       fetchedAt: new Date().toISOString(),
       providerSeed: {
         name: record.name,
@@ -182,14 +298,15 @@ export async function buildEntityEnrichment(kind: EntityKind, record: EntityBase
       },
       webResults: webResults.map((item) => ({ title: item.title || null, snippet: item.snippet || null, link: item.link || null })),
       imageUrls,
+      usedGeneratedFallback: provider === 'generated' || !snippet,
       requestId: nanoid(10),
     },
     updates: {
-      ...(shortDescription ? { shortDescription, shortDescriptionSource: 'GOOGLE' as const } : {}),
-      ...(description ? { description, descriptionSource: 'GOOGLE' as const } : {}),
-      ...(primaryImageUrl ? { primaryImageUrl, primaryImageSource: 'GOOGLE' as const } : {}),
-      ...(heroImageUrl ? { heroImageUrl, heroImageSource: 'GOOGLE' as const } : {}),
-      ...(nextWebsite ? { website: nextWebsite, websiteSource: 'GOOGLE' as const } : {}),
+      ...(shortDescription ? { shortDescription, shortDescriptionSource: autoSource } : {}),
+      ...(description ? { description, descriptionSource: autoSource } : {}),
+      ...(primaryImageUrl ? { primaryImageUrl, primaryImageSource: autoSource } : {}),
+      ...(heroImageUrl ? { heroImageUrl, heroImageSource: autoSource } : {}),
+      ...(nextWebsite ? { website: nextWebsite, websiteSource: autoSource } : {}),
       ...(aliases.length > 0 ? { aliases } : {}),
     },
   };

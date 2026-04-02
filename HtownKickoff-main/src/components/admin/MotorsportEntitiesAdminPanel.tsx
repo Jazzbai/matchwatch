@@ -125,7 +125,7 @@ function formatEnrichmentStatus(value?: "NEVER_SYNCED" | "SYNCED" | "ERROR") {
 
 function sourceLabel(value?: SourceValue) {
   if (value === "MANUAL") return { label: "Manual", color: "#2563eb" };
-  if (value === "GOOGLE") return { label: "Google", color: "#16a34a" };
+  if (value === "GOOGLE") return { label: "Auto", color: "#16a34a" };
   return { label: "None", color: "var(--muted-foreground)" };
 }
 
@@ -337,7 +337,7 @@ export function MotorsportEntitiesAdminPanel() {
           <div className="section-label" style={{ marginBottom: 8 }}>Motorsport</div>
           <h2 className="font-display text-h2" style={{ margin: 0, color: "var(--foreground)" }}>Drivers, Teams, Manufacturers</h2>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted-foreground)" }}>
-            Entities are reusable catalog records. Race Entries is the separate per-event layer for grid, finish, status, and points.
+            Entities are reusable catalog records. Race Entries is the separate per-event layer for grid, finish, status, and points. Autofill uses external provider data when configured and generated fallback copy otherwise.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

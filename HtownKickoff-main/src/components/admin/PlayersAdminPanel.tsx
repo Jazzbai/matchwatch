@@ -76,7 +76,7 @@ function formatError(error: unknown, fallback: string) {
 
 function sourceLabel(value?: "NONE" | "GOOGLE" | "MANUAL" | null) {
   if (value === "MANUAL") return { label: "Manual", color: "#2563eb" };
-  if (value === "GOOGLE") return { label: "Google", color: "#16a34a" };
+  if (value === "GOOGLE") return { label: "Auto", color: "#16a34a" };
   return { label: "None", color: "var(--muted-foreground)" };
 }
 
@@ -246,7 +246,7 @@ export function PlayersAdminPanel() {
           <div className="section-label" style={{ marginBottom: 8 }}>Players</div>
           <h2 className="font-display text-h2" style={{ margin: 0, color: "var(--foreground)" }}>Player Directory</h2>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted-foreground)" }}>
-            Autofill uses the saved player name plus sport and league context. Manual uploads and edits override autofill.
+            Autofill uses saved player, sport, and league context. When an external enrichment provider is configured it uses provider results; otherwise it generates fallback copy. Manual uploads and edits override autofill.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
