@@ -235,27 +235,67 @@ function buildQuery(kind: EntityKind, record: EntityBaseRecord) {
   ]).join(' ');
 }
 
+function buildPrimaryImageQuery(kind: EntityKind, record: EntityBaseRecord) {
+  const base = uniqueStrings([
+    record.name,
+    record.shortName,
+    record.leagueName,
+    record.sportName,
+    record.country,
+    record.nationality,
+  ]).join(' ');
+
+  if (kind === 'player' || kind === 'driver') return `${base} headshot portrait`;
+  if (kind === 'team' || kind === 'league' || kind === 'entrant' || kind === 'manufacturer') return `${base} logo`;
+  return `${base} image`;
+}
+
+function buildHeroImageQuery(kind: EntityKind, record: EntityBaseRecord) {
+  const base = uniqueStrings([
+    record.name,
+    record.shortName,
+    record.leagueName,
+    record.sportName,
+    record.country,
+    record.nationality,
+  ]).join(' ');
+
+  if (kind === 'player' || kind === 'driver') return `${base} action photo`;
+  if (kind === 'team' || kind === 'entrant' || kind === 'manufacturer') return `${base} team photo`;
+  if (kind === 'league') return `${base} trophy competition`;
+  return `${base} hero image`;
+}
+
 export async function buildEntityEnrichment(kind: EntityKind, record: EntityBaseRecord): Promise<EntityEnrichmentResult> {
   const query = buildQuery(kind, record);
+  const primaryImageQuery = buildPrimaryImageQuery(kind, record);
+  const heroImageQuery = buildHeroImageQuery(kind, record);
   const provider = resolveProvider();
   let webResults: SearchItem[] = [];
-  let imageUrls: string[] = [];
+  let primaryImageUrls: string[] = [];
+  let heroImageUrls: string[] = [];
 
   if (provider === 'serpapi') {
-    const [webResultSet, imageResultSet] = await Promise.all([
+    const [webResultSet, primaryImageResultSet, heroImageResultSet] = await Promise.all([
       fetchSerpApiSearch(query, 'web'),
-      fetchSerpApiSearch(query, 'image'),
+      fetchSerpApiSearch(primaryImageQuery, 'image'),
+      fetchSerpApiSearch(heroImageQuery, 'image'),
     ]);
     webResults = webResultSet.webResults;
-    imageUrls = imageResultSet.imageUrls;
+    primaryImageUrls = primaryImageResultSet.imageUrls;
+    heroImageUrls = heroImageResultSet.imageUrls;
   } else if (provider === 'google-legacy') {
-    const [legacyWebResults, imageResults] = await Promise.all([
+    const [legacyWebResults, primaryImageResults, heroImageResults] = await Promise.all([
       fetchCustomSearchLegacy(query, 'web'),
-      fetchCustomSearchLegacy(query, 'image'),
+      fetchCustomSearchLegacy(primaryImageQuery, 'image'),
+      fetchCustomSearchLegacy(heroImageQuery, 'image'),
     ]);
     webResults = legacyWebResults;
-    imageUrls = extractImageUrls(imageResults);
+    primaryImageUrls = extractImageUrls(primaryImageResults);
+    heroImageUrls = extractImageUrls(heroImageResults);
   }
+
+  const imageUrls = uniqueStrings([...primaryImageUrls, ...heroImageUrls]).slice(0, 6);
 
   const snippet = extractSnippet(webResults);
   const website = extractWebsite(webResults);
@@ -270,10 +310,10 @@ export async function buildEntityEnrichment(kind: EntityKind, record: EntityBase
     : compact(ensureSentence(snippet || fallback.description), 420);
   const primaryImageUrl = record.primaryImageSource === 'MANUAL'
     ? undefined
-    : (imageUrls[0] || record.primaryImageUrl || null);
+    : (primaryImageUrls[0] || imageUrls[0] || record.primaryImageUrl || null);
   const heroImageUrl = record.heroImageSource === 'MANUAL'
     ? undefined
-    : (imageUrls[1] || imageUrls[0] || record.heroImageUrl || record.primaryImageUrl || null);
+    : (heroImageUrls[0] || primaryImageUrls[1] || primaryImageUrls[0] || imageUrls[0] || record.heroImageUrl || record.primaryImageUrl || null);
   const nextWebsite = record.websiteSource === 'MANUAL'
     ? undefined
     : (website || record.website || null);
@@ -287,6 +327,8 @@ export async function buildEntityEnrichment(kind: EntityKind, record: EntityBase
   return {
     snapshot: {
       query,
+      primaryImageQuery,
+      heroImageQuery,
       provider,
       fetchedAt: new Date().toISOString(),
       providerSeed: {
@@ -298,6 +340,8 @@ export async function buildEntityEnrichment(kind: EntityKind, record: EntityBase
       },
       webResults: webResults.map((item) => ({ title: item.title || null, snippet: item.snippet || null, link: item.link || null })),
       imageUrls,
+      primaryImageUrls,
+      heroImageUrls,
       usedGeneratedFallback: provider === 'generated' || !snippet,
       requestId: nanoid(10),
     },

@@ -1789,6 +1789,7 @@ superAdminRoutes.post('/teams', async (c) => {
         slug: generateUniqueSlug(trimmedName),
         shortName: parsed.data.shortName?.trim() || null,
         crestUrl: parsed.data.crestUrl?.trim() || null,
+        crestSource: parsed.data.crestUrl?.trim() ? 'MANUAL' : 'NONE',
         externalId: parsed.data.externalId?.trim() || null,
         isActive: parsed.data.isActive,
     }).returning({
@@ -1810,7 +1811,11 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const [existing] = await db.select({ id: teams.id }).from(teams).where(eq(teams.id, teamId)).limit(1);
+    const [existing] = await db.select({
+        id: teams.id,
+        crestUrl: teams.crestUrl,
+        crestSource: teams.crestSource,
+    }).from(teams).where(eq(teams.id, teamId)).limit(1);
     if (!existing) return c.json(apiError('NOT_FOUND', 'Team not found'), 404);
 
     if (parsed.data.leagueId) {
@@ -1824,7 +1829,10 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
     if (parsed.data.leagueId !== undefined) updates.leagueId = parsed.data.leagueId || null;
     if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
     if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
-    if (parsed.data.crestUrl !== undefined) updates.crestUrl = parsed.data.crestUrl?.trim() || null;
+    if (parsed.data.crestUrl !== undefined) {
+        updates.crestUrl = parsed.data.crestUrl?.trim() || null;
+        updates.crestSource = resolveUpdatedFieldSource(parsed.data.crestUrl, existing.crestUrl, existing.crestSource);
+    }
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
     if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
 
@@ -2073,6 +2081,7 @@ superAdminRoutes.post('/leagues', async (c) => {
         slug: generateUniqueSlug(parsed.data.name.trim()),
         shortName: parsed.data.shortName?.trim() || null,
         logoUrl: parsed.data.logoUrl || null,
+        logoSource: parsed.data.logoUrl?.trim() ? 'MANUAL' : 'NONE',
         externalId: parsed.data.externalId?.trim() || null,
         country: parsed.data.country?.trim() || null,
         sortOrder: parsed.data.sortOrder,
@@ -2090,7 +2099,11 @@ superAdminRoutes.patch('/leagues/:leagueId', async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const [existingLeague] = await db.select({ id: leagues.id }).from(leagues).where(eq(leagues.id, leagueId)).limit(1);
+    const [existingLeague] = await db.select({
+        id: leagues.id,
+        logoUrl: leagues.logoUrl,
+        logoSource: leagues.logoSource,
+    }).from(leagues).where(eq(leagues.id, leagueId)).limit(1);
     if (!existingLeague) return c.json(apiError('NOT_FOUND', 'League not found'), 404);
 
     if (parsed.data.sportId) {
@@ -2102,7 +2115,10 @@ superAdminRoutes.patch('/leagues/:leagueId', async (c) => {
     if (parsed.data.sportId !== undefined) updates.sportId = parsed.data.sportId;
     if (parsed.data.name !== undefined) updates.name = parsed.data.name;
     if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName;
-    if (parsed.data.logoUrl !== undefined) updates.logoUrl = parsed.data.logoUrl;
+    if (parsed.data.logoUrl !== undefined) {
+        updates.logoUrl = parsed.data.logoUrl;
+        updates.logoSource = resolveUpdatedFieldSource(parsed.data.logoUrl, existingLeague.logoUrl, existingLeague.logoSource);
+    }
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId;
     if (parsed.data.country !== undefined) updates.country = parsed.data.country;
     if (parsed.data.sortOrder !== undefined) updates.sortOrder = parsed.data.sortOrder;
@@ -3796,6 +3812,27 @@ const updatePlayerSchema = z.object({
     isActive: z.boolean().optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
+type EntitySourceValue = 'NONE' | 'GOOGLE' | 'MANUAL' | null | undefined;
+
+function normalizeOptionalText(value: unknown) {
+    return typeof value === 'string' ? value.trim() || null : null;
+}
+
+function resolveUpdatedFieldSource(
+    nextValue: unknown,
+    currentValue: unknown,
+    currentSource: EntitySourceValue,
+): Exclude<EntitySourceValue, null | undefined> {
+    const normalizedNext = normalizeOptionalText(nextValue);
+    const normalizedCurrent = normalizeOptionalText(currentValue);
+
+    if (normalizedNext === normalizedCurrent) {
+        return currentSource || (normalizedNext ? 'GOOGLE' : 'NONE');
+    }
+
+    return normalizedNext ? 'MANUAL' : 'NONE';
+}
+
 const staticPageSchema = z.object({
     slug: z.string().min(2).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
     title: z.string().min(2).max(200),
@@ -3964,7 +4001,19 @@ superAdminRoutes.patch('/players/:playerId', async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const [existing] = await db.select({ id: players.id }).from(players).where(eq(players.id, playerId)).limit(1);
+    const [existing] = await db.select({
+        id: players.id,
+        headshotUrl: players.headshotUrl,
+        headshotSource: players.headshotSource,
+        heroImageUrl: players.heroImageUrl,
+        heroImageSource: players.heroImageSource,
+        website: players.website,
+        websiteSource: players.websiteSource,
+        shortDescription: players.shortDescription,
+        shortDescriptionSource: players.shortDescriptionSource,
+        description: players.description,
+        descriptionSource: players.descriptionSource,
+    }).from(players).where(eq(players.id, playerId)).limit(1);
     if (!existing) return c.json(apiError('NOT_FOUND', 'Player not found'), 404);
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -3976,23 +4025,23 @@ superAdminRoutes.patch('/players/:playerId', async (c) => {
     if (parsed.data.countryCode !== undefined) updates.countryCode = parsed.data.countryCode?.trim().toUpperCase() || null;
     if (parsed.data.headshotUrl !== undefined) {
         updates.headshotUrl = parsed.data.headshotUrl?.trim() || null;
-        updates.headshotSource = parsed.data.headshotUrl?.trim() ? 'MANUAL' : 'NONE';
+        updates.headshotSource = resolveUpdatedFieldSource(parsed.data.headshotUrl, existing.headshotUrl, existing.headshotSource);
     }
     if (parsed.data.heroImageUrl !== undefined) {
         updates.heroImageUrl = parsed.data.heroImageUrl?.trim() || null;
-        updates.heroImageSource = parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE';
+        updates.heroImageSource = resolveUpdatedFieldSource(parsed.data.heroImageUrl, existing.heroImageUrl, existing.heroImageSource);
     }
     if (parsed.data.website !== undefined) {
         updates.website = parsed.data.website?.trim() || null;
-        updates.websiteSource = parsed.data.website?.trim() ? 'MANUAL' : 'NONE';
+        updates.websiteSource = resolveUpdatedFieldSource(parsed.data.website, existing.website, existing.websiteSource);
     }
     if (parsed.data.shortDescription !== undefined) {
         updates.shortDescription = parsed.data.shortDescription?.trim() || null;
-        updates.shortDescriptionSource = parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE';
+        updates.shortDescriptionSource = resolveUpdatedFieldSource(parsed.data.shortDescription, existing.shortDescription, existing.shortDescriptionSource);
     }
     if (parsed.data.description !== undefined) {
         updates.description = parsed.data.description?.trim() || null;
-        updates.descriptionSource = parsed.data.description?.trim() ? 'MANUAL' : 'NONE';
+        updates.descriptionSource = resolveUpdatedFieldSource(parsed.data.description, existing.description, existing.descriptionSource);
     }
     if (parsed.data.aliases !== undefined) updates.aliases = parsed.data.aliases.map((item) => item.trim()).filter(Boolean);
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
@@ -4091,7 +4140,19 @@ superAdminRoutes.patch('/drivers/:driverId', async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const [existing] = await db.select({ id: drivers.id }).from(drivers).where(eq(drivers.id, driverId)).limit(1);
+    const [existing] = await db.select({
+        id: drivers.id,
+        headshotUrl: drivers.headshotUrl,
+        headshotSource: drivers.headshotSource,
+        heroImageUrl: drivers.heroImageUrl,
+        heroImageSource: drivers.heroImageSource,
+        website: drivers.website,
+        websiteSource: drivers.websiteSource,
+        shortDescription: drivers.shortDescription,
+        shortDescriptionSource: drivers.shortDescriptionSource,
+        description: drivers.description,
+        descriptionSource: drivers.descriptionSource,
+    }).from(drivers).where(eq(drivers.id, driverId)).limit(1);
     if (!existing) return c.json(apiError('NOT_FOUND', 'Driver not found'), 404);
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -4101,23 +4162,23 @@ superAdminRoutes.patch('/drivers/:driverId', async (c) => {
     if (parsed.data.countryCode !== undefined) updates.countryCode = parsed.data.countryCode?.trim().toUpperCase() || null;
     if (parsed.data.headshotUrl !== undefined) {
         updates.headshotUrl = parsed.data.headshotUrl?.trim() || null;
-        updates.headshotSource = parsed.data.headshotUrl?.trim() ? 'MANUAL' : 'NONE';
+        updates.headshotSource = resolveUpdatedFieldSource(parsed.data.headshotUrl, existing.headshotUrl, existing.headshotSource);
     }
     if (parsed.data.heroImageUrl !== undefined) {
         updates.heroImageUrl = parsed.data.heroImageUrl?.trim() || null;
-        updates.heroImageSource = parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE';
+        updates.heroImageSource = resolveUpdatedFieldSource(parsed.data.heroImageUrl, existing.heroImageUrl, existing.heroImageSource);
     }
     if (parsed.data.website !== undefined) {
         updates.website = parsed.data.website?.trim() || null;
-        updates.websiteSource = parsed.data.website?.trim() ? 'MANUAL' : 'NONE';
+        updates.websiteSource = resolveUpdatedFieldSource(parsed.data.website, existing.website, existing.websiteSource);
     }
     if (parsed.data.shortDescription !== undefined) {
         updates.shortDescription = parsed.data.shortDescription?.trim() || null;
-        updates.shortDescriptionSource = parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE';
+        updates.shortDescriptionSource = resolveUpdatedFieldSource(parsed.data.shortDescription, existing.shortDescription, existing.shortDescriptionSource);
     }
     if (parsed.data.description !== undefined) {
         updates.description = parsed.data.description?.trim() || null;
-        updates.descriptionSource = parsed.data.description?.trim() ? 'MANUAL' : 'NONE';
+        updates.descriptionSource = resolveUpdatedFieldSource(parsed.data.description, existing.description, existing.descriptionSource);
     }
     if (parsed.data.aliases !== undefined) updates.aliases = parsed.data.aliases.map((item) => item.trim()).filter(Boolean);
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
@@ -4213,7 +4274,19 @@ superAdminRoutes.patch('/entrants/:entrantId', async (c) => {
     if (!parsed.success) {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
-    const [existing] = await db.select({ id: entrants.id }).from(entrants).where(eq(entrants.id, entrantId)).limit(1);
+    const [existing] = await db.select({
+        id: entrants.id,
+        logoUrl: entrants.logoUrl,
+        logoSource: entrants.logoSource,
+        heroImageUrl: entrants.heroImageUrl,
+        heroImageSource: entrants.heroImageSource,
+        website: entrants.website,
+        websiteSource: entrants.websiteSource,
+        shortDescription: entrants.shortDescription,
+        shortDescriptionSource: entrants.shortDescriptionSource,
+        description: entrants.description,
+        descriptionSource: entrants.descriptionSource,
+    }).from(entrants).where(eq(entrants.id, entrantId)).limit(1);
     if (!existing) return c.json(apiError('NOT_FOUND', 'Motorsport team not found'), 404);
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -4223,23 +4296,23 @@ superAdminRoutes.patch('/entrants/:entrantId', async (c) => {
     if (parsed.data.brandColor !== undefined) updates.brandColor = parsed.data.brandColor?.trim() || null;
     if (parsed.data.logoUrl !== undefined) {
         updates.logoUrl = parsed.data.logoUrl?.trim() || null;
-        updates.logoSource = parsed.data.logoUrl?.trim() ? 'MANUAL' : 'NONE';
+        updates.logoSource = resolveUpdatedFieldSource(parsed.data.logoUrl, existing.logoUrl, existing.logoSource);
     }
     if (parsed.data.heroImageUrl !== undefined) {
         updates.heroImageUrl = parsed.data.heroImageUrl?.trim() || null;
-        updates.heroImageSource = parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE';
+        updates.heroImageSource = resolveUpdatedFieldSource(parsed.data.heroImageUrl, existing.heroImageUrl, existing.heroImageSource);
     }
     if (parsed.data.website !== undefined) {
         updates.website = parsed.data.website?.trim() || null;
-        updates.websiteSource = parsed.data.website?.trim() ? 'MANUAL' : 'NONE';
+        updates.websiteSource = resolveUpdatedFieldSource(parsed.data.website, existing.website, existing.websiteSource);
     }
     if (parsed.data.shortDescription !== undefined) {
         updates.shortDescription = parsed.data.shortDescription?.trim() || null;
-        updates.shortDescriptionSource = parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE';
+        updates.shortDescriptionSource = resolveUpdatedFieldSource(parsed.data.shortDescription, existing.shortDescription, existing.shortDescriptionSource);
     }
     if (parsed.data.description !== undefined) {
         updates.description = parsed.data.description?.trim() || null;
-        updates.descriptionSource = parsed.data.description?.trim() ? 'MANUAL' : 'NONE';
+        updates.descriptionSource = resolveUpdatedFieldSource(parsed.data.description, existing.description, existing.descriptionSource);
     }
     if (parsed.data.aliases !== undefined) updates.aliases = parsed.data.aliases.map((item) => item.trim()).filter(Boolean);
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
@@ -4333,7 +4406,19 @@ superAdminRoutes.patch('/manufacturers/:manufacturerId', async (c) => {
     if (!parsed.success) {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
-    const [existing] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, manufacturerId)).limit(1);
+    const [existing] = await db.select({
+        id: manufacturers.id,
+        logoUrl: manufacturers.logoUrl,
+        logoSource: manufacturers.logoSource,
+        heroImageUrl: manufacturers.heroImageUrl,
+        heroImageSource: manufacturers.heroImageSource,
+        website: manufacturers.website,
+        websiteSource: manufacturers.websiteSource,
+        shortDescription: manufacturers.shortDescription,
+        shortDescriptionSource: manufacturers.shortDescriptionSource,
+        description: manufacturers.description,
+        descriptionSource: manufacturers.descriptionSource,
+    }).from(manufacturers).where(eq(manufacturers.id, manufacturerId)).limit(1);
     if (!existing) return c.json(apiError('NOT_FOUND', 'Manufacturer not found'), 404);
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -4342,23 +4427,23 @@ superAdminRoutes.patch('/manufacturers/:manufacturerId', async (c) => {
     if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
     if (parsed.data.logoUrl !== undefined) {
         updates.logoUrl = parsed.data.logoUrl?.trim() || null;
-        updates.logoSource = parsed.data.logoUrl?.trim() ? 'MANUAL' : 'NONE';
+        updates.logoSource = resolveUpdatedFieldSource(parsed.data.logoUrl, existing.logoUrl, existing.logoSource);
     }
     if (parsed.data.heroImageUrl !== undefined) {
         updates.heroImageUrl = parsed.data.heroImageUrl?.trim() || null;
-        updates.heroImageSource = parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE';
+        updates.heroImageSource = resolveUpdatedFieldSource(parsed.data.heroImageUrl, existing.heroImageUrl, existing.heroImageSource);
     }
     if (parsed.data.website !== undefined) {
         updates.website = parsed.data.website?.trim() || null;
-        updates.websiteSource = parsed.data.website?.trim() ? 'MANUAL' : 'NONE';
+        updates.websiteSource = resolveUpdatedFieldSource(parsed.data.website, existing.website, existing.websiteSource);
     }
     if (parsed.data.shortDescription !== undefined) {
         updates.shortDescription = parsed.data.shortDescription?.trim() || null;
-        updates.shortDescriptionSource = parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE';
+        updates.shortDescriptionSource = resolveUpdatedFieldSource(parsed.data.shortDescription, existing.shortDescription, existing.shortDescriptionSource);
     }
     if (parsed.data.description !== undefined) {
         updates.description = parsed.data.description?.trim() || null;
-        updates.descriptionSource = parsed.data.description?.trim() ? 'MANUAL' : 'NONE';
+        updates.descriptionSource = resolveUpdatedFieldSource(parsed.data.description, existing.description, existing.descriptionSource);
     }
     if (parsed.data.aliases !== undefined) updates.aliases = parsed.data.aliases.map((item) => item.trim()).filter(Boolean);
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
