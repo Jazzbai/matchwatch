@@ -17,19 +17,23 @@ import {
     blogPosts,
     bookings,
     drivers,
+    entitySlugRedirects,
     entrants,
     eventEntries,
     sports,
     leagues,
     manufacturers,
+    matchParticipants,
     stadiums,
     matches,
     matchPredictions,
     menuCategories,
     players,
     staticPages,
+    standingsRows,
     teams,
     users,
+    userTeamInterests,
     venueClaims,
     venueAttributes,
     venueCustomEvents,
@@ -164,6 +168,10 @@ const createTeamSchema = z.object({
 });
 
 const updateTeamSchema = createTeamSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const mergeTeamSchema = z.object({
+    targetTeamId: z.string().uuid(),
+});
 
 const stadiumSearchQuerySchema = z.object({
     search: z.string().trim().default(''),
@@ -1886,6 +1894,166 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
 
     await db.update(teams).set(updates).where(eq(teams.id, teamId));
     return c.json(apiResponse({ message: 'Team updated' }));
+});
+
+superAdminRoutes.post('/teams/:teamId/merge', async (c) => {
+    const sourceTeamId = c.req.param('teamId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = mergeTeamSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const targetTeamId = parsed.data.targetTeamId;
+    if (sourceTeamId === targetTeamId) {
+        return c.json(apiError('VALIDATION_ERROR', 'Source and target teams must be different'), 400);
+    }
+
+    const [[source], [target]] = await Promise.all([
+        db.select({
+            id: teams.id,
+            leagueId: teams.leagueId,
+            slug: teams.slug,
+            name: teams.name,
+            shortName: teams.shortName,
+            crestUrl: teams.crestUrl,
+            crestSource: teams.crestSource,
+            heroImageUrl: teams.heroImageUrl,
+            heroImageSource: teams.heroImageSource,
+            website: teams.website,
+            websiteSource: teams.websiteSource,
+            country: teams.country,
+            aliases: teams.aliases,
+            shortDescription: teams.shortDescription,
+            shortDescriptionSource: teams.shortDescriptionSource,
+            description: teams.description,
+            descriptionSource: teams.descriptionSource,
+            externalId: teams.externalId,
+            isActive: teams.isActive,
+        }).from(teams).where(eq(teams.id, sourceTeamId)).limit(1),
+        db.select({
+            id: teams.id,
+            leagueId: teams.leagueId,
+            slug: teams.slug,
+            name: teams.name,
+            shortName: teams.shortName,
+            crestUrl: teams.crestUrl,
+            crestSource: teams.crestSource,
+            heroImageUrl: teams.heroImageUrl,
+            heroImageSource: teams.heroImageSource,
+            website: teams.website,
+            websiteSource: teams.websiteSource,
+            country: teams.country,
+            aliases: teams.aliases,
+            shortDescription: teams.shortDescription,
+            shortDescriptionSource: teams.shortDescriptionSource,
+            description: teams.description,
+            descriptionSource: teams.descriptionSource,
+            externalId: teams.externalId,
+            isActive: teams.isActive,
+        }).from(teams).where(eq(teams.id, targetTeamId)).limit(1),
+    ]);
+
+    if (!source || !target) {
+        return c.json(apiError('NOT_FOUND', 'Source or target team not found'), 404);
+    }
+
+    if ((source.leagueId || null) !== (target.leagueId || null)) {
+        return c.json(apiError('VALIDATION_ERROR', 'Teams must belong to the same league to merge'), 400);
+    }
+
+    const normalizedSourceName = normalizeDuplicateTeamName(source.name);
+    const normalizedTargetName = normalizeDuplicateTeamName(target.name);
+    if (!normalizedSourceName || normalizedSourceName !== normalizedTargetName) {
+        return c.json(apiError('VALIDATION_ERROR', 'Teams must share the same normalized name to merge'), 400);
+    }
+
+    const mergedAliases = Array.from(new Set([
+        ...(target.aliases || []),
+        ...(source.aliases || []),
+        source.name,
+        source.shortName || '',
+    ].map((value) => value.trim()).filter(Boolean)));
+
+    const targetUpdates: Record<string, unknown> = {
+        aliases: mergedAliases,
+        isActive: target.isActive || source.isActive,
+    };
+
+    if (!normalizeOptionalText(target.shortName) && normalizeOptionalText(source.shortName)) {
+        targetUpdates.shortName = source.shortName?.trim() || null;
+    }
+    if (!normalizeOptionalText(target.crestUrl) && normalizeOptionalText(source.crestUrl)) {
+        targetUpdates.crestUrl = source.crestUrl;
+        targetUpdates.crestSource = source.crestSource;
+    }
+    if (!normalizeOptionalText(target.heroImageUrl) && normalizeOptionalText(source.heroImageUrl)) {
+        targetUpdates.heroImageUrl = source.heroImageUrl;
+        targetUpdates.heroImageSource = source.heroImageSource;
+    }
+    if (!normalizeOptionalText(target.website) && normalizeOptionalText(source.website)) {
+        targetUpdates.website = source.website;
+        targetUpdates.websiteSource = source.websiteSource;
+    }
+    if (!normalizeOptionalText(target.country) && normalizeOptionalText(source.country)) {
+        targetUpdates.country = source.country;
+    }
+    if (!normalizeOptionalText(target.shortDescription) && normalizeOptionalText(source.shortDescription)) {
+        targetUpdates.shortDescription = source.shortDescription;
+        targetUpdates.shortDescriptionSource = source.shortDescriptionSource;
+    }
+    if (!normalizeOptionalText(target.description) && normalizeOptionalText(source.description)) {
+        targetUpdates.description = source.description;
+        targetUpdates.descriptionSource = source.descriptionSource;
+    }
+    if (!normalizeOptionalText(target.externalId) && normalizeOptionalText(source.externalId)) {
+        targetUpdates.externalId = source.externalId;
+    }
+
+    const sourceArchivedSlug = await allocateCanonicalSlug('team', `${source.name} archived`, {
+        shortName: source.shortName,
+        excludeId: source.id,
+    });
+
+    await db.transaction(async (tx) => {
+        await tx.update(matches).set({ homeTeamId: targetTeamId }).where(eq(matches.homeTeamId, sourceTeamId));
+        await tx.update(matches).set({ awayTeamId: targetTeamId }).where(eq(matches.awayTeamId, sourceTeamId));
+        await tx.update(matchParticipants).set({ teamId: targetTeamId }).where(eq(matchParticipants.teamId, sourceTeamId));
+        await tx.update(standingsRows).set({ teamId: targetTeamId }).where(eq(standingsRows.teamId, sourceTeamId));
+
+        await tx.execute(sql`
+            delete from user_team_interests as source_interest
+            using user_team_interests as target_interest
+            where source_interest.user_id = target_interest.user_id
+              and source_interest.team_id = ${sourceTeamId}
+              and target_interest.team_id = ${targetTeamId}
+        `);
+        await tx.update(userTeamInterests).set({ teamId: targetTeamId }).where(eq(userTeamInterests.teamId, sourceTeamId));
+
+        await tx.update(teams).set(targetUpdates).where(eq(teams.id, targetTeamId));
+
+        if (source.slug && source.slug !== target.slug) {
+            await tx.insert(entitySlugRedirects).values({
+                entityType: 'team',
+                entityId: targetTeamId,
+                slug: source.slug,
+                updatedAt: new Date(),
+            }).onConflictDoNothing();
+        }
+
+        await tx.update(teams).set({
+            slug: sourceArchivedSlug,
+            externalId: null,
+            isActive: false,
+        }).where(eq(teams.id, sourceTeamId));
+    });
+
+    return c.json(apiResponse({
+        message: 'Team merged',
+        sourceTeamId,
+        targetTeamId,
+        targetSlug: target.slug,
+    }));
 });
 
 superAdminRoutes.delete('/teams/:teamId', async (c) => {
@@ -3881,6 +4049,15 @@ function resolveUpdatedFieldSource(
     }
 
     return normalizedNext ? 'MANUAL' : 'NONE';
+}
+
+function normalizeDuplicateTeamName(value: string) {
+    return value
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
 }
 
 const staticPageSchema = z.object({

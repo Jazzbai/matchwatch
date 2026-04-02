@@ -296,7 +296,9 @@ function teamCacheKey(externalId: string) {
 async function getTeamIdByExternalId(externalId: string) {
     const key = teamCacheKey(externalId);
     if (teamLookupCache.has(key)) return teamLookupCache.get(key) ?? null;
-    const [row] = await db.select({ id: teams.id }).from(teams).where(eq(teams.externalId, key)).limit(1);
+    const [row] = await db.select({ id: teams.id }).from(teams)
+        .where(and(eq(teams.externalId, key), eq(teams.isActive, true)))
+        .limit(1);
     const id = row?.id ?? null;
     teamLookupCache.set(key, id);
     return id;
@@ -307,6 +309,7 @@ async function getTeamIdByLeagueAndName(leagueId: string, teamName: string) {
         .from(teams)
         .where(and(
             eq(teams.leagueId, leagueId),
+            eq(teams.isActive, true),
             sql`lower(${teams.name}) = lower(${teamName})`,
         ))
         .limit(1);

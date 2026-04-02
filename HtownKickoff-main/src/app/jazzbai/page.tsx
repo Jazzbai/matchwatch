@@ -391,6 +391,18 @@ type TeamAdminDraft = {
   isActive?: boolean;
 };
 
+type TeamDuplicateInfo = {
+  groupKey: string;
+  suggestedTargetId: string;
+  suggestedTargetLabel: string;
+  duplicateCount: number;
+  options: Array<{
+    id: string;
+    label: string;
+    isSuggestedTarget: boolean;
+  }>;
+};
+
 type RecommendationItem = {
   id: string;
   name: string;
@@ -1069,6 +1081,15 @@ async function uploadSuperAdminVenueImage(file: File, purpose: "venue_cover" | "
   };
 }
 
+function normalizeDuplicateTeamName(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 const MATCH_STATUSES: Array<MatchRow["status"]> = [
   "SCHEDULED",
   "TIMED",
@@ -1263,6 +1284,7 @@ export default function JazzbaiSuperAdminPage() {
   const [teamsSearch, setTeamsSearch] = React.useState("");
   const [teamsLoading, setTeamsLoading] = React.useState(false);
   const [teamDrafts, setTeamDrafts] = React.useState<Record<string, TeamAdminDraft>>({});
+  const [teamMergeTargets, setTeamMergeTargets] = React.useState<Record<string, string>>({});
   const [newAdminTeam, setNewAdminTeam] = React.useState({
     leagueId: "",
     name: "",
@@ -2154,6 +2176,53 @@ export default function JazzbaiSuperAdminPage() {
   const leaguesCount = adminLeaguesMeta?.total ?? adminLeagues.length;
   const matchesCount = matchesMeta?.total ?? matches.length;
   const motorsportEntriesCount = motorsportEntriesMeta?.total ?? motorsportEntries.length;
+  const teamDuplicateInfoById = React.useMemo(() => {
+    const groups = new Map<string, TeamAdminRow[]>();
+    for (const row of teamsRows) {
+      const normalizedName = normalizeDuplicateTeamName(row.name || "");
+      if (!normalizedName) continue;
+      const key = `${row.leagueId || "none"}::${normalizedName}`;
+      const existing = groups.get(key) || [];
+      existing.push(row);
+      groups.set(key, existing);
+    }
+
+    const info = new Map<string, TeamDuplicateInfo>();
+    for (const [groupKey, rows] of groups.entries()) {
+      if (rows.length < 2) continue;
+      const ranked = [...rows].sort((a, b) => {
+        const score = (row: TeamAdminRow) =>
+          (row.isActive ? 100 : 0)
+          + (row.enrichmentStatus === "SYNCED" ? 30 : row.enrichmentStatus === "ERROR" ? -5 : 0)
+          + (row.website ? 10 : 0)
+          + (row.heroImageUrl ? 8 : 0)
+          + (row.description ? 6 : 0)
+          + (row.shortDescription ? 4 : 0)
+          + (row.crestUrl ? 4 : 0)
+          + (row.externalId ? 2 : 0);
+        const diff = score(b) - score(a);
+        if (diff !== 0) return diff;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      const suggestedTargetId = ranked[0]?.id;
+      if (!suggestedTargetId) continue;
+      const options = ranked.map((row) => ({
+        id: row.id,
+        label: `${row.name} ${row.externalId ? `(${row.externalId})` : "(no external ID)"}${row.enrichmentStatus === "SYNCED" ? " • synced" : ""}`,
+        isSuggestedTarget: row.id === suggestedTargetId,
+      }));
+      for (const row of rows) {
+        info.set(row.id, {
+          groupKey,
+          suggestedTargetId,
+          suggestedTargetLabel: options.find((option) => option.id === suggestedTargetId)?.label || ranked[0].name,
+          duplicateCount: rows.length,
+          options: options.filter((option) => option.id !== row.id),
+        });
+      }
+    }
+    return info;
+  }, [teamsRows]);
   const leagueById = new Map(
     lookupLeagues.map((league) => [league.id, league]),
   );
@@ -3857,6 +3926,11 @@ export default function JazzbaiSuperAdminPage() {
                   <tbody>
                     {teamsRows.map((row) => {
                       const draft = teamDrafts[row.id] ?? buildTeamDraft(row);
+                      const duplicateInfo = teamDuplicateInfoById.get(row.id);
+                      const mergeTargetId = duplicateInfo
+                        ? (teamMergeTargets[row.id] || duplicateInfo.suggestedTargetId)
+                        : "";
+                      const isSuggestedTarget = duplicateInfo ? duplicateInfo.suggestedTargetId === row.id : false;
                       return (
                         <React.Fragment key={row.id}>
                           <tr>
@@ -3962,6 +4036,71 @@ export default function JazzbaiSuperAdminPage() {
                           <tr>
                             <td style={{ ...tdStyle, background: "color-mix(in oklch, var(--secondary) 92%, transparent)" }} colSpan={10}>
                               <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                                {duplicateInfo ? (
+                                  <div
+                                    style={{
+                                      gridColumn: "1 / -1",
+                                      display: "grid",
+                                      gap: 10,
+                                      padding: 12,
+                                      borderRadius: 10,
+                                      border: "1px solid rgba(245, 158, 11, 0.28)",
+                                      background: "rgba(245, 158, 11, 0.08)",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                                      <div>
+                                        <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>
+                                          Potential duplicate team record
+                                        </div>
+                                        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>
+                                          {duplicateInfo.duplicateCount} active rows in this league share the same normalized team name.
+                                          {isSuggestedTarget ? " This row is the recommended keeper." : " Merge this row into the preferred keeper or another duplicate below."}
+                                        </div>
+                                      </div>
+                                      {!isSuggestedTarget && duplicateInfo.options.length > 0 ? (
+                                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                          <select
+                                            style={{ ...inputStyle, minWidth: 260 }}
+                                            value={mergeTargetId}
+                                            onChange={(e) => setTeamMergeTargets((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                                          >
+                                            {duplicateInfo.options.map((option) => (
+                                              <option key={option.id} value={option.id}>
+                                                {option.label}{option.isSuggestedTarget ? " [recommended]" : ""}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <button
+                                            style={smallBtn("danger", submittingAction === `merge-team-${row.id}`)}
+                                            disabled={submittingAction === `merge-team-${row.id}` || !mergeTargetId}
+                                            onClick={() => {
+                                              if (!mergeTargetId) return;
+                                              if (!window.confirm("Merge this duplicate into the selected team? This moves matches, standings, and followers to the target record and archives the source row.")) return;
+                                              void runAction(`merge-team-${row.id}`, async () => {
+                                                await superAdminFetch(`/teams/${row.id}/merge`, {
+                                                  method: "POST",
+                                                  body: JSON.stringify({ targetTeamId: mergeTargetId }),
+                                                });
+                                                setTeamMergeTargets((prev) => {
+                                                  const next = { ...prev };
+                                                  delete next[row.id];
+                                                  return next;
+                                                });
+                                                await Promise.all([loadTeamsAdmin(), loadLookups()]);
+                                              });
+                                            }}
+                                          >
+                                            Merge Into Selected
+                                          </button>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                                      Suggested keeper: {duplicateInfo.suggestedTargetLabel}
+                                    </div>
+                                  </div>
+                                ) : null}
                                 <input style={inputStyle} value={String(draft.website ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, website: e.target.value } }))} placeholder="Website" />
                                 <input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} placeholder="Country" />
                                 <input style={{ ...inputStyle, gridColumn: "1 / -1" }} value={String(draft.heroImageUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, heroImageUrl: e.target.value } }))} placeholder="Hero image URL" />
