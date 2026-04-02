@@ -153,15 +153,15 @@ export async function buildEntityEnrichment(kind: EntityKind, record: EntityBase
   const description = record.descriptionSource === 'MANUAL'
     ? undefined
     : compact(ensureSentence(snippet || fallback.description), 420);
-  const primaryImageUrl = record.primaryImageSource === 'MANUAL' || record.primaryImageUrl
+  const primaryImageUrl = record.primaryImageSource === 'MANUAL'
     ? undefined
-    : (imageUrls[0] || null);
+    : (imageUrls[0] || record.primaryImageUrl || null);
   const heroImageUrl = record.heroImageSource === 'MANUAL'
     ? undefined
-    : (imageUrls[1] || imageUrls[0] || null);
-  const nextWebsite = record.websiteSource === 'MANUAL' || record.website
+    : (imageUrls[1] || imageUrls[0] || record.heroImageUrl || record.primaryImageUrl || null);
+  const nextWebsite = record.websiteSource === 'MANUAL'
     ? undefined
-    : website;
+    : (website || record.website || null);
 
   const aliases = uniqueStrings([
     record.shortName,

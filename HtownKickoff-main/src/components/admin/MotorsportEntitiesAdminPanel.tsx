@@ -1,9 +1,11 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { api, ApiClientError } from "../../lib/api";
 
 type League = { id: string; name: string };
+type SourceValue = "NONE" | "GOOGLE" | "MANUAL" | null | undefined;
+
 type DriverRow = {
   id: string;
   name: string;
@@ -12,6 +14,16 @@ type DriverRow = {
   nationality?: string | null;
   countryCode?: string | null;
   headshotUrl?: string | null;
+  heroImageUrl?: string | null;
+  website?: string | null;
+  aliases?: string[] | null;
+  shortDescription?: string | null;
+  description?: string | null;
+  shortDescriptionSource?: SourceValue;
+  descriptionSource?: SourceValue;
+  primaryImageSource?: SourceValue;
+  heroImageSource?: SourceValue;
+  websiteSource?: SourceValue;
   enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
   enrichedAt?: string | null;
   enrichmentError?: string | null;
@@ -26,6 +38,16 @@ type EntrantRow = {
   shortName?: string | null;
   brandColor?: string | null;
   logoUrl?: string | null;
+  heroImageUrl?: string | null;
+  website?: string | null;
+  aliases?: string[] | null;
+  shortDescription?: string | null;
+  description?: string | null;
+  shortDescriptionSource?: SourceValue;
+  descriptionSource?: SourceValue;
+  primaryImageSource?: SourceValue;
+  heroImageSource?: SourceValue;
+  websiteSource?: SourceValue;
   enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
   enrichedAt?: string | null;
   enrichmentError?: string | null;
@@ -39,6 +61,16 @@ type ManufacturerRow = {
   slug: string;
   shortName?: string | null;
   logoUrl?: string | null;
+  heroImageUrl?: string | null;
+  website?: string | null;
+  aliases?: string[] | null;
+  shortDescription?: string | null;
+  description?: string | null;
+  shortDescriptionSource?: SourceValue;
+  descriptionSource?: SourceValue;
+  primaryImageSource?: SourceValue;
+  heroImageSource?: SourceValue;
+  websiteSource?: SourceValue;
   enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
   enrichedAt?: string | null;
   enrichmentError?: string | null;
@@ -68,6 +100,17 @@ const btnStyle = (kind: "primary" | "outline" = "outline"): React.CSSProperties 
   fontFamily: "inherit",
 });
 
+const sourceBadgeStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  border: "1px solid var(--border)",
+  padding: "2px 8px",
+  fontSize: 11,
+  fontWeight: 700,
+  background: "var(--secondary)",
+};
+
 function formatError(error: unknown, fallback: string) {
   if (error instanceof ApiClientError) return error.message || fallback;
   return error instanceof Error ? error.message : fallback;
@@ -77,6 +120,17 @@ function formatEnrichmentStatus(value?: "NEVER_SYNCED" | "SYNCED" | "ERROR") {
   if (!value || value === "NEVER_SYNCED") return "Never synced";
   if (value === "SYNCED") return "Synced";
   return "Error";
+}
+
+function sourceLabel(value?: SourceValue) {
+  if (value === "MANUAL") return { label: "Manual", color: "#2563eb" };
+  if (value === "GOOGLE") return { label: "Google", color: "#16a34a" };
+  return { label: "None", color: "var(--muted-foreground)" };
+}
+
+function SourceBadge({ value }: { value?: SourceValue }) {
+  const source = sourceLabel(value);
+  return <span style={{ ...sourceBadgeStyle, color: source.color }}>{source.label}</span>;
 }
 
 export function MotorsportEntitiesAdminPanel() {
@@ -89,18 +143,24 @@ export function MotorsportEntitiesAdminPanel() {
   const [search, setSearch] = React.useState("");
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [draft, setDraft] = React.useState({
+  const emptyDraft = React.useMemo(() => ({
     leagueId: "",
     name: "",
     shortName: "",
     nationality: "",
     countryCode: "",
     headshotUrl: "",
+    heroImageUrl: "",
     brandColor: "",
     logoUrl: "",
+    website: "",
+    aliases: "",
+    shortDescription: "",
+    description: "",
     externalId: "",
     isActive: true,
-  });
+  }), []);
+  const [draft, setDraft] = React.useState(emptyDraft);
 
   const currentRows = mode === "drivers" ? drivers : mode === "entrants" ? entrants : manufacturers;
 
@@ -136,8 +196,13 @@ export function MotorsportEntitiesAdminPanel() {
       nationality: row.nationality || "",
       countryCode: row.countryCode || "",
       headshotUrl: row.headshotUrl || "",
+      heroImageUrl: row.heroImageUrl || "",
       brandColor: row.brandColor || "",
       logoUrl: row.logoUrl || "",
+      website: row.website || "",
+      aliases: (row.aliases || []).join(", "),
+      shortDescription: row.shortDescription || "",
+      description: row.description || "",
       externalId: "",
       isActive: row.isActive,
     });
@@ -154,6 +219,11 @@ export function MotorsportEntitiesAdminPanel() {
           nationality: draft.nationality || null,
           countryCode: draft.countryCode || null,
           headshotUrl: draft.headshotUrl || null,
+          heroImageUrl: draft.heroImageUrl || null,
+          website: draft.website || null,
+          aliases: draft.aliases.split(",").map((item) => item.trim()).filter(Boolean),
+          shortDescription: draft.shortDescription || null,
+          description: draft.description || null,
           externalId: draft.externalId || null,
           isActive: draft.isActive,
         };
@@ -166,6 +236,11 @@ export function MotorsportEntitiesAdminPanel() {
           shortName: draft.shortName || null,
           brandColor: draft.brandColor || null,
           logoUrl: draft.logoUrl || null,
+          heroImageUrl: draft.heroImageUrl || null,
+          website: draft.website || null,
+          aliases: draft.aliases.split(",").map((item) => item.trim()).filter(Boolean),
+          shortDescription: draft.shortDescription || null,
+          description: draft.description || null,
           externalId: draft.externalId || null,
           isActive: draft.isActive,
         };
@@ -177,6 +252,11 @@ export function MotorsportEntitiesAdminPanel() {
           name: draft.name,
           shortName: draft.shortName || null,
           logoUrl: draft.logoUrl || null,
+          heroImageUrl: draft.heroImageUrl || null,
+          website: draft.website || null,
+          aliases: draft.aliases.split(",").map((item) => item.trim()).filter(Boolean),
+          shortDescription: draft.shortDescription || null,
+          description: draft.description || null,
           externalId: draft.externalId || null,
           isActive: draft.isActive,
         };
@@ -204,6 +284,22 @@ export function MotorsportEntitiesAdminPanel() {
     }
   }
 
+  async function revertToDefaults() {
+    if (!selectedId) return;
+    setError(null);
+    setMessage(null);
+    try {
+      const kind = mode === "drivers" ? "driver" : mode === "entrants" ? "entrant" : "manufacturer";
+      await api.post(`/super-admin/enrichment/${kind}/${selectedId}/revert`);
+      setMessage("Entity reverted to enrichment defaults.");
+      await load();
+    } catch (err) {
+      setError(formatError(err, "Failed to revert enrichment defaults."));
+    }
+  }
+
+  const selectedRow = (currentRows.find((item: any) => item.id === selectedId) as any) || null;
+
   return (
     <section style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -217,7 +313,7 @@ export function MotorsportEntitiesAdminPanel() {
             ["entrants", "Motorsport Teams"],
             ["manufacturers", "Manufacturers"],
           ].map(([id, label]) => (
-            <button key={id} onClick={() => { setMode(id as typeof mode); setSelectedId(null); }} style={btnStyle(mode === id ? "primary" : "outline")}>{label}</button>
+            <button key={id} onClick={() => { setMode(id as typeof mode); setSelectedId(null); setDraft(emptyDraft); }} style={btnStyle(mode === id ? "primary" : "outline")}>{label}</button>
           ))}
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" style={{ ...inputStyle, width: 180 }} />
           <button style={btnStyle()} onClick={() => void load()}>Refresh</button>
@@ -228,10 +324,10 @@ export function MotorsportEntitiesAdminPanel() {
       <div style={{ display: "grid", gridTemplateColumns: "320px minmax(0, 1fr)", gap: 16 }}>
         <div className="card-flat" style={{ padding: 14, display: "grid", gap: 10 }}>
           {currentRows.map((row: any) => (
-            <button key={row.id} onClick={() => setSelectedId(row.id)} style={btnStyle(selectedId === row.id ? "primary" : "outline")}>
+            <button key={row.id} onClick={() => setSelectedId(row.id)} style={{ ...btnStyle(selectedId === row.id ? "primary" : "outline"), textAlign: "left" }}>
               <div>{row.name}</div>
               <div style={{ fontSize: 11, opacity: 0.8 }}>{row.leagueName || row.slug}</div>
-              <div style={{ fontSize: 10, opacity: 0.75 }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
+              <div style={{ fontSize: 10, opacity: 0.75 }}>{sourceLabel(row.shortDescriptionSource).label} copy | {formatEnrichmentStatus(row.enrichmentStatus)}</div>
             </button>
           ))}
         </div>
@@ -257,12 +353,27 @@ export function MotorsportEntitiesAdminPanel() {
                 <input value={draft.logoUrl} onChange={(e) => setDraft((prev) => ({ ...prev, logoUrl: e.target.value }))} placeholder="Logo URL" style={mode === "entrants" ? inputStyle : { ...inputStyle, gridColumn: "1 / -1" }} />
               </>
             )}
+            <input value={draft.heroImageUrl} onChange={(e) => setDraft((prev) => ({ ...prev, heroImageUrl: e.target.value }))} placeholder="Hero image URL" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
+            <input value={draft.website} onChange={(e) => setDraft((prev) => ({ ...prev, website: e.target.value }))} placeholder="Website" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
+            <input value={draft.aliases} onChange={(e) => setDraft((prev) => ({ ...prev, aliases: e.target.value }))} placeholder="Aliases (comma separated)" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
             <input value={draft.externalId} onChange={(e) => setDraft((prev) => ({ ...prev, externalId: e.target.value }))} placeholder="External ID" style={{ ...inputStyle, gridColumn: "1 / -1" }} />
+            <textarea value={draft.shortDescription} onChange={(e) => setDraft((prev) => ({ ...prev, shortDescription: e.target.value }))} placeholder="Short description" style={{ ...inputStyle, gridColumn: "1 / -1", minHeight: 80, resize: "vertical" }} />
+            <textarea value={draft.description} onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))} placeholder="Description" style={{ ...inputStyle, gridColumn: "1 / -1", minHeight: 140, resize: "vertical" }} />
           </div>
-          {selectedId ? (
-            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-              Enrichment: {formatEnrichmentStatus((currentRows.find((item: any) => item.id === selectedId) as any)?.enrichmentStatus)}
-              {(currentRows.find((item: any) => item.id === selectedId) as any)?.enrichedAt ? ` • ${new Date((currentRows.find((item: any) => item.id === selectedId) as any).enrichedAt).toLocaleString()}` : ""}
+          {selectedId && selectedRow ? (
+            <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                Enrichment: {formatEnrichmentStatus(selectedRow.enrichmentStatus)}
+                {selectedRow.enrichedAt ? ` | ${new Date(selectedRow.enrichedAt).toLocaleString()}` : ""}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{mode === "drivers" ? "Headshot" : "Logo"}</span><SourceBadge value={selectedRow.primaryImageSource} /></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Hero</span><SourceBadge value={selectedRow.heroImageSource} /></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Website</span><SourceBadge value={selectedRow.websiteSource} /></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Excerpt</span><SourceBadge value={selectedRow.shortDescriptionSource} /></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>About</span><SourceBadge value={selectedRow.descriptionSource} /></div>
+              </div>
+              {selectedRow.enrichmentError ? <div style={{ color: "#ef4444", fontSize: 12 }}>{selectedRow.enrichmentError}</div> : null}
             </div>
           ) : null}
           <label style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--foreground)", fontSize: 14 }}>
@@ -272,7 +383,8 @@ export function MotorsportEntitiesAdminPanel() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button style={btnStyle("primary")} onClick={() => void save()}>Save</button>
             <button style={btnStyle()} onClick={() => void refreshEnrichment()} disabled={!selectedId}>Refresh Enrichment</button>
-            <button style={btnStyle()} onClick={() => { setSelectedId(null); setDraft({ leagueId: "", name: "", shortName: "", nationality: "", countryCode: "", headshotUrl: "", brandColor: "", logoUrl: "", externalId: "", isActive: true }); }}>Clear</button>
+            <button style={btnStyle()} onClick={() => void revertToDefaults()} disabled={!selectedId}>Revert to Defaults</button>
+            <button style={btnStyle()} onClick={() => { setSelectedId(null); setDraft(emptyDraft); }}>Clear</button>
           </div>
         </div>
       </div>

@@ -3770,6 +3770,11 @@ const createPlayerSchema = z.object({
     nationality: z.string().max(80).nullable().optional(),
     countryCode: z.string().max(3).nullable().optional(),
     headshotUrl: z.string().url().nullable().optional(),
+    heroImageUrl: z.string().url().nullable().optional(),
+    website: z.string().url().nullable().optional(),
+    shortDescription: z.string().max(280).nullable().optional(),
+    description: z.string().max(4000).nullable().optional(),
+    aliases: z.array(z.string().max(120)).max(10).optional(),
     externalId: z.string().max(80).nullable().optional(),
     isActive: z.boolean().default(true),
 });
@@ -3782,6 +3787,11 @@ const updatePlayerSchema = z.object({
     nationality: z.string().max(80).nullable().optional(),
     countryCode: z.string().max(3).nullable().optional(),
     headshotUrl: z.string().url().nullable().optional(),
+    heroImageUrl: z.string().url().nullable().optional(),
+    website: z.string().url().nullable().optional(),
+    shortDescription: z.string().max(280).nullable().optional(),
+    description: z.string().max(4000).nullable().optional(),
+    aliases: z.array(z.string().max(120)).max(10).optional(),
     externalId: z.string().max(80).nullable().optional(),
     isActive: z.boolean().optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
@@ -3812,6 +3822,11 @@ const createDriverSchema = z.object({
     nationality: z.string().max(80).nullable().optional(),
     countryCode: z.string().max(3).nullable().optional(),
     headshotUrl: z.string().url().nullable().optional(),
+    heroImageUrl: z.string().url().nullable().optional(),
+    website: z.string().url().nullable().optional(),
+    shortDescription: z.string().max(280).nullable().optional(),
+    description: z.string().max(4000).nullable().optional(),
+    aliases: z.array(z.string().max(120)).max(10).optional(),
     externalId: z.string().max(80).nullable().optional(),
     isActive: z.boolean().default(true),
 });
@@ -3822,6 +3837,11 @@ const createEntrantSchema = z.object({
     shortName: z.string().max(60).nullable().optional(),
     brandColor: z.string().max(20).nullable().optional(),
     logoUrl: z.string().url().nullable().optional(),
+    heroImageUrl: z.string().url().nullable().optional(),
+    website: z.string().url().nullable().optional(),
+    shortDescription: z.string().max(280).nullable().optional(),
+    description: z.string().max(4000).nullable().optional(),
+    aliases: z.array(z.string().max(120)).max(10).optional(),
     externalId: z.string().max(80).nullable().optional(),
     isActive: z.boolean().default(true),
 });
@@ -3831,6 +3851,11 @@ const createManufacturerSchema = z.object({
     name: z.string().min(2).max(150),
     shortName: z.string().max(60).nullable().optional(),
     logoUrl: z.string().url().nullable().optional(),
+    heroImageUrl: z.string().url().nullable().optional(),
+    website: z.string().url().nullable().optional(),
+    shortDescription: z.string().max(280).nullable().optional(),
+    description: z.string().max(4000).nullable().optional(),
+    aliases: z.array(z.string().max(120)).max(10).optional(),
     externalId: z.string().max(80).nullable().optional(),
     isActive: z.boolean().default(true),
 });
@@ -3866,8 +3891,17 @@ superAdminRoutes.get('/players', async (c) => {
             nationality: players.nationality,
             countryCode: players.countryCode,
             headshotUrl: players.headshotUrl,
+            heroImageUrl: players.heroImageUrl,
+            website: players.website,
+            aliases: players.aliases,
             shortDescription: players.shortDescription,
             description: players.description,
+            shortDescriptionSource: players.shortDescriptionSource,
+            descriptionSource: players.descriptionSource,
+            primaryImageSource: players.headshotSource,
+            heroImageSource: players.heroImageSource,
+            websiteSource: players.websiteSource,
+            enrichmentSnapshot: players.enrichmentSnapshot,
             enrichedAt: players.enrichedAt,
             enrichmentStatus: players.enrichmentStatus,
             enrichmentError: players.enrichmentError,
@@ -3905,6 +3939,16 @@ superAdminRoutes.post('/players', async (c) => {
         nationality: parsed.data.nationality?.trim() || null,
         countryCode: parsed.data.countryCode?.trim().toUpperCase() || null,
         headshotUrl: parsed.data.headshotUrl?.trim() || null,
+        heroImageUrl: parsed.data.heroImageUrl?.trim() || null,
+        website: parsed.data.website?.trim() || null,
+        shortDescription: parsed.data.shortDescription?.trim() || null,
+        description: parsed.data.description?.trim() || null,
+        aliases: parsed.data.aliases?.map((item) => item.trim()).filter(Boolean) || [],
+        shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
+        descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
+        headshotSource: parsed.data.headshotUrl?.trim() ? 'MANUAL' : 'NONE',
+        heroImageSource: parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE',
+        websiteSource: parsed.data.website?.trim() ? 'MANUAL' : 'NONE',
         externalId: parsed.data.externalId?.trim() || null,
         isActive: parsed.data.isActive,
     }).returning();
@@ -3930,7 +3974,27 @@ superAdminRoutes.patch('/players/:playerId', async (c) => {
     if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
     if (parsed.data.nationality !== undefined) updates.nationality = parsed.data.nationality?.trim() || null;
     if (parsed.data.countryCode !== undefined) updates.countryCode = parsed.data.countryCode?.trim().toUpperCase() || null;
-    if (parsed.data.headshotUrl !== undefined) updates.headshotUrl = parsed.data.headshotUrl?.trim() || null;
+    if (parsed.data.headshotUrl !== undefined) {
+        updates.headshotUrl = parsed.data.headshotUrl?.trim() || null;
+        updates.headshotSource = parsed.data.headshotUrl?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.heroImageUrl !== undefined) {
+        updates.heroImageUrl = parsed.data.heroImageUrl?.trim() || null;
+        updates.heroImageSource = parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.website !== undefined) {
+        updates.website = parsed.data.website?.trim() || null;
+        updates.websiteSource = parsed.data.website?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.shortDescription !== undefined) {
+        updates.shortDescription = parsed.data.shortDescription?.trim() || null;
+        updates.shortDescriptionSource = parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.description !== undefined) {
+        updates.description = parsed.data.description?.trim() || null;
+        updates.descriptionSource = parsed.data.description?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.aliases !== undefined) updates.aliases = parsed.data.aliases.map((item) => item.trim()).filter(Boolean);
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
     if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
 
@@ -3963,6 +4027,17 @@ superAdminRoutes.get('/drivers', async (c) => {
             nationality: drivers.nationality,
             countryCode: drivers.countryCode,
             headshotUrl: drivers.headshotUrl,
+            heroImageUrl: drivers.heroImageUrl,
+            website: drivers.website,
+            aliases: drivers.aliases,
+            shortDescription: drivers.shortDescription,
+            description: drivers.description,
+            shortDescriptionSource: drivers.shortDescriptionSource,
+            descriptionSource: drivers.descriptionSource,
+            primaryImageSource: drivers.headshotSource,
+            heroImageSource: drivers.heroImageSource,
+            websiteSource: drivers.websiteSource,
+            enrichmentSnapshot: drivers.enrichmentSnapshot,
             enrichmentStatus: drivers.enrichmentStatus,
             enrichedAt: drivers.enrichedAt,
             enrichmentError: drivers.enrichmentError,
@@ -3991,6 +4066,16 @@ superAdminRoutes.post('/drivers', async (c) => {
         nationality: parsed.data.nationality?.trim() || null,
         countryCode: parsed.data.countryCode?.trim().toUpperCase() || null,
         headshotUrl: parsed.data.headshotUrl?.trim() || null,
+        heroImageUrl: parsed.data.heroImageUrl?.trim() || null,
+        website: parsed.data.website?.trim() || null,
+        shortDescription: parsed.data.shortDescription?.trim() || null,
+        description: parsed.data.description?.trim() || null,
+        aliases: parsed.data.aliases?.map((item) => item.trim()).filter(Boolean) || [],
+        shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
+        descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
+        headshotSource: parsed.data.headshotUrl?.trim() ? 'MANUAL' : 'NONE',
+        heroImageSource: parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE',
+        websiteSource: parsed.data.website?.trim() ? 'MANUAL' : 'NONE',
         externalId: parsed.data.externalId?.trim() || null,
         isActive: parsed.data.isActive,
     }).returning();
@@ -4014,7 +4099,27 @@ superAdminRoutes.patch('/drivers/:driverId', async (c) => {
     if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
     if (parsed.data.nationality !== undefined) updates.nationality = parsed.data.nationality?.trim() || null;
     if (parsed.data.countryCode !== undefined) updates.countryCode = parsed.data.countryCode?.trim().toUpperCase() || null;
-    if (parsed.data.headshotUrl !== undefined) updates.headshotUrl = parsed.data.headshotUrl?.trim() || null;
+    if (parsed.data.headshotUrl !== undefined) {
+        updates.headshotUrl = parsed.data.headshotUrl?.trim() || null;
+        updates.headshotSource = parsed.data.headshotUrl?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.heroImageUrl !== undefined) {
+        updates.heroImageUrl = parsed.data.heroImageUrl?.trim() || null;
+        updates.heroImageSource = parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.website !== undefined) {
+        updates.website = parsed.data.website?.trim() || null;
+        updates.websiteSource = parsed.data.website?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.shortDescription !== undefined) {
+        updates.shortDescription = parsed.data.shortDescription?.trim() || null;
+        updates.shortDescriptionSource = parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.description !== undefined) {
+        updates.description = parsed.data.description?.trim() || null;
+        updates.descriptionSource = parsed.data.description?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.aliases !== undefined) updates.aliases = parsed.data.aliases.map((item) => item.trim()).filter(Boolean);
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
     if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
 
@@ -4047,6 +4152,17 @@ superAdminRoutes.get('/entrants', async (c) => {
             shortName: entrants.shortName,
             logoUrl: entrants.logoUrl,
             brandColor: entrants.brandColor,
+            heroImageUrl: entrants.heroImageUrl,
+            website: entrants.website,
+            aliases: entrants.aliases,
+            shortDescription: entrants.shortDescription,
+            description: entrants.description,
+            shortDescriptionSource: entrants.shortDescriptionSource,
+            descriptionSource: entrants.descriptionSource,
+            primaryImageSource: entrants.logoSource,
+            heroImageSource: entrants.heroImageSource,
+            websiteSource: entrants.websiteSource,
+            enrichmentSnapshot: entrants.enrichmentSnapshot,
             enrichmentStatus: entrants.enrichmentStatus,
             enrichedAt: entrants.enrichedAt,
             enrichmentError: entrants.enrichmentError,
@@ -4074,6 +4190,16 @@ superAdminRoutes.post('/entrants', async (c) => {
         shortName: parsed.data.shortName?.trim() || null,
         brandColor: parsed.data.brandColor?.trim() || null,
         logoUrl: parsed.data.logoUrl?.trim() || null,
+        heroImageUrl: parsed.data.heroImageUrl?.trim() || null,
+        website: parsed.data.website?.trim() || null,
+        shortDescription: parsed.data.shortDescription?.trim() || null,
+        description: parsed.data.description?.trim() || null,
+        aliases: parsed.data.aliases?.map((item) => item.trim()).filter(Boolean) || [],
+        shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
+        descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
+        logoSource: parsed.data.logoUrl?.trim() ? 'MANUAL' : 'NONE',
+        heroImageSource: parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE',
+        websiteSource: parsed.data.website?.trim() ? 'MANUAL' : 'NONE',
         externalId: parsed.data.externalId?.trim() || null,
         isActive: parsed.data.isActive,
     }).returning();
@@ -4095,7 +4221,27 @@ superAdminRoutes.patch('/entrants/:entrantId', async (c) => {
     if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
     if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
     if (parsed.data.brandColor !== undefined) updates.brandColor = parsed.data.brandColor?.trim() || null;
-    if (parsed.data.logoUrl !== undefined) updates.logoUrl = parsed.data.logoUrl?.trim() || null;
+    if (parsed.data.logoUrl !== undefined) {
+        updates.logoUrl = parsed.data.logoUrl?.trim() || null;
+        updates.logoSource = parsed.data.logoUrl?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.heroImageUrl !== undefined) {
+        updates.heroImageUrl = parsed.data.heroImageUrl?.trim() || null;
+        updates.heroImageSource = parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.website !== undefined) {
+        updates.website = parsed.data.website?.trim() || null;
+        updates.websiteSource = parsed.data.website?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.shortDescription !== undefined) {
+        updates.shortDescription = parsed.data.shortDescription?.trim() || null;
+        updates.shortDescriptionSource = parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.description !== undefined) {
+        updates.description = parsed.data.description?.trim() || null;
+        updates.descriptionSource = parsed.data.description?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.aliases !== undefined) updates.aliases = parsed.data.aliases.map((item) => item.trim()).filter(Boolean);
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
     if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
 
@@ -4127,6 +4273,17 @@ superAdminRoutes.get('/manufacturers', async (c) => {
             slug: manufacturers.slug,
             shortName: manufacturers.shortName,
             logoUrl: manufacturers.logoUrl,
+            heroImageUrl: manufacturers.heroImageUrl,
+            website: manufacturers.website,
+            aliases: manufacturers.aliases,
+            shortDescription: manufacturers.shortDescription,
+            description: manufacturers.description,
+            shortDescriptionSource: manufacturers.shortDescriptionSource,
+            descriptionSource: manufacturers.descriptionSource,
+            primaryImageSource: manufacturers.logoSource,
+            heroImageSource: manufacturers.heroImageSource,
+            websiteSource: manufacturers.websiteSource,
+            enrichmentSnapshot: manufacturers.enrichmentSnapshot,
             enrichmentStatus: manufacturers.enrichmentStatus,
             enrichedAt: manufacturers.enrichedAt,
             enrichmentError: manufacturers.enrichmentError,
@@ -4153,6 +4310,16 @@ superAdminRoutes.post('/manufacturers', async (c) => {
         slug: generateUniqueSlug(trimmedName),
         shortName: parsed.data.shortName?.trim() || null,
         logoUrl: parsed.data.logoUrl?.trim() || null,
+        heroImageUrl: parsed.data.heroImageUrl?.trim() || null,
+        website: parsed.data.website?.trim() || null,
+        shortDescription: parsed.data.shortDescription?.trim() || null,
+        description: parsed.data.description?.trim() || null,
+        aliases: parsed.data.aliases?.map((item) => item.trim()).filter(Boolean) || [],
+        shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
+        descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
+        logoSource: parsed.data.logoUrl?.trim() ? 'MANUAL' : 'NONE',
+        heroImageSource: parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE',
+        websiteSource: parsed.data.website?.trim() ? 'MANUAL' : 'NONE',
         externalId: parsed.data.externalId?.trim() || null,
         isActive: parsed.data.isActive,
     }).returning();
@@ -4173,7 +4340,27 @@ superAdminRoutes.patch('/manufacturers/:manufacturerId', async (c) => {
     if (parsed.data.leagueId !== undefined) updates.leagueId = parsed.data.leagueId || null;
     if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
     if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
-    if (parsed.data.logoUrl !== undefined) updates.logoUrl = parsed.data.logoUrl?.trim() || null;
+    if (parsed.data.logoUrl !== undefined) {
+        updates.logoUrl = parsed.data.logoUrl?.trim() || null;
+        updates.logoSource = parsed.data.logoUrl?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.heroImageUrl !== undefined) {
+        updates.heroImageUrl = parsed.data.heroImageUrl?.trim() || null;
+        updates.heroImageSource = parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.website !== undefined) {
+        updates.website = parsed.data.website?.trim() || null;
+        updates.websiteSource = parsed.data.website?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.shortDescription !== undefined) {
+        updates.shortDescription = parsed.data.shortDescription?.trim() || null;
+        updates.shortDescriptionSource = parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.description !== undefined) {
+        updates.description = parsed.data.description?.trim() || null;
+        updates.descriptionSource = parsed.data.description?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.aliases !== undefined) updates.aliases = parsed.data.aliases.map((item) => item.trim()).filter(Boolean);
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
     if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
 
@@ -4519,6 +4706,114 @@ async function refreshEnrichmentTarget(kind: EntityKind, id: string) {
     return enrichment;
 }
 
+async function resetEnrichmentTarget(kind: EntityKind, id: string) {
+    if (kind === 'league') {
+        await db.update(leagues).set({
+            shortDescription: null,
+            description: null,
+            logoUrl: null,
+            heroImageUrl: null,
+            website: null,
+            aliases: [],
+            shortDescriptionSource: 'NONE',
+            descriptionSource: 'NONE',
+            logoSource: 'NONE',
+            heroImageSource: 'NONE',
+            websiteSource: 'NONE',
+            updatedAt: new Date(),
+        }).where(eq(leagues.id, id));
+        return;
+    }
+
+    if (kind === 'team') {
+        await db.update(teams).set({
+            shortDescription: null,
+            description: null,
+            crestUrl: null,
+            heroImageUrl: null,
+            website: null,
+            aliases: [],
+            shortDescriptionSource: 'NONE',
+            descriptionSource: 'NONE',
+            crestSource: 'NONE',
+            heroImageSource: 'NONE',
+            websiteSource: 'NONE',
+        }).where(eq(teams.id, id));
+        return;
+    }
+
+    if (kind === 'player') {
+        await db.update(players).set({
+            shortDescription: null,
+            description: null,
+            headshotUrl: null,
+            heroImageUrl: null,
+            website: null,
+            aliases: [],
+            shortDescriptionSource: 'NONE',
+            descriptionSource: 'NONE',
+            headshotSource: 'NONE',
+            heroImageSource: 'NONE',
+            websiteSource: 'NONE',
+            updatedAt: new Date(),
+        }).where(eq(players.id, id));
+        return;
+    }
+
+    if (kind === 'driver') {
+        await db.update(drivers).set({
+            shortDescription: null,
+            description: null,
+            headshotUrl: null,
+            heroImageUrl: null,
+            website: null,
+            aliases: [],
+            shortDescriptionSource: 'NONE',
+            descriptionSource: 'NONE',
+            headshotSource: 'NONE',
+            heroImageSource: 'NONE',
+            websiteSource: 'NONE',
+            updatedAt: new Date(),
+        }).where(eq(drivers.id, id));
+        return;
+    }
+
+    if (kind === 'entrant') {
+        await db.update(entrants).set({
+            shortDescription: null,
+            description: null,
+            logoUrl: null,
+            heroImageUrl: null,
+            website: null,
+            aliases: [],
+            shortDescriptionSource: 'NONE',
+            descriptionSource: 'NONE',
+            logoSource: 'NONE',
+            heroImageSource: 'NONE',
+            websiteSource: 'NONE',
+            updatedAt: new Date(),
+        }).where(eq(entrants.id, id));
+        return;
+    }
+
+    if (kind === 'manufacturer') {
+        await db.update(manufacturers).set({
+            shortDescription: null,
+            description: null,
+            logoUrl: null,
+            heroImageUrl: null,
+            website: null,
+            aliases: [],
+            shortDescriptionSource: 'NONE',
+            descriptionSource: 'NONE',
+            logoSource: 'NONE',
+            heroImageSource: 'NONE',
+            websiteSource: 'NONE',
+            updatedAt: new Date(),
+        }).where(eq(manufacturers.id, id));
+    }
+}
+
 superAdminRoutes.post('/enrichment/:kind/:id/refresh', async (c) => {
     const parsed = enrichmentKindSchema.safeParse(c.req.param('kind'));
     if (!parsed.success) {
@@ -4532,6 +4827,28 @@ superAdminRoutes.post('/enrichment/:kind/:id/refresh', async (c) => {
         enrichment = await refreshEnrichmentTarget(kind, id);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to refresh enrichment';
+        if (message === 'Entity not found') {
+            return c.json(apiError('NOT_FOUND', 'Entity not found'), 404);
+        }
+        return c.json(apiError('INTERNAL_ERROR', message), 500);
+    }
+    return c.json(apiResponse({ kind, id, enrichment }));
+});
+
+superAdminRoutes.post('/enrichment/:kind/:id/revert', async (c) => {
+    const parsed = enrichmentKindSchema.safeParse(c.req.param('kind'));
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid enrichment target'), 400);
+    }
+
+    const kind = parsed.data;
+    const id = c.req.param('id');
+    let enrichment: EntityEnrichmentResult;
+    try {
+        await resetEnrichmentTarget(kind, id);
+        enrichment = await refreshEnrichmentTarget(kind, id);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to revert enrichment';
         if (message === 'Entity not found') {
             return c.json(apiError('NOT_FOUND', 'Entity not found'), 404);
         }
