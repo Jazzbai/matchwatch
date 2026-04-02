@@ -40,6 +40,7 @@ This repository is a monorepo with:
 - AWS S3 for uploads
 - Resend for email delivery
 - Google Places API for venue lookup and venue data enrichment
+- Google Custom Search JSON API + Programmable Search Engine for sports entity autofill
 - Google reCAPTCHA for signup/login abuse protection
 
 ## Monorepo Layout
@@ -129,6 +130,9 @@ Key variables from `.env.example`:
 - `NEXT_PUBLIC_API_URL`
 - `API_PROXY_TARGET`
 - `GOOGLE_PLACES_API_KEY`
+- `GOOGLE_PLACES_BASE_URL`
+- `GOOGLE_SEARCH_API_KEY`
+- `GOOGLE_SEARCH_ENGINE_ID`
 - `RECAPTCHA_SECRET_KEY`
 - `FOOTBALL_DATA_API_KEY`
 - `API_FOOTBALL_API_KEY`
@@ -190,6 +194,62 @@ Purpose:
 Purpose:
 
 - single-event and motorsport-style events with drivers, teams, and manufacturer entries
+
+## Google API Setup
+
+There are two separate Google integrations in this repo.
+
+### Venue Enrichment
+
+Used for:
+
+- venue lookup
+- venue details
+- venue photos
+- venue Google sync
+
+Required env:
+
+- `GOOGLE_PLACES_API_KEY`
+- optional `GOOGLE_PLACES_BASE_URL` (defaults to `https://places.googleapis.com/v1`)
+
+### Sports Entity Autofill
+
+Used for:
+
+- league autofill
+- team autofill
+- player autofill
+- driver autofill
+- motorsport team / manufacturer autofill
+
+Required env:
+
+- `GOOGLE_SEARCH_API_KEY`
+- `GOOGLE_SEARCH_ENGINE_ID`
+
+Notes:
+
+- The API code calls `https://www.googleapis.com/customsearch/v1`
+- the search engine id is the `cx` value from your Programmable Search Engine
+- `docker-compose.yml` now passes these env vars into the API container
+
+### Deployment Checklist
+
+Add these to the server `.env` before rebuilding:
+
+```env
+GOOGLE_PLACES_API_KEY=your_places_key
+GOOGLE_SEARCH_API_KEY=your_custom_search_key
+GOOGLE_SEARCH_ENGINE_ID=your_programmable_search_engine_id
+```
+
+Then redeploy:
+
+```bash
+docker compose build api frontend
+docker compose up -d api frontend
+```
 
 ### Venues and Venue Operations
 
