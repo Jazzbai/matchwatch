@@ -31,6 +31,8 @@ import {
     players,
     staticPages,
     standingsRows,
+    teamRosterMembers,
+    teamStadiumLinks,
     teams,
     users,
     userTeamInterests,
@@ -154,6 +156,8 @@ const teamSearchQuerySchema = z.object({
 
 const createTeamSchema = z.object({
     leagueId: z.string().uuid().nullable().optional(),
+    primaryStadiumId: z.string().uuid().nullable().optional(),
+    secondaryStadiumIds: z.array(z.string().uuid()).max(12).optional(),
     name: z.string().min(2).max(150),
     shortName: z.string().max(30).nullable().optional(),
     crestUrl: z.string().url().nullable().optional(),
@@ -164,6 +168,14 @@ const createTeamSchema = z.object({
     description: z.string().max(4000).nullable().optional(),
     aliases: z.array(z.string().max(120)).max(10).optional(),
     externalId: z.string().max(20).nullable().optional(),
+    rosterMembers: z.array(z.object({
+        playerId: z.string().uuid(),
+        shirtNumber: z.string().max(12).nullable().optional(),
+        position: z.string().max(60).nullable().optional(),
+        isCaptain: z.boolean().optional(),
+        sortOrder: z.coerce.number().int().optional(),
+        isActive: z.boolean().optional(),
+    })).max(80).optional(),
     isActive: z.boolean().default(true),
 });
 
@@ -176,14 +188,36 @@ const mergeTeamSchema = z.object({
 const stadiumSearchQuerySchema = z.object({
     search: z.string().trim().default(''),
     limit: z.coerce.number().int().min(1).max(50).default(12),
+    page: z.coerce.number().int().min(1).optional(),
+    includeInactive: z.coerce.boolean().optional().default(false),
 });
 
 const createStadiumSchema = z.object({
     name: z.string().min(2).max(200),
-    city: z.string().max(100).optional(),
-    country: z.string().max(100).optional(),
-    externalId: z.string().max(50).optional(),
+    shortName: z.string().max(80).nullable().optional(),
+    imageUrl: z.string().url().nullable().optional(),
+    heroImageUrl: z.string().url().nullable().optional(),
+    shortDescription: z.string().max(280).nullable().optional(),
+    description: z.string().max(4000).nullable().optional(),
+    website: z.string().url().nullable().optional(),
+    addressLine1: z.string().max(255).nullable().optional(),
+    city: z.string().max(100).nullable().optional(),
+    stateProvince: z.string().max(100).nullable().optional(),
+    country: z.string().max(100).nullable().optional(),
+    postalCode: z.string().max(20).nullable().optional(),
+    lat: z.coerce.number().min(-90).max(90).nullable().optional(),
+    lng: z.coerce.number().min(-180).max(180).nullable().optional(),
+    capacity: z.coerce.number().int().positive().nullable().optional(),
+    openedYear: z.coerce.number().int().min(1800).max(3000).nullable().optional(),
+    surface: z.string().max(80).nullable().optional(),
+    aliases: z.array(z.string().max(120)).max(10).optional(),
+    googlePlaceId: z.string().max(255).nullable().optional(),
+    googleSourceSnapshot: z.any().optional(),
+    externalId: z.string().max(50).nullable().optional(),
+    isActive: z.boolean().default(true),
 });
+
+const updateStadiumSchema = createStadiumSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
 const venueArraySchema = z.array(z.string().min(1).max(80)).max(60);
 const galleryUrlArraySchema = z.array(z.string().url()).max(5);
@@ -1484,7 +1518,7 @@ superAdminRoutes.get('/system', async (c) => {
 
 superAdminRoutes.get('/lookups', async (c) => {
     const now = new Date();
-    const [venueRows, matchRows, leagueRows, sportRows, teamRows, stadiumRows, ownerRows, attributeRows] = await Promise.all([
+    const [venueRows, matchRows, leagueRows, sportRows, teamRows, playerRows, stadiumRows, ownerRows, attributeRows] = await Promise.all([
         db.select({
             id: venues.id,
             name: venues.name,
@@ -1527,6 +1561,14 @@ superAdminRoutes.get('/lookups', async (c) => {
             crestUrl: teams.crestUrl,
         }).from(teams).where(eq(teams.isActive, true)).orderBy(teams.name).limit(500),
         db.select({
+            id: players.id,
+            leagueId: players.leagueId,
+            name: players.name,
+            slug: players.slug,
+            shortName: players.shortName,
+            headshotUrl: players.headshotUrl,
+        }).from(players).where(eq(players.isActive, true)).orderBy(players.name).limit(1200),
+        db.select({
             id: stadiums.id,
             name: stadiums.name,
             city: stadiums.city,
@@ -1559,6 +1601,7 @@ superAdminRoutes.get('/lookups', async (c) => {
         leagues: leagueRows,
         sports: sportRows,
         teams: teamRows,
+        players: playerRows,
         stadiums: stadiumRows,
         owners: ownerRows,
         attributes: attributeRows,
@@ -1728,7 +1771,7 @@ superAdminRoutes.get('/teams', async (c) => {
 
     if (parsed.data.page) {
         const offset = paginationOffset(parsed.data.page, parsed.data.limit);
-        const [rows, [totalResult]] = await Promise.all([
+        const [baseRows, [totalResult]] = await Promise.all([
             db.select({
                 id: teams.id,
                 leagueId: teams.leagueId,
@@ -1743,6 +1786,8 @@ superAdminRoutes.get('/teams', async (c) => {
                 aliases: teams.aliases,
                 shortDescription: teams.shortDescription,
                 description: teams.description,
+                primaryStadiumId: teams.primaryStadiumId,
+                primaryStadiumName: stadiums.name,
                 externalId: teams.externalId,
                 enrichedAt: teams.enrichedAt,
                 enrichmentStatus: teams.enrichmentStatus,
@@ -1751,12 +1796,85 @@ superAdminRoutes.get('/teams', async (c) => {
                 createdAt: teams.createdAt,
             }).from(teams)
                 .leftJoin(leagues, eq(teams.leagueId, leagues.id))
+                .leftJoin(stadiums, eq(teams.primaryStadiumId, stadiums.id))
                 .where(queryWhere)
                 .orderBy(teams.name)
                 .limit(parsed.data.limit)
                 .offset(offset),
             db.select({ count: count() }).from(teams).where(queryWhere),
         ]);
+
+        const teamIds = baseRows.map((row) => row.id);
+        const [secondaryRows, rosterRows] = teamIds.length > 0
+            ? await Promise.all([
+                db.select({
+                    teamId: teamStadiumLinks.teamId,
+                    stadiumId: teamStadiumLinks.stadiumId,
+                    stadiumName: stadiums.name,
+                }).from(teamStadiumLinks)
+                    .innerJoin(stadiums, eq(teamStadiumLinks.stadiumId, stadiums.id))
+                    .where(and(inArray(teamStadiumLinks.teamId, teamIds), eq(teamStadiumLinks.isActive, true), eq(teamStadiumLinks.isPrimary, false)))
+                    .orderBy(teamStadiumLinks.sortOrder, stadiums.name),
+                db.select({
+                    teamId: teamRosterMembers.teamId,
+                    playerId: teamRosterMembers.playerId,
+                    playerName: players.name,
+                    playerSlug: players.slug,
+                    playerShortName: players.shortName,
+                    headshotUrl: players.headshotUrl,
+                    shirtNumber: teamRosterMembers.shirtNumber,
+                    position: teamRosterMembers.position,
+                    isCaptain: teamRosterMembers.isCaptain,
+                    sortOrder: teamRosterMembers.sortOrder,
+                    isActive: teamRosterMembers.isActive,
+                }).from(teamRosterMembers)
+                    .innerJoin(players, eq(teamRosterMembers.playerId, players.id))
+                    .where(inArray(teamRosterMembers.teamId, teamIds))
+                    .orderBy(teamRosterMembers.sortOrder, players.name),
+            ])
+            : [[], []];
+
+        const secondaryByTeamId = new Map<string, Array<{ id: string; name: string }>>();
+        for (const row of secondaryRows) {
+            const existing = secondaryByTeamId.get(row.teamId) || [];
+            existing.push({ id: row.stadiumId, name: row.stadiumName });
+            secondaryByTeamId.set(row.teamId, existing);
+        }
+
+        const rosterByTeamId = new Map<string, Array<{
+            playerId: string;
+            playerName: string;
+            playerSlug: string;
+            playerShortName: string | null;
+            headshotUrl: string | null;
+            shirtNumber: string | null;
+            position: string | null;
+            isCaptain: boolean;
+            sortOrder: number;
+            isActive: boolean;
+        }>>();
+        for (const row of rosterRows) {
+            const existing = rosterByTeamId.get(row.teamId) || [];
+            existing.push({
+                playerId: row.playerId,
+                playerName: row.playerName,
+                playerSlug: row.playerSlug,
+                playerShortName: row.playerShortName,
+                headshotUrl: row.headshotUrl,
+                shirtNumber: row.shirtNumber,
+                position: row.position,
+                isCaptain: row.isCaptain,
+                sortOrder: row.sortOrder,
+                isActive: row.isActive,
+            });
+            rosterByTeamId.set(row.teamId, existing);
+        }
+
+        const rows = baseRows.map((row) => ({
+            ...row,
+            secondaryStadiums: secondaryByTeamId.get(row.id) || [],
+            rosterMembers: rosterByTeamId.get(row.id) || [],
+        }));
 
         return c.json(apiResponse(rows, paginationMeta(parsed.data.page, parsed.data.limit, Number(totalResult?.count || 0))));
     }
@@ -1786,6 +1904,16 @@ superAdminRoutes.post('/teams', async (c) => {
         if (!league) return c.json(apiError('NOT_FOUND', 'League not found'), 404);
     }
 
+    const primaryStadiumId = parsed.data.primaryStadiumId || null;
+    const secondaryStadiumIds = uniqueUuidList(parsed.data.secondaryStadiumIds || []).filter((stadiumId) => stadiumId !== primaryStadiumId);
+    const rosterMembers = normalizeRosterMembers(parsed.data.rosterMembers);
+    try {
+        await assertActiveStadiumIds(uniqueUuidList([primaryStadiumId, ...secondaryStadiumIds]));
+        await assertActivePlayerIds(rosterMembers.map((member) => member.playerId));
+    } catch (error) {
+        return c.json(apiError('NOT_FOUND', error instanceof Error ? error.message : 'Related records not found'), 404);
+    }
+
     const trimmedName = parsed.data.name.trim();
     const [existingTeam] = await db.select({
         id: teams.id,
@@ -1802,32 +1930,39 @@ superAdminRoutes.post('/teams', async (c) => {
         .limit(1);
     if (existingTeam) return c.json(apiResponse(existingTeam), 200);
 
-    const [created] = await db.insert(teams).values({
-        leagueId: parsed.data.leagueId || null,
-        name: trimmedName,
-        slug: await allocateCanonicalSlug('team', trimmedName, { shortName: parsed.data.shortName?.trim() || null }),
-        shortName: parsed.data.shortName?.trim() || null,
-        crestUrl: parsed.data.crestUrl?.trim() || null,
-        heroImageUrl: parsed.data.heroImageUrl?.trim() || null,
-        website: parsed.data.website?.trim() || null,
-        country: parsed.data.country?.trim() || null,
-        shortDescription: parsed.data.shortDescription?.trim() || null,
-        description: parsed.data.description?.trim() || null,
-        aliases: parsed.data.aliases?.map((item) => item.trim()).filter(Boolean) || [],
-        shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
-        descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
-        crestSource: parsed.data.crestUrl?.trim() ? 'MANUAL' : 'NONE',
-        heroImageSource: parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE',
-        websiteSource: parsed.data.website?.trim() ? 'MANUAL' : 'NONE',
-        externalId: parsed.data.externalId?.trim() || null,
-        isActive: parsed.data.isActive,
-    }).returning({
-        id: teams.id,
-        leagueId: teams.leagueId,
-        slug: teams.slug,
-        name: teams.name,
-        shortName: teams.shortName,
-        crestUrl: teams.crestUrl,
+    const [created] = await db.transaction(async (tx) => {
+        const [createdTeam] = await tx.insert(teams).values({
+            leagueId: parsed.data.leagueId || null,
+            primaryStadiumId,
+            name: trimmedName,
+            slug: await allocateCanonicalSlug('team', trimmedName, { shortName: parsed.data.shortName?.trim() || null }),
+            shortName: parsed.data.shortName?.trim() || null,
+            crestUrl: parsed.data.crestUrl?.trim() || null,
+            heroImageUrl: parsed.data.heroImageUrl?.trim() || null,
+            website: parsed.data.website?.trim() || null,
+            country: parsed.data.country?.trim() || null,
+            shortDescription: parsed.data.shortDescription?.trim() || null,
+            description: parsed.data.description?.trim() || null,
+            aliases: parsed.data.aliases?.map((item) => item.trim()).filter(Boolean) || [],
+            shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
+            descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
+            crestSource: parsed.data.crestUrl?.trim() ? 'MANUAL' : 'NONE',
+            heroImageSource: parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE',
+            websiteSource: parsed.data.website?.trim() ? 'MANUAL' : 'NONE',
+            externalId: parsed.data.externalId?.trim() || null,
+            isActive: parsed.data.isActive,
+        }).returning({
+            id: teams.id,
+            leagueId: teams.leagueId,
+            slug: teams.slug,
+            name: teams.name,
+            shortName: teams.shortName,
+            crestUrl: teams.crestUrl,
+        });
+
+        await syncTeamStadiumState(tx, createdTeam.id, primaryStadiumId, secondaryStadiumIds);
+        await syncTeamRosterState(tx, createdTeam.id, rosterMembers);
+        return [createdTeam];
     });
 
     return c.json(apiResponse(created), 201);
@@ -1843,6 +1978,7 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
 
     const [existing] = await db.select({
         id: teams.id,
+        primaryStadiumId: teams.primaryStadiumId,
         crestUrl: teams.crestUrl,
         crestSource: teams.crestSource,
         heroImageUrl: teams.heroImageUrl,
@@ -1863,8 +1999,36 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
         if (!league) return c.json(apiError('NOT_FOUND', 'League not found'), 404);
     }
 
+    const currentLinkRows = (parsed.data.primaryStadiumId !== undefined || parsed.data.secondaryStadiumIds !== undefined)
+        ? await db.select({ stadiumId: teamStadiumLinks.stadiumId, isPrimary: teamStadiumLinks.isPrimary })
+            .from(teamStadiumLinks)
+            .where(and(eq(teamStadiumLinks.teamId, teamId), eq(teamStadiumLinks.isActive, true)))
+        : [];
+    const currentSecondaryStadiumIds = currentLinkRows.filter((row) => !row.isPrimary).map((row) => row.stadiumId);
+    const nextPrimaryStadiumId = parsed.data.primaryStadiumId !== undefined
+        ? (parsed.data.primaryStadiumId || null)
+        : (existing.primaryStadiumId || null);
+    const nextSecondaryStadiumIds = parsed.data.secondaryStadiumIds !== undefined
+        ? uniqueUuidList(parsed.data.secondaryStadiumIds).filter((stadiumId) => stadiumId !== nextPrimaryStadiumId)
+        : currentSecondaryStadiumIds.filter((stadiumId) => stadiumId !== nextPrimaryStadiumId);
+    const nextRosterMembers = parsed.data.rosterMembers !== undefined
+        ? normalizeRosterMembers(parsed.data.rosterMembers)
+        : null;
+
+    try {
+        if (parsed.data.primaryStadiumId !== undefined || parsed.data.secondaryStadiumIds !== undefined) {
+            await assertActiveStadiumIds(uniqueUuidList([nextPrimaryStadiumId, ...nextSecondaryStadiumIds]));
+        }
+        if (nextRosterMembers) {
+            await assertActivePlayerIds(nextRosterMembers.map((member) => member.playerId));
+        }
+    } catch (error) {
+        return c.json(apiError('NOT_FOUND', error instanceof Error ? error.message : 'Related records not found'), 404);
+    }
+
     const updates: Record<string, unknown> = {};
     if (parsed.data.leagueId !== undefined) updates.leagueId = parsed.data.leagueId || null;
+    if (parsed.data.primaryStadiumId !== undefined) updates.primaryStadiumId = nextPrimaryStadiumId;
     if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
     if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
     if (parsed.data.crestUrl !== undefined) {
@@ -1892,7 +2056,15 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
     if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
 
-    await db.update(teams).set(updates).where(eq(teams.id, teamId));
+    await db.transaction(async (tx) => {
+        await tx.update(teams).set(updates).where(eq(teams.id, teamId));
+        if (parsed.data.primaryStadiumId !== undefined || parsed.data.secondaryStadiumIds !== undefined) {
+            await syncTeamStadiumState(tx, teamId, nextPrimaryStadiumId, nextSecondaryStadiumIds);
+        }
+        if (nextRosterMembers) {
+            await syncTeamRosterState(tx, teamId, nextRosterMembers);
+        }
+    });
     return c.json(apiResponse({ message: 'Team updated' }));
 });
 
@@ -1913,6 +2085,7 @@ superAdminRoutes.post('/teams/:teamId/merge', async (c) => {
         db.select({
             id: teams.id,
             leagueId: teams.leagueId,
+            primaryStadiumId: teams.primaryStadiumId,
             slug: teams.slug,
             name: teams.name,
             shortName: teams.shortName,
@@ -1934,6 +2107,7 @@ superAdminRoutes.post('/teams/:teamId/merge', async (c) => {
         db.select({
             id: teams.id,
             leagueId: teams.leagueId,
+            primaryStadiumId: teams.primaryStadiumId,
             slug: teams.slug,
             name: teams.name,
             shortName: teams.shortName,
@@ -2010,6 +2184,65 @@ superAdminRoutes.post('/teams/:teamId/merge', async (c) => {
         targetUpdates.externalId = source.externalId;
     }
 
+    const [sourceLinkRows, targetLinkRows, sourceRosterRows, targetRosterRows] = await Promise.all([
+        db.select({
+            stadiumId: teamStadiumLinks.stadiumId,
+            isPrimary: teamStadiumLinks.isPrimary,
+            sortOrder: teamStadiumLinks.sortOrder,
+        }).from(teamStadiumLinks).where(and(eq(teamStadiumLinks.teamId, sourceTeamId), eq(teamStadiumLinks.isActive, true))),
+        db.select({
+            stadiumId: teamStadiumLinks.stadiumId,
+            isPrimary: teamStadiumLinks.isPrimary,
+            sortOrder: teamStadiumLinks.sortOrder,
+        }).from(teamStadiumLinks).where(and(eq(teamStadiumLinks.teamId, targetTeamId), eq(teamStadiumLinks.isActive, true))),
+        db.select({
+            playerId: teamRosterMembers.playerId,
+            shirtNumber: teamRosterMembers.shirtNumber,
+            position: teamRosterMembers.position,
+            isCaptain: teamRosterMembers.isCaptain,
+            sortOrder: teamRosterMembers.sortOrder,
+            isActive: teamRosterMembers.isActive,
+        }).from(teamRosterMembers).where(eq(teamRosterMembers.teamId, sourceTeamId)).orderBy(teamRosterMembers.sortOrder, teamRosterMembers.createdAt),
+        db.select({
+            playerId: teamRosterMembers.playerId,
+            shirtNumber: teamRosterMembers.shirtNumber,
+            position: teamRosterMembers.position,
+            isCaptain: teamRosterMembers.isCaptain,
+            sortOrder: teamRosterMembers.sortOrder,
+            isActive: teamRosterMembers.isActive,
+        }).from(teamRosterMembers).where(eq(teamRosterMembers.teamId, targetTeamId)).orderBy(teamRosterMembers.sortOrder, teamRosterMembers.createdAt),
+    ]);
+
+    const mergedPrimaryStadiumId = target.primaryStadiumId || source.primaryStadiumId || null;
+    const mergedSecondaryStadiumIds = Array.from(new Set([
+        ...targetLinkRows.filter((row) => !row.isPrimary).map((row) => row.stadiumId),
+        ...sourceLinkRows.filter((row) => !row.isPrimary && row.stadiumId !== mergedPrimaryStadiumId).map((row) => row.stadiumId),
+        ...sourceLinkRows.filter((row) => row.isPrimary && row.stadiumId !== mergedPrimaryStadiumId).map((row) => row.stadiumId),
+    ]));
+    const targetPlayerIds = new Set(targetRosterRows.map((row) => row.playerId));
+    const mergedRosterMembers = [
+        ...targetRosterRows.map((row, index) => ({
+            playerId: row.playerId,
+            shirtNumber: row.shirtNumber,
+            position: row.position,
+            isCaptain: row.isCaptain,
+            sortOrder: row.sortOrder ?? index,
+            isActive: row.isActive,
+        })),
+        ...sourceRosterRows
+            .filter((row) => !targetPlayerIds.has(row.playerId))
+            .map((row, index) => ({
+                playerId: row.playerId,
+                shirtNumber: row.shirtNumber,
+                position: row.position,
+                isCaptain: row.isCaptain,
+                sortOrder: targetRosterRows.length + index,
+                isActive: row.isActive,
+            })),
+    ];
+
+    targetUpdates.primaryStadiumId = mergedPrimaryStadiumId;
+
     const sourceArchivedSlug = await allocateCanonicalSlug('team', `${source.name} archived`, {
         shortName: source.shortName,
         excludeId: source.id,
@@ -2031,6 +2264,10 @@ superAdminRoutes.post('/teams/:teamId/merge', async (c) => {
         await tx.update(userTeamInterests).set({ teamId: targetTeamId }).where(eq(userTeamInterests.teamId, sourceTeamId));
 
         await tx.update(teams).set(targetUpdates).where(eq(teams.id, targetTeamId));
+        await syncTeamStadiumState(tx, targetTeamId, mergedPrimaryStadiumId, mergedSecondaryStadiumIds);
+        await syncTeamRosterState(tx, targetTeamId, mergedRosterMembers);
+        await tx.delete(teamStadiumLinks).where(eq(teamStadiumLinks.teamId, sourceTeamId));
+        await tx.delete(teamRosterMembers).where(eq(teamRosterMembers.teamId, sourceTeamId));
 
         if (source.slug && source.slug !== target.slug) {
             await tx.insert(entitySlugRedirects).values({
@@ -2072,25 +2309,113 @@ superAdminRoutes.get('/stadiums', async (c) => {
     }
 
     const search = parsed.data.search.trim();
-    const where = search
-        ? and(
-            eq(stadiums.isActive, true),
-            or(
-                ilike(stadiums.name, `%${search}%`),
-                ilike(stadiums.city, `%${search}%`),
-                ilike(stadiums.country, `%${search}%`),
-            )!,
-        )
-        : eq(stadiums.isActive, true);
+    const filters = [];
+    if (!parsed.data.includeInactive) filters.push(eq(stadiums.isActive, true));
+    if (search) {
+        filters.push(or(
+            ilike(stadiums.name, `%${search}%`),
+            ilike(stadiums.shortName, `%${search}%`),
+            ilike(stadiums.slug, `%${search}%`),
+            ilike(stadiums.city, `%${search}%`),
+            ilike(stadiums.country, `%${search}%`),
+        )!);
+    }
+    const where = filters.length > 0 ? and(...filters) : undefined;
 
-    const rows = await db.select({
-        id: stadiums.id,
-        name: stadiums.name,
-        city: stadiums.city,
-        country: stadiums.country,
-    }).from(stadiums).where(where).orderBy(stadiums.name).limit(parsed.data.limit);
+    if (!parsed.data.page) {
+        const rows = await db.select({
+            id: stadiums.id,
+            name: stadiums.name,
+            city: stadiums.city,
+            country: stadiums.country,
+        }).from(stadiums).where(where).orderBy(stadiums.name).limit(parsed.data.limit);
 
-    return c.json(apiResponse(rows));
+        return c.json(apiResponse(rows));
+    }
+
+    const page = parsed.data.page;
+    const offset = paginationOffset(page, parsed.data.limit);
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: stadiums.id,
+            slug: stadiums.slug,
+            name: stadiums.name,
+            shortName: stadiums.shortName,
+            imageUrl: stadiums.imageUrl,
+            heroImageUrl: stadiums.heroImageUrl,
+            shortDescription: stadiums.shortDescription,
+            description: stadiums.description,
+            website: stadiums.website,
+            addressLine1: stadiums.addressLine1,
+            city: stadiums.city,
+            stateProvince: stadiums.stateProvince,
+            country: stadiums.country,
+            postalCode: stadiums.postalCode,
+            lat: stadiums.lat,
+            lng: stadiums.lng,
+            capacity: stadiums.capacity,
+            openedYear: stadiums.openedYear,
+            surface: stadiums.surface,
+            aliases: stadiums.aliases,
+            googlePlaceId: stadiums.googlePlaceId,
+            googleSourceSnapshot: stadiums.googleSourceSnapshot,
+            googleLastSyncedAt: stadiums.googleLastSyncedAt,
+            googleSyncStatus: stadiums.googleSyncStatus,
+            googleSyncError: stadiums.googleSyncError,
+            enrichmentSnapshot: stadiums.enrichmentSnapshot,
+            enrichedAt: stadiums.enrichedAt,
+            enrichmentStatus: stadiums.enrichmentStatus,
+            enrichmentError: stadiums.enrichmentError,
+            imageSource: stadiums.imageSource,
+            heroImageSource: stadiums.heroImageSource,
+            websiteSource: stadiums.websiteSource,
+            shortDescriptionSource: stadiums.shortDescriptionSource,
+            descriptionSource: stadiums.descriptionSource,
+            externalId: stadiums.externalId,
+            isActive: stadiums.isActive,
+            createdAt: stadiums.createdAt,
+            updatedAt: stadiums.updatedAt,
+        }).from(stadiums).where(where).orderBy(stadiums.name).limit(parsed.data.limit).offset(offset),
+        db.select({ count: count() }).from(stadiums).where(where),
+    ]);
+
+    if (rows.length === 0) {
+        return c.json(apiResponse([], paginationMeta(page, parsed.data.limit, Number(totalResult?.count || 0))));
+    }
+
+    const [teamCounts, linkedTeams] = await Promise.all([
+        db.select({
+            stadiumId: matches.stadiumId,
+            count: count(),
+        }).from(matches).where(and(inArray(matches.stadiumId, rows.map((row) => row.id)), eq(matches.status, 'FINISHED'))).groupBy(matches.stadiumId),
+        db.select({
+            stadiumId: teamStadiumLinks.stadiumId,
+            teamId: teams.id,
+            teamName: teams.name,
+            teamSlug: teams.slug,
+            isPrimary: teamStadiumLinks.isPrimary,
+        }).from(teamStadiumLinks)
+            .innerJoin(teams, eq(teamStadiumLinks.teamId, teams.id))
+            .where(and(
+                inArray(teamStadiumLinks.stadiumId, rows.map((row) => row.id)),
+                eq(teamStadiumLinks.isActive, true),
+                eq(teams.isActive, true),
+            ))
+            .orderBy(teamStadiumLinks.sortOrder, teams.name),
+    ]);
+    const teamCountByStadiumId = new Map(teamCounts.map((row) => [row.stadiumId, Number(row.count || 0)]));
+    const linkedTeamsByStadiumId = new Map<string, Array<{ id: string; name: string; slug: string; isPrimary: boolean }>>();
+    for (const row of linkedTeams) {
+        const existing = linkedTeamsByStadiumId.get(row.stadiumId) || [];
+        existing.push({ id: row.teamId, name: row.teamName, slug: row.teamSlug, isPrimary: row.isPrimary });
+        linkedTeamsByStadiumId.set(row.stadiumId, existing);
+    }
+
+    return c.json(apiResponse(rows.map((row) => ({
+        ...row,
+        teamCount: teamCountByStadiumId.get(row.id) || 0,
+        linkedTeams: linkedTeamsByStadiumId.get(row.id) || [],
+    })), paginationMeta(page, parsed.data.limit, Number(totalResult?.count || 0))));
 });
 
 superAdminRoutes.post('/stadiums', async (c) => {
@@ -2120,18 +2445,139 @@ superAdminRoutes.post('/stadiums', async (c) => {
 
     const [created] = await db.insert(stadiums).values({
         name: trimmedName,
+        slug: await allocateCanonicalSlug('stadium', trimmedName, { shortName: parsed.data.shortName?.trim() || null }),
+        shortName: parsed.data.shortName?.trim() || null,
+        imageUrl: parsed.data.imageUrl?.trim() || null,
+        heroImageUrl: parsed.data.heroImageUrl?.trim() || null,
+        shortDescription: parsed.data.shortDescription?.trim() || null,
+        description: parsed.data.description?.trim() || null,
+        website: parsed.data.website?.trim() || null,
+        addressLine1: parsed.data.addressLine1?.trim() || null,
         city: trimmedCity,
+        stateProvince: parsed.data.stateProvince?.trim() || null,
         country: trimmedCountry,
+        postalCode: parsed.data.postalCode?.trim() || null,
+        lat: parsed.data.lat != null ? String(parsed.data.lat) : null,
+        lng: parsed.data.lng != null ? String(parsed.data.lng) : null,
+        capacity: parsed.data.capacity ?? null,
+        openedYear: parsed.data.openedYear ?? null,
+        surface: parsed.data.surface?.trim() || null,
+        aliases: parsed.data.aliases?.map((item) => item.trim()).filter(Boolean) || [],
+        shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
+        descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
+        imageSource: parsed.data.imageUrl?.trim() ? 'MANUAL' : 'NONE',
+        heroImageSource: parsed.data.heroImageUrl?.trim() ? 'MANUAL' : 'NONE',
+        websiteSource: parsed.data.website?.trim() ? 'MANUAL' : 'NONE',
+        googlePlaceId: parsed.data.googlePlaceId?.trim() || null,
+        googleSourceSnapshot: parsed.data.googleSourceSnapshot || {},
+        googleLastSyncedAt: parsed.data.googlePlaceId ? new Date() : null,
+        googleSyncStatus: parsed.data.googlePlaceId ? 'SYNCED' : 'NEVER_SYNCED',
+        googleSyncError: null,
         externalId: parsed.data.externalId?.trim() || null,
-        isActive: true,
+        isActive: parsed.data.isActive,
     }).returning({
         id: stadiums.id,
+        slug: stadiums.slug,
         name: stadiums.name,
+        shortName: stadiums.shortName,
+        imageUrl: stadiums.imageUrl,
+        heroImageUrl: stadiums.heroImageUrl,
+        shortDescription: stadiums.shortDescription,
+        description: stadiums.description,
+        website: stadiums.website,
         city: stadiums.city,
         country: stadiums.country,
+        isActive: stadiums.isActive,
     });
 
     return c.json(apiResponse(created), 201);
+});
+
+superAdminRoutes.patch('/stadiums/:stadiumId', async (c) => {
+    const stadiumId = c.req.param('stadiumId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateStadiumSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const [existing] = await db.select({
+        id: stadiums.id,
+        imageUrl: stadiums.imageUrl,
+        imageSource: stadiums.imageSource,
+        heroImageUrl: stadiums.heroImageUrl,
+        heroImageSource: stadiums.heroImageSource,
+        website: stadiums.website,
+        websiteSource: stadiums.websiteSource,
+        shortDescription: stadiums.shortDescription,
+        shortDescriptionSource: stadiums.shortDescriptionSource,
+        description: stadiums.description,
+        descriptionSource: stadiums.descriptionSource,
+        googlePlaceId: stadiums.googlePlaceId,
+        googleSourceSnapshot: stadiums.googleSourceSnapshot,
+    }).from(stadiums).where(eq(stadiums.id, stadiumId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Stadium not found'), 404);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
+    if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName?.trim() || null;
+    if (parsed.data.imageUrl !== undefined) {
+        updates.imageUrl = parsed.data.imageUrl?.trim() || null;
+        updates.imageSource = resolveUpdatedFieldSource(parsed.data.imageUrl, existing.imageUrl, existing.imageSource);
+    }
+    if (parsed.data.heroImageUrl !== undefined) {
+        updates.heroImageUrl = parsed.data.heroImageUrl?.trim() || null;
+        updates.heroImageSource = resolveUpdatedFieldSource(parsed.data.heroImageUrl, existing.heroImageUrl, existing.heroImageSource);
+    }
+    if (parsed.data.website !== undefined) {
+        updates.website = parsed.data.website?.trim() || null;
+        updates.websiteSource = resolveUpdatedFieldSource(parsed.data.website, existing.website, existing.websiteSource);
+    }
+    if (parsed.data.shortDescription !== undefined) {
+        updates.shortDescription = parsed.data.shortDescription?.trim() || null;
+        updates.shortDescriptionSource = resolveUpdatedFieldSource(parsed.data.shortDescription, existing.shortDescription, existing.shortDescriptionSource);
+    }
+    if (parsed.data.description !== undefined) {
+        updates.description = parsed.data.description?.trim() || null;
+        updates.descriptionSource = resolveUpdatedFieldSource(parsed.data.description, existing.description, existing.descriptionSource);
+    }
+    if (parsed.data.addressLine1 !== undefined) updates.addressLine1 = parsed.data.addressLine1?.trim() || null;
+    if (parsed.data.city !== undefined) updates.city = parsed.data.city?.trim() || null;
+    if (parsed.data.stateProvince !== undefined) updates.stateProvince = parsed.data.stateProvince?.trim() || null;
+    if (parsed.data.country !== undefined) updates.country = parsed.data.country?.trim() || null;
+    if (parsed.data.postalCode !== undefined) updates.postalCode = parsed.data.postalCode?.trim() || null;
+    if (parsed.data.lat !== undefined) updates.lat = parsed.data.lat != null ? String(parsed.data.lat) : null;
+    if (parsed.data.lng !== undefined) updates.lng = parsed.data.lng != null ? String(parsed.data.lng) : null;
+    if (parsed.data.capacity !== undefined) updates.capacity = parsed.data.capacity ?? null;
+    if (parsed.data.openedYear !== undefined) updates.openedYear = parsed.data.openedYear ?? null;
+    if (parsed.data.surface !== undefined) updates.surface = parsed.data.surface?.trim() || null;
+    if (parsed.data.aliases !== undefined) updates.aliases = parsed.data.aliases.map((item) => item.trim()).filter(Boolean);
+    if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
+    if (parsed.data.googlePlaceId !== undefined) {
+        updates.googlePlaceId = parsed.data.googlePlaceId?.trim() || null;
+        updates.googleLastSyncedAt = parsed.data.googlePlaceId ? new Date() : null;
+        updates.googleSyncStatus = parsed.data.googlePlaceId ? 'SYNCED' : 'NEVER_SYNCED';
+        updates.googleSyncError = null;
+    }
+    if (parsed.data.googleSourceSnapshot !== undefined) {
+        updates.googleSourceSnapshot = parsed.data.googleSourceSnapshot || {};
+        updates.googleLastSyncedAt = parsed.data.googleSourceSnapshot ? new Date() : null;
+        updates.googleSyncStatus = parsed.data.googleSourceSnapshot ? 'SYNCED' : (parsed.data.googlePlaceId || existing.googlePlaceId ? 'SYNCED' : 'NEVER_SYNCED');
+        updates.googleSyncError = null;
+    }
+    if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+
+    await db.update(stadiums).set(updates).where(eq(stadiums.id, stadiumId));
+    return c.json(apiResponse({ message: 'Stadium updated' }));
+});
+
+superAdminRoutes.delete('/stadiums/:stadiumId', async (c) => {
+    const stadiumId = c.req.param('stadiumId');
+    const [existing] = await db.select({ id: stadiums.id }).from(stadiums).where(eq(stadiums.id, stadiumId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Stadium not found'), 404);
+
+    await db.update(stadiums).set({ isActive: false, updatedAt: new Date() }).where(eq(stadiums.id, stadiumId));
+    return c.json(apiResponse({ message: 'Stadium archived' }));
 });
 
 // Sports
@@ -4060,6 +4506,79 @@ function normalizeDuplicateTeamName(value: string) {
         .trim();
 }
 
+function uniqueUuidList(values: Array<string | null | undefined>) {
+    return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
+}
+
+async function assertActiveStadiumIds(stadiumIds: string[]) {
+    if (stadiumIds.length === 0) return;
+    const rows = await db.select({ id: stadiums.id }).from(stadiums).where(and(inArray(stadiums.id, stadiumIds), eq(stadiums.isActive, true)));
+    if (rows.length !== stadiumIds.length) {
+        throw new Error('One or more stadiums were not found');
+    }
+}
+
+async function assertActivePlayerIds(playerIds: string[]) {
+    if (playerIds.length === 0) return;
+    const rows = await db.select({ id: players.id }).from(players).where(and(inArray(players.id, playerIds), eq(players.isActive, true)));
+    if (rows.length !== playerIds.length) {
+        throw new Error('One or more players were not found');
+    }
+}
+
+function normalizeRosterMembers(input?: Array<{
+    playerId: string;
+    shirtNumber?: string | null;
+    position?: string | null;
+    isCaptain?: boolean;
+    sortOrder?: number;
+    isActive?: boolean;
+}>) {
+    return (input || [])
+        .map((member, index) => ({
+            playerId: member.playerId,
+            shirtNumber: member.shirtNumber?.trim() || null,
+            position: member.position?.trim() || null,
+            isCaptain: Boolean(member.isCaptain),
+            sortOrder: member.sortOrder ?? index,
+            isActive: member.isActive ?? true,
+        }))
+        .filter((member, index, rows) => rows.findIndex((row) => row.playerId === member.playerId) === index);
+}
+
+async function syncTeamStadiumState(tx: any, teamId: string, primaryStadiumId: string | null, secondaryStadiumIds: string[]) {
+    const linkRows = uniqueUuidList([primaryStadiumId, ...secondaryStadiumIds])
+        .map((stadiumId, index) => ({
+            teamId,
+            stadiumId,
+            isPrimary: primaryStadiumId === stadiumId,
+            sortOrder: primaryStadiumId === stadiumId ? 0 : index + 1,
+            isActive: true,
+            updatedAt: new Date(),
+        }));
+
+    await tx.delete(teamStadiumLinks).where(eq(teamStadiumLinks.teamId, teamId));
+    if (linkRows.length > 0) {
+        await tx.insert(teamStadiumLinks).values(linkRows);
+    }
+}
+
+async function syncTeamRosterState(tx: any, teamId: string, rosterMembers: ReturnType<typeof normalizeRosterMembers>) {
+    await tx.delete(teamRosterMembers).where(eq(teamRosterMembers.teamId, teamId));
+    if (rosterMembers.length > 0) {
+        await tx.insert(teamRosterMembers).values(rosterMembers.map((member) => ({
+            teamId,
+            playerId: member.playerId,
+            shirtNumber: member.shirtNumber,
+            position: member.position,
+            isCaptain: member.isCaptain,
+            sortOrder: member.sortOrder,
+            isActive: member.isActive,
+            updatedAt: new Date(),
+        })));
+    }
+}
+
 const staticPageSchema = z.object({
     slug: z.string().min(2).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
     title: z.string().min(2).max(200),
@@ -4072,7 +4591,7 @@ const staticPageSchema = z.object({
 });
 
 const staticPageUpdateSchema = staticPageSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
-const enrichmentKindSchema = z.enum(['league', 'team', 'player', 'driver', 'entrant', 'manufacturer']);
+const enrichmentKindSchema = z.enum(['league', 'team', 'player', 'driver', 'entrant', 'manufacturer', 'stadium']);
 const enrichmentBatchSchema = z.object({
     includeLeague: z.boolean().optional(),
     includeTeams: z.boolean().optional(),
@@ -5001,6 +5520,49 @@ async function resolveEnrichmentRecord(kind: EntityKind, id: string): Promise<{ 
         };
     }
 
+    if (kind === 'stadium') {
+        const [row] = await db.select({
+            id: stadiums.id,
+            name: stadiums.name,
+            shortName: stadiums.shortName,
+            city: stadiums.city,
+            country: stadiums.country,
+            website: stadiums.website,
+            shortDescription: stadiums.shortDescription,
+            description: stadiums.description,
+            primaryImageUrl: stadiums.imageUrl,
+            heroImageUrl: stadiums.heroImageUrl,
+            shortDescriptionSource: stadiums.shortDescriptionSource,
+            descriptionSource: stadiums.descriptionSource,
+            primaryImageSource: stadiums.imageSource,
+            heroImageSource: stadiums.heroImageSource,
+            websiteSource: stadiums.websiteSource,
+        }).from(stadiums).where(eq(stadiums.id, id)).limit(1);
+        return {
+            record: row || null,
+            apply: async (updates, snapshot) => {
+                await db.update(stadiums).set({
+                    shortDescription: updates.shortDescription ?? undefined,
+                    description: updates.description ?? undefined,
+                    imageUrl: updates.primaryImageUrl ?? undefined,
+                    heroImageUrl: updates.heroImageUrl ?? undefined,
+                    website: updates.website ?? undefined,
+                    aliases: updates.aliases ?? undefined,
+                    enrichmentSnapshot: snapshot,
+                    enrichmentStatus: 'SYNCED',
+                    enrichedAt: new Date(),
+                    enrichmentError: null,
+                    shortDescriptionSource: updates.shortDescription ? 'GOOGLE' : undefined,
+                    descriptionSource: updates.description ? 'GOOGLE' : undefined,
+                    imageSource: updates.primaryImageUrl ? 'GOOGLE' : undefined,
+                    heroImageSource: updates.heroImageUrl ? 'GOOGLE' : undefined,
+                    websiteSource: updates.website ? 'GOOGLE' : undefined,
+                    updatedAt: new Date(),
+                }).where(eq(stadiums.id, id));
+            },
+        };
+    }
+
     if (kind === 'entrant' || kind === 'manufacturer') {
         const table = kind === 'entrant' ? entrants : manufacturers;
         const [row] = await db.select({
@@ -5145,6 +5707,24 @@ async function resetEnrichmentTarget(kind: EntityKind, id: string) {
             websiteSource: 'NONE',
             updatedAt: new Date(),
         }).where(eq(entrants.id, id));
+        return;
+    }
+
+    if (kind === 'stadium') {
+        await db.update(stadiums).set({
+            shortDescription: null,
+            description: null,
+            imageUrl: null,
+            heroImageUrl: null,
+            website: null,
+            aliases: [],
+            shortDescriptionSource: 'NONE',
+            descriptionSource: 'NONE',
+            imageSource: 'NONE',
+            heroImageSource: 'NONE',
+            websiteSource: 'NONE',
+            updatedAt: new Date(),
+        }).where(eq(stadiums.id, id));
         return;
     }
 

@@ -11,7 +11,7 @@ import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import type { GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../lib/api";
 import { uploadSuperAdminImage } from "../../lib/superAdminUploads";
 
-type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "players" | "motorsportEntities" | "events" | "customEvents" | "sports" | "leagues" | "standings" | "imports" | "matches" | "predictions" | "motorsportEntries" | "pages" | "blog";
+type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "stadiums" | "players" | "motorsportEntities" | "events" | "customEvents" | "sports" | "leagues" | "standings" | "imports" | "matches" | "predictions" | "motorsportEntries" | "pages" | "blog";
 
 type ApiListMeta = {
   page: number;
@@ -100,6 +100,7 @@ type LookupMatch = {
 type LookupLeague = { id: string; sportId: string | null; name: string; shortName: string | null; externalId?: string | null };
 type LookupSport = { id: string; name: string; slug: string; shortName: string | null };
 type LookupTeam = { id: string; leagueId?: string | null; name: string; shortName?: string | null; crestUrl?: string | null };
+type LookupPlayer = { id: string; leagueId?: string | null; name: string; slug?: string | null; shortName?: string | null; headshotUrl?: string | null };
 type LookupStadium = { id: string; name: string; city?: string | null; country?: string | null };
 type LookupOwner = { id: string; email: string; name: string; role: UserRow["role"] };
 type VenueAttributeType = "AMENITY" | "VIBE" | "CUISINE";
@@ -372,6 +373,20 @@ type TeamAdminRow = {
   enrichedAt?: string | null;
   enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
   enrichmentError?: string | null;
+  primaryStadiumId?: string | null;
+  primaryStadiumName?: string | null;
+  secondaryStadiums?: Array<{ id: string; name: string }>;
+  rosterMembers?: Array<{
+    playerId: string;
+    playerName: string;
+    playerSlug?: string | null;
+    headshotUrl?: string | null;
+    shirtNumber?: string | null;
+    position?: string | null;
+    isCaptain?: boolean;
+    sortOrder?: number | null;
+    isActive?: boolean;
+  }>;
   isActive: boolean;
   createdAt: string;
 };
@@ -387,6 +402,78 @@ type TeamAdminDraft = {
   aliases?: string;
   shortDescription?: string | null;
   description?: string | null;
+  externalId?: string | null;
+  primaryStadiumId?: string | null;
+  secondaryStadiumIds?: string[];
+  rosterMembers?: Array<{
+    playerId: string;
+    shirtNumber?: string | null;
+    position?: string | null;
+    isCaptain?: boolean;
+    sortOrder?: number;
+    isActive?: boolean;
+  }>;
+  isActive?: boolean;
+};
+
+type StadiumAdminRow = {
+  id: string;
+  slug: string;
+  name: string;
+  shortName?: string | null;
+  imageUrl?: string | null;
+  heroImageUrl?: string | null;
+  shortDescription?: string | null;
+  description?: string | null;
+  website?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  stateProvince?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  lat?: string | number | null;
+  lng?: string | number | null;
+  capacity?: number | null;
+  openedYear?: number | null;
+  surface?: string | null;
+  aliases?: string[] | null;
+  googlePlaceId?: string | null;
+  googleSourceSnapshot?: GooglePlaceSnapshot | null;
+  googleLastSyncedAt?: string | null;
+  googleSyncStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  googleSyncError?: string | null;
+  enrichedAt?: string | null;
+  enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  enrichmentError?: string | null;
+  linkedTeams?: Array<{ id: string; name: string; slug: string; isPrimary?: boolean }>;
+  teamCount?: number;
+  externalId?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+type StadiumAdminDraft = {
+  name?: string;
+  shortName?: string | null;
+  imageUrl?: string | null;
+  heroImageUrl?: string | null;
+  shortDescription?: string | null;
+  description?: string | null;
+  website?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  stateProvince?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  lat?: string | number | null;
+  lng?: string | number | null;
+  capacity?: string | number | null;
+  openedYear?: string | number | null;
+  surface?: string | null;
+  aliases?: string;
+  googlePlaceId?: string | null;
+  googleSourceSnapshot?: GooglePlaceSnapshot | null;
   externalId?: string | null;
   isActive?: boolean;
 };
@@ -1131,6 +1218,7 @@ export default function JazzbaiSuperAdminPage() {
   const [lookupLeagues, setLookupLeagues] = React.useState<LookupLeague[]>([]);
   const [lookupSports, setLookupSports] = React.useState<LookupSport[]>([]);
   const [lookupTeams, setLookupTeams] = React.useState<LookupTeam[]>([]);
+  const [lookupPlayers, setLookupPlayers] = React.useState<LookupPlayer[]>([]);
   const [lookupStadiums, setLookupStadiums] = React.useState<LookupStadium[]>([]);
   const [lookupOwners, setLookupOwners] = React.useState<LookupOwner[]>([]);
   const [lookupAttributes, setLookupAttributes] = React.useState<LookupAttribute[]>([]);
@@ -1287,6 +1375,7 @@ export default function JazzbaiSuperAdminPage() {
   const [teamMergeTargets, setTeamMergeTargets] = React.useState<Record<string, string>>({});
   const [newAdminTeam, setNewAdminTeam] = React.useState({
     leagueId: "",
+    primaryStadiumId: "",
     name: "",
     shortName: "",
     crestUrl: "",
@@ -1298,6 +1387,36 @@ export default function JazzbaiSuperAdminPage() {
   const [newTeamRecommendationsError, setNewTeamRecommendationsError] = React.useState<string | null>(null);
   const [uploadingNewTeamCrest, setUploadingNewTeamCrest] = React.useState(false);
   const [uploadingTeamCrestId, setUploadingTeamCrestId] = React.useState<string | null>(null);
+
+  const [stadiumsRows, setStadiumsRows] = React.useState<StadiumAdminRow[]>([]);
+  const [stadiumsMeta, setStadiumsMeta] = React.useState<ApiListMeta | null>(null);
+  const [stadiumsSearch, setStadiumsSearch] = React.useState("");
+  const [stadiumsLoading, setStadiumsLoading] = React.useState(false);
+  const [stadiumDrafts, setStadiumDrafts] = React.useState<Record<string, StadiumAdminDraft>>({});
+  const [newStadium, setNewStadium] = React.useState<StadiumAdminDraft>({
+    name: "",
+    shortName: "",
+    imageUrl: "",
+    heroImageUrl: "",
+    shortDescription: "",
+    description: "",
+    website: "",
+    addressLine1: "",
+    city: "",
+    stateProvince: "",
+    country: "",
+    postalCode: "",
+    lat: "",
+    lng: "",
+    capacity: "",
+    openedYear: "",
+    surface: "",
+    aliases: "",
+    googlePlaceId: "",
+    googleSourceSnapshot: null,
+    externalId: "",
+    isActive: true,
+  });
 
   const [events, setEvents] = React.useState<MatchEventRow[]>([]);
   const [eventsMeta, setEventsMeta] = React.useState<ApiListMeta | null>(null);
@@ -1426,6 +1545,7 @@ export default function JazzbaiSuperAdminPage() {
         leagues: LookupLeague[];
         sports: LookupSport[];
         teams: LookupTeam[];
+        players: LookupPlayer[];
         stadiums: LookupStadium[];
         owners: LookupOwner[];
         attributes: LookupAttribute[];
@@ -1435,6 +1555,7 @@ export default function JazzbaiSuperAdminPage() {
       setLookupLeagues(data.leagues || []);
       setLookupSports(data.sports || []);
       setLookupTeams(data.teams || []);
+      setLookupPlayers(data.players || []);
       setLookupStadiums(data.stadiums || []);
       setLookupOwners(data.owners || []);
       setLookupAttributes(data.attributes || []);
@@ -1562,6 +1683,27 @@ export default function JazzbaiSuperAdminPage() {
       setTeamsLoading(false);
     }
   }, [teamsSearch]);
+
+  const loadStadiumsAdmin = React.useCallback(async () => {
+    setStadiumsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "50",
+        includeInactive: "true",
+      });
+      if (stadiumsSearch.trim()) params.set("search", stadiumsSearch.trim());
+      const response = await fetch(`/api/v1/super-admin/stadiums?${params.toString()}`, {
+        credentials: "include",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load stadiums"));
+      setStadiumsRows(payload.data || []);
+      setStadiumsMeta(payload.meta || null);
+    } finally {
+      setStadiumsLoading(false);
+    }
+  }, [stadiumsSearch]);
 
   const loadCustomEvents = React.useCallback(async () => {
     setCustomEventsLoading(true);
@@ -1710,6 +1852,10 @@ export default function JazzbaiSuperAdminPage() {
       await Promise.all([loadTeamsAdmin(), loadLookups()]);
       return;
     }
+    if (tab === "stadiums") {
+      await Promise.all([loadStadiumsAdmin(), loadLookups()]);
+      return;
+    }
     if (tab === "players" || tab === "motorsportEntities" || tab === "standings" || tab === "predictions" || tab === "pages") {
       return;
     }
@@ -1741,7 +1887,7 @@ export default function JazzbaiSuperAdminPage() {
       return;
     }
     await Promise.all([loadMatches(), loadLookups()]);
-  }, [loadApprovalQueues, loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadMotorsportEntries, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
+  }, [loadApprovalQueues, loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadMotorsportEntries, loadOverview, loadSportsAdmin, loadStadiumsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
 
   React.useEffect(() => {
     async function checkSession() {
@@ -2005,6 +2151,66 @@ export default function JazzbaiSuperAdminPage() {
     });
   }, []);
 
+  const applyGoogleDetailsToNewStadium = React.useCallback((details: GooglePlaceDetailsResponse) => {
+    const defaults = details.defaults;
+    const imagePreviews = getGoogleImagePreviewState(defaults);
+    const placeId = details.googlePlaceId || defaults.placeId;
+    const displayName = defaults.displayName || (defaults as GooglePlaceSnapshot & { name?: string }).name;
+    const addressLine1 = defaults.addressLine1
+      || defaults.formattedAddress
+      || (defaults as GooglePlaceSnapshot & { formattedAddress?: string | null }).formattedAddress;
+    setNewStadium((prev) => ({
+      ...prev,
+      googlePlaceId: placeId || prev.googlePlaceId,
+      name: displayName || prev.name,
+      addressLine1: addressLine1 || prev.addressLine1,
+      city: defaults.city || prev.city,
+      stateProvince: defaults.stateProvince || prev.stateProvince,
+      country: defaults.country || prev.country,
+      postalCode: defaults.postalCode || prev.postalCode,
+      lat: defaults.lat == null ? prev.lat : String(defaults.lat),
+      lng: defaults.lng == null ? prev.lng : String(defaults.lng),
+      website: defaults.website || prev.website,
+      shortDescription: defaults.editorialSummary || prev.shortDescription,
+      googleSourceSnapshot: defaults,
+      imageUrl: imagePreviews.coverImageUrl || prev.imageUrl,
+      heroImageUrl: imagePreviews.galleryImageUrls[0] || imagePreviews.coverImageUrl || prev.heroImageUrl,
+    }));
+  }, []);
+
+  const applyGoogleDetailsToStadiumDraft = React.useCallback((stadiumId: string, details: GooglePlaceDetailsResponse) => {
+    const defaults = details.defaults;
+    const imagePreviews = getGoogleImagePreviewState(defaults);
+    const placeId = details.googlePlaceId || defaults.placeId;
+    const displayName = defaults.displayName || (defaults as GooglePlaceSnapshot & { name?: string }).name;
+    const addressLine1 = defaults.addressLine1
+      || defaults.formattedAddress
+      || (defaults as GooglePlaceSnapshot & { formattedAddress?: string | null }).formattedAddress;
+    setStadiumDrafts((prev) => {
+      const draft = prev[stadiumId] || {};
+      return {
+        ...prev,
+        [stadiumId]: {
+          ...draft,
+          googlePlaceId: placeId || draft.googlePlaceId,
+          name: displayName || draft.name,
+          addressLine1: addressLine1 || draft.addressLine1,
+          city: defaults.city || draft.city,
+          stateProvince: defaults.stateProvince || draft.stateProvince,
+          country: defaults.country || draft.country,
+          postalCode: defaults.postalCode || draft.postalCode,
+          lat: defaults.lat == null ? draft.lat : String(defaults.lat),
+          lng: defaults.lng == null ? draft.lng : String(defaults.lng),
+          website: defaults.website || draft.website,
+          shortDescription: defaults.editorialSummary || draft.shortDescription,
+          googleSourceSnapshot: defaults,
+          imageUrl: imagePreviews.coverImageUrl || draft.imageUrl,
+          heroImageUrl: imagePreviews.galleryImageUrls[0] || imagePreviews.coverImageUrl || draft.heroImageUrl,
+        },
+      };
+    });
+  }, []);
+
   if (checkingSession) {
     return (
       <SuperAdminShell>
@@ -2172,6 +2378,7 @@ export default function JazzbaiSuperAdminPage() {
   const customEventsCount = customEventsMeta?.total ?? customEvents.length;
   const attributesCount = attributesRows.length;
   const teamsCount = teamsMeta?.total ?? teamsRows.length;
+  const stadiumsCount = stadiumsMeta?.total ?? stadiumsRows.length;
   const sportsCount = sportsMeta?.total ?? sportsRows.length;
   const leaguesCount = adminLeaguesMeta?.total ?? adminLeagues.length;
   const matchesCount = matchesMeta?.total ?? matches.length;
@@ -2321,6 +2528,40 @@ export default function JazzbaiSuperAdminPage() {
     aliases: toCsvList(row.aliases),
     shortDescription: row.shortDescription || "",
     description: row.description || "",
+    externalId: row.externalId || "",
+    primaryStadiumId: row.primaryStadiumId || "",
+    secondaryStadiumIds: (row.secondaryStadiums || []).map((stadium) => stadium.id),
+    rosterMembers: (row.rosterMembers || []).map((member, index) => ({
+      playerId: member.playerId,
+      shirtNumber: member.shirtNumber || "",
+      position: member.position || "",
+      isCaptain: Boolean(member.isCaptain),
+      sortOrder: member.sortOrder ?? index,
+      isActive: member.isActive ?? true,
+    })),
+    isActive: row.isActive,
+  });
+  const buildStadiumDraft = (row: StadiumAdminRow): StadiumAdminDraft => ({
+    name: row.name,
+    shortName: row.shortName || "",
+    imageUrl: row.imageUrl || "",
+    heroImageUrl: row.heroImageUrl || "",
+    shortDescription: row.shortDescription || "",
+    description: row.description || "",
+    website: row.website || "",
+    addressLine1: row.addressLine1 || "",
+    city: row.city || "",
+    stateProvince: row.stateProvince || "",
+    country: row.country || "",
+    postalCode: row.postalCode || "",
+    lat: row.lat ?? "",
+    lng: row.lng ?? "",
+    capacity: row.capacity ?? "",
+    openedYear: row.openedYear ?? "",
+    surface: row.surface || "",
+    aliases: toCsvList(row.aliases),
+    googlePlaceId: row.googlePlaceId || "",
+    googleSourceSnapshot: row.googleSourceSnapshot || null,
     externalId: row.externalId || "",
     isActive: row.isActive,
   });
@@ -2656,6 +2897,7 @@ export default function JazzbaiSuperAdminPage() {
             ["venues", "Venues"],
             ["attributes", "Attributes"],
             ["teams", "Teams"],
+            ["stadiums", "Stadiums"],
             ["players", "Players"],
             ["motorsportEntities", "Motorsport Catalog"],
             ["events", "Match Events"],
@@ -3808,11 +4050,17 @@ export default function JazzbaiSuperAdminPage() {
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Team</h2>
               </div>
-              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1.6fr 1.2fr 2fr 1.2fr 0.8fr auto" }}>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.2fr 1.2fr 1.6fr 1.2fr 2fr 1.1fr 0.8fr auto" }}>
                 <select style={inputStyle} value={newAdminTeam.leagueId} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, leagueId: e.target.value }))}>
                   <option value="">No league</option>
                   {lookupLeagues.map((league) => (
                     <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
+                  ))}
+                </select>
+                <select style={inputStyle} value={newAdminTeam.primaryStadiumId} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, primaryStadiumId: e.target.value }))}>
+                  <option value="">Primary stadium</option>
+                  {lookupStadiums.map((stadium) => (
+                    <option key={stadium.id} value={stadium.id}>{stadium.name}{stadium.city ? ` (${stadium.city})` : ""}</option>
                   ))}
                 </select>
                 <div style={{ display: "grid", gap: 6 }}>
@@ -3881,6 +4129,7 @@ export default function JazzbaiSuperAdminPage() {
                       method: "POST",
                       body: JSON.stringify({
                         leagueId: newAdminTeam.leagueId || null,
+                        primaryStadiumId: newAdminTeam.primaryStadiumId || null,
                         name: newAdminTeam.name,
                         shortName: newAdminTeam.shortName || null,
                         crestUrl: newAdminTeam.crestUrl || null,
@@ -3888,7 +4137,7 @@ export default function JazzbaiSuperAdminPage() {
                         isActive: newAdminTeam.isActive,
                       }),
                     });
-                    setNewAdminTeam({ leagueId: "", name: "", shortName: "", crestUrl: "", externalId: "", isActive: true });
+                    setNewAdminTeam({ leagueId: "", primaryStadiumId: "", name: "", shortName: "", crestUrl: "", externalId: "", isActive: true });
                     setNewTeamRecommendations([]);
                     setNewTeamRecommendationsError(null);
                     await Promise.all([loadTeamsAdmin(), loadLookups()]);
@@ -3999,6 +4248,16 @@ export default function JazzbaiSuperAdminPage() {
                                         shortDescription: draft.shortDescription || null,
                                         description: draft.description || null,
                                         externalId: draft.externalId || null,
+                                        primaryStadiumId: draft.primaryStadiumId || null,
+                                        secondaryStadiumIds: Array.isArray(draft.secondaryStadiumIds) ? draft.secondaryStadiumIds : [],
+                                        rosterMembers: (draft.rosterMembers || []).filter((member) => member.playerId).map((member, index) => ({
+                                          playerId: member.playerId,
+                                          shirtNumber: member.shirtNumber || null,
+                                          position: member.position || null,
+                                          isCaptain: Boolean(member.isCaptain),
+                                          sortOrder: member.sortOrder ?? index,
+                                          isActive: member.isActive ?? true,
+                                        })),
                                         isActive: draft.isActive,
                                       }),
                                     });
@@ -4103,10 +4362,388 @@ export default function JazzbaiSuperAdminPage() {
                                 ) : null}
                                 <input style={inputStyle} value={String(draft.website ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, website: e.target.value } }))} placeholder="Website" />
                                 <input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} placeholder="Country" />
+                                <select
+                                  style={inputStyle}
+                                  value={String(draft.primaryStadiumId ?? "")}
+                                  onChange={(e) => setTeamDrafts((prev) => ({
+                                    ...prev,
+                                    [row.id]: {
+                                      ...draft,
+                                      primaryStadiumId: e.target.value,
+                                      secondaryStadiumIds: (draft.secondaryStadiumIds || []).filter((stadiumId) => stadiumId !== e.target.value),
+                                    },
+                                  }))}
+                                >
+                                  <option value="">Primary stadium</option>
+                                  {lookupStadiums.map((stadium) => (
+                                    <option key={stadium.id} value={stadium.id}>{stadium.name}{stadium.city ? ` (${stadium.city})` : ""}</option>
+                                  ))}
+                                </select>
+                                <label style={{ display: "grid", gap: 6 }}>
+                                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Secondary stadiums</span>
+                                  <select
+                                    multiple
+                                    style={multiSelectStyle}
+                                    value={draft.secondaryStadiumIds || []}
+                                    onChange={(e) => {
+                                      const secondaryStadiumIds = getMultiSelectValues(e.currentTarget).filter((stadiumId) => stadiumId !== draft.primaryStadiumId);
+                                      setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, secondaryStadiumIds } }));
+                                    }}
+                                  >
+                                    {lookupStadiums.filter((stadium) => stadium.id !== draft.primaryStadiumId).map((stadium) => (
+                                      <option key={stadium.id} value={stadium.id}>{stadium.name}{stadium.city ? ` (${stadium.city})` : ""}</option>
+                                    ))}
+                                  </select>
+                                </label>
                                 <input style={{ ...inputStyle, gridColumn: "1 / -1" }} value={String(draft.heroImageUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, heroImageUrl: e.target.value } }))} placeholder="Hero image URL" />
                                 <input style={{ ...inputStyle, gridColumn: "1 / -1" }} value={String(draft.aliases ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, aliases: e.target.value } }))} placeholder="Aliases (comma separated)" />
                                 <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 72 }} value={String(draft.shortDescription ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortDescription: e.target.value } }))} placeholder="Short description" />
                                 <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 120 }} value={String(draft.description ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, description: e.target.value } }))} placeholder="Description" />
+                                <div style={{ gridColumn: "1 / -1", display: "grid", gap: 10, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                                    <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>Roster</div>
+                                    <button
+                                      type="button"
+                                      style={smallBtn("outline")}
+                                      onClick={() => setTeamDrafts((prev) => ({
+                                        ...prev,
+                                        [row.id]: {
+                                          ...draft,
+                                          rosterMembers: [...(draft.rosterMembers || []), { playerId: "", shirtNumber: "", position: "", isCaptain: false, sortOrder: (draft.rosterMembers || []).length, isActive: true }],
+                                        },
+                                      }))}
+                                    >
+                                      Add Player
+                                    </button>
+                                  </div>
+                                  {(draft.rosterMembers || []).length === 0 ? (
+                                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No roster members assigned.</div>
+                                  ) : (
+                                    <div style={{ display: "grid", gap: 8 }}>
+                                      {(draft.rosterMembers || []).map((member, index) => {
+                                        const eligiblePlayers = lookupPlayers.filter((player) => !draft.leagueId || !player.leagueId || player.leagueId === draft.leagueId);
+                                        return (
+                                          <div key={`${row.id}-roster-${index}`} style={{ display: "grid", gap: 8, gridTemplateColumns: "minmax(0, 2fr) 0.8fr 1fr auto auto", alignItems: "center" }}>
+                                            <select
+                                              style={inputStyle}
+                                              value={member.playerId}
+                                              onChange={(e) => setTeamDrafts((prev) => ({
+                                                ...prev,
+                                                [row.id]: {
+                                                  ...draft,
+                                                  rosterMembers: (draft.rosterMembers || []).map((item, itemIndex) => itemIndex === index ? { ...item, playerId: e.target.value } : item),
+                                                },
+                                              }))}
+                                            >
+                                              <option value="">Select player</option>
+                                              {eligiblePlayers.map((player) => (
+                                                <option key={player.id} value={player.id}>{player.name}{player.shortName ? ` (${player.shortName})` : ""}</option>
+                                              ))}
+                                            </select>
+                                            <input
+                                              style={inputStyle}
+                                              placeholder="#"
+                                              value={String(member.shirtNumber ?? "")}
+                                              onChange={(e) => setTeamDrafts((prev) => ({
+                                                ...prev,
+                                                [row.id]: {
+                                                  ...draft,
+                                                  rosterMembers: (draft.rosterMembers || []).map((item, itemIndex) => itemIndex === index ? { ...item, shirtNumber: e.target.value } : item),
+                                                },
+                                              }))}
+                                            />
+                                            <input
+                                              style={inputStyle}
+                                              placeholder="Position"
+                                              value={String(member.position ?? "")}
+                                              onChange={(e) => setTeamDrafts((prev) => ({
+                                                ...prev,
+                                                [row.id]: {
+                                                  ...draft,
+                                                  rosterMembers: (draft.rosterMembers || []).map((item, itemIndex) => itemIndex === index ? { ...item, position: e.target.value } : item),
+                                                },
+                                              }))}
+                                            />
+                                            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
+                                              <input
+                                                type="checkbox"
+                                                checked={Boolean(member.isCaptain)}
+                                                onChange={(e) => setTeamDrafts((prev) => ({
+                                                  ...prev,
+                                                  [row.id]: {
+                                                    ...draft,
+                                                    rosterMembers: (draft.rosterMembers || []).map((item, itemIndex) => itemIndex === index ? { ...item, isCaptain: e.target.checked } : item),
+                                                  },
+                                                }))}
+                                              />
+                                              Captain
+                                            </label>
+                                            <button
+                                              type="button"
+                                              style={smallBtn("danger")}
+                                              onClick={() => setTeamDrafts((prev) => ({
+                                                ...prev,
+                                                [row.id]: {
+                                                  ...draft,
+                                                  rosterMembers: (draft.rosterMembers || []).filter((_, itemIndex) => itemIndex !== index).map((item, itemIndex) => ({ ...item, sortOrder: itemIndex })),
+                                                },
+                                              }))}
+                                            >
+                                              Remove
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "stadiums" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Stadium</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1fr 1fr 1fr auto" }}>
+                <input style={inputStyle} placeholder="Stadium name" value={String(newStadium.name ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, name: e.target.value }))} />
+                <input style={inputStyle} placeholder="Short name" value={String(newStadium.shortName ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, shortName: e.target.value }))} />
+                <input style={inputStyle} placeholder="City" value={String(newStadium.city ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, city: e.target.value }))} />
+                <input style={inputStyle} placeholder="Country" value={String(newStadium.country ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, country: e.target.value }))} />
+                <button
+                  style={smallBtn("primary", submittingAction === "create-stadium")}
+                  disabled={submittingAction === "create-stadium"}
+                  onClick={() => void runAction("create-stadium", async () => {
+                    await superAdminFetch("/stadiums", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        name: newStadium.name,
+                        shortName: newStadium.shortName || null,
+                        imageUrl: newStadium.imageUrl || null,
+                        heroImageUrl: newStadium.heroImageUrl || null,
+                        shortDescription: newStadium.shortDescription || null,
+                        description: newStadium.description || null,
+                        website: newStadium.website || null,
+                        addressLine1: newStadium.addressLine1 || null,
+                        city: newStadium.city || null,
+                        stateProvince: newStadium.stateProvince || null,
+                        country: newStadium.country || null,
+                        postalCode: newStadium.postalCode || null,
+                        lat: parseOptionalNumber(newStadium.lat as string | number | null | undefined),
+                        lng: parseOptionalNumber(newStadium.lng as string | number | null | undefined),
+                        capacity: parseOptionalNumber(newStadium.capacity as string | number | null | undefined),
+                        openedYear: parseOptionalNumber(newStadium.openedYear as string | number | null | undefined),
+                        surface: newStadium.surface || null,
+                        aliases: parseCsvList(String(newStadium.aliases || "")),
+                        googlePlaceId: newStadium.googlePlaceId || null,
+                        googleSourceSnapshot: newStadium.googleSourceSnapshot || undefined,
+                        externalId: newStadium.externalId || null,
+                        isActive: newStadium.isActive,
+                      }),
+                    });
+                    setNewStadium({
+                      name: "",
+                      shortName: "",
+                      imageUrl: "",
+                      heroImageUrl: "",
+                      shortDescription: "",
+                      description: "",
+                      website: "",
+                      addressLine1: "",
+                      city: "",
+                      stateProvince: "",
+                      country: "",
+                      postalCode: "",
+                      lat: "",
+                      lng: "",
+                      capacity: "",
+                      openedYear: "",
+                      surface: "",
+                      aliases: "",
+                      googlePlaceId: "",
+                      googleSourceSnapshot: null,
+                      externalId: "",
+                      isActive: true,
+                    });
+                    await Promise.all([loadStadiumsAdmin(), loadLookups()]);
+                  })}
+                >
+                  Create
+                </button>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <GooglePlacePicker initialPlaceId={String(newStadium.googlePlaceId ?? "")} onPlaceResolved={applyGoogleDetailsToNewStadium} />
+                </div>
+                <input style={inputStyle} placeholder="Website" value={String(newStadium.website ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, website: e.target.value }))} />
+                <input style={inputStyle} placeholder="Address" value={String(newStadium.addressLine1 ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, addressLine1: e.target.value }))} />
+                <input style={inputStyle} placeholder="State / Province" value={String(newStadium.stateProvince ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, stateProvince: e.target.value }))} />
+                <input style={inputStyle} placeholder="Postal code" value={String(newStadium.postalCode ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, postalCode: e.target.value }))} />
+                <input style={inputStyle} placeholder="External ID" value={String(newStadium.externalId ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, externalId: e.target.value }))} />
+                <input style={inputStyle} placeholder="Image URL" value={String(newStadium.imageUrl ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, imageUrl: e.target.value }))} />
+                <input style={inputStyle} placeholder="Hero image URL" value={String(newStadium.heroImageUrl ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, heroImageUrl: e.target.value }))} />
+                <input style={inputStyle} placeholder="Capacity" value={String(newStadium.capacity ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, capacity: e.target.value }))} />
+                <input style={inputStyle} placeholder="Opened year" value={String(newStadium.openedYear ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, openedYear: e.target.value }))} />
+                <input style={inputStyle} placeholder="Surface" value={String(newStadium.surface ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, surface: e.target.value }))} />
+                <input style={inputStyle} placeholder="Latitude" value={String(newStadium.lat ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, lat: e.target.value }))} />
+                <input style={inputStyle} placeholder="Longitude" value={String(newStadium.lng ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, lng: e.target.value }))} />
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <input type="checkbox" checked={Boolean(newStadium.isActive)} onChange={(e) => setNewStadium((prev) => ({ ...prev, isActive: e.target.checked }))} />
+                  Active
+                </label>
+                <input style={{ ...inputStyle, gridColumn: "1 / -1" }} placeholder="Aliases (comma separated)" value={String(newStadium.aliases ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, aliases: e.target.value }))} />
+                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 70 }} placeholder="Short description" value={String(newStadium.shortDescription ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, shortDescription: e.target.value }))} />
+                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 120 }} placeholder="Description" value={String(newStadium.description ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, description: e.target.value }))} />
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Stadiums ({stadiumsCount})</h2>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={stadiumsSearch} onChange={(e) => setStadiumsSearch(e.target.value)} placeholder="Search stadiums" style={{ ...inputStyle, minWidth: 220 }} />
+                  <button style={smallBtn("outline", stadiumsLoading)} onClick={() => void loadStadiumsAdmin()} disabled={stadiumsLoading}>Search</button>
+                </div>
+              </div>
+              <div style={tableWrapStyle}>
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Location</th>
+                      <th style={thStyle}>Website</th>
+                      <th style={thStyle}>Linked Teams</th>
+                      <th style={thStyle}>Google</th>
+                      <th style={thStyle}>Enrichment</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stadiumsRows.map((row) => {
+                      const draft = stadiumDrafts[row.id] ?? buildStadiumDraft(row);
+                      return (
+                        <React.Fragment key={row.id}>
+                          <tr>
+                            <td style={tdStyle}>
+                              <div style={{ fontWeight: 800 }}>{row.name}</div>
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>{row.slug}</div>
+                            </td>
+                            <td style={tdStyle}>{[row.city, row.country].filter(Boolean).join(", ") || "-"}</td>
+                            <td style={tdStyle}>{row.website ? row.website.replace(/^https?:\/\//, "") : "-"}</td>
+                            <td style={tdStyle}>{row.teamCount || 0}</td>
+                            <td style={tdStyle}>
+                              <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.googleSyncStatus as "NEVER_SYNCED" | "SYNCED" | "ERROR" | undefined)}</div>
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{row.googleLastSyncedAt ? formatDateTime(row.googleLastSyncedAt) : "Not linked"}</div>
+                            </td>
+                            <td style={tdStyle}>
+                              <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{row.enrichedAt ? formatDateTime(row.enrichedAt) : "Not run"}</div>
+                            </td>
+                            <td style={tdStyle}>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                <button
+                                  style={smallBtn("primary", submittingAction === `save-stadium-${row.id}`)}
+                                  disabled={submittingAction === `save-stadium-${row.id}`}
+                                  onClick={() => void runAction(`save-stadium-${row.id}`, async () => {
+                                    await superAdminFetch(`/stadiums/${row.id}`, {
+                                      method: "PATCH",
+                                      body: JSON.stringify({
+                                        name: draft.name,
+                                        shortName: draft.shortName || null,
+                                        imageUrl: draft.imageUrl || null,
+                                        heroImageUrl: draft.heroImageUrl || null,
+                                        shortDescription: draft.shortDescription || null,
+                                        description: draft.description || null,
+                                        website: draft.website || null,
+                                        addressLine1: draft.addressLine1 || null,
+                                        city: draft.city || null,
+                                        stateProvince: draft.stateProvince || null,
+                                        country: draft.country || null,
+                                        postalCode: draft.postalCode || null,
+                                        lat: parseOptionalNumber(draft.lat as string | number | null | undefined),
+                                        lng: parseOptionalNumber(draft.lng as string | number | null | undefined),
+                                        capacity: parseOptionalNumber(draft.capacity as string | number | null | undefined),
+                                        openedYear: parseOptionalNumber(draft.openedYear as string | number | null | undefined),
+                                        surface: draft.surface || null,
+                                        aliases: parseCsvList(String(draft.aliases || "")),
+                                        googlePlaceId: draft.googlePlaceId || null,
+                                        googleSourceSnapshot: draft.googleSourceSnapshot || undefined,
+                                        externalId: draft.externalId || null,
+                                        isActive: draft.isActive,
+                                      }),
+                                    });
+                                    await Promise.all([loadStadiumsAdmin(), loadLookups()]);
+                                  })}
+                                >
+                                  Save
+                                </button>
+                                <a href={`/stadiums/${row.slug}`} target="_blank" rel="noreferrer" style={{ ...smallBtn("outline"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                                  Open Page
+                                </a>
+                                <button
+                                  style={smallBtn("outline", submittingAction === `refresh-stadium-enrichment-${row.id}`)}
+                                  disabled={submittingAction === `refresh-stadium-enrichment-${row.id}`}
+                                  onClick={() => void runAction(`refresh-stadium-enrichment-${row.id}`, async () => {
+                                    await superAdminFetch(`/enrichment/stadium/${row.id}/refresh`, { method: "POST" });
+                                    await loadStadiumsAdmin();
+                                  })}
+                                >
+                                  Autofill From Search
+                                </button>
+                                <button
+                                  style={smallBtn("danger", submittingAction === `archive-stadium-${row.id}`)}
+                                  disabled={submittingAction === `archive-stadium-${row.id}`}
+                                  onClick={() => void runAction(`archive-stadium-${row.id}`, async () => {
+                                    await superAdminFetch(`/stadiums/${row.id}`, { method: "DELETE" });
+                                    await Promise.all([loadStadiumsAdmin(), loadLookups()]);
+                                  })}
+                                >
+                                  Archive
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ ...tdStyle, background: "color-mix(in oklch, var(--secondary) 92%, transparent)" }} colSpan={7}>
+                              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                                <div style={{ gridColumn: "1 / -1" }}>
+                                  <GooglePlacePicker initialPlaceId={String(draft.googlePlaceId ?? "")} onPlaceResolved={(details) => applyGoogleDetailsToStadiumDraft(row.id, details)} />
+                                </div>
+                                <input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} placeholder="Name" />
+                                <input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} placeholder="Short name" />
+                                <input style={inputStyle} value={String(draft.website ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, website: e.target.value } }))} placeholder="Website" />
+                                <input style={inputStyle} value={String(draft.addressLine1 ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, addressLine1: e.target.value } }))} placeholder="Address" />
+                                <input style={inputStyle} value={String(draft.city ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, city: e.target.value } }))} placeholder="City" />
+                                <input style={inputStyle} value={String(draft.stateProvince ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, stateProvince: e.target.value } }))} placeholder="State / Province" />
+                                <input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} placeholder="Country" />
+                                <input style={inputStyle} value={String(draft.postalCode ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, postalCode: e.target.value } }))} placeholder="Postal code" />
+                                <input style={inputStyle} value={String(draft.imageUrl ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, imageUrl: e.target.value } }))} placeholder="Image URL" />
+                                <input style={inputStyle} value={String(draft.heroImageUrl ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, heroImageUrl: e.target.value } }))} placeholder="Hero image URL" />
+                                <input style={inputStyle} value={String(draft.capacity ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, capacity: e.target.value } }))} placeholder="Capacity" />
+                                <input style={inputStyle} value={String(draft.openedYear ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, openedYear: e.target.value } }))} placeholder="Opened year" />
+                                <input style={inputStyle} value={String(draft.surface ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, surface: e.target.value } }))} placeholder="Surface" />
+                                <input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} placeholder="External ID" />
+                                <input style={inputStyle} value={String(draft.lat ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, lat: e.target.value } }))} placeholder="Latitude" />
+                                <input style={inputStyle} value={String(draft.lng ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, lng: e.target.value } }))} placeholder="Longitude" />
+                                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                                  <input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} />
+                                  Active
+                                </label>
+                                <input style={{ ...inputStyle, gridColumn: "1 / -1" }} value={String(draft.aliases ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, aliases: e.target.value } }))} placeholder="Aliases (comma separated)" />
+                                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 72 }} value={String(draft.shortDescription ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortDescription: e.target.value } }))} placeholder="Short description" />
+                                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 120 }} value={String(draft.description ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, description: e.target.value } }))} placeholder="Description" />
+                                <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--muted-foreground)" }}>
+                                  Linked teams: {(row.linkedTeams || []).length > 0 ? row.linkedTeams!.map((team) => `${team.name}${team.isPrimary ? " [primary]" : ""}`).join(", ") : "None"}
+                                </div>
                               </div>
                             </td>
                           </tr>

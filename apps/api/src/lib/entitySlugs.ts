@@ -1,10 +1,10 @@
 import { and, eq, ne } from 'drizzle-orm';
 import { db } from '../db/client';
-import { drivers, entrants, entitySlugRedirects, leagues, manufacturers, players, sports, teams } from '../db/schema';
+import { drivers, entrants, entitySlugRedirects, leagues, manufacturers, players, sports, stadiums, teams } from '../db/schema';
 import { logger } from './logger';
 import { slugify } from './utils';
 
-export type CanonicalEntityKind = 'league' | 'team' | 'player' | 'driver' | 'entrant' | 'manufacturer';
+export type CanonicalEntityKind = 'league' | 'team' | 'player' | 'driver' | 'entrant' | 'manufacturer' | 'stadium';
 
 type EntityRow = {
     id: string;
@@ -58,6 +58,10 @@ async function currentSlugExists(kind: CanonicalEntityKind, slug: string, exclud
     }
     if (kind === 'entrant') {
         const [row] = await db.select({ id: entrants.id }).from(entrants).where(excludeId ? and(eq(entrants.slug, slug), ne(entrants.id, excludeId)) : eq(entrants.slug, slug)).limit(1);
+        return Boolean(row);
+    }
+    if (kind === 'stadium') {
+        const [row] = await db.select({ id: stadiums.id }).from(stadiums).where(excludeId ? and(eq(stadiums.slug, slug), ne(stadiums.id, excludeId)) : eq(stadiums.slug, slug)).limit(1);
         return Boolean(row);
     }
     const [row] = await db.select({ id: manufacturers.id }).from(manufacturers).where(excludeId ? and(eq(manufacturers.slug, slug), ne(manufacturers.id, excludeId)) : eq(manufacturers.slug, slug)).limit(1);
@@ -135,6 +139,10 @@ async function updateEntitySlug(kind: CanonicalEntityKind, entityId: string, slu
         await db.update(entrants).set({ slug, updatedAt }).where(eq(entrants.id, entityId));
         return;
     }
+    if (kind === 'stadium') {
+        await db.update(stadiums).set({ slug, updatedAt }).where(eq(stadiums.id, entityId));
+        return;
+    }
     await db.update(manufacturers).set({ slug, updatedAt }).where(eq(manufacturers.id, entityId));
 }
 
@@ -171,6 +179,10 @@ export async function resolveCanonicalEntity(kind: CanonicalEntityKind, slugOrId
             const [row] = await db.select({ id: entrants.id, slug: entrants.slug }).from(entrants).where(isUuid(slugOrId) ? eq(entrants.id, slugOrId) : eq(entrants.slug, slugOrId)).limit(1);
             return row ? { entityId: row.id, canonicalSlug: row.slug, matchedVia: isUuid(slugOrId) ? 'id' as const : 'slug' as const } : null;
         }
+        if (kind === 'stadium') {
+            const [row] = await db.select({ id: stadiums.id, slug: stadiums.slug }).from(stadiums).where(isUuid(slugOrId) ? eq(stadiums.id, slugOrId) : eq(stadiums.slug, slugOrId)).limit(1);
+            return row ? { entityId: row.id, canonicalSlug: row.slug, matchedVia: isUuid(slugOrId) ? 'id' as const : 'slug' as const } : null;
+        }
         const [row] = await db.select({ id: manufacturers.id, slug: manufacturers.slug }).from(manufacturers).where(isUuid(slugOrId) ? eq(manufacturers.id, slugOrId) : eq(manufacturers.slug, slugOrId)).limit(1);
         return row ? { entityId: row.id, canonicalSlug: row.slug, matchedVia: isUuid(slugOrId) ? 'id' as const : 'slug' as const } : null;
     };
@@ -198,11 +210,12 @@ async function fetchRows(kind: CanonicalEntityKind): Promise<EntityRow[]> {
     if (kind === 'player') return db.select({ id: players.id, name: players.name, slug: players.slug, shortName: players.shortName }).from(players).orderBy(players.createdAt);
     if (kind === 'driver') return db.select({ id: drivers.id, name: drivers.name, slug: drivers.slug, shortName: drivers.shortName }).from(drivers).orderBy(drivers.createdAt);
     if (kind === 'entrant') return db.select({ id: entrants.id, name: entrants.name, slug: entrants.slug, shortName: entrants.shortName }).from(entrants).orderBy(entrants.createdAt);
+    if (kind === 'stadium') return db.select({ id: stadiums.id, name: stadiums.name, slug: stadiums.slug, shortName: stadiums.shortName }).from(stadiums).orderBy(stadiums.createdAt);
     return db.select({ id: manufacturers.id, name: manufacturers.name, slug: manufacturers.slug, shortName: manufacturers.shortName }).from(manufacturers).orderBy(manufacturers.createdAt);
 }
 
 export async function normalizeEntitySlugs() {
-    const kinds: CanonicalEntityKind[] = ['league', 'team', 'player', 'driver', 'entrant', 'manufacturer'];
+    const kinds: CanonicalEntityKind[] = ['league', 'team', 'player', 'driver', 'entrant', 'manufacturer', 'stadium'];
     for (const kind of kinds) {
         const rows = await fetchRows(kind);
         for (const row of rows) {

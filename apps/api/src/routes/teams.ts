@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { and, desc, eq, gte } from 'drizzle-orm';
 import { db } from '../db/client';
-import { leagues, matches, teams } from '../db/schema';
+import { leagues, matches, players, stadiums, teamRosterMembers, teamStadiumLinks, teams } from '../db/schema';
 import { resolveCanonicalEntity } from '../lib/entitySlugs';
 import { getLatestLeagueStandings } from '../lib/standings';
 import { apiError, apiResponse } from '../lib/utils';
@@ -12,17 +12,78 @@ teamRoutes.get('/:slug', async (c) => {
     const slug = c.req.param('slug');
     const resolved = await resolveCanonicalEntity('team', slug);
     if (!resolved) return c.json(apiError('NOT_FOUND', 'Team not found'), 404);
+
     const [row] = await db
         .select({
             team: teams,
             league: leagues,
+            primaryStadium: stadiums,
         })
         .from(teams)
         .leftJoin(leagues, eq(teams.leagueId, leagues.id))
+        .leftJoin(stadiums, eq(teams.primaryStadiumId, stadiums.id))
         .where(eq(teams.id, resolved.entityId))
         .limit(1);
 
     if (!row) return c.json(apiError('NOT_FOUND', 'Team not found'), 404);
+
+    const [secondaryStadiumRows, rosterRows] = await Promise.all([
+        db.select({
+            id: stadiums.id,
+            slug: stadiums.slug,
+            name: stadiums.name,
+            shortName: stadiums.shortName,
+            city: stadiums.city,
+            country: stadiums.country,
+            imageUrl: stadiums.imageUrl,
+            isPrimary: teamStadiumLinks.isPrimary,
+            sortOrder: teamStadiumLinks.sortOrder,
+        })
+            .from(teamStadiumLinks)
+            .innerJoin(stadiums, eq(teamStadiumLinks.stadiumId, stadiums.id))
+            .where(and(
+                eq(teamStadiumLinks.teamId, row.team.id),
+                eq(teamStadiumLinks.isActive, true),
+            ))
+            .orderBy(teamStadiumLinks.sortOrder, stadiums.name),
+        db.select({
+            playerId: teamRosterMembers.playerId,
+            shirtNumber: teamRosterMembers.shirtNumber,
+            position: teamRosterMembers.position,
+            isCaptain: teamRosterMembers.isCaptain,
+            sortOrder: teamRosterMembers.sortOrder,
+            isActive: teamRosterMembers.isActive,
+            playerName: players.name,
+            playerSlug: players.slug,
+            playerShortName: players.shortName,
+            headshotUrl: players.headshotUrl,
+            nationality: players.nationality,
+        })
+            .from(teamRosterMembers)
+            .innerJoin(players, eq(teamRosterMembers.playerId, players.id))
+            .where(and(
+                eq(teamRosterMembers.teamId, row.team.id),
+                eq(teamRosterMembers.isActive, true),
+                eq(players.isActive, true),
+            ))
+            .orderBy(teamRosterMembers.sortOrder, players.name),
+    ]);
+
+    const secondaryStadiums = secondaryStadiumRows
+        .filter((stadium) => !stadium.isPrimary && stadium.id !== row.team.primaryStadiumId)
+        .map(({ isPrimary: _isPrimary, sortOrder: _sortOrder, ...stadium }) => stadium);
+    const roster = rosterRows.map((member) => ({
+        id: member.playerId,
+        slug: member.playerSlug,
+        name: member.playerName,
+        shortName: member.playerShortName,
+        headshotUrl: member.headshotUrl,
+        nationality: member.nationality,
+        shirtNumber: member.shirtNumber,
+        position: member.position,
+        isCaptain: member.isCaptain,
+        sortOrder: member.sortOrder,
+    }));
 
     const recentMatches = row.team.leagueId ? await db
         .select()
@@ -58,6 +119,9 @@ teamRoutes.get('/:slug', async (c) => {
         canonicalPath: `/teams/${row.team.slug}`,
         resolvedVia: resolved.matchedVia,
         standingsRow,
+        primaryStadium: row.primaryStadium,
+        secondaryStadiums,
+        players: roster,
         recentMatches: teamRecent,
         upcomingMatches: teamUpcoming,
     }));

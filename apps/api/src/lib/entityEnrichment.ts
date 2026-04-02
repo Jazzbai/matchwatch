@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
 import { logger } from './logger';
 
-export type EntityKind = 'league' | 'team' | 'player' | 'driver' | 'entrant' | 'manufacturer';
+export type EntityKind = 'league' | 'team' | 'player' | 'driver' | 'entrant' | 'manufacturer' | 'stadium';
 type EntityFieldSource = 'NONE' | 'GOOGLE' | 'MANUAL';
 type EnrichmentProvider = 'generated' | 'serpapi' | 'google-legacy';
 
@@ -34,6 +34,7 @@ export type EntityBaseRecord = {
   shortName?: string | null;
   sportName?: string | null;
   leagueName?: string | null;
+  city?: string | null;
   country?: string | null;
   nationality?: string | null;
   website?: string | null;
@@ -92,6 +93,7 @@ function deterministicDescription(kind: EntityKind, record: EntityBaseRecord) {
     if (kind === 'driver') return 'racing driver';
     if (kind === 'entrant') return 'motorsport team';
     if (kind === 'manufacturer') return 'motorsport manufacturer';
+    if (kind === 'stadium') return 'sports stadium';
     return 'sports entity';
   })();
 
@@ -109,6 +111,8 @@ function deterministicDescription(kind: EntityKind, record: EntityBaseRecord) {
         return `${record.name} is a ${descriptor}${competitionContext ? ` active in ${competitionContext}` : ''}.`;
       case 'manufacturer':
         return `${record.name} is a ${descriptor}${competitionContext ? ` associated with ${competitionContext}` : ''}.`;
+      case 'stadium':
+        return `${record.name} is a ${descriptor}${record.city ? ` in ${record.city}` : ''}${location ? `, ${location}` : ''}.`;
       default:
         return `${record.name} is a ${descriptor}.`;
     }
@@ -254,9 +258,20 @@ function buildQuery(kind: EntityKind, record: EntityBaseRecord) {
     record.shortName,
     record.leagueName,
     record.sportName,
+    record.city,
     record.country,
     record.nationality,
-    kind === 'team' ? 'team' : kind === 'player' ? 'player' : kind === 'driver' ? 'driver' : kind === 'league' ? 'league' : 'motorsport team',
+    kind === 'team'
+      ? 'team'
+      : kind === 'player'
+        ? 'player'
+        : kind === 'driver'
+          ? 'driver'
+          : kind === 'league'
+            ? 'league'
+            : kind === 'stadium'
+              ? 'stadium arena'
+              : 'motorsport team',
   ]).join(' ');
 }
 
@@ -266,12 +281,14 @@ function buildPrimaryImageQuery(kind: EntityKind, record: EntityBaseRecord) {
     record.shortName,
     record.leagueName,
     record.sportName,
+    record.city,
     record.country,
     record.nationality,
   ]).join(' ');
 
   if (kind === 'player' || kind === 'driver') return `${base} headshot portrait`;
   if (kind === 'team' || kind === 'league' || kind === 'entrant' || kind === 'manufacturer') return `${base} logo`;
+  if (kind === 'stadium') return `${base} exterior photo`;
   return `${base} image`;
 }
 
@@ -281,6 +298,7 @@ function buildHeroImageQuery(kind: EntityKind, record: EntityBaseRecord) {
     record.shortName,
     record.leagueName,
     record.sportName,
+    record.city,
     record.country,
     record.nationality,
   ]).join(' ');
@@ -288,6 +306,7 @@ function buildHeroImageQuery(kind: EntityKind, record: EntityBaseRecord) {
   if (kind === 'player' || kind === 'driver') return `${base} action photo`;
   if (kind === 'team' || kind === 'entrant' || kind === 'manufacturer') return `${base} team photo`;
   if (kind === 'league') return `${base} trophy competition`;
+  if (kind === 'stadium') return `${base} interior aerial`;
   return `${base} hero image`;
 }
 
