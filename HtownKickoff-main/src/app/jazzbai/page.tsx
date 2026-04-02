@@ -2176,7 +2176,7 @@ export default function JazzbaiSuperAdminPage() {
   const leaguesCount = adminLeaguesMeta?.total ?? adminLeagues.length;
   const matchesCount = matchesMeta?.total ?? matches.length;
   const motorsportEntriesCount = motorsportEntriesMeta?.total ?? motorsportEntries.length;
-  const teamDuplicateInfoById = React.useMemo(() => {
+  const teamDuplicateInfoById = (() => {
     const groups = new Map<string, TeamAdminRow[]>();
     for (const row of teamsRows) {
       const normalizedName = normalizeDuplicateTeamName(row.name || "");
@@ -2222,7 +2222,7 @@ export default function JazzbaiSuperAdminPage() {
       }
     }
     return info;
-  }, [teamsRows]);
+  })();
   const leagueById = new Map(
     lookupLeagues.map((league) => [league.id, league]),
   );
