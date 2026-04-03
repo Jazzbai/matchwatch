@@ -5,7 +5,7 @@ import { sports, leagues, matches, teams, syncHistory } from '../db/schema';
 import { and, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { allocateCanonicalSlug } from '../lib/entitySlugs';
-import { refreshLeagueStandingsSnapshot } from '../lib/standings';
+import { ensureCurrentSeason, refreshLeagueStandingsSnapshot } from '../lib/standings';
 
 const QUEUE_NAME = 'matchSync';
 const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
@@ -479,6 +479,7 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
         result.skipped = true;
         return result;
     }
+    const currentSeason = await ensureCurrentSeason(league.id);
 
     try {
         const { season, logoUrl } = await fetchTheSportsDbSeason(sourceLeagueId);
@@ -533,6 +534,7 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
 
                     await upsertMatchRecord({
                         leagueId: league.id,
+                        seasonId: currentSeason.id,
                         externalMatchId: `TSD-${sourceLeagueId}-${event.idEvent}`,
                         homeTeamId: null,
                         awayTeamId: null,
@@ -582,6 +584,7 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
 
                     await upsertMatchRecord({
                         leagueId: league.id,
+                        seasonId: currentSeason.id,
                         externalMatchId: `TSD-${sourceLeagueId}-${event.idEvent}`,
                         homeTeamId: home.id,
                         awayTeamId: away.id,
@@ -690,6 +693,7 @@ async function upsertTeamRecord(input: {
 
 async function upsertMatchRecord(input: {
     leagueId: string;
+    seasonId?: string | null;
     externalMatchId: string;
     homeTeamId: string | null;
     awayTeamId: string | null;
@@ -713,6 +717,7 @@ async function upsertMatchRecord(input: {
 
     const payload = {
         leagueId: input.leagueId,
+        seasonId: input.seasonId || null,
         externalMatchId: safeExternalMatchId,
         homeTeamId: input.homeTeamId || undefined,
         awayTeamId: input.awayTeamId || undefined,
@@ -1022,6 +1027,7 @@ async function syncLeagueFromFootballData(
         result.skipped = true;
         return result;
     }
+    const currentSeason = await ensureCurrentSeason(league.id);
 
     try {
         const apiMatches = await fetchFootballDataMatches(
@@ -1054,6 +1060,7 @@ async function syncLeagueFromFootballData(
 
                 await upsertMatchRecord({
                     leagueId: league.id,
+                    seasonId: currentSeason.id,
                     externalMatchId: String(row.id),
                     homeTeamId: home.id,
                     awayTeamId: away.id,
@@ -1101,6 +1108,7 @@ async function syncLeagueFromApiFootball(
         result.skipped = true;
         return result;
     }
+    const currentSeason = await ensureCurrentSeason(league.id);
 
     if (resolved.logoUrl && league.logoUrl !== resolved.logoUrl) {
         await db.update(leagues).set({ logoUrl: resolved.logoUrl }).where(eq(leagues.id, league.id));
@@ -1171,6 +1179,7 @@ async function syncLeagueFromApiFootball(
 
             await upsertMatchRecord({
                 leagueId: league.id,
+                seasonId: currentSeason.id,
                 externalMatchId: `AF-${fixture.fixture.id}`,
                 homeTeamId: home.id,
                 awayTeamId: away.id,
@@ -1207,6 +1216,7 @@ async function fetchJolpicaRaces(season: number) {
 
 async function syncLeagueFromJolpicaF1(league: LeagueRow): Promise<SyncResult> {
     const result: SyncResult = { fetched: 0, upserted: 0, errors: 0, teamsUpserted: 0 };
+    const currentSeason = await ensureCurrentSeason(league.id);
 
     try {
         const season = new Date().getUTCFullYear();
@@ -1221,6 +1231,7 @@ async function syncLeagueFromJolpicaF1(league: LeagueRow): Promise<SyncResult> {
 
                 await upsertMatchRecord({
                     leagueId: league.id,
+                    seasonId: currentSeason.id,
                     externalMatchId: `JOLPICA-F1-${season}-${race.round}`,
                     homeTeamId: null,
                     awayTeamId: null,
