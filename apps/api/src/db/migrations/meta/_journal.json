@@ -92,6 +92,13 @@
                         "when":  1775259000000,
                         "tag":  "0012_stadium_pages_roster",
                         "breakpoints":  true
+                    },
+                    {
+                        "idx":  13,
+                        "version":  "7",
+                        "when":  1775262600000,
+                        "tag":  "0013_players_entity_backfill",
+                        "breakpoints":  true
                     }
                 ]
 }

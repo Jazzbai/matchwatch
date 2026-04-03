@@ -2,7 +2,7 @@ import { Queue, Worker } from 'bullmq';
 import { redis } from '../lib/redis';
 import { db } from '../db/client';
 import { sports, leagues, matches, teams, syncHistory } from '../db/schema';
-import { and, eq, inArray, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { allocateCanonicalSlug } from '../lib/entitySlugs';
 
@@ -1355,8 +1355,8 @@ export async function runLiveStatusRefreshOnce() {
         .innerJoin(leagues, eq(matches.leagueId, leagues.id))
         .where(and(
             inArray(matches.status, ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED']),
-            sql`${matches.matchDateUtc} >= ${windowStart}`,
-            sql`${matches.matchDateUtc} <= ${windowEnd}`,
+            gte(matches.matchDateUtc, windowStart),
+            lte(matches.matchDateUtc, windowEnd),
             eq(leagues.isActive, true),
         ))
         .groupBy(matches.leagueId);
