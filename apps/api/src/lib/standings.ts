@@ -240,7 +240,33 @@ export async function getLatestLeagueStandings(leagueId: string, seasonId?: stri
     .orderBy(desc(standingsSnapshots.generatedAt))
     .limit(1);
 
-  const ensured = snapshot || (await refreshLeagueStandingsSnapshot(leagueId, seasonId)).snapshot;
+  const [latestFinishedMatch] = await db
+    .select({
+      updatedAt: matches.updatedAt,
+      lastSyncedAt: matches.lastSyncedAt,
+      matchDateUtc: matches.matchDateUtc,
+    })
+    .from(matches)
+    .where(and(
+      eq(matches.leagueId, leagueId),
+      eq(matches.eventFormat, 'HEAD_TO_HEAD'),
+      eq(matches.status, 'FINISHED'),
+      ...(seasonId ? [eq(matches.seasonId, seasonId)] : []),
+    ))
+    .orderBy(desc(matches.updatedAt))
+    .limit(1);
+
+  const latestFinishedMatchTimestamp = latestFinishedMatch
+    ? Math.max(
+      latestFinishedMatch.updatedAt?.getTime?.() || 0,
+      latestFinishedMatch.lastSyncedAt?.getTime?.() || 0,
+      latestFinishedMatch.matchDateUtc?.getTime?.() || 0,
+    )
+    : 0;
+  const snapshotTimestamp = snapshot?.generatedAt?.getTime?.() || 0;
+  const shouldRefresh = !snapshot || latestFinishedMatchTimestamp > snapshotTimestamp;
+
+  const ensured = shouldRefresh ? (await refreshLeagueStandingsSnapshot(leagueId, seasonId)).snapshot : snapshot;
   const rows = await db
     .select({
       row: standingsRows,

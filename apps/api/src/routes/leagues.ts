@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte, notInArray } from 'drizzle-orm';
 import { db } from '../db/client';
 import { leagues, matches, sports, teams } from '../db/schema';
 import { resolveCanonicalEntity } from '../lib/entitySlugs';
@@ -33,7 +33,11 @@ async function loadLeagueMatches(leagueId: string, mode: 'fixtures' | 'results',
         .leftJoin(teams, eq(matches.homeTeamId, teams.id))
         .where(and(
             eq(matches.leagueId, leagueId),
+            eq(matches.eventFormat, 'HEAD_TO_HEAD'),
             mode === 'fixtures' ? gte(matches.matchDateUtc, new Date()) : lte(matches.matchDateUtc, new Date()),
+            ...(mode === 'fixtures'
+                ? [notInArray(matches.status, ['FINISHED', 'CANCELLED'])]
+                : [eq(matches.status, 'FINISHED')]),
         ))
         .orderBy(mode === 'fixtures' ? asc(matches.matchDateUtc) : desc(matches.matchDateUtc))
         .limit(limit);
@@ -68,7 +72,7 @@ leagueRoutes.get('/:slug', async (c) => {
             shortDescription: teams.shortDescription,
             description: teams.description,
             country: teams.country,
-        }).from(teams).where(eq(teams.leagueId, row.league.id)).orderBy(teams.name),
+        }).from(teams).where(and(eq(teams.leagueId, row.league.id), eq(teams.isActive, true))).orderBy(teams.name),
         getLatestLeagueStandings(row.league.id),
         loadLeagueMatches(row.league.id, 'fixtures', 8),
         loadLeagueMatches(row.league.id, 'results', 8),

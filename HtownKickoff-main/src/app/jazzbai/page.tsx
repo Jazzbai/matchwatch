@@ -490,6 +490,18 @@ type TeamDuplicateInfo = {
   }>;
 };
 
+type StadiumDuplicateInfo = {
+  groupKey: string;
+  suggestedTargetId: string;
+  suggestedTargetLabel: string;
+  duplicateCount: number;
+  options: Array<{
+    id: string;
+    label: string;
+    isSuggestedTarget: boolean;
+  }>;
+};
+
 type RecommendationItem = {
   id: string;
   name: string;
@@ -1177,6 +1189,14 @@ function normalizeDuplicateTeamName(value: string) {
     .trim();
 }
 
+function normalizeDuplicateStadiumKey(name: string, city?: string | null, country?: string | null) {
+  const normalizedName = normalizeDuplicateTeamName(name || "");
+  if (!normalizedName) return "";
+  const normalizedCity = normalizeDuplicateTeamName(city || "");
+  const normalizedCountry = normalizeDuplicateTeamName(country || "");
+  return `${normalizedName}::${normalizedCity || "none"}::${normalizedCountry || "none"}`;
+}
+
 const MATCH_STATUSES: Array<MatchRow["status"]> = [
   "SCHEDULED",
   "TIMED",
@@ -1393,6 +1413,7 @@ export default function JazzbaiSuperAdminPage() {
   const [stadiumsSearch, setStadiumsSearch] = React.useState("");
   const [stadiumsLoading, setStadiumsLoading] = React.useState(false);
   const [stadiumDrafts, setStadiumDrafts] = React.useState<Record<string, StadiumAdminDraft>>({});
+  const [stadiumMergeTargets, setStadiumMergeTargets] = React.useState<Record<string, string>>({});
   const [newStadium, setNewStadium] = React.useState<StadiumAdminDraft>({
     name: "",
     shortName: "",
@@ -2416,6 +2437,55 @@ export default function JazzbaiSuperAdminPage() {
       const options = ranked.map((row) => ({
         id: row.id,
         label: `${row.name} ${row.externalId ? `(${row.externalId})` : "(no external ID)"}${row.enrichmentStatus === "SYNCED" ? " • synced" : ""}`,
+        isSuggestedTarget: row.id === suggestedTargetId,
+      }));
+      for (const row of rows) {
+        info.set(row.id, {
+          groupKey,
+          suggestedTargetId,
+          suggestedTargetLabel: options.find((option) => option.id === suggestedTargetId)?.label || ranked[0].name,
+          duplicateCount: rows.length,
+          options: options.filter((option) => option.id !== row.id),
+        });
+      }
+    }
+    return info;
+  })();
+  const stadiumDuplicateInfoById = (() => {
+    const groups = new Map<string, StadiumAdminRow[]>();
+    for (const row of stadiumsRows) {
+      const key = normalizeDuplicateStadiumKey(row.name || "", row.city, row.country);
+      if (!key) continue;
+      const existing = groups.get(key) || [];
+      existing.push(row);
+      groups.set(key, existing);
+    }
+
+    const info = new Map<string, StadiumDuplicateInfo>();
+    for (const [groupKey, rows] of groups.entries()) {
+      if (rows.length < 2) continue;
+      const ranked = [...rows].sort((a, b) => {
+        const score = (row: StadiumAdminRow) =>
+          (row.isActive ? 100 : 0)
+          + (row.googlePlaceId ? 30 : 0)
+          + (row.googleSyncStatus === "SYNCED" ? 20 : row.googleSyncStatus === "ERROR" ? -5 : 0)
+          + (row.enrichmentStatus === "SYNCED" ? 16 : row.enrichmentStatus === "ERROR" ? -4 : 0)
+          + Math.min(Number(row.teamCount || 0), 10) * 3
+          + (row.website ? 8 : 0)
+          + (row.heroImageUrl ? 6 : 0)
+          + (row.imageUrl ? 4 : 0)
+          + (row.description ? 4 : 0)
+          + (row.shortDescription ? 2 : 0)
+          + (row.externalId ? 2 : 0);
+        const diff = score(b) - score(a);
+        if (diff !== 0) return diff;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      const suggestedTargetId = ranked[0]?.id;
+      if (!suggestedTargetId) continue;
+      const options = ranked.map((row) => ({
+        id: row.id,
+        label: `${row.name}${row.city ? ` (${row.city})` : ""}${row.googlePlaceId ? " • linked" : ""}${row.enrichmentStatus === "SYNCED" ? " • synced" : ""}`,
         isSuggestedTarget: row.id === suggestedTargetId,
       }));
       for (const row of rows) {
@@ -4280,6 +4350,22 @@ export default function JazzbaiSuperAdminPage() {
                                   Autofill From Search
                                 </button>
                                 <button
+                                  style={smallBtn("outline", submittingAction === `seed-team-roster-${row.id}`)}
+                                  disabled={submittingAction === `seed-team-roster-${row.id}`}
+                                  onClick={() => {
+                                    if (!window.confirm("Seed this roster from existing match participants? This adds missing players based on historical matches.")) return;
+                                    void runAction(`seed-team-roster-${row.id}`, async () => {
+                                      await superAdminFetch(`/teams/${row.id}/seed-roster`, {
+                                        method: "POST",
+                                        body: JSON.stringify({ mode: "merge" }),
+                                      });
+                                      await loadTeamsAdmin();
+                                    });
+                                  }}
+                                >
+                                  Seed Roster
+                                </button>
+                                <button
                                   style={smallBtn("danger", submittingAction === `archive-team-${row.id}`)}
                                   disabled={submittingAction === `archive-team-${row.id}`}
                                   onClick={() => void runAction(`archive-team-${row.id}`, async () => {
@@ -4630,6 +4716,11 @@ export default function JazzbaiSuperAdminPage() {
                   <tbody>
                     {stadiumsRows.map((row) => {
                       const draft = stadiumDrafts[row.id] ?? buildStadiumDraft(row);
+                      const duplicateInfo = stadiumDuplicateInfoById.get(row.id);
+                      const mergeTargetId = duplicateInfo
+                        ? (stadiumMergeTargets[row.id] || duplicateInfo.suggestedTargetId)
+                        : "";
+                      const isSuggestedTarget = duplicateInfo ? duplicateInfo.suggestedTargetId === row.id : false;
                       return (
                         <React.Fragment key={row.id}>
                           <tr>
@@ -4715,6 +4806,71 @@ export default function JazzbaiSuperAdminPage() {
                           <tr>
                             <td style={{ ...tdStyle, background: "color-mix(in oklch, var(--secondary) 92%, transparent)" }} colSpan={7}>
                               <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                                {duplicateInfo ? (
+                                  <div
+                                    style={{
+                                      gridColumn: "1 / -1",
+                                      display: "grid",
+                                      gap: 10,
+                                      padding: 12,
+                                      borderRadius: 10,
+                                      border: "1px solid rgba(245, 158, 11, 0.28)",
+                                      background: "rgba(245, 158, 11, 0.08)",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                                      <div>
+                                        <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>
+                                          Potential duplicate stadium record
+                                        </div>
+                                        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>
+                                          {duplicateInfo.duplicateCount} active rows share the same normalized stadium name and location.
+                                          {isSuggestedTarget ? " This row is the recommended keeper." : " Merge this row into the preferred keeper or another duplicate below."}
+                                        </div>
+                                      </div>
+                                      {!isSuggestedTarget && duplicateInfo.options.length > 0 ? (
+                                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                          <select
+                                            style={{ ...inputStyle, minWidth: 260 }}
+                                            value={mergeTargetId}
+                                            onChange={(e) => setStadiumMergeTargets((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                                          >
+                                            {duplicateInfo.options.map((option) => (
+                                              <option key={option.id} value={option.id}>
+                                                {option.label}{option.isSuggestedTarget ? " [recommended]" : ""}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <button
+                                            style={smallBtn("danger", submittingAction === `merge-stadium-${row.id}`)}
+                                            disabled={submittingAction === `merge-stadium-${row.id}` || !mergeTargetId}
+                                            onClick={() => {
+                                              if (!mergeTargetId) return;
+                                              if (!window.confirm("Merge this duplicate stadium into the selected record? This moves historical matches and team links to the target and archives the source row.")) return;
+                                              void runAction(`merge-stadium-${row.id}`, async () => {
+                                                await superAdminFetch(`/stadiums/${row.id}/merge`, {
+                                                  method: "POST",
+                                                  body: JSON.stringify({ targetStadiumId: mergeTargetId }),
+                                                });
+                                                setStadiumMergeTargets((prev) => {
+                                                  const next = { ...prev };
+                                                  delete next[row.id];
+                                                  return next;
+                                                });
+                                                await Promise.all([loadStadiumsAdmin(), loadTeamsAdmin(), loadLookups()]);
+                                              });
+                                            }}
+                                          >
+                                            Merge Into Selected
+                                          </button>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                                      Suggested keeper: {duplicateInfo.suggestedTargetLabel}
+                                    </div>
+                                  </div>
+                                ) : null}
                                 <div style={{ gridColumn: "1 / -1" }}>
                                   <GooglePlacePicker initialPlaceId={String(draft.googlePlaceId ?? "")} onPlaceResolved={(details) => applyGoogleDetailsToStadiumDraft(row.id, details)} />
                                 </div>

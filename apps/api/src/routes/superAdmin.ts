@@ -185,6 +185,14 @@ const mergeTeamSchema = z.object({
     targetTeamId: z.string().uuid(),
 });
 
+const seedTeamRosterSchema = z.object({
+    mode: z.enum(['merge', 'replace']).default('merge'),
+});
+
+const mergeStadiumSchema = z.object({
+    targetStadiumId: z.string().uuid(),
+});
+
 const stadiumSearchQuerySchema = z.object({
     search: z.string().trim().default(''),
     limit: z.coerce.number().int().min(1).max(50).default(12),
@@ -2068,6 +2076,126 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
     return c.json(apiResponse({ message: 'Team updated' }));
 });
 
+superAdminRoutes.post('/teams/:teamId/seed-roster', async (c) => {
+    const teamId = c.req.param('teamId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = seedTeamRosterSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const [team] = await db.select({ id: teams.id, name: teams.name }).from(teams).where(eq(teams.id, teamId)).limit(1);
+    if (!team) return c.json(apiError('NOT_FOUND', 'Team not found'), 404);
+
+    const [existingRosterRows, participantRows] = await Promise.all([
+        db.select({
+            playerId: teamRosterMembers.playerId,
+            shirtNumber: teamRosterMembers.shirtNumber,
+            position: teamRosterMembers.position,
+            isCaptain: teamRosterMembers.isCaptain,
+            sortOrder: teamRosterMembers.sortOrder,
+            isActive: teamRosterMembers.isActive,
+        }).from(teamRosterMembers).where(eq(teamRosterMembers.teamId, teamId)).orderBy(teamRosterMembers.sortOrder, teamRosterMembers.createdAt),
+        db.select({
+            playerId: matchParticipants.playerId,
+            playerName: players.name,
+            matchDateUtc: matches.matchDateUtc,
+            participantMetadata: matchParticipants.metadata,
+            displayOrder: matchParticipants.displayOrder,
+        })
+            .from(matchParticipants)
+            .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
+            .innerJoin(players, eq(matchParticipants.playerId, players.id))
+            .where(and(
+                eq(matchParticipants.teamId, teamId),
+                eq(matches.eventFormat, 'HEAD_TO_HEAD'),
+                eq(players.isActive, true),
+            ))
+            .orderBy(desc(matches.matchDateUtc), asc(matchParticipants.displayOrder), players.name),
+    ]);
+
+    const seedMap = new Map<string, {
+        playerId: string;
+        shirtNumber: string | null;
+        position: string | null;
+        latestMatchDate: number;
+        appearances: number;
+    }>();
+
+    for (const row of participantRows) {
+        if (!row.playerId) continue;
+        const metadata = (row.participantMetadata && typeof row.participantMetadata === 'object' ? row.participantMetadata as Record<string, unknown> : {}) || {};
+        const shirtNumber = typeof metadata.shirtNumber === 'string'
+            ? metadata.shirtNumber.trim() || null
+            : typeof metadata.jerseyNumber === 'string'
+                ? metadata.jerseyNumber.trim() || null
+                : typeof metadata.number === 'string'
+                    ? metadata.number.trim() || null
+                    : null;
+        const position = typeof metadata.position === 'string'
+            ? metadata.position.trim() || null
+            : typeof metadata.role === 'string'
+                ? metadata.role.trim() || null
+                : null;
+        const existing = seedMap.get(row.playerId);
+        if (!existing) {
+            seedMap.set(row.playerId, {
+                playerId: row.playerId,
+                shirtNumber,
+                position,
+                latestMatchDate: row.matchDateUtc?.getTime?.() || 0,
+                appearances: 1,
+            });
+            continue;
+        }
+        existing.appearances += 1;
+        existing.latestMatchDate = Math.max(existing.latestMatchDate, row.matchDateUtc?.getTime?.() || 0);
+        if (!existing.shirtNumber && shirtNumber) existing.shirtNumber = shirtNumber;
+        if (!existing.position && position) existing.position = position;
+    }
+
+    const seededRoster = Array.from(seedMap.values())
+        .sort((a, b) => b.appearances - a.appearances || b.latestMatchDate - a.latestMatchDate)
+        .map((row, index) => ({
+            playerId: row.playerId,
+            shirtNumber: row.shirtNumber,
+            position: row.position,
+            isCaptain: false,
+            sortOrder: index,
+            isActive: true,
+        }));
+
+    const existingRoster = existingRosterRows.map((row, index) => ({
+        playerId: row.playerId,
+        shirtNumber: row.shirtNumber,
+        position: row.position,
+        isCaptain: row.isCaptain,
+        sortOrder: row.sortOrder ?? index,
+        isActive: row.isActive,
+    }));
+
+    const nextRoster = parsed.data.mode === 'replace'
+        ? seededRoster
+        : [
+            ...existingRoster,
+            ...seededRoster
+                .filter((member) => !existingRoster.some((existing) => existing.playerId === member.playerId))
+                .map((member, index) => ({ ...member, sortOrder: existingRoster.length + index })),
+        ];
+
+    await db.transaction(async (tx) => {
+        await syncTeamRosterState(tx, teamId, nextRoster);
+    });
+
+    return c.json(apiResponse({
+        message: 'Roster seeded from match participants',
+        teamId,
+        mode: parsed.data.mode,
+        seededPlayers: seededRoster.length,
+        totalRosterMembers: nextRoster.length,
+    }));
+});
+
 superAdminRoutes.post('/teams/:teamId/merge', async (c) => {
     const sourceTeamId = c.req.param('teamId');
     const body = await c.req.json().catch(() => ({}));
@@ -2569,6 +2697,161 @@ superAdminRoutes.patch('/stadiums/:stadiumId', async (c) => {
 
     await db.update(stadiums).set(updates).where(eq(stadiums.id, stadiumId));
     return c.json(apiResponse({ message: 'Stadium updated' }));
+});
+
+superAdminRoutes.post('/stadiums/:stadiumId/merge', async (c) => {
+    const sourceStadiumId = c.req.param('stadiumId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = mergeStadiumSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const targetStadiumId = parsed.data.targetStadiumId;
+    if (sourceStadiumId === targetStadiumId) {
+        return c.json(apiError('VALIDATION_ERROR', 'Source and target stadiums must be different'), 400);
+    }
+
+    const [[source], [target]] = await Promise.all([
+        db.select().from(stadiums).where(eq(stadiums.id, sourceStadiumId)).limit(1),
+        db.select().from(stadiums).where(eq(stadiums.id, targetStadiumId)).limit(1),
+    ]);
+
+    if (!source || !target) {
+        return c.json(apiError('NOT_FOUND', 'Source or target stadium not found'), 404);
+    }
+
+    const sourceKey = normalizeDuplicateStadiumKey(source.name, source.city, source.country);
+    const targetKey = normalizeDuplicateStadiumKey(target.name, target.city, target.country);
+    if (!sourceKey || sourceKey !== targetKey) {
+        return c.json(apiError('VALIDATION_ERROR', 'Stadiums must share the same normalized name and location to merge'), 400);
+    }
+
+    const mergedAliases = Array.from(new Set([
+        ...(target.aliases || []),
+        ...(source.aliases || []),
+        source.name,
+        source.shortName || '',
+    ].map((value) => value.trim()).filter(Boolean)));
+
+    const targetUpdates: Record<string, unknown> = {
+        aliases: mergedAliases,
+        isActive: target.isActive || source.isActive,
+        updatedAt: new Date(),
+    };
+
+    if (!normalizeOptionalText(target.shortName) && normalizeOptionalText(source.shortName)) targetUpdates.shortName = source.shortName;
+    if (!normalizeOptionalText(target.imageUrl) && normalizeOptionalText(source.imageUrl)) {
+        targetUpdates.imageUrl = source.imageUrl;
+        targetUpdates.imageSource = source.imageSource;
+    }
+    if (!normalizeOptionalText(target.heroImageUrl) && normalizeOptionalText(source.heroImageUrl)) {
+        targetUpdates.heroImageUrl = source.heroImageUrl;
+        targetUpdates.heroImageSource = source.heroImageSource;
+    }
+    if (!normalizeOptionalText(target.website) && normalizeOptionalText(source.website)) {
+        targetUpdates.website = source.website;
+        targetUpdates.websiteSource = source.websiteSource;
+    }
+    if (!normalizeOptionalText(target.shortDescription) && normalizeOptionalText(source.shortDescription)) {
+        targetUpdates.shortDescription = source.shortDescription;
+        targetUpdates.shortDescriptionSource = source.shortDescriptionSource;
+    }
+    if (!normalizeOptionalText(target.description) && normalizeOptionalText(source.description)) {
+        targetUpdates.description = source.description;
+        targetUpdates.descriptionSource = source.descriptionSource;
+    }
+    if (!normalizeOptionalText(target.addressLine1) && normalizeOptionalText(source.addressLine1)) targetUpdates.addressLine1 = source.addressLine1;
+    if (!normalizeOptionalText(target.city) && normalizeOptionalText(source.city)) targetUpdates.city = source.city;
+    if (!normalizeOptionalText(target.stateProvince) && normalizeOptionalText(source.stateProvince)) targetUpdates.stateProvince = source.stateProvince;
+    if (!normalizeOptionalText(target.country) && normalizeOptionalText(source.country)) targetUpdates.country = source.country;
+    if (!normalizeOptionalText(target.postalCode) && normalizeOptionalText(source.postalCode)) targetUpdates.postalCode = source.postalCode;
+    if (target.lat == null && source.lat != null) targetUpdates.lat = source.lat;
+    if (target.lng == null && source.lng != null) targetUpdates.lng = source.lng;
+    if (target.capacity == null && source.capacity != null) targetUpdates.capacity = source.capacity;
+    if (target.openedYear == null && source.openedYear != null) targetUpdates.openedYear = source.openedYear;
+    if (!normalizeOptionalText(target.surface) && normalizeOptionalText(source.surface)) targetUpdates.surface = source.surface;
+    if (!normalizeOptionalText(target.externalId) && normalizeOptionalText(source.externalId)) targetUpdates.externalId = source.externalId;
+    if (!normalizeOptionalText(target.googlePlaceId) && normalizeOptionalText(source.googlePlaceId)) {
+        targetUpdates.googlePlaceId = source.googlePlaceId;
+        targetUpdates.googleSourceSnapshot = source.googleSourceSnapshot;
+        targetUpdates.googleLastSyncedAt = source.googleLastSyncedAt || new Date();
+        targetUpdates.googleSyncStatus = source.googleSyncStatus;
+        targetUpdates.googleSyncError = source.googleSyncError;
+    }
+    if ((target.enrichmentStatus === 'NEVER_SYNCED' || !target.enrichedAt) && source.enrichmentStatus === 'SYNCED') {
+        targetUpdates.enrichmentSnapshot = source.enrichmentSnapshot;
+        targetUpdates.enrichedAt = source.enrichedAt;
+        targetUpdates.enrichmentStatus = source.enrichmentStatus;
+        targetUpdates.enrichmentError = source.enrichmentError;
+    }
+
+    const sourceArchivedSlug = await allocateCanonicalSlug('stadium', `${source.name} archived`, {
+        shortName: source.shortName,
+        excludeId: source.id,
+    });
+
+    await db.transaction(async (tx) => {
+        const sourceLinkedTeamRows = await tx.select({ teamId: teamStadiumLinks.teamId }).from(teamStadiumLinks).where(eq(teamStadiumLinks.stadiumId, sourceStadiumId));
+        const targetLinkedTeamRows = await tx.select({ teamId: teamStadiumLinks.teamId }).from(teamStadiumLinks).where(eq(teamStadiumLinks.stadiumId, targetStadiumId));
+        const sourcePrimaryTeamRows = await tx.select({ id: teams.id }).from(teams).where(eq(teams.primaryStadiumId, sourceStadiumId));
+        const targetPrimaryTeamRows = await tx.select({ id: teams.id }).from(teams).where(eq(teams.primaryStadiumId, targetStadiumId));
+        const affectedTeamIds = Array.from(new Set([
+            ...sourceLinkedTeamRows.map((row) => row.teamId),
+            ...targetLinkedTeamRows.map((row) => row.teamId),
+            ...sourcePrimaryTeamRows.map((row) => row.id),
+            ...targetPrimaryTeamRows.map((row) => row.id),
+        ]));
+
+        await tx.update(matches).set({ stadiumId: targetStadiumId, updatedAt: new Date() }).where(eq(matches.stadiumId, sourceStadiumId));
+
+        await tx.execute(sql`
+            delete from team_stadium_links as source_link
+            using team_stadium_links as target_link
+            where source_link.team_id = target_link.team_id
+              and source_link.stadium_id = ${sourceStadiumId}
+              and target_link.stadium_id = ${targetStadiumId}
+        `);
+        await tx.update(teamStadiumLinks).set({ stadiumId: targetStadiumId, updatedAt: new Date() }).where(eq(teamStadiumLinks.stadiumId, sourceStadiumId));
+        await tx.update(teams).set({ primaryStadiumId: targetStadiumId }).where(eq(teams.primaryStadiumId, sourceStadiumId));
+        await tx.update(stadiums).set(targetUpdates).where(eq(stadiums.id, targetStadiumId));
+
+        for (const teamId of affectedTeamIds) {
+            const [team] = await tx.select({ primaryStadiumId: teams.primaryStadiumId }).from(teams).where(eq(teams.id, teamId)).limit(1);
+            if (!team) continue;
+            const links = await tx.select({ stadiumId: teamStadiumLinks.stadiumId, isPrimary: teamStadiumLinks.isPrimary })
+                .from(teamStadiumLinks)
+                .where(and(eq(teamStadiumLinks.teamId, teamId), eq(teamStadiumLinks.isActive, true)));
+            const secondaryStadiumIds = links
+                .map((row) => row.stadiumId)
+                .filter((stadiumId) => stadiumId !== team.primaryStadiumId);
+            await syncTeamStadiumState(tx, teamId, team.primaryStadiumId || null, secondaryStadiumIds);
+        }
+
+        if (source.slug && source.slug !== target.slug) {
+            await tx.insert(entitySlugRedirects).values({
+                entityType: 'stadium',
+                entityId: targetStadiumId,
+                slug: source.slug,
+                updatedAt: new Date(),
+            }).onConflictDoNothing();
+        }
+
+        await tx.update(stadiums).set({
+            slug: sourceArchivedSlug,
+            externalId: null,
+            googlePlaceId: null,
+            isActive: false,
+            updatedAt: new Date(),
+        }).where(eq(stadiums.id, sourceStadiumId));
+    });
+
+    return c.json(apiResponse({
+        message: 'Stadium merged',
+        sourceStadiumId,
+        targetStadiumId,
+        targetSlug: target.slug,
+    }));
 });
 
 superAdminRoutes.delete('/stadiums/:stadiumId', async (c) => {
@@ -4504,6 +4787,14 @@ function normalizeDuplicateTeamName(value: string) {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, ' ')
         .trim();
+}
+
+function normalizeDuplicateStadiumKey(name: string, city?: string | null, country?: string | null) {
+    const normalizedName = normalizeDuplicateTeamName(name);
+    const normalizedCity = normalizeDuplicateTeamName(city || '');
+    const normalizedCountry = normalizeDuplicateTeamName(country || '');
+    if (!normalizedName) return '';
+    return `${normalizedName}::${normalizedCity || 'unknown-city'}::${normalizedCountry || 'unknown-country'}`;
 }
 
 function uniqueUuidList(values: Array<string | null | undefined>) {
