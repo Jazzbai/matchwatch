@@ -5,6 +5,7 @@ import { sports, leagues, matches, teams, syncHistory } from '../db/schema';
 import { and, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { allocateCanonicalSlug } from '../lib/entitySlugs';
+import { refreshLeagueStandingsSnapshot } from '../lib/standings';
 
 const QUEUE_NAME = 'matchSync';
 const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
@@ -62,7 +63,7 @@ const ESPN_SCOREBOARD_PATHS: Record<string, { sport: string; league: string }> =
 type MatchSyncProvider = 'FOOTBALL_DATA' | 'API_FOOTBALL' | 'THE_SPORTS_DB' | 'ESPN';
 type MatchStatus = 'SCHEDULED' | 'TIMED' | 'IN_PLAY' | 'PAUSED' | 'FINISHED' | 'POSTPONED' | 'CANCELLED' | 'SUSPENDED';
 type LeagueRow = typeof leagues.$inferSelect;
-type SyncMode = 'UPCOMING' | 'LIVE';
+type SyncMode = 'UPCOMING' | 'LIVE' | 'BACKFILL';
 
 type SyncResult = {
     fetched: number;
@@ -76,6 +77,7 @@ type SyncResult = {
 type MatchSyncRunOptions = {
     providerOverride?: MatchSyncProvider;
     sportSlug?: string;
+    mode?: SyncMode;
     writeHistory?: boolean;
 };
 
@@ -508,10 +510,14 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
         const now = Date.now();
         const minTs = mode === 'LIVE'
             ? now - 6 * 60 * 60 * 1000
-            : now - 14 * 24 * 60 * 60 * 1000;
+            : mode === 'BACKFILL'
+                ? now - 400 * 24 * 60 * 60 * 1000
+                : now - 14 * 24 * 60 * 60 * 1000;
         const maxTs = mode === 'LIVE'
             ? now + 8 * 60 * 60 * 1000
-            : now + (isSingleEvent ? 365 : 60) * 24 * 60 * 60 * 1000;
+            : mode === 'BACKFILL'
+                ? now + (isSingleEvent ? 365 : 60) * 24 * 60 * 60 * 1000
+                : now + (isSingleEvent ? 365 : 60) * 24 * 60 * 60 * 1000;
 
         for (const event of events) {
             try {
@@ -771,10 +777,12 @@ async function syncLeagueFromEspn(league: LeagueRow, mode: SyncMode = 'UPCOMING'
 
     const now = new Date();
     const start = new Date(now);
-    start.setUTCDate(start.getUTCDate() + (mode === 'LIVE' ? -1 : 0));
+    start.setUTCDate(start.getUTCDate() + (mode === 'LIVE' ? -1 : mode === 'BACKFILL' ? -365 : 0));
     const end = new Date(now);
     const lookaheadDays = mode === 'LIVE'
         ? 1
+        : mode === 'BACKFILL'
+            ? 30
         : externalCode === 'MLS' || externalCode === 'LMX'
             ? 30
             : 14;
@@ -1019,7 +1027,7 @@ async function syncLeagueFromFootballData(
         const apiMatches = await fetchFootballDataMatches(
             code,
             apiKey,
-            mode === 'LIVE' ? 1 : 0,
+            mode === 'LIVE' ? 1 : mode === 'BACKFILL' ? 365 : 0,
             mode === 'LIVE' ? 1 : 30,
         );
         result.fetched = apiMatches.length;
@@ -1100,11 +1108,13 @@ async function syncLeagueFromApiFootball(
 
     const now = new Date();
     const dateFrom = new Date(
-        now.getTime() - (mode === 'LIVE' ? 24 : 0) * 24 * 60 * 60 * 1000,
+        now.getTime() - (mode === 'LIVE' ? 24 : mode === 'BACKFILL' ? 365 : 0) * 24 * 60 * 60 * 1000,
     ).toISOString().split('T')[0];
     const externalCode = (league.externalId || '').trim().toUpperCase();
     const lookaheadDays = mode === 'LIVE'
         ? 1
+        : mode === 'BACKFILL'
+            ? 30
         : externalCode === 'INTL' ? 90 : FOOTBALL_DATA_SUPPORTED_CODES.has(externalCode) ? 30 : 14;
     const dateTo = new Date(now.getTime() + lookaheadDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const seasonCandidates = buildApiFootballSeasonCandidates(externalCode, resolved.season, dateFrom, dateTo);
@@ -1425,13 +1435,14 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
     const apiFootballApiKey = process.env.API_FOOTBALL_API_KEY;
     const footballDataApiKey = process.env.FOOTBALL_DATA_API_KEY;
     const sportSlug = options.sportSlug || 'soccer';
+    const mode = options.mode || 'UPCOMING';
     const writeHistory = options.writeHistory ?? true;
 
     if (options.providerOverride && !apiKey && provider !== 'THE_SPORTS_DB') {
         throw new Error(`${provider === 'API_FOOTBALL' ? 'API_FOOTBALL_API_KEY' : 'FOOTBALL_DATA_API_KEY'} not set`);
     }
 
-    logger.info({ provider, sportSlug }, 'Starting direct match sync run');
+    logger.info({ provider, sportSlug, mode }, 'Starting direct match sync run');
 
     const leagueQuery = db.select({ league: leagues, sportSlug: sports.slug })
         .from(leagues)
@@ -1454,7 +1465,7 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
             provider,
             apiFootballApiKey,
             footballDataApiKey,
-            'UPCOMING',
+            mode,
         );
 
         const durationMs = Date.now() - startedAt;
@@ -1471,6 +1482,14 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
                 status: result.errors > 0 ? 'PARTIAL' : 'SUCCESS',
                 durationMs,
             });
+        }
+
+        if (mode === 'BACKFILL' && row.sportSlug === 'soccer') {
+            try {
+                await refreshLeagueStandingsSnapshot(league.id);
+            } catch (err) {
+                logger.error({ leagueId: league.id, leagueName: league.name, err }, 'Failed refreshing league standings after backfill sync');
+            }
         }
 
         await sleep(
