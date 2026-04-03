@@ -5,7 +5,7 @@ import { sports, leagues, matches, teams, syncHistory } from '../db/schema';
 import { and, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { allocateCanonicalSlug } from '../lib/entitySlugs';
-import { ensureCurrentSeason, refreshLeagueStandingsSnapshot } from '../lib/standings';
+import { ensureSeasonForDate, refreshLeagueStandingsSnapshot } from '../lib/standings';
 
 const QUEUE_NAME = 'matchSync';
 const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
@@ -479,8 +479,6 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
         result.skipped = true;
         return result;
     }
-    const currentSeason = await ensureCurrentSeason(league.id);
-
     try {
         const { season, logoUrl } = await fetchTheSportsDbSeason(sourceLeagueId);
         if (logoUrl && league.logoUrl !== logoUrl) {
@@ -528,13 +526,14 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
 
                 const eventTs = matchDate.getTime();
                 if (eventTs < minTs || eventTs > maxTs) continue;
+                const season = await ensureSeasonForDate(league.id, matchDate);
 
                 if (isSingleEvent) {
                     if (!isUnitedStatesCountry(event.strCountry)) continue;
 
                     await upsertMatchRecord({
                         leagueId: league.id,
-                        seasonId: currentSeason.id,
+                        seasonId: season.id,
                         externalMatchId: `TSD-${sourceLeagueId}-${event.idEvent}`,
                         homeTeamId: null,
                         awayTeamId: null,
@@ -584,7 +583,7 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
 
                     await upsertMatchRecord({
                         leagueId: league.id,
-                        seasonId: currentSeason.id,
+                        seasonId: season.id,
                         externalMatchId: `TSD-${sourceLeagueId}-${event.idEvent}`,
                         homeTeamId: home.id,
                         awayTeamId: away.id,
@@ -820,6 +819,7 @@ async function syncLeagueFromEspn(league: LeagueRow, mode: SyncMode = 'UPCOMING'
 
             const matchDate = new Date(event.date || competition.date || '');
             if (Number.isNaN(matchDate.getTime())) continue;
+            const season = await ensureSeasonForDate(league.id, matchDate);
 
             const home = await upsertTeamRecord({
                 leagueId: league.id,
@@ -841,6 +841,7 @@ async function syncLeagueFromEspn(league: LeagueRow, mode: SyncMode = 'UPCOMING'
 
             await upsertMatchRecord({
                 leagueId: league.id,
+                seasonId: season.id,
                 externalMatchId: `ESPN-${event.id}`,
                 homeTeamId: home.id,
                 awayTeamId: away.id,
@@ -1027,8 +1028,6 @@ async function syncLeagueFromFootballData(
         result.skipped = true;
         return result;
     }
-    const currentSeason = await ensureCurrentSeason(league.id);
-
     try {
         const apiMatches = await fetchFootballDataMatches(
             code,
@@ -1057,10 +1056,12 @@ async function syncLeagueFromFootballData(
 
                 if (home.created) result.teamsUpserted += 1;
                 if (away.created) result.teamsUpserted += 1;
+                const matchDate = new Date(row.utcDate);
+                const season = await ensureSeasonForDate(league.id, matchDate);
 
                 await upsertMatchRecord({
                     leagueId: league.id,
-                    seasonId: currentSeason.id,
+                    seasonId: season.id,
                     externalMatchId: String(row.id),
                     homeTeamId: home.id,
                     awayTeamId: away.id,
@@ -1068,7 +1069,7 @@ async function syncLeagueFromFootballData(
                     awayTeamName: row.awayTeam.name,
                     homeTeamCrestUrl: row.homeTeam.crest,
                     awayTeamCrestUrl: row.awayTeam.crest,
-                    matchDateUtc: new Date(row.utcDate),
+                    matchDateUtc: matchDate,
                     status: mapFootballDataStatus(row.status),
                     matchDay: row.matchday ?? null,
                     stage: row.stage || null,
@@ -1108,8 +1109,6 @@ async function syncLeagueFromApiFootball(
         result.skipped = true;
         return result;
     }
-    const currentSeason = await ensureCurrentSeason(league.id);
-
     if (resolved.logoUrl && league.logoUrl !== resolved.logoUrl) {
         await db.update(leagues).set({ logoUrl: resolved.logoUrl }).where(eq(leagues.id, league.id));
     }
@@ -1176,10 +1175,12 @@ async function syncLeagueFromApiFootball(
 
             if (home.created) result.teamsUpserted += 1;
             if (away.created) result.teamsUpserted += 1;
+            const matchDate = new Date(fixture.fixture.date);
+            const season = await ensureSeasonForDate(league.id, matchDate);
 
             await upsertMatchRecord({
                 leagueId: league.id,
-                seasonId: currentSeason.id,
+                seasonId: season.id,
                 externalMatchId: `AF-${fixture.fixture.id}`,
                 homeTeamId: home.id,
                 awayTeamId: away.id,
@@ -1187,7 +1188,7 @@ async function syncLeagueFromApiFootball(
                 awayTeamName: fixture.teams.away.name,
                 homeTeamCrestUrl: fixture.teams.home.logo || null,
                 awayTeamCrestUrl: fixture.teams.away.logo || null,
-                matchDateUtc: new Date(fixture.fixture.date),
+                matchDateUtc: matchDate,
                 status: mapApiFootballStatus(fixture.fixture.status.short),
                 matchDay: parseMatchDay(fixture.league.round),
                 stage: fixture.league.round || null,
@@ -1216,11 +1217,10 @@ async function fetchJolpicaRaces(season: number) {
 
 async function syncLeagueFromJolpicaF1(league: LeagueRow): Promise<SyncResult> {
     const result: SyncResult = { fetched: 0, upserted: 0, errors: 0, teamsUpserted: 0 };
-    const currentSeason = await ensureCurrentSeason(league.id);
 
     try {
-        const season = new Date().getUTCFullYear();
-        const races = await fetchJolpicaRaces(season);
+        const seasonYear = new Date().getUTCFullYear();
+        const races = await fetchJolpicaRaces(seasonYear);
         const usRaces = races.filter((race) => isUnitedStatesCountry(race.Circuit.Location.country));
         result.fetched = usRaces.length;
 
@@ -1228,11 +1228,12 @@ async function syncLeagueFromJolpicaF1(league: LeagueRow): Promise<SyncResult> {
             try {
                 const matchDate = new Date(`${race.date}T${race.time || '00:00:00Z'}`);
                 if (Number.isNaN(matchDate.getTime())) continue;
+                const seasonRow = await ensureSeasonForDate(league.id, matchDate);
 
                 await upsertMatchRecord({
                     leagueId: league.id,
-                    seasonId: currentSeason.id,
-                    externalMatchId: `JOLPICA-F1-${season}-${race.round}`,
+                    seasonId: seasonRow.id,
+                    externalMatchId: `JOLPICA-F1-${seasonYear}-${race.round}`,
                     homeTeamId: null,
                     awayTeamId: null,
                     homeTeamName: null,
