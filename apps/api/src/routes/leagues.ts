@@ -4,9 +4,32 @@ import { db } from '../db/client';
 import { leagues, matches, sports, teams } from '../db/schema';
 import { resolveCanonicalEntity } from '../lib/entitySlugs';
 import { getLatestLeagueStandings } from '../lib/standings';
+import { choosePreferredTeamRecord, normalizeTeamIdentity } from '../lib/teamIdentity';
 import { apiError, apiResponse } from '../lib/utils';
 
 const leagueRoutes = new Hono();
+
+function dedupeLeagueTeams<T extends {
+    name: string;
+    shortName?: string | null;
+    crestUrl?: string | null;
+    heroImageUrl?: string | null;
+    shortDescription?: string | null;
+    description?: string | null;
+    externalId?: string | null;
+}>(rows: T[]) {
+    const groups = new Map<string, T[]>();
+    for (const row of rows) {
+        const key = normalizeTeamIdentity(row.name) || row.name.toLowerCase();
+        const existing = groups.get(key) || [];
+        existing.push(row);
+        groups.set(key, existing);
+    }
+
+    return Array.from(groups.values())
+        .map((group) => choosePreferredTeamRecord(group)!)
+        .sort((left, right) => left.name.localeCompare(right.name));
+}
 
 async function resolveLeague(slugOrId: string) {
     const resolved = await resolveCanonicalEntity('league', slugOrId);
@@ -72,6 +95,7 @@ leagueRoutes.get('/:slug', async (c) => {
             shortDescription: teams.shortDescription,
             description: teams.description,
             country: teams.country,
+            externalId: teams.externalId,
         }).from(teams).where(and(eq(teams.leagueId, row.league.id), eq(teams.isActive, true))).orderBy(teams.name),
         getLatestLeagueStandings(row.league.id),
         loadLeagueMatches(row.league.id, 'fixtures', 8),
@@ -84,7 +108,7 @@ leagueRoutes.get('/:slug', async (c) => {
         canonicalSlug: row.league.slug,
         canonicalPath: `/leagues/${row.league.slug}`,
         resolvedVia: row.resolved.matchedVia,
-        teams: memberTeams,
+        teams: dedupeLeagueTeams(memberTeams).map(({ externalId: _externalId, ...team }) => team),
         standings,
         fixtures,
         results,

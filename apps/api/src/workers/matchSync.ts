@@ -6,6 +6,7 @@ import { and, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { allocateCanonicalSlug } from '../lib/entitySlugs';
 import { ensureSeasonForDate, refreshLeagueStandingsSnapshot } from '../lib/standings';
+import { buildTeamIdentityCandidates, normalizeTeamIdentity, scoreTeamIdentityRecord } from '../lib/teamIdentity';
 
 const QUEUE_NAME = 'matchSync';
 const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
@@ -307,24 +308,69 @@ async function getTeamIdByExternalId(externalId: string) {
 }
 
 async function getTeamIdByLeagueAndName(leagueId: string, teamName: string) {
-    const [row] = await db.select({ id: teams.id })
+    const directName = teamName.trim();
+    if (!directName) return null;
+
+    const normalizedInputName = normalizeTeamIdentity(directName);
+    if (!normalizedInputName) return null;
+
+    const rows = await db.select({
+        id: teams.id,
+        name: teams.name,
+        shortName: teams.shortName,
+        aliases: teams.aliases,
+        externalId: teams.externalId,
+        crestUrl: teams.crestUrl,
+        heroImageUrl: teams.heroImageUrl,
+        shortDescription: teams.shortDescription,
+        description: teams.description,
+    })
         .from(teams)
         .where(and(
             eq(teams.leagueId, leagueId),
             eq(teams.isActive, true),
-            sql`lower(${teams.name}) = lower(${teamName})`,
-        ))
-        .limit(1);
-    return row?.id ?? null;
+        ));
+
+    const exactNameMatch = rows.find((row) => row.name.trim().toLowerCase() === directName.toLowerCase());
+    if (exactNameMatch) return exactNameMatch.id;
+
+    const matchedRows = rows
+        .map((row) => {
+            const candidates = buildTeamIdentityCandidates(row);
+            if (!candidates.has(normalizedInputName)) return null;
+            let score = scoreTeamIdentityRecord(row);
+            if (normalizeTeamIdentity(row.name) === normalizedInputName) score += 10;
+            if (normalizeTeamIdentity(row.shortName) === normalizedInputName) score += 4;
+            if ((row.aliases || []).some((alias) => normalizeTeamIdentity(alias) === normalizedInputName)) score += 2;
+            return { id: row.id, score };
+        })
+        .filter((row): row is { id: string; score: number } => Boolean(row))
+        .sort((left, right) => right.score - left.score);
+
+    return matchedRows[0]?.id ?? null;
 }
 
-async function applyTeamMetadata(teamId: string, input: { shortName?: string | null; crestUrl?: string | null }) {
-    const updates: Record<string, string> = {};
+async function applyTeamMetadata(teamId: string, input: { name?: string | null; shortName?: string | null; crestUrl?: string | null }) {
+    const [current] = await db.select({
+        id: teams.id,
+        aliases: teams.aliases,
+        shortName: teams.shortName,
+        crestUrl: teams.crestUrl,
+    }).from(teams).where(eq(teams.id, teamId)).limit(1);
+    if (!current) return;
+
+    const updates: Record<string, unknown> = {};
     const safeShortName = trimText(input.shortName || '', 30);
     const safeCrestUrl = trimText(input.crestUrl || '', 1000);
+    const mergedAliases = Array.from(new Set([
+        ...(current.aliases || []),
+        trimText(input.name || '', 120) || '',
+        safeShortName || '',
+    ].map((value) => value.trim()).filter(Boolean)));
 
-    if (safeShortName) updates.shortName = safeShortName;
-    if (safeCrestUrl) updates.crestUrl = safeCrestUrl;
+    if (safeShortName && safeShortName !== current.shortName) updates.shortName = safeShortName;
+    if (safeCrestUrl && safeCrestUrl !== current.crestUrl) updates.crestUrl = safeCrestUrl;
+    if (mergedAliases.length !== (current.aliases || []).length) updates.aliases = mergedAliases;
     if (Object.keys(updates).length === 0) return;
 
     await db.update(teams).set(updates).where(eq(teams.id, teamId));
