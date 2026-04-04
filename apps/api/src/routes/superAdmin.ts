@@ -161,6 +161,13 @@ const teamDuplicateQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(200).default(100),
 });
 
+const resolveTeamDuplicatesSchema = z.object({
+    leagueId: z.string().uuid().optional(),
+    includeInactive: z.coerce.boolean().optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(100),
+    dryRun: z.coerce.boolean().default(true),
+});
+
 const createTeamSchema = z.object({
     leagueId: z.string().uuid().nullable().optional(),
     primaryStadiumId: z.string().uuid().nullable().optional(),
@@ -1910,97 +1917,76 @@ superAdminRoutes.get('/teams/duplicates', async (c) => {
     if (!parsed.success) {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
     }
-
-    const whereParts = [];
-    if (!parsed.data.includeInactive) {
-        whereParts.push(eq(teams.isActive, true));
-    }
-    if (parsed.data.leagueId) {
-        whereParts.push(eq(teams.leagueId, parsed.data.leagueId));
-    }
-
-    const queryWhere = whereParts.length ? and(...whereParts) : undefined;
-    const rows = await db.select({
-        id: teams.id,
-        leagueId: teams.leagueId,
-        leagueName: leagues.name,
-        name: teams.name,
-        slug: teams.slug,
-        shortName: teams.shortName,
-        aliases: teams.aliases,
-        externalId: teams.externalId,
-        crestUrl: teams.crestUrl,
-        heroImageUrl: teams.heroImageUrl,
-        shortDescription: teams.shortDescription,
-        description: teams.description,
-        isActive: teams.isActive,
-        createdAt: teams.createdAt,
-    }).from(teams)
-        .leftJoin(leagues, eq(teams.leagueId, leagues.id))
-        .where(queryWhere)
-        .orderBy(leagues.name, teams.name, teams.createdAt);
-
-    const grouped = new Map<string, typeof rows>();
-    for (const row of rows) {
-        const normalizedName = normalizeTeamIdentity(row.name);
-        if (!normalizedName) continue;
-        const groupKey = `${row.leagueId || 'no-league'}::${normalizedName}`;
-        const existing = grouped.get(groupKey) || [];
-        existing.push(row);
-        grouped.set(groupKey, existing);
-    }
-
-    const allDuplicateGroups = Array.from(grouped.entries())
-        .map(([groupKey, members]) => {
-            if (members.length < 2) return null;
-            const normalizedName = groupKey.split('::').slice(1).join('::');
-            const preferred = choosePreferredTeamRecord(members);
-            const orderedMembers = [...members].sort((left, right) => {
-                if (preferred) {
-                    if (left.id === preferred.id) return -1;
-                    if (right.id === preferred.id) return 1;
-                }
-                const scoreDiff = scoreTeamIdentityRecord(right) - scoreTeamIdentityRecord(left);
-                if (scoreDiff !== 0) return scoreDiff;
-                if (left.isActive !== right.isActive) return left.isActive ? -1 : 1;
-                return left.name.localeCompare(right.name);
-            });
-
-            return {
-                leagueId: members[0]?.leagueId || null,
-                leagueName: members[0]?.leagueName || null,
-                normalizedName,
-                memberCount: members.length,
-                activeCount: members.filter((member) => member.isActive).length,
-                preferredTeamId: preferred?.id || null,
-                preferredTeamName: preferred?.name || null,
-                members: orderedMembers.map((member) => ({
-                    id: member.id,
-                    name: member.name,
-                    slug: member.slug,
-                    shortName: member.shortName,
-                    aliases: member.aliases || [],
-                    externalId: member.externalId,
-                    crestUrl: member.crestUrl,
-                    isActive: member.isActive,
-                    createdAt: member.createdAt,
-                    identityScore: scoreTeamIdentityRecord(member),
-                })),
-            };
-        })
-        .filter((group): group is NonNullable<typeof group> => Boolean(group))
-        .sort((left, right) => (
-            right.memberCount - left.memberCount
-            || right.activeCount - left.activeCount
-            || (left.leagueName || '').localeCompare(right.leagueName || '')
-            || left.normalizedName.localeCompare(right.normalizedName)
-        ));
-
-    const duplicateGroups = allDuplicateGroups.slice(0, parsed.data.limit);
+    const { allGroups, groups } = await getTeamDuplicateGroups(parsed.data);
 
     return c.json(apiResponse({
-        groups: duplicateGroups,
-        totalGroups: allDuplicateGroups.length,
+        groups,
+        totalGroups: allGroups.length,
+    }));
+});
+
+superAdminRoutes.post('/teams/duplicates/resolve', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = resolveTeamDuplicatesSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const { groups } = await getTeamDuplicateGroups(parsed.data);
+    const plan = groups.flatMap((group) => group.members
+        .filter((member) => member.id !== group.preferredTeamId)
+        .map((member) => ({
+            leagueId: group.leagueId,
+            leagueName: group.leagueName,
+            normalizedName: group.normalizedName,
+            sourceTeamId: member.id,
+            sourceTeamName: member.name,
+            targetTeamId: group.preferredTeamId,
+            targetTeamName: group.preferredTeamName,
+            sourceActive: member.isActive,
+            targetActive: group.members.find((candidate) => candidate.id === group.preferredTeamId)?.isActive ?? false,
+        })));
+
+    if (parsed.data.dryRun) {
+        return c.json(apiResponse({
+            dryRun: true,
+            groupsConsidered: groups.length,
+            mergeCount: plan.length,
+            plan,
+        }));
+    }
+
+    const applied = [];
+    const failed = [];
+
+    for (const item of plan) {
+        if (!item.targetTeamId) {
+            failed.push({ ...item, error: 'Missing canonical target team' });
+            continue;
+        }
+
+        try {
+            const result = await mergeTeamRecords(item.sourceTeamId, item.targetTeamId);
+            applied.push({
+                ...item,
+                targetSlug: result.targetSlug,
+            });
+        } catch (error) {
+            failed.push({
+                ...item,
+                error: error instanceof Error ? error.message : 'Unknown merge failure',
+            });
+        }
+    }
+
+    return c.json(apiResponse({
+        dryRun: false,
+        groupsConsidered: groups.length,
+        mergeCount: plan.length,
+        appliedCount: applied.length,
+        failedCount: failed.length,
+        applied,
+        failed,
     }));
 });
 
@@ -2314,217 +2300,19 @@ superAdminRoutes.post('/teams/:teamId/merge', async (c) => {
     if (sourceTeamId === targetTeamId) {
         return c.json(apiError('VALIDATION_ERROR', 'Source and target teams must be different'), 400);
     }
-
-    const [[source], [target]] = await Promise.all([
-        db.select({
-            id: teams.id,
-            leagueId: teams.leagueId,
-            primaryStadiumId: teams.primaryStadiumId,
-            slug: teams.slug,
-            name: teams.name,
-            shortName: teams.shortName,
-            crestUrl: teams.crestUrl,
-            crestSource: teams.crestSource,
-            heroImageUrl: teams.heroImageUrl,
-            heroImageSource: teams.heroImageSource,
-            website: teams.website,
-            websiteSource: teams.websiteSource,
-            country: teams.country,
-            aliases: teams.aliases,
-            shortDescription: teams.shortDescription,
-            shortDescriptionSource: teams.shortDescriptionSource,
-            description: teams.description,
-            descriptionSource: teams.descriptionSource,
-            externalId: teams.externalId,
-            isActive: teams.isActive,
-        }).from(teams).where(eq(teams.id, sourceTeamId)).limit(1),
-        db.select({
-            id: teams.id,
-            leagueId: teams.leagueId,
-            primaryStadiumId: teams.primaryStadiumId,
-            slug: teams.slug,
-            name: teams.name,
-            shortName: teams.shortName,
-            crestUrl: teams.crestUrl,
-            crestSource: teams.crestSource,
-            heroImageUrl: teams.heroImageUrl,
-            heroImageSource: teams.heroImageSource,
-            website: teams.website,
-            websiteSource: teams.websiteSource,
-            country: teams.country,
-            aliases: teams.aliases,
-            shortDescription: teams.shortDescription,
-            shortDescriptionSource: teams.shortDescriptionSource,
-            description: teams.description,
-            descriptionSource: teams.descriptionSource,
-            externalId: teams.externalId,
-            isActive: teams.isActive,
-        }).from(teams).where(eq(teams.id, targetTeamId)).limit(1),
-    ]);
-
-    if (!source || !target) {
-        return c.json(apiError('NOT_FOUND', 'Source or target team not found'), 404);
+    try {
+        const result = await mergeTeamRecords(sourceTeamId, targetTeamId);
+        return c.json(apiResponse({
+            message: 'Team merged',
+            sourceTeamId,
+            targetTeamId,
+            targetSlug: result.targetSlug,
+        }));
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to merge teams';
+        const status = message.includes('not found') ? 404 : 400;
+        return c.json(apiError(status === 404 ? 'NOT_FOUND' : 'VALIDATION_ERROR', message), status);
     }
-
-    if ((source.leagueId || null) !== (target.leagueId || null)) {
-        return c.json(apiError('VALIDATION_ERROR', 'Teams must belong to the same league to merge'), 400);
-    }
-
-    const normalizedSourceName = normalizeDuplicateTeamName(source.name);
-    const normalizedTargetName = normalizeDuplicateTeamName(target.name);
-    if (!normalizedSourceName || normalizedSourceName !== normalizedTargetName) {
-        return c.json(apiError('VALIDATION_ERROR', 'Teams must share the same normalized name to merge'), 400);
-    }
-
-    const mergedAliases = Array.from(new Set([
-        ...(target.aliases || []),
-        ...(source.aliases || []),
-        source.name,
-        source.shortName || '',
-    ].map((value) => value.trim()).filter(Boolean)));
-
-    const targetUpdates: Record<string, unknown> = {
-        aliases: mergedAliases,
-        isActive: target.isActive || source.isActive,
-    };
-
-    if (!normalizeOptionalText(target.shortName) && normalizeOptionalText(source.shortName)) {
-        targetUpdates.shortName = source.shortName?.trim() || null;
-    }
-    if (!normalizeOptionalText(target.crestUrl) && normalizeOptionalText(source.crestUrl)) {
-        targetUpdates.crestUrl = source.crestUrl;
-        targetUpdates.crestSource = source.crestSource;
-    }
-    if (!normalizeOptionalText(target.heroImageUrl) && normalizeOptionalText(source.heroImageUrl)) {
-        targetUpdates.heroImageUrl = source.heroImageUrl;
-        targetUpdates.heroImageSource = source.heroImageSource;
-    }
-    if (!normalizeOptionalText(target.website) && normalizeOptionalText(source.website)) {
-        targetUpdates.website = source.website;
-        targetUpdates.websiteSource = source.websiteSource;
-    }
-    if (!normalizeOptionalText(target.country) && normalizeOptionalText(source.country)) {
-        targetUpdates.country = source.country;
-    }
-    if (!normalizeOptionalText(target.shortDescription) && normalizeOptionalText(source.shortDescription)) {
-        targetUpdates.shortDescription = source.shortDescription;
-        targetUpdates.shortDescriptionSource = source.shortDescriptionSource;
-    }
-    if (!normalizeOptionalText(target.description) && normalizeOptionalText(source.description)) {
-        targetUpdates.description = source.description;
-        targetUpdates.descriptionSource = source.descriptionSource;
-    }
-    if (!normalizeOptionalText(target.externalId) && normalizeOptionalText(source.externalId)) {
-        targetUpdates.externalId = source.externalId;
-    }
-
-    const [sourceLinkRows, targetLinkRows, sourceRosterRows, targetRosterRows] = await Promise.all([
-        db.select({
-            stadiumId: teamStadiumLinks.stadiumId,
-            isPrimary: teamStadiumLinks.isPrimary,
-            sortOrder: teamStadiumLinks.sortOrder,
-        }).from(teamStadiumLinks).where(and(eq(teamStadiumLinks.teamId, sourceTeamId), eq(teamStadiumLinks.isActive, true))),
-        db.select({
-            stadiumId: teamStadiumLinks.stadiumId,
-            isPrimary: teamStadiumLinks.isPrimary,
-            sortOrder: teamStadiumLinks.sortOrder,
-        }).from(teamStadiumLinks).where(and(eq(teamStadiumLinks.teamId, targetTeamId), eq(teamStadiumLinks.isActive, true))),
-        db.select({
-            playerId: teamRosterMembers.playerId,
-            shirtNumber: teamRosterMembers.shirtNumber,
-            position: teamRosterMembers.position,
-            isCaptain: teamRosterMembers.isCaptain,
-            sortOrder: teamRosterMembers.sortOrder,
-            isActive: teamRosterMembers.isActive,
-        }).from(teamRosterMembers).where(eq(teamRosterMembers.teamId, sourceTeamId)).orderBy(teamRosterMembers.sortOrder, teamRosterMembers.createdAt),
-        db.select({
-            playerId: teamRosterMembers.playerId,
-            shirtNumber: teamRosterMembers.shirtNumber,
-            position: teamRosterMembers.position,
-            isCaptain: teamRosterMembers.isCaptain,
-            sortOrder: teamRosterMembers.sortOrder,
-            isActive: teamRosterMembers.isActive,
-        }).from(teamRosterMembers).where(eq(teamRosterMembers.teamId, targetTeamId)).orderBy(teamRosterMembers.sortOrder, teamRosterMembers.createdAt),
-    ]);
-
-    const mergedPrimaryStadiumId = target.primaryStadiumId || source.primaryStadiumId || null;
-    const mergedSecondaryStadiumIds = Array.from(new Set([
-        ...targetLinkRows.filter((row) => !row.isPrimary).map((row) => row.stadiumId),
-        ...sourceLinkRows.filter((row) => !row.isPrimary && row.stadiumId !== mergedPrimaryStadiumId).map((row) => row.stadiumId),
-        ...sourceLinkRows.filter((row) => row.isPrimary && row.stadiumId !== mergedPrimaryStadiumId).map((row) => row.stadiumId),
-    ]));
-    const targetPlayerIds = new Set(targetRosterRows.map((row) => row.playerId));
-    const mergedRosterMembers = [
-        ...targetRosterRows.map((row, index) => ({
-            playerId: row.playerId,
-            shirtNumber: row.shirtNumber,
-            position: row.position,
-            isCaptain: row.isCaptain,
-            sortOrder: row.sortOrder ?? index,
-            isActive: row.isActive,
-        })),
-        ...sourceRosterRows
-            .filter((row) => !targetPlayerIds.has(row.playerId))
-            .map((row, index) => ({
-                playerId: row.playerId,
-                shirtNumber: row.shirtNumber,
-                position: row.position,
-                isCaptain: row.isCaptain,
-                sortOrder: targetRosterRows.length + index,
-                isActive: row.isActive,
-            })),
-    ];
-
-    targetUpdates.primaryStadiumId = mergedPrimaryStadiumId;
-
-    const sourceArchivedSlug = await allocateCanonicalSlug('team', `${source.name} archived`, {
-        shortName: source.shortName,
-        excludeId: source.id,
-    });
-
-    await db.transaction(async (tx) => {
-        await tx.update(matches).set({ homeTeamId: targetTeamId }).where(eq(matches.homeTeamId, sourceTeamId));
-        await tx.update(matches).set({ awayTeamId: targetTeamId }).where(eq(matches.awayTeamId, sourceTeamId));
-        await tx.update(matchParticipants).set({ teamId: targetTeamId }).where(eq(matchParticipants.teamId, sourceTeamId));
-        await tx.update(standingsRows).set({ teamId: targetTeamId }).where(eq(standingsRows.teamId, sourceTeamId));
-
-        await tx.execute(sql`
-            delete from user_team_interests as source_interest
-            using user_team_interests as target_interest
-            where source_interest.user_id = target_interest.user_id
-              and source_interest.team_id = ${sourceTeamId}
-              and target_interest.team_id = ${targetTeamId}
-        `);
-        await tx.update(userTeamInterests).set({ teamId: targetTeamId }).where(eq(userTeamInterests.teamId, sourceTeamId));
-
-        await tx.update(teams).set(targetUpdates).where(eq(teams.id, targetTeamId));
-        await syncTeamStadiumState(tx, targetTeamId, mergedPrimaryStadiumId, mergedSecondaryStadiumIds);
-        await syncTeamRosterState(tx, targetTeamId, mergedRosterMembers);
-        await tx.delete(teamStadiumLinks).where(eq(teamStadiumLinks.teamId, sourceTeamId));
-        await tx.delete(teamRosterMembers).where(eq(teamRosterMembers.teamId, sourceTeamId));
-
-        if (source.slug && source.slug !== target.slug) {
-            await tx.insert(entitySlugRedirects).values({
-                entityType: 'team',
-                entityId: targetTeamId,
-                slug: source.slug,
-                updatedAt: new Date(),
-            }).onConflictDoNothing();
-        }
-
-        await tx.update(teams).set({
-            slug: sourceArchivedSlug,
-            externalId: null,
-            isActive: false,
-        }).where(eq(teams.id, sourceTeamId));
-    });
-
-    return c.json(apiResponse({
-        message: 'Team merged',
-        sourceTeamId,
-        targetTeamId,
-        targetSlug: target.slug,
-    }));
 });
 
 superAdminRoutes.delete('/teams/:teamId', async (c) => {
@@ -4905,6 +4693,354 @@ function normalizeDuplicateStadiumKey(name: string, city?: string | null, countr
 
 function uniqueUuidList(values: Array<string | null | undefined>) {
     return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
+}
+
+type TeamDuplicateSourceRow = {
+    id: string;
+    leagueId: string | null;
+    leagueName: string | null;
+    name: string;
+    slug: string;
+    shortName: string | null;
+    aliases: string[] | null;
+    externalId: string | null;
+    crestUrl: string | null;
+    heroImageUrl: string | null;
+    shortDescription: string | null;
+    description: string | null;
+    isActive: boolean;
+    createdAt: Date;
+};
+
+type TeamDuplicateGroup = {
+    leagueId: string | null;
+    leagueName: string | null;
+    normalizedName: string;
+    memberCount: number;
+    activeCount: number;
+    preferredTeamId: string | null;
+    preferredTeamName: string | null;
+    members: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        shortName: string | null;
+        aliases: string[];
+        externalId: string | null;
+        crestUrl: string | null;
+        isActive: boolean;
+        createdAt: Date;
+        identityScore: number;
+    }>;
+};
+
+function pickPreferredTeamRecord(rows: TeamDuplicateSourceRow[]) {
+    const activeRows = rows.filter((row) => row.isActive);
+    return choosePreferredTeamRecord(activeRows.length > 0 ? activeRows : rows);
+}
+
+async function getTeamDuplicateGroups(input: z.infer<typeof teamDuplicateQuerySchema>) {
+    const whereParts = [];
+    if (!input.includeInactive) {
+        whereParts.push(eq(teams.isActive, true));
+    }
+    if (input.leagueId) {
+        whereParts.push(eq(teams.leagueId, input.leagueId));
+    }
+
+    const queryWhere = whereParts.length ? and(...whereParts) : undefined;
+    const rows = await db.select({
+        id: teams.id,
+        leagueId: teams.leagueId,
+        leagueName: leagues.name,
+        name: teams.name,
+        slug: teams.slug,
+        shortName: teams.shortName,
+        aliases: teams.aliases,
+        externalId: teams.externalId,
+        crestUrl: teams.crestUrl,
+        heroImageUrl: teams.heroImageUrl,
+        shortDescription: teams.shortDescription,
+        description: teams.description,
+        isActive: teams.isActive,
+        createdAt: teams.createdAt,
+    }).from(teams)
+        .leftJoin(leagues, eq(teams.leagueId, leagues.id))
+        .where(queryWhere)
+        .orderBy(leagues.name, teams.name, teams.createdAt) as TeamDuplicateSourceRow[];
+
+    const grouped = new Map<string, TeamDuplicateSourceRow[]>();
+    for (const row of rows) {
+        const normalizedName = normalizeTeamIdentity(row.name);
+        if (!normalizedName) continue;
+        const groupKey = `${row.leagueId || 'no-league'}::${normalizedName}`;
+        const existing = grouped.get(groupKey) || [];
+        existing.push(row);
+        grouped.set(groupKey, existing);
+    }
+
+    const allGroups = Array.from(grouped.entries())
+        .map(([groupKey, members]) => {
+            if (members.length < 2) return null;
+            const normalizedName = groupKey.split('::').slice(1).join('::');
+            const preferred = pickPreferredTeamRecord(members);
+            const orderedMembers = [...members].sort((left, right) => {
+                if (preferred) {
+                    if (left.id === preferred.id) return -1;
+                    if (right.id === preferred.id) return 1;
+                }
+                const scoreDiff = scoreTeamIdentityRecord(right) - scoreTeamIdentityRecord(left);
+                if (scoreDiff !== 0) return scoreDiff;
+                if (left.isActive !== right.isActive) return left.isActive ? -1 : 1;
+                return left.name.localeCompare(right.name);
+            });
+
+            return {
+                leagueId: members[0]?.leagueId || null,
+                leagueName: members[0]?.leagueName || null,
+                normalizedName,
+                memberCount: members.length,
+                activeCount: members.filter((member) => member.isActive).length,
+                preferredTeamId: preferred?.id || null,
+                preferredTeamName: preferred?.name || null,
+                members: orderedMembers.map((member) => ({
+                    id: member.id,
+                    name: member.name,
+                    slug: member.slug,
+                    shortName: member.shortName,
+                    aliases: member.aliases || [],
+                    externalId: member.externalId,
+                    crestUrl: member.crestUrl,
+                    isActive: member.isActive,
+                    createdAt: member.createdAt,
+                    identityScore: scoreTeamIdentityRecord(member),
+                })),
+            } satisfies TeamDuplicateGroup;
+        })
+        .filter((group): group is TeamDuplicateGroup => Boolean(group))
+        .sort((left, right) => (
+            right.memberCount - left.memberCount
+            || right.activeCount - left.activeCount
+            || (left.leagueName || '').localeCompare(right.leagueName || '')
+            || left.normalizedName.localeCompare(right.normalizedName)
+        ));
+
+    return {
+        allGroups,
+        groups: allGroups.slice(0, input.limit),
+    };
+}
+
+async function mergeTeamRecords(sourceTeamId: string, targetTeamId: string) {
+    const [[source], [target]] = await Promise.all([
+        db.select({
+            id: teams.id,
+            leagueId: teams.leagueId,
+            primaryStadiumId: teams.primaryStadiumId,
+            slug: teams.slug,
+            name: teams.name,
+            shortName: teams.shortName,
+            crestUrl: teams.crestUrl,
+            crestSource: teams.crestSource,
+            heroImageUrl: teams.heroImageUrl,
+            heroImageSource: teams.heroImageSource,
+            website: teams.website,
+            websiteSource: teams.websiteSource,
+            country: teams.country,
+            aliases: teams.aliases,
+            shortDescription: teams.shortDescription,
+            shortDescriptionSource: teams.shortDescriptionSource,
+            description: teams.description,
+            descriptionSource: teams.descriptionSource,
+            externalId: teams.externalId,
+            isActive: teams.isActive,
+        }).from(teams).where(eq(teams.id, sourceTeamId)).limit(1),
+        db.select({
+            id: teams.id,
+            leagueId: teams.leagueId,
+            primaryStadiumId: teams.primaryStadiumId,
+            slug: teams.slug,
+            name: teams.name,
+            shortName: teams.shortName,
+            crestUrl: teams.crestUrl,
+            crestSource: teams.crestSource,
+            heroImageUrl: teams.heroImageUrl,
+            heroImageSource: teams.heroImageSource,
+            website: teams.website,
+            websiteSource: teams.websiteSource,
+            country: teams.country,
+            aliases: teams.aliases,
+            shortDescription: teams.shortDescription,
+            shortDescriptionSource: teams.shortDescriptionSource,
+            description: teams.description,
+            descriptionSource: teams.descriptionSource,
+            externalId: teams.externalId,
+            isActive: teams.isActive,
+        }).from(teams).where(eq(teams.id, targetTeamId)).limit(1),
+    ]);
+
+    if (!source || !target) {
+        throw new Error('Source or target team not found');
+    }
+
+    if ((source.leagueId || null) !== (target.leagueId || null)) {
+        throw new Error('Teams must belong to the same league to merge');
+    }
+
+    const normalizedSourceName = normalizeTeamIdentity(source.name);
+    const normalizedTargetName = normalizeTeamIdentity(target.name);
+    if (!normalizedSourceName || normalizedSourceName !== normalizedTargetName) {
+        throw new Error('Teams must share the same normalized identity to merge');
+    }
+
+    const mergedAliases = Array.from(new Set([
+        ...(target.aliases || []),
+        ...(source.aliases || []),
+        source.name,
+        source.shortName || '',
+    ].map((value) => value.trim()).filter(Boolean)));
+
+    const targetUpdates: Record<string, unknown> = {
+        aliases: mergedAliases,
+        isActive: target.isActive || source.isActive,
+    };
+
+    if (!normalizeOptionalText(target.shortName) && normalizeOptionalText(source.shortName)) {
+        targetUpdates.shortName = source.shortName?.trim() || null;
+    }
+    if (!normalizeOptionalText(target.crestUrl) && normalizeOptionalText(source.crestUrl)) {
+        targetUpdates.crestUrl = source.crestUrl;
+        targetUpdates.crestSource = source.crestSource;
+    }
+    if (!normalizeOptionalText(target.heroImageUrl) && normalizeOptionalText(source.heroImageUrl)) {
+        targetUpdates.heroImageUrl = source.heroImageUrl;
+        targetUpdates.heroImageSource = source.heroImageSource;
+    }
+    if (!normalizeOptionalText(target.website) && normalizeOptionalText(source.website)) {
+        targetUpdates.website = source.website;
+        targetUpdates.websiteSource = source.websiteSource;
+    }
+    if (!normalizeOptionalText(target.country) && normalizeOptionalText(source.country)) {
+        targetUpdates.country = source.country;
+    }
+    if (!normalizeOptionalText(target.shortDescription) && normalizeOptionalText(source.shortDescription)) {
+        targetUpdates.shortDescription = source.shortDescription;
+        targetUpdates.shortDescriptionSource = source.shortDescriptionSource;
+    }
+    if (!normalizeOptionalText(target.description) && normalizeOptionalText(source.description)) {
+        targetUpdates.description = source.description;
+        targetUpdates.descriptionSource = source.descriptionSource;
+    }
+    if (!normalizeOptionalText(target.externalId) && normalizeOptionalText(source.externalId)) {
+        targetUpdates.externalId = source.externalId;
+    }
+
+    const [sourceLinkRows, targetLinkRows, sourceRosterRows, targetRosterRows] = await Promise.all([
+        db.select({
+            stadiumId: teamStadiumLinks.stadiumId,
+            isPrimary: teamStadiumLinks.isPrimary,
+            sortOrder: teamStadiumLinks.sortOrder,
+        }).from(teamStadiumLinks).where(and(eq(teamStadiumLinks.teamId, sourceTeamId), eq(teamStadiumLinks.isActive, true))),
+        db.select({
+            stadiumId: teamStadiumLinks.stadiumId,
+            isPrimary: teamStadiumLinks.isPrimary,
+            sortOrder: teamStadiumLinks.sortOrder,
+        }).from(teamStadiumLinks).where(and(eq(teamStadiumLinks.teamId, targetTeamId), eq(teamStadiumLinks.isActive, true))),
+        db.select({
+            playerId: teamRosterMembers.playerId,
+            shirtNumber: teamRosterMembers.shirtNumber,
+            position: teamRosterMembers.position,
+            isCaptain: teamRosterMembers.isCaptain,
+            sortOrder: teamRosterMembers.sortOrder,
+            isActive: teamRosterMembers.isActive,
+        }).from(teamRosterMembers).where(eq(teamRosterMembers.teamId, sourceTeamId)).orderBy(teamRosterMembers.sortOrder, teamRosterMembers.createdAt),
+        db.select({
+            playerId: teamRosterMembers.playerId,
+            shirtNumber: teamRosterMembers.shirtNumber,
+            position: teamRosterMembers.position,
+            isCaptain: teamRosterMembers.isCaptain,
+            sortOrder: teamRosterMembers.sortOrder,
+            isActive: teamRosterMembers.isActive,
+        }).from(teamRosterMembers).where(eq(teamRosterMembers.teamId, targetTeamId)).orderBy(teamRosterMembers.sortOrder, teamRosterMembers.createdAt),
+    ]);
+
+    const mergedPrimaryStadiumId = target.primaryStadiumId || source.primaryStadiumId || null;
+    const mergedSecondaryStadiumIds = Array.from(new Set([
+        ...targetLinkRows.filter((row) => !row.isPrimary).map((row) => row.stadiumId),
+        ...sourceLinkRows.filter((row) => !row.isPrimary && row.stadiumId !== mergedPrimaryStadiumId).map((row) => row.stadiumId),
+        ...sourceLinkRows.filter((row) => row.isPrimary && row.stadiumId !== mergedPrimaryStadiumId).map((row) => row.stadiumId),
+    ]));
+    const targetPlayerIds = new Set(targetRosterRows.map((row) => row.playerId));
+    const mergedRosterMembers = [
+        ...targetRosterRows.map((row, index) => ({
+            playerId: row.playerId,
+            shirtNumber: row.shirtNumber,
+            position: row.position,
+            isCaptain: row.isCaptain,
+            sortOrder: row.sortOrder ?? index,
+            isActive: row.isActive,
+        })),
+        ...sourceRosterRows
+            .filter((row) => !targetPlayerIds.has(row.playerId))
+            .map((row, index) => ({
+                playerId: row.playerId,
+                shirtNumber: row.shirtNumber,
+                position: row.position,
+                isCaptain: row.isCaptain,
+                sortOrder: targetRosterRows.length + index,
+                isActive: row.isActive,
+            })),
+    ];
+
+    targetUpdates.primaryStadiumId = mergedPrimaryStadiumId;
+
+    const sourceArchivedSlug = await allocateCanonicalSlug('team', `${source.name} archived`, {
+        shortName: source.shortName,
+        excludeId: source.id,
+    });
+
+    await db.transaction(async (tx) => {
+        await tx.update(matches).set({ homeTeamId: targetTeamId }).where(eq(matches.homeTeamId, sourceTeamId));
+        await tx.update(matches).set({ awayTeamId: targetTeamId }).where(eq(matches.awayTeamId, sourceTeamId));
+        await tx.update(matchParticipants).set({ teamId: targetTeamId }).where(eq(matchParticipants.teamId, sourceTeamId));
+        await tx.update(standingsRows).set({ teamId: targetTeamId }).where(eq(standingsRows.teamId, sourceTeamId));
+
+        await tx.execute(sql`
+            delete from user_team_interests as source_interest
+            using user_team_interests as target_interest
+            where source_interest.user_id = target_interest.user_id
+              and source_interest.team_id = ${sourceTeamId}
+              and target_interest.team_id = ${targetTeamId}
+        `);
+        await tx.update(userTeamInterests).set({ teamId: targetTeamId }).where(eq(userTeamInterests.teamId, sourceTeamId));
+
+        await tx.update(teams).set(targetUpdates).where(eq(teams.id, targetTeamId));
+        await syncTeamStadiumState(tx, targetTeamId, mergedPrimaryStadiumId, mergedSecondaryStadiumIds);
+        await syncTeamRosterState(tx, targetTeamId, mergedRosterMembers);
+        await tx.delete(teamStadiumLinks).where(eq(teamStadiumLinks.teamId, sourceTeamId));
+        await tx.delete(teamRosterMembers).where(eq(teamRosterMembers.teamId, sourceTeamId));
+
+        if (source.slug && source.slug !== target.slug) {
+            await tx.insert(entitySlugRedirects).values({
+                entityType: 'team',
+                entityId: targetTeamId,
+                slug: source.slug,
+                updatedAt: new Date(),
+            }).onConflictDoNothing();
+        }
+
+        await tx.update(teams).set({
+            slug: sourceArchivedSlug,
+            externalId: null,
+            isActive: false,
+        }).where(eq(teams.id, sourceTeamId));
+    });
+
+    return {
+        sourceTeamId,
+        targetTeamId,
+        targetSlug: target.slug,
+    };
 }
 
 async function assertActiveStadiumIds(stadiumIds: string[]) {
