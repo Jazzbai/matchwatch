@@ -61,6 +61,7 @@ import { allocateCanonicalSlug } from '../lib/entitySlugs';
 import { getRecommendationPreview, getRecommendations } from '../lib/entityRecommendations';
 import { getLatestLeagueStandings, refreshLeagueStandingsSnapshot } from '../lib/standings';
 import { getMatchPrediction, refreshMatchPrediction } from '../lib/predictions';
+import { choosePreferredTeamRecord, normalizeTeamIdentity, scoreTeamIdentityRecord } from '../lib/teamIdentity';
 
 declare module 'hono' {
     interface ContextVariableMap {
@@ -152,6 +153,12 @@ const teamSearchQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(50).default(12),
     page: z.coerce.number().int().min(1).optional(),
     includeInactive: z.coerce.boolean().optional(),
+});
+
+const teamDuplicateQuerySchema = z.object({
+    leagueId: z.string().uuid().optional(),
+    includeInactive: z.coerce.boolean().optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(100),
 });
 
 const createTeamSchema = z.object({
@@ -1896,6 +1903,105 @@ superAdminRoutes.get('/teams', async (c) => {
     }).from(teams).where(queryWhere).orderBy(teams.name).limit(parsed.data.limit);
 
     return c.json(apiResponse(rows));
+});
+
+superAdminRoutes.get('/teams/duplicates', async (c) => {
+    const parsed = teamDuplicateQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+    }
+
+    const whereParts = [];
+    if (!parsed.data.includeInactive) {
+        whereParts.push(eq(teams.isActive, true));
+    }
+    if (parsed.data.leagueId) {
+        whereParts.push(eq(teams.leagueId, parsed.data.leagueId));
+    }
+
+    const queryWhere = whereParts.length ? and(...whereParts) : undefined;
+    const rows = await db.select({
+        id: teams.id,
+        leagueId: teams.leagueId,
+        leagueName: leagues.name,
+        name: teams.name,
+        slug: teams.slug,
+        shortName: teams.shortName,
+        aliases: teams.aliases,
+        externalId: teams.externalId,
+        crestUrl: teams.crestUrl,
+        heroImageUrl: teams.heroImageUrl,
+        shortDescription: teams.shortDescription,
+        description: teams.description,
+        isActive: teams.isActive,
+        createdAt: teams.createdAt,
+    }).from(teams)
+        .leftJoin(leagues, eq(teams.leagueId, leagues.id))
+        .where(queryWhere)
+        .orderBy(leagues.name, teams.name, teams.createdAt);
+
+    const grouped = new Map<string, typeof rows>();
+    for (const row of rows) {
+        const normalizedName = normalizeTeamIdentity(row.name);
+        if (!normalizedName) continue;
+        const groupKey = `${row.leagueId || 'no-league'}::${normalizedName}`;
+        const existing = grouped.get(groupKey) || [];
+        existing.push(row);
+        grouped.set(groupKey, existing);
+    }
+
+    const allDuplicateGroups = Array.from(grouped.entries())
+        .map(([groupKey, members]) => {
+            if (members.length < 2) return null;
+            const normalizedName = groupKey.split('::').slice(1).join('::');
+            const preferred = choosePreferredTeamRecord(members);
+            const orderedMembers = [...members].sort((left, right) => {
+                if (preferred) {
+                    if (left.id === preferred.id) return -1;
+                    if (right.id === preferred.id) return 1;
+                }
+                const scoreDiff = scoreTeamIdentityRecord(right) - scoreTeamIdentityRecord(left);
+                if (scoreDiff !== 0) return scoreDiff;
+                if (left.isActive !== right.isActive) return left.isActive ? -1 : 1;
+                return left.name.localeCompare(right.name);
+            });
+
+            return {
+                leagueId: members[0]?.leagueId || null,
+                leagueName: members[0]?.leagueName || null,
+                normalizedName,
+                memberCount: members.length,
+                activeCount: members.filter((member) => member.isActive).length,
+                preferredTeamId: preferred?.id || null,
+                preferredTeamName: preferred?.name || null,
+                members: orderedMembers.map((member) => ({
+                    id: member.id,
+                    name: member.name,
+                    slug: member.slug,
+                    shortName: member.shortName,
+                    aliases: member.aliases || [],
+                    externalId: member.externalId,
+                    crestUrl: member.crestUrl,
+                    isActive: member.isActive,
+                    createdAt: member.createdAt,
+                    identityScore: scoreTeamIdentityRecord(member),
+                })),
+            };
+        })
+        .filter((group): group is NonNullable<typeof group> => Boolean(group))
+        .sort((left, right) => (
+            right.memberCount - left.memberCount
+            || right.activeCount - left.activeCount
+            || (left.leagueName || '').localeCompare(right.leagueName || '')
+            || left.normalizedName.localeCompare(right.normalizedName)
+        ));
+
+    const duplicateGroups = allDuplicateGroups.slice(0, parsed.data.limit);
+
+    return c.json(apiResponse({
+        groups: duplicateGroups,
+        totalGroups: allDuplicateGroups.length,
+    }));
 });
 
 superAdminRoutes.post('/teams', async (c) => {
