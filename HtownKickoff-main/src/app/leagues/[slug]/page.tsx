@@ -29,6 +29,39 @@ type LeagueDetail = {
   results: Array<{ id: string; homeTeamName?: string | null; awayTeamName?: string | null; homeScore?: number | null; awayScore?: number | null; matchDateUtc: string }>;
 };
 
+function TeamStandingsLink({ team }: { team: NonNullable<LeagueDetail["standings"]["rows"][number]["team"]> }) {
+  return (
+    <Link
+      href={`/teams/${team.slug}`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 10,
+        color: "var(--foreground)",
+        textDecoration: "none",
+        fontWeight: 700,
+      }}
+    >
+      {team.crestUrl ? (
+        <img
+          src={team.crestUrl}
+          alt=""
+          style={{
+            width: 24,
+            height: 24,
+            objectFit: "contain",
+            borderRadius: 8,
+            background: "rgba(255,255,255,0.92)",
+            padding: 3,
+            flexShrink: 0,
+          }}
+        />
+      ) : null}
+      <span>{team.name}</span>
+    </Link>
+  );
+}
+
 export default function LeaguePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const router = useRouter();
@@ -66,7 +99,15 @@ export default function LeaguePage({ params }: { params: Promise<{ slug: string 
         <div style={{ maxWidth: 1180, margin: "0 auto" }}>
           <div className="section-label" style={{ marginBottom: 12, color: league.heroImageUrl ? "rgba(255,255,255,0.72)" : "var(--primary)" }}>{league.sport?.name || "League"}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-            {league.logoUrl ? <img src={league.logoUrl} alt="" style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 16, background: "rgba(255,255,255,0.92)", padding: 10 }} /> : null}
+            {league.logoUrl ? (
+              <a
+                href={league.canonicalPath || `/leagues/${league.slug}`}
+                style={{ display: "inline-flex", borderRadius: 16 }}
+                aria-label={`${league.name} page`}
+              >
+                <img src={league.logoUrl} alt="" style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 16, background: "rgba(255,255,255,0.92)", padding: 10 }} />
+              </a>
+            ) : null}
             <div>
               <h1 className="font-display text-display" style={{ color: league.heroImageUrl ? "#fff" : "var(--foreground)", margin: 0 }}>{league.name}</h1>
               <p style={{ margin: "10px 0 0", maxWidth: 760, color: league.heroImageUrl ? "rgba(255,255,255,0.86)" : "var(--muted-foreground)", lineHeight: 1.7 }}>
@@ -114,7 +155,7 @@ export default function LeaguePage({ params }: { params: Promise<{ slug: string 
                   <tr key={row.team?.id || row.rank} style={{ borderTop: "1px solid var(--border)" }}>
                     <td style={{ padding: "12px 8px", fontWeight: 700 }}>{row.rank}</td>
                     <td style={{ padding: "12px 8px" }}>
-                      {row.team ? <Link href={`/teams/${row.team.slug}`} style={{ color: "var(--foreground)", textDecoration: "none", fontWeight: 700 }}>{row.team.name}</Link> : "-"}
+                      {row.team ? <TeamStandingsLink team={row.team} /> : "-"}
                     </td>
                     <td style={{ padding: "12px 8px" }}>{row.played}</td>
                     <td style={{ padding: "12px 8px" }}>{row.wins}</td>
