@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { GooglePlacePicker } from "../../components/GooglePlacePicker";
+import { PaginationControls } from "../../components/PaginationControls";
 import { useAuth } from "../../lib/auth-context";
 import { api, uploadApi, type GooglePlaceDetailsResponse, type GooglePlaceSnapshot } from "../../lib/api";
 import { useData } from "../../lib/data-provider";
@@ -373,6 +374,7 @@ function applyGoogleDefaultsToVenueForm(snapshot: GooglePlaceSnapshot) {
 }
 
 export default function AdminPage() {
+  const VENUES_PER_PAGE = 20;
   const router = useRouter();
   const { isAuthenticated, user, logout } = useAuth();
   const { refetch } = useData();
@@ -382,6 +384,8 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = React.useState("overview");
   const [ownedVenues, setOwnedVenues] = React.useState<OwnedVenue[]>([]);
   const [selectedVenueId, setSelectedVenueId] = React.useState("");
+  const [venueSearch, setVenueSearch] = React.useState("");
+  const [venuePage, setVenuePage] = React.useState(1);
   const [showCreateVenueForm, setShowCreateVenueForm] = React.useState(false);
 
   const [overview, setOverview] = React.useState<DashboardOverview | null>(null);
@@ -548,6 +552,21 @@ export default function AdminPage() {
     }
     return Array.from(grouped.values()).sort((a, b) => a.leagueLabel.localeCompare(b.leagueLabel));
   }, [matchPickerRows]);
+
+  const filteredOwnedVenues = React.useMemo(() => {
+    const keyword = venueSearch.trim().toLowerCase();
+    return ownedVenues.filter((venue) => {
+      if (!keyword) return true;
+      return venue.name.toLowerCase().includes(keyword);
+    });
+  }, [ownedVenues, venueSearch]);
+
+  const totalVenuePages = Math.max(1, Math.ceil(filteredOwnedVenues.length / VENUES_PER_PAGE));
+
+  const pagedOwnedVenues = React.useMemo(() => {
+    const start = (venuePage - 1) * VENUES_PER_PAGE;
+    return filteredOwnedVenues.slice(start, start + VENUES_PER_PAGE);
+  }, [filteredOwnedVenues, venuePage, VENUES_PER_PAGE]);
 
   const dashboardPath = React.useCallback((path: string, venueIdOverride?: string) => {
     const venueId = venueIdOverride || selectedVenueId;
@@ -724,6 +743,16 @@ export default function AdminPage() {
       setMatchPickerSearch("");
     }
   }, [showCreateModal]);
+
+  React.useEffect(() => {
+    setVenuePage(1);
+  }, [venueSearch]);
+
+  React.useEffect(() => {
+    if (venuePage > totalVenuePages) {
+      setVenuePage(totalVenuePages);
+    }
+  }, [totalVenuePages, venuePage]);
 
   React.useEffect(() => {
     if (createMode !== "match") {
@@ -1338,20 +1367,8 @@ export default function AdminPage() {
                 {overview?.venue?.city || "City unavailable"}
               </p>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, minWidth: 280 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 12, minWidth: 360, maxWidth: 520, width: "100%" }}>
               <div style={{ display: "flex", gap: 8, width: "100%", justifyContent: "flex-end" }}>
-                <select
-                  value={selectedVenueId}
-                  onChange={(event) => setSelectedVenueId(event.target.value)}
-                  style={{ ...inputStyle, maxWidth: 320 }}
-                >
-                  {ownedVenues.length === 0 && <option value="">No venues yet</option>}
-                  {ownedVenues.map((venue) => (
-                    <option key={venue.id} value={venue.id}>
-                      {venue.name} ({venue.city})
-                    </option>
-                  ))}
-                </select>
                 <button
                   onClick={() => setShowCreateVenueForm((prev) => !prev)}
                   style={btnOutline(isBusy)}
@@ -1363,6 +1380,74 @@ export default function AdminPage() {
                 <button onClick={() => void loadDashboard()} disabled={isBusy} style={btnOutline(isBusy)}>
                   Refresh
                 </button>
+              </div>
+              <div style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12, display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+                    Edit Venue
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                    {filteredOwnedVenues.length} result{filteredOwnedVenues.length === 1 ? "" : "s"}
+                  </div>
+                </div>
+                <div style={{ position: "relative" }}>
+                  <Search style={{ position: "absolute", left: 12, top: 12, width: 16, height: 16, color: "var(--muted-foreground)", pointerEvents: "none" }} />
+                  <input
+                    value={venueSearch}
+                    onChange={(event) => setVenueSearch(event.target.value)}
+                    placeholder="Search venue name"
+                    style={{ ...inputStyle, paddingLeft: 36 }}
+                  />
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {pagedOwnedVenues.length === 0 ? (
+                    <div style={{ padding: "12px 14px", borderRadius: 10, border: "1px dashed var(--border)", color: "var(--muted-foreground)", fontSize: 13 }}>
+                      No venues match that search.
+                    </div>
+                  ) : (
+                    pagedOwnedVenues.map((venue) => {
+                      const isActive = venue.id === selectedVenueId;
+                      return (
+                        <button
+                          key={venue.id}
+                          type="button"
+                          onClick={() => setSelectedVenueId(venue.id)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            width: "100%",
+                            padding: "12px 14px",
+                            borderRadius: 10,
+                            border: `1px solid ${isActive ? "var(--primary)" : "var(--border)"}`,
+                            backgroundColor: isActive ? "color-mix(in oklch, var(--primary) 12%, var(--card))" : "var(--secondary)",
+                            color: "var(--foreground)",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.3 }}>{venue.name}</div>
+                            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+                              {venue.city}{venue.country ? `, ${venue.country}` : ""}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                            {venue.approvalStatus ? <span style={badgeStyle}>{venue.approvalStatus}</span> : null}
+                            {isActive ? <Check style={{ width: 16, height: 16, color: "var(--primary)" }} /> : null}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                <PaginationControls
+                  currentPage={venuePage}
+                  totalPages={totalVenuePages}
+                  onPageChange={setVenuePage}
+                />
               </div>
               {showCreateVenueForm && (
                 <div style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12, display: "grid", gap: 8 }}>
