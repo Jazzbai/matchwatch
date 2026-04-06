@@ -34,6 +34,8 @@ export type EntityBaseRecord = {
   shortName?: string | null;
   sportName?: string | null;
   leagueName?: string | null;
+  teamName?: string | null;
+  role?: string | null;
   city?: string | null;
   country?: string | null;
   nationality?: string | null;
@@ -86,10 +88,12 @@ function uniqueStrings(values: Array<string | null | undefined>) {
 function deterministicDescription(kind: EntityKind, record: EntityBaseRecord) {
   const location = uniqueStrings([record.country, record.nationality]).join(', ');
   const competitionContext = uniqueStrings([record.leagueName, record.sportName]).join(' ');
+  const teamContext = uniqueStrings([record.teamName]).join(' ');
+  const roleContext = record.role?.trim() || '';
   const descriptor = (() => {
     if (kind === 'league') return record.sportName ? `${record.sportName} competition` : 'sports competition';
     if (kind === 'team') return record.sportName ? `${record.sportName} team` : 'sports team';
-    if (kind === 'player') return record.sportName ? `${record.sportName} player` : 'athlete';
+    if (kind === 'player') return roleContext || (record.sportName ? `${record.sportName} player` : 'athlete');
     if (kind === 'driver') return 'racing driver';
     if (kind === 'entrant') return 'motorsport team';
     if (kind === 'manufacturer') return 'motorsport manufacturer';
@@ -100,11 +104,11 @@ function deterministicDescription(kind: EntityKind, record: EntityBaseRecord) {
   const shortSentence = (() => {
     switch (kind) {
       case 'league':
-        return `${record.name} is a ${descriptor}${location ? ` based in ${location}` : ''}.`;
+        return `${record.name} is a ${location ? `${location} ` : ''}${descriptor}${record.sportName ? ` featuring ${record.sportName.toLowerCase()} fixtures, results, and standings` : ''}.`;
       case 'team':
-        return `${record.name} is a ${descriptor}${competitionContext ? ` competing in ${competitionContext}` : ''}${location ? ` and associated with ${location}` : ''}.`;
+        return `${record.name} is a ${location ? `${location} ` : ''}${descriptor}${record.leagueName ? ` competing in the ${record.leagueName}` : competitionContext ? ` active in ${competitionContext}` : ''}.`;
       case 'player':
-        return `${record.name} is a ${descriptor}${competitionContext ? ` active in ${competitionContext}` : ''}${location ? ` from ${location}` : ''}.`;
+        return `${record.name} is ${/^[aeiou]/i.test(descriptor) ? 'an' : 'a'} ${descriptor}${teamContext ? ` for ${teamContext}` : ''}${record.leagueName ? ` in the ${record.leagueName}` : competitionContext ? ` active in ${competitionContext}` : ''}${location ? ` from ${location}` : ''}.`;
       case 'driver':
         return `${record.name} is a ${descriptor}${competitionContext ? ` competing in ${competitionContext}` : ''}${location ? ` from ${location}` : ''}.`;
       case 'entrant':
@@ -122,9 +126,20 @@ function deterministicDescription(kind: EntityKind, record: EntityBaseRecord) {
     const scope = kind === 'league' ? 'competition' : 'entity';
     const supportingContext = uniqueStrings([
       competitionContext || null,
+      teamContext || null,
+      roleContext || null,
       location || null,
       record.shortName || null,
     ]).join(' | ');
+    if (kind === 'league') {
+      return `${shortSentence} MatchWatch tracks fixtures, results, standings, notable teams, and watchparty context for this ${scope}${supportingContext ? `, with catalog metadata seeded from ${supportingContext}` : ''}.`;
+    }
+    if (kind === 'team') {
+      return `${shortSentence} MatchWatch tracks roster context, fixtures, results, standings, and venue information for this ${scope}${supportingContext ? `, with catalog metadata seeded from ${supportingContext}` : ''}.`;
+    }
+    if (kind === 'player') {
+      return `${shortSentence} MatchWatch tracks appearances, upcoming matches, team context, and profile metadata for this ${scope}${supportingContext ? `, with catalog metadata seeded from ${supportingContext}` : ''}.`;
+    }
     return `${shortSentence} MatchWatch tracks schedules, results, standings, rankings, and watchparty context for this ${scope}${supportingContext ? `, with catalog metadata seeded from ${supportingContext}` : ''}.`;
   })();
 
@@ -257,6 +272,8 @@ function buildQuery(kind: EntityKind, record: EntityBaseRecord) {
     record.name,
     record.shortName,
     record.leagueName,
+    record.teamName,
+    record.role,
     record.sportName,
     record.city,
     record.country,
@@ -382,6 +399,8 @@ export async function buildEntityEnrichment(kind: EntityKind, record: EntityBase
         shortName: record.shortName || null,
         sportName: record.sportName || null,
         leagueName: record.leagueName || null,
+        teamName: record.teamName || null,
+        role: record.role || null,
         country: record.country || record.nationality || null,
       },
       webResults: webResults.map((item) => ({ title: item.title || null, snippet: item.snippet || null, link: item.link || null })),

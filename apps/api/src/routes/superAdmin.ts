@@ -59,6 +59,7 @@ import { presignedUploadSchema } from '@matchwatch/shared';
 import { buildEntityEnrichment, type EntityBaseRecord, type EntityEnrichmentResult, type EntityKind } from '../lib/entityEnrichment';
 import { allocateCanonicalSlug } from '../lib/entitySlugs';
 import { getRecommendationPreview, getRecommendations } from '../lib/entityRecommendations';
+import { resolvePlayerContext } from '../lib/playerContext';
 import { getLatestLeagueStandings, refreshLeagueStandingsSnapshot } from '../lib/standings';
 import { getMatchPrediction, refreshMatchPrediction } from '../lib/predictions';
 import { choosePreferredTeamRecord, normalizeTeamIdentity, scoreTeamIdentityRecord } from '../lib/teamIdentity';
@@ -5968,6 +5969,7 @@ async function resolveEnrichmentRecord(kind: EntityKind, id: string): Promise<{ 
     if (kind === 'player') {
         const [row] = await db.select({
             id: players.id,
+            leagueId: players.leagueId,
             name: players.name,
             shortName: players.shortName,
             sportName: sports.name,
@@ -5985,8 +5987,65 @@ async function resolveEnrichmentRecord(kind: EntityKind, id: string): Promise<{ 
             heroImageSource: players.heroImageSource,
             websiteSource: players.websiteSource,
         }).from(players).leftJoin(sports, eq(players.sportId, sports.id)).leftJoin(leagues, eq(players.leagueId, leagues.id)).where(eq(players.id, id)).limit(1);
+
+        const rosterMembershipRows = row
+            ? await db.select({
+                position: teamRosterMembers.position,
+                shirtNumber: teamRosterMembers.shirtNumber,
+                isCaptain: teamRosterMembers.isCaptain,
+                sortOrder: teamRosterMembers.sortOrder,
+                teamId: teams.id,
+                teamName: teams.name,
+                teamSlug: teams.slug,
+                teamShortName: teams.shortName,
+                teamCrestUrl: teams.crestUrl,
+                teamLeagueId: teams.leagueId,
+                teamAliases: teams.aliases,
+                teamExternalId: teams.externalId,
+                teamHeroImageUrl: teams.heroImageUrl,
+                teamShortDescription: teams.shortDescription,
+                teamDescription: teams.description,
+            }).from(teamRosterMembers)
+                .innerJoin(teams, eq(teamRosterMembers.teamId, teams.id))
+                .where(and(
+                    eq(teamRosterMembers.playerId, id),
+                    eq(teamRosterMembers.isActive, true),
+                    eq(teams.isActive, true),
+                ))
+                .orderBy(teamRosterMembers.sortOrder, teams.name)
+            : [];
+
+        const context = row ? resolvePlayerContext({
+            currentLeagueId: row.leagueId,
+            rosterMemberships: rosterMembershipRows.map((membership) => ({
+                team: {
+                    id: membership.teamId,
+                    name: membership.teamName,
+                    slug: membership.teamSlug,
+                    shortName: membership.teamShortName,
+                    crestUrl: membership.teamCrestUrl,
+                    leagueId: membership.teamLeagueId,
+                    aliases: membership.teamAliases,
+                    externalId: membership.teamExternalId,
+                    heroImageUrl: membership.teamHeroImageUrl,
+                    shortDescription: membership.teamShortDescription,
+                    description: membership.teamDescription,
+                },
+                position: membership.position,
+                shirtNumber: membership.shirtNumber,
+                isCaptain: membership.isCaptain,
+                sortOrder: membership.sortOrder,
+            })),
+            shortDescription: row.shortDescription,
+            description: row.description,
+        }) : null;
+
         return {
-            record: row || null,
+            record: row ? {
+                ...row,
+                teamName: context?.currentTeam?.name || null,
+                role: context?.role || null,
+            } : null,
             apply: async (updates, snapshot) => {
                 await db.update(players).set({
                     shortDescription: updates.shortDescription ?? undefined,

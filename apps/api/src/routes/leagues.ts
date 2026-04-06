@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { and, asc, desc, eq, gte, lte, notInArray } from 'drizzle-orm';
 import { db } from '../db/client';
 import { leagues, matches, sports, teams } from '../db/schema';
+import { resolveEntityPresentation } from '../lib/entityEnrichment';
 import { resolveCanonicalEntity } from '../lib/entitySlugs';
 import { getLatestLeagueStandings } from '../lib/standings';
 import { choosePreferredTeamRecord, normalizeTeamIdentity } from '../lib/teamIdentity';
@@ -102,8 +103,30 @@ leagueRoutes.get('/:slug', async (c) => {
         loadLeagueMatches(row.league.id, 'results', 8),
     ]);
 
+    const presentation = resolveEntityPresentation('league', {
+        id: row.league.id,
+        name: row.league.name,
+        shortName: row.league.shortName,
+        sportName: row.sport?.name || null,
+        country: row.league.country,
+        website: row.league.website,
+        shortDescription: row.league.shortDescription,
+        description: row.league.description,
+        primaryImageUrl: row.league.logoUrl,
+        heroImageUrl: row.league.heroImageUrl,
+        shortDescriptionSource: row.league.shortDescriptionSource,
+        descriptionSource: row.league.descriptionSource,
+        primaryImageSource: row.league.logoSource,
+        heroImageSource: row.league.heroImageSource,
+        websiteSource: row.league.websiteSource,
+    });
+
     return c.json(apiResponse({
         ...row.league,
+        shortDescription: presentation.shortDescription,
+        description: presentation.description,
+        logoUrl: presentation.primaryImageUrl,
+        heroImageUrl: presentation.heroImageUrl,
         sport: row.sport,
         canonicalSlug: row.league.slug,
         canonicalPath: `/leagues/${row.league.slug}`,
