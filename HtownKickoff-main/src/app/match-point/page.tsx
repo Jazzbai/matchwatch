@@ -374,9 +374,9 @@ export default function MatchPointPage() {
                         ))}
                         {/* Become a sponsor CTA */}
                         <a
-                            href="mailto:sponsors@matchwatch.us"
+                            href="/match-point/sponsor"
                             style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 99, border: "1.5px dashed var(--border)", fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)", textDecoration: "none", transition: "border-color 0.2s, color 0.2s" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.color = "#22c55e"; }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#f59e0b"; e.currentTarget.style.color = "#f59e0b"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
                         >
                             + Become a Sponsor
