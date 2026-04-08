@@ -1,90 +1,97 @@
 {
-    "version":  "7",
-    "dialect":  "postgresql",
-    "entries":  [
-                    {
-                        "idx":  0,
-                        "version":  "7",
-                        "when":  1772039860863,
-                        "tag":  "0000_clear_star_brand",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  1,
-                        "version":  "7",
-                        "when":  1773601200000,
-                        "tag":  "0001_venue_custom_events",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  2,
-                        "version":  "7",
-                        "when":  1773792000000,
-                        "tag":  "0002_multi_sport_business",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  3,
-                        "version":  "7",
-                        "when":  1773878400000,
-                        "tag":  "0003_match_stadiums",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  4,
-                        "version":  "7",
-                        "when":  1773892800000,
-                        "tag":  "0004_venue_attributes",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  5,
-                        "version":  "7",
-                        "when":  1773964800000,
-                        "tag":  "0005_multisport_blog_cms",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  6,
-                        "version":  "7",
-                        "when":  1774224000000,
-                        "tag":  "0006_featured_matches",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  7,
-                        "version":  "7",
-                        "when":  1774286400000,
-                        "tag":  "0007_motorsport_entries",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  8,
-                        "version":  "7",
-                        "when":  1774404000000,
-                        "tag":  "0008_google_venue_ownership",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  9,
-                        "version":  "7",
-                        "when":  1774975000000,
-                        "tag":  "0009_google_content_sync",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  10,
-                        "version":  "7",
-                        "when":  1775030000000,
-                        "tag":  "0010_entity_pages_predictions",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  11,
-                        "version":  "7",
-                        "when":  1775998800000,
-                        "tag":  "0011_team_fan_venues",
-                        "breakpoints":  true
-                    }
-                ]
+    "version": "7",
+    "dialect": "postgresql",
+    "entries": [
+        {
+            "idx": 0,
+            "version": "7",
+            "when": 1772039860863,
+            "tag": "0000_clear_star_brand",
+            "breakpoints": true
+        },
+        {
+            "idx": 1,
+            "version": "7",
+            "when": 1773601200000,
+            "tag": "0001_venue_custom_events",
+            "breakpoints": true
+        },
+        {
+            "idx": 2,
+            "version": "7",
+            "when": 1773792000000,
+            "tag": "0002_multi_sport_business",
+            "breakpoints": true
+        },
+        {
+            "idx": 3,
+            "version": "7",
+            "when": 1773878400000,
+            "tag": "0003_match_stadiums",
+            "breakpoints": true
+        },
+        {
+            "idx": 4,
+            "version": "7",
+            "when": 1773892800000,
+            "tag": "0004_venue_attributes",
+            "breakpoints": true
+        },
+        {
+            "idx": 5,
+            "version": "7",
+            "when": 1773964800000,
+            "tag": "0005_multisport_blog_cms",
+            "breakpoints": true
+        },
+        {
+            "idx": 6,
+            "version": "7",
+            "when": 1774224000000,
+            "tag": "0006_featured_matches",
+            "breakpoints": true
+        },
+        {
+            "idx": 7,
+            "version": "7",
+            "when": 1774286400000,
+            "tag": "0007_motorsport_entries",
+            "breakpoints": true
+        },
+        {
+            "idx": 8,
+            "version": "7",
+            "when": 1774404000000,
+            "tag": "0008_google_venue_ownership",
+            "breakpoints": true
+        },
+        {
+            "idx": 9,
+            "version": "7",
+            "when": 1774975000000,
+            "tag": "0009_google_content_sync",
+            "breakpoints": true
+        },
+        {
+            "idx": 10,
+            "version": "7",
+            "when": 1775030000000,
+            "tag": "0010_entity_pages_predictions",
+            "breakpoints": true
+        },
+        {
+            "idx": 11,
+            "version": "7",
+            "when": 1775998800000,
+            "tag": "0011_team_fan_venues",
+            "breakpoints": true
+        },
+        {
+            "idx": 12,
+            "version": "7",
+            "when": 1775640000000,
+            "tag": "0012_match_point",
+            "breakpoints": true
+        }
+    ]
 }

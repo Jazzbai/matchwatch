@@ -27,6 +27,9 @@ import playerRoutes from './routes/players';
 import driverRoutes from './routes/drivers';
 import motorsportTeamRoutes from './routes/motorsportTeams';
 import pageRoutes from './routes/pages';
+import phoneAuthRoutes from './routes/phoneAuth';
+import predictionsRoutes from './routes/predictions';
+import checkinsRoutes from './routes/checkins';
 import { logger } from './lib/logger';
 import { scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
 
@@ -65,6 +68,9 @@ v1.route('/uploads', uploadRoutes);
 v1.route('/upload', uploadRoutes);
 v1.route('/blog', blogRoutes);
 v1.route('/places', placeRoutes);
+v1.route('/auth/phone', phoneAuthRoutes);
+v1.route('/predictions', predictionsRoutes);
+v1.route('/checkins', checkinsRoutes);
 
 app.route('/api/v1', v1);
 
