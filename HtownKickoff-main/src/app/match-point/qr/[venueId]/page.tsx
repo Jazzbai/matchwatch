@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { api } from "../../../../lib/api";
 import QRCode from "qrcode";
 
@@ -11,7 +12,7 @@ type QrData = {
     qrTargetUrl: string;
 };
 
-export default function QrBannerPage() {
+function QrBannerPage() {
     const { venueId } = useParams<{ venueId: string }>();
     const searchParams = useSearchParams();
     const matchId = searchParams.get("matchId");
@@ -126,5 +127,12 @@ export default function QrBannerPage() {
 
             <style>{`@media print { .no-print { display: none !important; } body { background: white; } }`}</style>
         </div>
+    );
+}
+export default function QrBannerPageWrapper() {
+    return (
+        <Suspense fallback={<div style={{ padding: 60, textAlign: "center", color: "#999" }}>Generating QR…</div>}>
+            <QrBannerPage />
+        </Suspense>
     );
 }

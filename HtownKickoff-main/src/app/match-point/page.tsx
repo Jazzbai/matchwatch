@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useData } from "../../lib/data-provider";
 import { useAuth } from "../../lib/auth-context";
@@ -27,7 +27,7 @@ type LeaderboardEntry = {
     correctPredictions: number;
 };
 
-export default function MatchPointPage() {
+function MatchPointContent() {
     const { matches, venues, isLoading, getTeam } = useData();
     const { user } = useAuth();
     const router = useRouter();
@@ -397,6 +397,14 @@ export default function MatchPointPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function MatchPointPage() {
+    return (
+        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "var(--background)" }} />}>
+            <MatchPointContent />
+        </Suspense>
     );
 }
 
