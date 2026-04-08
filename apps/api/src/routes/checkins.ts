@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { db } from '../db/client';
-import { venueCheckins, venues, matches, venueQrBanners } from '../db/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { venueCheckins, venues, matches, venueQrBanners, venueEvents } from '../db/schema';
+import { eq, and, gte, desc, sql } from 'drizzle-orm';
 import { apiResponse, apiError } from '../lib/utils';
 import { authMiddleware, requireRole } from '../middleware';
 
@@ -75,7 +75,10 @@ checkinsRoutes.get('/venue/:venueId', async (c) => {
 
 checkinsRoutes.get('/qr/:venueId', async (c) => {
     const { venueId } = c.req.param();
-    const matchId = c.req.query('matchId');
+    const baseUrl = process.env.FRONTEND_URL || 'https://matchwatch.us';
+
+    // Explicit matchId override, or auto-detect venue's next hosted match
+    let resolvedMatchId = c.req.query('matchId') ?? null;
 
     const [venue] = await db
         .select({ id: venues.id, name: venues.name, slug: venues.slug, coverImageUrl: venues.coverImageUrl })
@@ -85,28 +88,42 @@ checkinsRoutes.get('/qr/:venueId', async (c) => {
 
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
 
-    let banner = null;
-    const [existing] = await db.select().from(venueQrBanners).where(eq(venueQrBanners.venueId, venueId)).limit(1);
-
-    if (!existing) {
-        // Auto-create banner record
-        const baseUrl = process.env.FRONTEND_URL || 'https://matchwatch.us';
-        const landingUrl = matchId
-            ? `${baseUrl}/checkin/${venueId}?matchId=${matchId}`
-            : `${baseUrl}/checkin/${venueId}`;
-        const [created] = await db
-            .insert(venueQrBanners)
-            .values({ venueId, landingUrl })
-            .onConflictDoNothing()
-            .returning();
-        banner = created;
-    } else {
-        banner = existing;
+    // Auto-detect: find the next match this venue is hosting
+    if (!resolvedMatchId) {
+        const [nextEvent] = await db
+            .select({ matchId: venueEvents.matchId })
+            .from(venueEvents)
+            .innerJoin(matches, eq(venueEvents.matchId, matches.id))
+            .where(
+                and(
+                    eq(venueEvents.venueId, venueId),
+                    eq(venueEvents.isActive, true),
+                    gte(matches.matchDateUtc, new Date()),
+                ),
+            )
+            .orderBy(matches.matchDateUtc)
+            .limit(1);
+        resolvedMatchId = nextEvent?.matchId ?? null;
     }
 
-    // Upcoming match context
+    // Build the landing URL → Match Point prediction page with venue + match pre-filled
+    const landingUrl = resolvedMatchId
+        ? `${baseUrl}/match-point?venue=${venueId}&match=${resolvedMatchId}`
+        : `${baseUrl}/match-point?venue=${venueId}`;
+
+    // Upsert banner record
+    const [banner] = await db
+        .insert(venueQrBanners)
+        .values({ venueId, landingUrl })
+        .onConflictDoUpdate({
+            target: [venueQrBanners.venueId],
+            set: { landingUrl },
+        })
+        .returning();
+
+    // Fetch match info for display on the QR banner page
     let matchInfo = null;
-    if (matchId) {
+    if (resolvedMatchId) {
         const [m] = await db
             .select({
                 id: matches.id,
@@ -118,7 +135,7 @@ checkinsRoutes.get('/qr/:venueId', async (c) => {
                 status: matches.status,
             })
             .from(matches)
-            .where(eq(matches.id, matchId))
+            .where(eq(matches.id, resolvedMatchId))
             .limit(1);
         matchInfo = m ?? null;
     }
@@ -127,7 +144,7 @@ checkinsRoutes.get('/qr/:venueId', async (c) => {
         venue,
         banner,
         match: matchInfo,
-        qrTargetUrl: banner?.landingUrl,
+        qrTargetUrl: landingUrl,
     }));
 });
 
