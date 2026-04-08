@@ -168,7 +168,7 @@ export default function MatchPointPage() {
                         Match <span style={{ color: "#22c55e" }}>Point</span>
                     </h1>
                     <p style={{ fontSize: "clamp(15px,2vw,18px)", color: "var(--muted-foreground)", maxWidth: 500, margin: "0 auto 28px", lineHeight: 1.6 }}>
-                        Predict World Cup match winners, earn points, and climb the leaderboard. Top predictor wins a brand new car sponsored by Ford, GM & Chrysler.
+                        Predict World Cup match winners, earn points, and climb the leaderboard. The #1 predictor drives home in a brand new car, courtesy of GM, Ford, or Chrysler.
                     </p>
                     <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
                         <div style={statChipStyle}>🏆 Correct score = 5 pts</div>
