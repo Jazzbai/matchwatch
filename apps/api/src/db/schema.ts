@@ -1145,3 +1145,18 @@ export const venueCheckinsRelations = relations(venueCheckins, ({ one }) => ({
 export const venueQrBannersRelations = relations(venueQrBanners, ({ one }) => ({
     venue: one(venues, { fields: [venueQrBanners.venueId], references: [venues.id] }),
 }));
+
+// ─── Sponsor Inquiries ───────────────────────────
+
+export const sponsorInquiries = pgTable('sponsor_inquiries', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    company: varchar('company', { length: 200 }).notNull(),
+    contactName: varchar('contact_name', { length: 100 }),
+    email: varchar('email', { length: 255 }).notNull(),
+    phone: varchar('phone', { length: 30 }),
+    website: varchar('website', { length: 500 }),
+    tier: varchar('tier', { length: 50 }).notNull(),
+    message: text('message'),
+    status: varchar('status', { length: 30 }).notNull().default('new'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
