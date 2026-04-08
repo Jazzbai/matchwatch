@@ -434,7 +434,7 @@ function VenuesPageContent() {
     const amenitySummary = selectedAmenities.length > 0 ? `${selectedAmenities.length} selected` : "Any amenity";
     const hasActiveFilters = searchQuery.trim().length > 0 || selectedPrices.length > 0 || selectedStates.length > 0 || selectedCities.length > 0 || selectedAmenities.length > 0;
 
-    if (isLoading && VENUES.length === 0) {
+    if (VENUES.length === 0) {
         return (
             <AppShell>
                 <style>{`@keyframes shimmer{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
