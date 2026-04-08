@@ -168,7 +168,7 @@ export default function MatchPointPage() {
                         Match <span style={{ color: "#22c55e" }}>Point</span>
                     </h1>
                     <p style={{ fontSize: "clamp(15px,2vw,18px)", color: "var(--muted-foreground)", maxWidth: 500, margin: "0 auto 28px", lineHeight: 1.6 }}>
-                        Predict match winners, earn points, and climb the leaderboard. Win prizes at your favorite Houston watch party venue.
+                        Predict World Cup match winners, earn points, and climb the leaderboard. Top predictor wins a brand new car sponsored by Ford, GM & Chrysler.
                     </p>
                     <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
                         <div style={statChipStyle}>🏆 Correct score = 5 pts</div>
@@ -341,7 +341,7 @@ export default function MatchPointPage() {
                                 </div>
                             ))}
                             <div style={{ marginTop: 14, padding: "10px 12px", background: "rgba(34,197,94,0.08)", borderRadius: 10, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
-                                🏅 Top scorer at each venue wins a free drink or table upgrade!
+                                🚗 Top World Cup predictor wins a brand new car — sponsored by Ford, GM & Chrysler!
                             </div>
                         </div>
                     </div>
