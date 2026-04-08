@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
@@ -25,9 +25,9 @@ export default function LeaderboardPage() {
     const [showAuth, setShowAuth] = useState(false);
 
     useEffect(() => {
-        api.get<{ data: { leaderboard: Entry[]; myRank: number | null } }>("/predictions/leaderboard?limit=100")
+        api.get<{ leaderboard: Entry[]; myRank: number | null }>("/predictions/leaderboard?limit=100")
             .then((res) => {
-                setEntries(res.data?.leaderboard || []);
+                setEntries(res.data?.leaderboard ?? []);
                 setMyRank(res.data?.myRank ?? null);
             })
             .catch(() => {})

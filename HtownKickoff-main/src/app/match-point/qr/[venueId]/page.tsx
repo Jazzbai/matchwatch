@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { api } from "../../../../lib/api";
 import QRCode from "qrcode";
@@ -20,7 +20,7 @@ export default function QrBannerPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        api.get<{ data: QrData }>(`/checkins/qr/${venueId}${matchId ? `?matchId=${matchId}` : ""}`)
+        api.get<QrData>(`/checkins/qr/${venueId}${matchId ? `?matchId=${matchId}` : ""}`)
             .then((res) => setData(res.data))
             .catch(() => {})
             .finally(() => setLoading(false));
