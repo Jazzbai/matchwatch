@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
 import { api } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
 import { PhoneAuthModal } from "../../../components/PhoneAuthModal";
@@ -27,7 +28,7 @@ type QrData = {
     match: MatchInfo | null;
 };
 
-export default function CheckinPage() {
+function CheckinPage() {
     const { venueId } = useParams<{ venueId: string }>();
     const searchParams = useSearchParams();
     const matchId = searchParams.get("matchId");
@@ -191,3 +192,10 @@ const primaryBtn: React.CSSProperties = {
     borderRadius: 14, background: "#22c55e", color: "#fff",
     fontSize: 16, fontWeight: 800, border: "none", cursor: "pointer",
 };
+export default function CheckinPageWrapper() {
+    return (
+        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "var(--background)" }} />}>
+            <CheckinPage />
+        </Suspense>
+    );
+}

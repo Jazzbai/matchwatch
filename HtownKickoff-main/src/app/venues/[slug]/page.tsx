@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useEffect, useMemo, useState } from "react";
+import React, { use, useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Star } from "lucide-react";
@@ -113,7 +113,7 @@ function formatMatchDate(iso: string) {
     };
 }
 
-export default function VenueProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -816,3 +816,11 @@ export default function VenueProfilePage({ params }: { params: Promise<{ slug: s
     );
 }
 
+
+export default function VenueProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+    return (
+        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "var(--background)" }} />}>
+            <VenueProfilePageContent params={params} />
+        </Suspense>
+    );
+}
