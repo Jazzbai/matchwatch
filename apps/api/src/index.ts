@@ -24,6 +24,7 @@ import placeRoutes from './routes/places';
 import phoneAuthRoutes from './routes/phoneAuth';
 import predictionsRoutes from './routes/predictions';
 import checkinsRoutes from './routes/checkins';
+import sponsorInquiryRoutes from './routes/sponsorInquiry';
 import { logger } from './lib/logger';
 import { scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
 
@@ -59,6 +60,7 @@ v1.route('/places', placeRoutes);
 v1.route('/auth/phone', phoneAuthRoutes);
 v1.route('/predictions', predictionsRoutes);
 v1.route('/checkins', checkinsRoutes);
+v1.route('/sponsor-inquiry', sponsorInquiryRoutes);
 
 app.route('/api/v1', v1);
 

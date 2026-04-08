@@ -71,6 +71,13 @@
                         "when":  1744070400000,
                         "tag":  "0010_match_point",
                         "breakpoints":  true
+                    },
+                    {
+                        "idx":  10,
+                        "version":  "7",
+                        "when":  1744156800000,
+                        "tag":  "0011_sponsor_inquiries",
+                        "breakpoints":  true
                     }
                 ]
 }
