@@ -22,10 +22,14 @@ interface BookingDrawerProps {
         address: string;
     };
     match: {
-        homeTeam: string;
-        awayTeam: string;
-        homeCrest: string;
-        awayCrest: string;
+        eventFormat?: "HEAD_TO_HEAD" | "SINGLE_EVENT";
+        title: string;
+        subtitle?: string;
+        homeTeam?: string;
+        awayTeam?: string;
+        homeCrest?: string;
+        awayCrest?: string;
+        eventBadge?: string;
         kickoff: string;
         league: string;
     };
@@ -66,6 +70,8 @@ export function BookingDrawer({
     entryFee,
     venueEventId,
 }: BookingDrawerProps) {
+    const isSingleEvent = match.eventFormat === "SINGLE_EVENT";
+
     const router = useRouter();
     const { isAuthenticated } = useAuth();
     const { refetch } = useData();
@@ -193,16 +199,27 @@ export function BookingDrawer({
                     display: "flex", alignItems: "center", gap: 12,
                 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                        <CrestToken value={match.homeCrest} alt={`${match.homeTeam} crest`} />
-                        <span style={{ fontWeight: 900, fontSize: 11, color: "var(--muted-foreground)", letterSpacing: "0.15em" }}>
-                            VS
-                        </span>
-                        <CrestToken value={match.awayCrest} alt={`${match.awayTeam} crest`} />
+                        {isSingleEvent ? (
+                            <CrestToken value={match.eventBadge || "EV"} alt={`${match.league} badge`} />
+                        ) : (
+                            <>
+                                <CrestToken value={match.homeCrest || "HOME"} alt={`${match.homeTeam || match.title} crest`} />
+                                <span style={{ fontWeight: 900, fontSize: 11, color: "var(--muted-foreground)", letterSpacing: "0.15em" }}>
+                                    VS
+                                </span>
+                                <CrestToken value={match.awayCrest || "AWAY"} alt={`${match.awayTeam || match.subtitle || match.title} crest`} />
+                            </>
+                        )}
                     </div>
                     <div style={{ textAlign: "right" }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
-                            {match.homeTeam} vs {match.awayTeam}
+                            {match.title}
                         </div>
+                        {match.subtitle ? (
+                            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+                                {isSingleEvent ? match.subtitle : `vs ${match.subtitle}`}
+                            </div>
+                        ) : null}
                         <div style={{ fontSize: 12, fontFamily: "monospace", color: "var(--primary)", marginTop: 2 }}>
                             {match.kickoff}
                         </div>

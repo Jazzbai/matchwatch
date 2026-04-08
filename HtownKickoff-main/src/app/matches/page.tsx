@@ -2,10 +2,14 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, CircleDot, Globe, Timer, Trophy, X } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { MatchCard } from "../../components/MatchCard";
+import { PaginationControls } from "../../components/PaginationControls";
 import { useData } from "../../lib/data-provider";
+import { getMatchDisplay } from "../../lib/match-display";
+import { paginateItems, parsePageParam } from "../../lib/pagination";
 
 function asTimestamp(value: string) {
   const ts = new Date(value).getTime();
@@ -45,14 +49,88 @@ function formatDateFilterLabel(dateKey: string) {
 function toMatchRowKey(match: {
   id: string;
   leagueId: string;
-  homeTeamId: string;
-  awayTeamId: string;
+  homeTeamId?: string;
+  awayTeamId?: string;
   matchDateUTC: string;
 }) {
-  return `${match.id}:${match.leagueId}:${match.homeTeamId}:${match.awayTeamId}:${toUtcDateKey(match.matchDateUTC)}`;
+  return `${match.id}:${match.leagueId}:${match.homeTeamId || "single"}:${match.awayTeamId || "single"}:${toUtcDateKey(match.matchDateUTC)}`;
 }
 
-export default function MatchesPage() {
+function compareMatchesWithFeaturedPriority(a: { isFeatured: boolean; status: string; matchDateUTC: string }, b: { isFeatured: boolean; status: string; matchDateUTC: string }) {
+  if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+
+  const aLive = a.status === "IN_PLAY" || a.status === "PAUSED";
+  const bLive = b.status === "IN_PLAY" || b.status === "PAUSED";
+  if (aLive && !bLive) return -1;
+  if (!aLive && bLive) return 1;
+
+  const aFinished = a.status === "FINISHED";
+  const bFinished = b.status === "FINISHED";
+  const ta = asTimestamp(a.matchDateUTC);
+  const tb = asTimestamp(b.matchDateUTC);
+  if (aFinished && bFinished) return tb - ta;
+  return ta - tb;
+}
+
+function DraggableFilterRow({ children }: { children: React.ReactNode }) {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const dragState = React.useRef({ active: false, moved: false, startX: 0, startScrollLeft: 0 });
+  const [dragging, setDragging] = React.useState(false);
+
+  const endDrag = React.useCallback(() => {
+    dragState.current.active = false;
+    setDragging(false);
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="no-scrollbar"
+      onMouseDown={(event) => {
+        if (!ref.current) return;
+        dragState.current = {
+          active: true,
+          moved: false,
+          startX: event.clientX,
+          startScrollLeft: ref.current.scrollLeft,
+        };
+        setDragging(true);
+      }}
+      onMouseMove={(event) => {
+        if (!dragState.current.active || !ref.current) return;
+        const delta = event.clientX - dragState.current.startX;
+        if (Math.abs(delta) > 4) {
+          dragState.current.moved = true;
+        }
+        ref.current.scrollLeft = dragState.current.startScrollLeft - delta;
+      }}
+      onMouseUp={endDrag}
+      onMouseLeave={endDrag}
+      onClickCapture={(event) => {
+        if (dragState.current.moved) {
+          event.preventDefault();
+          event.stopPropagation();
+          dragState.current.moved = false;
+        }
+      }}
+      style={{
+        display: "flex",
+        gap: 6,
+        overflowX: "auto",
+        paddingBottom: 2,
+        cursor: dragging ? "grabbing" : "grab",
+        userSelect: dragging ? "none" : "auto",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function MatchesPageContent() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeStatus, setActiveStatus] = React.useState<"all" | "live" | "upcoming" | "finished">("upcoming");
   const [includePast, setIncludePast] = React.useState(false);
   const [onlyWithHosting, setOnlyWithHosting] = React.useState(false);
@@ -60,9 +138,24 @@ export default function MatchesPage() {
   const [selectedSportId, setSelectedSportId] = React.useState<string | null>(null);
   const [selectedLeagueId, setSelectedLeagueId] = React.useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = React.useState<string | null>(null);
-  const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
+  const [selectedStartDateKey, setSelectedStartDateKey] = React.useState<string | null>(null);
+  const [selectedEndDateKey, setSelectedEndDateKey] = React.useState<string | null>(null);
   const [selectedTeamIds, setSelectedTeamIds] = React.useState<string[]>([]);
   const { matches: MATCHES, leagues, sports, teams, venueEvents, getTeam, getLeague } = useData();
+  const requestedPage = parsePageParam(searchParams.get("page"));
+  const syncArchivePageRef = React.useRef<(nextPage: number) => void>(() => {});
+  const hasInitializedPageReset = React.useRef(false);
+
+  syncArchivePageRef.current = (nextPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextPage <= 1) {
+      params.delete("page");
+    } else {
+      params.set("page", String(nextPage));
+    }
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  };
 
   React.useEffect(() => {
     if (!includePast && activeStatus === "finished") {
@@ -96,8 +189,8 @@ export default function MatchesPage() {
   const availableTeams = React.useMemo(() => {
     const ids = new Set<string>();
     for (const match of uniqueBaseMatches) {
-      ids.add(match.homeTeamId);
-      ids.add(match.awayTeamId);
+      if (match.homeTeamId) ids.add(match.homeTeamId);
+      if (match.awayTeamId) ids.add(match.awayTeamId);
     }
     return teams.filter((team) => ids.has(team.id)).sort((a, b) => a.name.localeCompare(b.name));
   }, [uniqueBaseMatches, teams]);
@@ -156,8 +249,8 @@ export default function MatchesPage() {
       const countryAllowed = !selectedCountry || league?.country === selectedCountry;
       const teamAllowed =
         selectedTeamIds.length === 0 ||
-        selectedTeamIds.includes(match.homeTeamId) ||
-        selectedTeamIds.includes(match.awayTeamId);
+        (match.homeTeamId ? selectedTeamIds.includes(match.homeTeamId) : false) ||
+        (match.awayTeamId ? selectedTeamIds.includes(match.awayTeamId) : false);
 
       const statusAllowed =
         activeStatus === "all" ||
@@ -176,18 +269,16 @@ export default function MatchesPage() {
     }
   }, [selectedSportId, availableSports]);
 
-  const availableDateFilters = React.useMemo(() => {
-    const dateMap = new Map<string, string>();
+  const availableDateBounds = React.useMemo(() => {
+    let min: string | null = null;
+    let max: string | null = null;
     for (const match of rowsBeforeDate) {
       const key = toUtcDateKey(match.matchDateUTC);
       if (!key) continue;
-      if (!dateMap.has(key)) {
-        dateMap.set(key, formatDateFilterLabel(key));
-      }
+      if (!min || key < min) min = key;
+      if (!max || key > max) max = key;
     }
-    return Array.from(dateMap.entries())
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.value.localeCompare(b.value));
+    return { min, max };
   }, [rowsBeforeDate]);
 
   React.useEffect(() => {
@@ -205,32 +296,60 @@ export default function MatchesPage() {
   }, [selectedCountry, availableCountries]);
 
   React.useEffect(() => {
-    if (!selectedDateKey) return;
-    if (!availableDateFilters.some((item) => item.value === selectedDateKey)) {
-      setSelectedDateKey(null);
+    if (selectedStartDateKey && selectedEndDateKey && selectedStartDateKey > selectedEndDateKey) {
+      setSelectedEndDateKey(selectedStartDateKey);
     }
-  }, [selectedDateKey, availableDateFilters]);
+  }, [selectedStartDateKey, selectedEndDateKey]);
+
+  React.useEffect(() => {
+    if (selectedStartDateKey && availableDateBounds.min && selectedStartDateKey < availableDateBounds.min) {
+      setSelectedStartDateKey(availableDateBounds.min);
+    }
+    if (selectedStartDateKey && availableDateBounds.max && selectedStartDateKey > availableDateBounds.max) {
+      setSelectedStartDateKey(availableDateBounds.max);
+    }
+  }, [selectedStartDateKey, availableDateBounds]);
+
+  React.useEffect(() => {
+    if (selectedEndDateKey && availableDateBounds.max && selectedEndDateKey > availableDateBounds.max) {
+      setSelectedEndDateKey(availableDateBounds.max);
+    }
+    if (selectedEndDateKey && availableDateBounds.min && selectedEndDateKey < availableDateBounds.min) {
+      setSelectedEndDateKey(availableDateBounds.min);
+    }
+  }, [selectedEndDateKey, availableDateBounds]);
 
   const filtered = React.useMemo(() => {
     const rows = rowsBeforeDate.filter((match) => {
-      if (!selectedDateKey) return true;
-      return toUtcDateKey(match.matchDateUTC) === selectedDateKey;
+      const matchDateKey = toUtcDateKey(match.matchDateUTC);
+      if (!matchDateKey) return false;
+      if (selectedStartDateKey && matchDateKey < selectedStartDateKey) return false;
+      if (selectedEndDateKey && matchDateKey > selectedEndDateKey) return false;
+      return true;
     });
 
-    return rows.sort((a, b) => {
-      const aLive = a.status === "IN_PLAY" || a.status === "PAUSED";
-      const bLive = b.status === "IN_PLAY" || b.status === "PAUSED";
-      if (aLive && !bLive) return -1;
-      if (!aLive && bLive) return 1;
+    return [...rows].sort(compareMatchesWithFeaturedPriority);
+  }, [rowsBeforeDate, selectedStartDateKey, selectedEndDateKey]);
 
-      const aFinished = a.status === "FINISHED";
-      const bFinished = b.status === "FINISHED";
-      const ta = asTimestamp(a.matchDateUTC);
-      const tb = asTimestamp(b.matchDateUTC);
-      if (aFinished && bFinished) return tb - ta;
-      return ta - tb;
-    });
-  }, [rowsBeforeDate, selectedDateKey]);
+  const { currentPage, totalPages, pageItems: paginatedMatches } = React.useMemo(
+    () => paginateItems(filtered, requestedPage),
+    [filtered, requestedPage],
+  );
+
+  React.useEffect(() => {
+    if (requestedPage !== currentPage) {
+      syncArchivePageRef.current(currentPage);
+    }
+  }, [requestedPage, currentPage]);
+
+  React.useEffect(() => {
+    if (!hasInitializedPageReset.current) {
+      hasInitializedPageReset.current = true;
+      return;
+    }
+
+    syncArchivePageRef.current(1);
+  }, [activeStatus, includePast, onlyWithHosting, selectedSportId, selectedLeagueId, selectedCountry, selectedStartDateKey, selectedEndDateKey, selectedTeamIds]);
 
   const liveCount = MATCHES.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED").length;
 
@@ -331,7 +450,7 @@ export default function MatchesPage() {
             {/* Sport Filter Row */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Sport</span>
-              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+              <DraggableFilterRow>
                 <button
                   onClick={() => setSelectedSportId(null)}
                   style={{
@@ -368,13 +487,13 @@ export default function MatchesPage() {
                     </button>
                   );
                 })}
-              </div>
+              </DraggableFilterRow>
             </div>
 
             {/* League Filter Row */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>League</span>
-              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+              <DraggableFilterRow>
                 <button
                   onClick={() => setSelectedLeagueId(null)}
                   style={{
@@ -412,13 +531,13 @@ export default function MatchesPage() {
                     </button>
                   );
                 })}
-              </div>
+              </DraggableFilterRow>
             </div>
 
             {/* Country Filter Row */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Region</span>
-              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+              <DraggableFilterRow>
                 <button
                   onClick={() => setSelectedCountry(null)}
                   style={{
@@ -455,49 +574,54 @@ export default function MatchesPage() {
                     </button>
                   );
                 })}
-              </div>
+              </DraggableFilterRow>
             </div>
 
             {/* Date Filter Row */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Date</span>
-              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="no-scrollbar">
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                  <CalendarDays size={14} style={{ color: "var(--muted-foreground)" }} />
+                  <input
+                    type="date"
+                    value={selectedStartDateKey || ""}
+                    min={availableDateBounds.min || undefined}
+                    max={selectedEndDateKey || availableDateBounds.max || undefined}
+                    onChange={(event) => setSelectedStartDateKey(event.target.value || null)}
+                    style={{ background: "transparent", border: "none", color: "var(--foreground)", font: "inherit", outline: "none" }}
+                  />
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)" }}>to</span>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                  <CalendarDays size={14} style={{ color: "var(--muted-foreground)" }} />
+                  <input
+                    type="date"
+                    value={selectedEndDateKey || ""}
+                    min={selectedStartDateKey || availableDateBounds.min || undefined}
+                    max={availableDateBounds.max || undefined}
+                    onChange={(event) => setSelectedEndDateKey(event.target.value || null)}
+                    style={{ background: "transparent", border: "none", color: "var(--foreground)", font: "inherit", outline: "none" }}
+                  />
+                </div>
                 <button
-                  onClick={() => setSelectedDateKey(null)}
+                  onClick={() => {
+                    setSelectedStartDateKey(null);
+                    setSelectedEndDateKey(null);
+                  }}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 6,
                     padding: "7px 14px", borderRadius: 99,
                     fontSize: 12, fontWeight: 700, cursor: "pointer",
                     fontFamily: "inherit", whiteSpace: "nowrap",
-                    border: selectedDateKey === null ? "1px solid var(--primary)" : "1px solid var(--border)",
-                    backgroundColor: selectedDateKey === null ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                    color: selectedDateKey === null ? "var(--primary)" : "var(--muted-foreground)",
+                    border: !selectedStartDateKey && !selectedEndDateKey ? "1px solid var(--primary)" : "1px solid var(--border)",
+                    backgroundColor: !selectedStartDateKey && !selectedEndDateKey ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
+                    color: !selectedStartDateKey && !selectedEndDateKey ? "var(--primary)" : "var(--muted-foreground)",
                     transition: "all 0.2s",
                   }}
                 >
-                  <CalendarDays size={13} /> All
+                  All dates
                 </button>
-                {availableDateFilters.map((item) => {
-                  const sel = selectedDateKey === item.value;
-                  return (
-                    <button
-                      key={item.value}
-                      onClick={() => setSelectedDateKey((prev) => (prev === item.value ? null : item.value))}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "7px 14px", borderRadius: 99,
-                        fontSize: 12, fontWeight: 700, cursor: "pointer",
-                        fontFamily: "inherit", whiteSpace: "nowrap",
-                        border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
-                        backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                        color: sel ? "var(--primary)" : "var(--muted-foreground)",
-                        transition: "all 0.2s",
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
               </div>
             </div>
 
@@ -516,16 +640,18 @@ export default function MatchesPage() {
                 No Matches Found
               </h3>
               <p className="text-base text-muted-foreground max-w-sm mx-auto">
-                Try changing your filters, selecting a different date, or turning off "Only with hosting venues."
+                Try changing your filters, adjusting the date range, or turning off "Only with hosting venues."
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {filtered.map((match, i) => {
-                const home = getTeam(match.homeTeamId);
-                const away = getTeam(match.awayTeamId);
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {paginatedMatches.map((match, i) => {
                 const league = getLeague(match.leagueId);
-                if (!home || !away || !league) return null;
+                const home = match.homeTeamId ? getTeam(match.homeTeamId) : undefined;
+                const away = match.awayTeamId ? getTeam(match.awayTeamId) : undefined;
+                const display = getMatchDisplay(match, { homeTeam: home, awayTeam: away, league });
+                if (!league) return null;
                 const date = new Date(match.matchDateUTC);
                 const kickoffLabel =
                   match.status === "IN_PLAY" ? "LIVE" :
@@ -543,12 +669,15 @@ export default function MatchesPage() {
                   >
                     <MatchCard
                       className="h-full"
-                      homeTeam={home.shortName}
-                      awayTeam={away.shortName}
-                      homeCrest={home.crest}
-                      awayCrest={away.crest}
-                      homeImage={home.image}
-                      awayImage={away.image}
+                      eventFormat={match.eventFormat}
+                      eventTitle={match.eventTitle || undefined}
+                      eventSubtitle={match.eventSubtitle || undefined}
+                      homeTeam={display.homeName}
+                      awayTeam={display.awayName}
+                      homeCrest={home?.crest || ""}
+                      awayCrest={away?.crest || ""}
+                      homeImage={home?.image}
+                      awayImage={away?.image}
                       kickoff={kickoffLabel}
                       league={league.name}
                       leagueLogo={league.logo}
@@ -563,7 +692,9 @@ export default function MatchesPage() {
                   </Link>
                 );
               })}
-            </div>
+              </div>
+              <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={(page) => syncArchivePageRef.current(page)} />
+            </>
           )}
         </section>
 
@@ -634,20 +765,41 @@ export default function MatchesPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Dates</p>
-                  <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
-                    {availableDateFilters.map((item) => {
-                      const selected = selectedDateKey === item.value;
-                      return (
-                        <button
-                          key={item.value}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-                          onClick={() => setSelectedDateKey((prev) => (prev === item.value ? null : item.value))}
-                        >
-                          {item.label}
-                        </button>
-                      );
-                    })}
+                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Date range</p>
+                  <div className="rounded-md border border-border bg-secondary p-3">
+                    <div className="flex flex-col gap-3">
+                      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                        <span>Start date</span>
+                        <input
+                          type="date"
+                          value={selectedStartDateKey || ""}
+                          min={availableDateBounds.min || undefined}
+                          max={selectedEndDateKey || availableDateBounds.max || undefined}
+                          onChange={(event) => setSelectedStartDateKey(event.target.value || null)}
+                          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                        <span>End date</span>
+                        <input
+                          type="date"
+                          value={selectedEndDateKey || ""}
+                          min={selectedStartDateKey || availableDateBounds.min || undefined}
+                          max={availableDateBounds.max || undefined}
+                          onChange={(event) => setSelectedEndDateKey(event.target.value || null)}
+                          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                        />
+                      </label>
+                      <button
+                        className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground"
+                        onClick={() => {
+                          setSelectedStartDateKey(null);
+                          setSelectedEndDateKey(null);
+                        }}
+                      >
+                        Clear date range
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -680,7 +832,8 @@ export default function MatchesPage() {
                     setSelectedSportId(null);
                     setSelectedLeagueId(null);
                     setSelectedCountry(null);
-                    setSelectedDateKey(null);
+                    setSelectedStartDateKey(null);
+                    setSelectedEndDateKey(null);
                     setSelectedTeamIds([]);
                   }}
                   style={{ padding: "10px 20px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 13 }}
@@ -695,5 +848,13 @@ export default function MatchesPage() {
           </div>
         )}
       </AppShell>
+  );
+}
+
+export default function MatchesPage() {
+  return (
+    <React.Suspense fallback={<AppShell><section style={{ minHeight: "50vh" }} /></AppShell>}>
+      <MatchesPageContent />
+    </React.Suspense>
   );
 }

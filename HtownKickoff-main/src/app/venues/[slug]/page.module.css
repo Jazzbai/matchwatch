@@ -164,6 +164,17 @@
   font-size: 0.84rem;
 }
 
+.reviewSampleNote {
+  grid-column: 1 / -1;
+  border: 1px solid color-mix(in oklch, var(--border) 70%, var(--primary) 30%);
+  background: color-mix(in oklch, var(--card) 85%, var(--primary) 15%);
+  color: var(--foreground);
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .galleryStrip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -229,6 +240,10 @@
   border-color: var(--primary);
   color: var(--primary-foreground);
   background: var(--primary);
+}
+
+.tabButtonActive:hover {
+  color: var(--primary-foreground);
 }
 
 .contentGrid {
@@ -317,6 +332,30 @@
   margin: 0.6rem 0 0;
   color: var(--muted-foreground);
   font-size: 0.86rem;
+}
+
+.hoursTable {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.hoursRow {
+  display: grid;
+  grid-template-columns: minmax(110px, 140px) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.84rem;
+  color: var(--muted-foreground);
+}
+
+.hoursDay {
+  color: var(--foreground);
+  font-weight: 600;
 }
 
 .mapLink {

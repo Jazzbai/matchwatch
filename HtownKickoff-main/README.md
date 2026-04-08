@@ -146,7 +146,28 @@ REDIS_URL=redis://localhost:6379
 PORT=4000
 NEXT_PUBLIC_API_URL=/api/v1
 API_PROXY_TARGET=http://localhost:4000
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=
+RECAPTCHA_SECRET_KEY=
+RECAPTCHA_MIN_SCORE=0.5
 ```
+
+### Google reCAPTCHA for auth
+
+Login, fan signup, and venue signup are wired for Google reCAPTCHA v3.
+
+Required environment variables:
+
+```env
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-google-site-key
+RECAPTCHA_SECRET_KEY=your-google-secret-key
+RECAPTCHA_MIN_SCORE=0.5
+```
+
+Notes:
+
+- `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` is compiled into the frontend build.
+- `RECAPTCHA_SECRET_KEY` is only used by the API.
+- In non-production environments, the API bypasses reCAPTCHA if `RECAPTCHA_SECRET_KEY` is not set so local development is not blocked.
 
 ### Recommended local run
 

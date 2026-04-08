@@ -25,10 +25,16 @@ import {
   Users,
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
+import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import { useAuth } from "../../lib/auth-context";
-import { api, uploadApi } from "../../lib/api";
+import { api, uploadApi, type GooglePlaceDetailsResponse, type GooglePlaceSnapshot } from "../../lib/api";
 import { useData } from "../../lib/data-provider";
-import { EVENT_WATCH_PARTY_TYPES } from "../../lib/tags";
+import {
+  DIETARY_TAGS,
+  DRINK_TAGS,
+  EVENT_WATCH_PARTY_TYPES,
+  VENUE_FEATURE_TAGS,
+} from "../../lib/tags";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -52,6 +58,7 @@ type DashboardOverview = {
     slug: string;
     city: string;
     isVerified: boolean;
+    approvalStatus?: "PENDING" | "APPROVED" | "REJECTED";
   };
   stats: {
     totalBookings: number;
@@ -132,12 +139,48 @@ type UpcomingMatch = {
 type VenueProfile = {
   name?: string | null;
   description?: string | null;
+  descriptionSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+  shortDescription?: string | null;
+  shortDescriptionSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+  amenities?: string[];
   phone?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  stateProvince?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  lat?: string | null;
+  lng?: string | null;
+  timezone?: string | null;
+  website?: string | null;
+  googleMapsUrl?: string | null;
+  ratingOverride?: string | null;
+  reviewCountOverride?: number | null;
+  priceRange?: "BUDGET" | "MID" | "UPSCALE" | "LUXURY" | null;
+  priceRangeSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
   coverImageUrl?: string | null;
+  resolvedCoverImageUrl?: string | null;
   coverImageS3Key?: string | null;
   galleryImageUrls?: string[];
+  resolvedGalleryImageUrls?: string[];
   galleryS3Keys?: string[];
+  imageSource?: "manual" | "google" | "none";
+  coverImageAttributions?: Array<{
+    displayName: string;
+    uri?: string | null;
+    photoUri?: string | null;
+  }>;
+  galleryImageAttributions?: Array<Array<{
+    displayName: string;
+    uri?: string | null;
+    photoUri?: string | null;
+  }>>;
   promotedVenueEventId?: string | null;
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED";
+  approvalNotes?: string | null;
+  googlePlaceId?: string | null;
+  menuSourceState?: "google" | "manual" | "none";
+  googleDefaults?: GooglePlaceSnapshot | null;
 };
 
 type OwnedVenue = {
@@ -148,6 +191,23 @@ type OwnedVenue = {
   country: string;
   isVerified: boolean;
   isFeatured: boolean;
+  createdAt: string;
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED";
+  approvalNotes?: string | null;
+  googlePlaceId?: string | null;
+  menuSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+};
+
+type ClaimRecord = {
+  id: string;
+  venueId: string;
+  venueName: string;
+  venueSlug: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  notes?: string | null;
+  adminNotes?: string | null;
+  verificationDocuments?: string[];
+  reviewedAt?: string | null;
   createdAt: string;
 };
 
@@ -231,6 +291,26 @@ function parseGalleryItems(urls?: string[] | null, keys?: string[] | null): Gall
     .slice(0, MAX_GALLERY_IMAGES);
 }
 
+function getGoogleImagePreviewState(snapshot?: GooglePlaceSnapshot | null) {
+  const suggested = Array.isArray(snapshot?.googleSuggestedImages)
+    ? snapshot.googleSuggestedImages.filter((photo) => photo.previewUrl)
+    : [];
+  const selectedCover = suggested.find((photo) => photo.isSelectedCover);
+  const selectedGallery = suggested.filter((photo) => photo.isSelectedGallery);
+  const coverPreviewUrl = normalizeImageUrl(
+    selectedCover?.previewUrl || selectedGallery[0]?.previewUrl || suggested[0]?.previewUrl || "",
+  );
+  const galleryPreviewUrls = selectedGallery
+    .map((photo) => normalizeImageUrl(photo.previewUrl))
+    .filter(Boolean)
+    .slice(0, MAX_GALLERY_IMAGES);
+
+  return {
+    coverPreviewUrl,
+    galleryPreviewUrls,
+  };
+}
+
 async function uploadVenueImage(file: File, purpose: "venue_cover" | "venue_gallery" | "post") {
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
     throw new Error("Only JPG, PNG, WEBP, and GIF files are allowed.");
@@ -248,7 +328,10 @@ async function uploadVenueImage(file: File, purpose: "venue_cover" | "venue_gall
 
   const putRes = await fetch(presigned.data.uploadUrl, {
     method: "PUT",
-    headers: { "Content-Type": file.type },
+    headers: {
+      "Content-Type": file.type,
+      ...(presigned.data.uploadHeaders || {}),
+    },
     body: file,
   });
 
@@ -271,6 +354,24 @@ function toDatetimeLocal(iso?: string | null) {
   return local.toISOString().slice(0, 16);
 }
 
+function applyGoogleDefaultsToVenueForm(snapshot: GooglePlaceSnapshot) {
+  return {
+    googlePlaceId: snapshot.placeId,
+    name: snapshot.displayName || "",
+    addressLine1: snapshot.addressLine1 || snapshot.formattedAddress || "",
+    city: snapshot.city || "",
+    country: snapshot.country || "",
+    stateProvince: snapshot.stateProvince || "",
+    postalCode: snapshot.postalCode || "",
+    lat: snapshot.lat == null ? "" : String(snapshot.lat),
+    lng: snapshot.lng == null ? "" : String(snapshot.lng),
+    timezone: snapshot.timezone || "America/Chicago",
+    phone: snapshot.phone || "",
+    website: snapshot.website || "",
+    googleMapsUrl: snapshot.googleMapsUrl || "",
+  };
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { isAuthenticated, user, logout } = useAuth();
@@ -284,6 +385,7 @@ export default function AdminPage() {
   const [showCreateVenueForm, setShowCreateVenueForm] = React.useState(false);
 
   const [overview, setOverview] = React.useState<DashboardOverview | null>(null);
+  const [claims, setClaims] = React.useState<ClaimRecord[]>([]);
   const [events, setEvents] = React.useState<OwnerEvent[]>([]);
   const [bookingsByEvent, setBookingsByEvent] = React.useState<GroupedBookingEvent[]>([]);
   const [upcomingMatches, setUpcomingMatches] = React.useState<UpcomingMatch[]>([]);
@@ -336,23 +438,54 @@ export default function AdminPage() {
 
   const [venueName, setVenueName] = React.useState("");
   const [venueDescription, setVenueDescription] = React.useState("");
+  const [venueShortDescription, setVenueShortDescription] = React.useState("");
+  const [venueAmenities, setVenueAmenities] = React.useState<string[]>([]);
   const [venuePhone, setVenuePhone] = React.useState("");
+  const [venueAddressLine1, setVenueAddressLine1] = React.useState("");
+  const [venueCity, setVenueCity] = React.useState("");
+  const [venueStateProvince, setVenueStateProvince] = React.useState("");
+  const [venueCountry, setVenueCountry] = React.useState("");
+  const [venuePostalCode, setVenuePostalCode] = React.useState("");
+  const [venueLat, setVenueLat] = React.useState("");
+  const [venueLng, setVenueLng] = React.useState("");
+  const [venueTimezone, setVenueTimezone] = React.useState("America/Chicago");
+  const [venueWebsite, setVenueWebsite] = React.useState("");
+  const [venueGoogleMapsUrl, setVenueGoogleMapsUrl] = React.useState("");
+  const [venueGooglePlaceId, setVenueGooglePlaceId] = React.useState("");
+  const [venueApprovalStatus, setVenueApprovalStatus] = React.useState<"PENDING" | "APPROVED" | "REJECTED" | null>(null);
+  const [venueApprovalNotes, setVenueApprovalNotes] = React.useState<string | null>(null);
+  const [descriptionSource, setDescriptionSource] = React.useState<"NONE" | "GOOGLE" | "MANUAL" | null>(null);
+  const [shortDescriptionSource, setShortDescriptionSource] = React.useState<"NONE" | "GOOGLE" | "MANUAL" | null>(null);
+  const [priceRangeSource, setPriceRangeSource] = React.useState<"NONE" | "GOOGLE" | "MANUAL" | null>(null);
+  const [menuSourceState, setMenuSourceState] = React.useState<"google" | "manual" | "none">("none");
+  const [googleDefaults, setGoogleDefaults] = React.useState<GooglePlaceSnapshot | null>(null);
+  const [linkingGooglePlace, setLinkingGooglePlace] = React.useState(false);
+  const [refreshingGoogleData, setRefreshingGoogleData] = React.useState(false);
+  const [revertingGoogleData, setRevertingGoogleData] = React.useState(false);
   const [coverImageUrl, setCoverImageUrl] = React.useState("");
+  const [resolvedCoverImageUrl, setResolvedCoverImageUrl] = React.useState("");
   const [coverImageS3Key, setCoverImageS3Key] = React.useState("");
   const [galleryItems, setGalleryItems] = React.useState<GalleryItem[]>([]);
+  const [resolvedGalleryImageUrls, setResolvedGalleryImageUrls] = React.useState<string[]>([]);
+  const [googleImageActionKey, setGoogleImageActionKey] = React.useState<string | null>(null);
   const [promotedEventId, setPromotedEventId] = React.useState<string | null>(null);
   const coverInputRef = React.useRef<HTMLInputElement | null>(null);
   const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
   const [deleteVenueEmailConfirm, setDeleteVenueEmailConfirm] = React.useState("");
   const [newOwnedVenue, setNewOwnedVenue] = React.useState({
+    googlePlaceId: "",
     name: "",
     addressLine1: "",
     city: "Houston",
+    stateProvince: "",
     country: "US",
+    postalCode: "",
     lat: "29.7604",
     lng: "-95.3698",
     timezone: "America/Chicago",
     phone: "",
+    website: "",
+    googleMapsUrl: "",
     description: "",
   });
 
@@ -449,6 +582,8 @@ export default function AdminPage() {
 
     try {
       const venueRows = await loadOwnedVenues();
+      const claimsRes = await api.get<ClaimRecord[]>("/dashboard/claims");
+      setClaims(claimsRes.data || []);
       const effectiveVenueId = selectedVenueId && venueRows.some((venue) => venue.id === selectedVenueId)
         ? selectedVenueId
         : (venueRows[0]?.id || "");
@@ -467,8 +602,26 @@ export default function AdminPage() {
         setPromotedEventId(null);
         setVenueName("");
         setVenueDescription("");
+        setVenueShortDescription("");
+        setVenueAmenities([]);
         setVenuePhone("");
+        setVenueAddressLine1("");
+        setVenueCity("");
+        setVenueStateProvince("");
+        setVenueCountry("");
+        setVenuePostalCode("");
+        setVenueLat("");
+        setVenueLng("");
+        setVenueTimezone("America/Chicago");
+        setVenueWebsite("");
+        setVenueGoogleMapsUrl("");
+        setVenueGooglePlaceId("");
+        setVenueApprovalStatus(null);
+        setVenueApprovalNotes(null);
+        setMenuSourceState("none");
+        setGoogleDefaults(null);
         setCoverImageUrl("");
+        setResolvedCoverImageUrl("");
         setCoverImageS3Key("");
         setGalleryItems([]);
         setLoading(false);
@@ -502,10 +655,36 @@ export default function AdminPage() {
       const profile = venueRes.data || {};
       setVenueName(profile.name || "");
       setVenueDescription(profile.description || "");
+      setVenueShortDescription(profile.shortDescription || "");
+      setVenueAmenities(Array.isArray(profile.amenities) ? profile.amenities : []);
       setVenuePhone(profile.phone || "");
+      setVenueAddressLine1(profile.addressLine1 || "");
+      setVenueCity(profile.city || "");
+      setVenueStateProvince(profile.stateProvince || "");
+      setVenueCountry(profile.country || "");
+      setVenuePostalCode(profile.postalCode || "");
+      setVenueLat(profile.lat || "");
+      setVenueLng(profile.lng || "");
+      setVenueTimezone(profile.timezone || "America/Chicago");
+      setVenueWebsite(profile.website || "");
+      setVenueGoogleMapsUrl(profile.googleMapsUrl || "");
+      setVenueGooglePlaceId(profile.googlePlaceId || "");
+      setVenueApprovalStatus(profile.approvalStatus || null);
+      setVenueApprovalNotes(profile.approvalNotes || null);
+      setDescriptionSource(profile.descriptionSource || null);
+      setShortDescriptionSource(profile.shortDescriptionSource || null);
+      setPriceRangeSource(profile.priceRangeSource || null);
+      setMenuSourceState(profile.menuSourceState || "none");
+      setGoogleDefaults(profile.googleDefaults || null);
       setCoverImageUrl(normalizeImageUrl(profile.coverImageUrl));
+      setResolvedCoverImageUrl(normalizeImageUrl(profile.resolvedCoverImageUrl));
       setCoverImageS3Key(profile.coverImageS3Key || "");
       setGalleryItems(parseGalleryItems(profile.galleryImageUrls, profile.galleryS3Keys));
+      setResolvedGalleryImageUrls(
+        Array.isArray(profile.resolvedGalleryImageUrls)
+          ? profile.resolvedGalleryImageUrls.map((url) => normalizeImageUrl(url)).filter(Boolean).slice(0, MAX_GALLERY_IMAGES)
+          : [],
+      );
       setPromotedEventId(typeof profile.promotedVenueEventId === "string" ? profile.promotedVenueEventId : null);
 
       const groupedUpcomingMatches = upcomingMatchesRes.data || {};
@@ -558,6 +737,57 @@ export default function AdminPage() {
       setNewMenuItemCategoryId(menu[0].id);
     }
   }, [menu, newMenuItemCategoryId]);
+
+  const applyOwnerVenueGoogleDefaults = React.useCallback(async (details: GooglePlaceDetailsResponse) => {
+    const defaults = applyGoogleDefaultsToVenueForm(details.defaults);
+    const imagePreviews = getGoogleImagePreviewState(details.defaults);
+    setVenueGooglePlaceId(defaults.googlePlaceId);
+    setVenueName(defaults.name);
+    setVenueAddressLine1(defaults.addressLine1);
+    setVenueCity(defaults.city);
+    setVenueStateProvince(defaults.stateProvince);
+    setVenueCountry(defaults.country);
+    setVenuePostalCode(defaults.postalCode);
+    setVenueLat(defaults.lat);
+    setVenueLng(defaults.lng);
+    setVenueTimezone(defaults.timezone);
+    setVenuePhone(defaults.phone);
+    setVenueWebsite(defaults.website);
+    setVenueGoogleMapsUrl(defaults.googleMapsUrl);
+    setGoogleDefaults(details.defaults);
+    setResolvedCoverImageUrl(imagePreviews.coverPreviewUrl);
+    setResolvedGalleryImageUrls(imagePreviews.galleryPreviewUrls);
+    if (!selectedVenueId || !details.googlePlaceId?.trim()) {
+      return;
+    }
+
+    setLinkingGooglePlace(true);
+    setError(null);
+    try {
+      await api.put(dashboardPath("/dashboard/venue"), {
+        googlePlaceId: details.googlePlaceId.trim(),
+      });
+      await Promise.all([loadDashboard(), refetch()]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to link Google Business profile");
+    } finally {
+      setLinkingGooglePlace(false);
+    }
+  }, [dashboardPath, loadDashboard, refetch, selectedVenueId]);
+
+  const applyNewVenueGoogleDefaults = React.useCallback((details: GooglePlaceDetailsResponse) => {
+    const defaults = applyGoogleDefaultsToVenueForm(details.defaults);
+    setNewOwnedVenue((prev) => ({
+      ...prev,
+      ...defaults,
+    }));
+  }, []);
+
+  const toggleVenueAmenity = React.useCallback((tag: string) => {
+    setVenueAmenities((prev) =>
+      prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag],
+    );
+  }, []);
 
   const createMatchEvent = async () => {
     if (!newEventMatchId) return;
@@ -816,9 +1046,22 @@ export default function AdminPage() {
     setError(null);
     try {
       await api.put(dashboardPath("/dashboard/venue"), {
+        googlePlaceId: venueGooglePlaceId || undefined,
         name: venueName.trim(),
         description: venueDescription.trim() || undefined,
+        shortDescription: venueShortDescription.trim() || undefined,
+        addressLine1: venueAddressLine1.trim() || undefined,
+        city: venueCity.trim() || undefined,
+        stateProvince: venueStateProvince.trim() || undefined,
+        country: venueCountry.trim() || undefined,
+        postalCode: venuePostalCode.trim() || undefined,
+        lat: venueLat ? Number(venueLat) : undefined,
+        lng: venueLng ? Number(venueLng) : undefined,
+        timezone: venueTimezone.trim() || undefined,
         phone: venuePhone.trim() || undefined,
+        website: venueWebsite.trim() || undefined,
+        googleMapsUrl: venueGoogleMapsUrl.trim() || undefined,
+        amenities: venueAmenities,
         coverImageUrl: coverImageUrl || undefined,
         coverImageS3Key: coverImageS3Key || undefined,
         galleryImageUrls: galleryItems.map((item) => item.url),
@@ -830,6 +1073,57 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : "Failed to save venue settings");
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const refreshVenueGoogleData = async () => {
+    if (!selectedVenueId) return;
+    setRefreshingGoogleData(true);
+    setError(null);
+    try {
+      await api.post(dashboardPath("/dashboard/venue/google/refresh"));
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to refresh Google defaults");
+    } finally {
+      setRefreshingGoogleData(false);
+    }
+  };
+
+  const revertVenueToGoogleDefaults = async () => {
+    if (!selectedVenueId) return;
+    setRevertingGoogleData(true);
+    setError(null);
+    try {
+      await api.post(dashboardPath("/dashboard/venue/google/revert"), {
+        includeMenu: true,
+      });
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to revert venue to Google defaults");
+    } finally {
+      setRevertingGoogleData(false);
+    }
+  };
+
+  const updateGoogleImageSelection = async (
+    action: "cover" | "gallery" | "revert",
+    photoName?: string,
+  ) => {
+    if (!selectedVenueId) return;
+    const actionKey = `${action}:${photoName || "default"}`;
+    setGoogleImageActionKey(actionKey);
+    setError(null);
+    try {
+      await api.post(dashboardPath("/dashboard/venue/google/images"), {
+        action,
+        photoName,
+      });
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update Google image selection");
+    } finally {
+      setGoogleImageActionKey(null);
     }
   };
 
@@ -891,27 +1185,37 @@ export default function AdminPage() {
     setError(null);
     try {
       const response = await api.post<{ id: string; name: string; slug: string; city: string; country: string }>("/dashboard/venues", {
+        googlePlaceId: newOwnedVenue.googlePlaceId || undefined,
         name: newOwnedVenue.name.trim(),
         addressLine1: newOwnedVenue.addressLine1.trim(),
         city: newOwnedVenue.city.trim(),
+        stateProvince: newOwnedVenue.stateProvince.trim() || undefined,
         country: newOwnedVenue.country.trim(),
+        postalCode: newOwnedVenue.postalCode.trim() || undefined,
         lat,
         lng,
         timezone: newOwnedVenue.timezone.trim() || "America/Chicago",
         phone: newOwnedVenue.phone.trim() || undefined,
+        website: newOwnedVenue.website.trim() || undefined,
+        googleMapsUrl: newOwnedVenue.googleMapsUrl.trim() || undefined,
         description: newOwnedVenue.description.trim() || undefined,
       });
 
       setShowCreateVenueForm(false);
       setNewOwnedVenue({
+        googlePlaceId: "",
         name: "",
         addressLine1: "",
         city: "Houston",
+        stateProvince: "",
         country: "US",
+        postalCode: "",
         lat: "29.7604",
         lng: "-95.3698",
         timezone: "America/Chicago",
         phone: "",
+        website: "",
+        googleMapsUrl: "",
         description: "",
       });
 
@@ -1009,6 +1313,14 @@ export default function AdminPage() {
     { id: "settings", label: "Venue Settings" },
   ];
 
+  const googleSuggestedImages = googleDefaults?.googleSuggestedImages || [];
+  const googleMenuCategories = googleDefaults?.menu?.categories || [];
+  const googleReviews = googleDefaults?.googleReviews || [];
+  const effectiveCoverPreview = coverImageUrl || resolvedCoverImageUrl;
+  const effectiveGalleryItems = galleryItems.length > 0
+    ? galleryItems.map((item) => ({ ...item, source: "manual" as const }))
+    : resolvedGalleryImageUrls.map((url) => ({ url, key: "", source: "google" as const }));
+
   return (
       <AppShell>
         <main style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px", width: "100%" }}>
@@ -1054,6 +1366,10 @@ export default function AdminPage() {
               </div>
               {showCreateVenueForm && (
                 <div style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12, display: "grid", gap: 8 }}>
+                  <GooglePlacePicker
+                    initialPlaceId={newOwnedVenue.googlePlaceId}
+                    onPlaceResolved={applyNewVenueGoogleDefaults}
+                  />
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     <input
                       value={newOwnedVenue.name}
@@ -1068,7 +1384,7 @@ export default function AdminPage() {
                       style={inputStyle}
                     />
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px 120px", gap: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
                     <input
                       value={newOwnedVenue.city}
                       onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, city: event.target.value }))}
@@ -1082,6 +1398,20 @@ export default function AdminPage() {
                       style={inputStyle}
                     />
                     <input
+                      value={newOwnedVenue.stateProvince}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, stateProvince: event.target.value }))}
+                      placeholder="State / Province"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.postalCode}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, postalCode: event.target.value }))}
+                      placeholder="Postal code"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "120px 120px 1fr 1fr", gap: 8 }}>
+                    <input
                       value={newOwnedVenue.lat}
                       onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, lat: event.target.value }))}
                       placeholder="Lat"
@@ -1091,6 +1421,18 @@ export default function AdminPage() {
                       value={newOwnedVenue.lng}
                       onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, lng: event.target.value }))}
                       placeholder="Lng"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.website}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, website: event.target.value }))}
+                      placeholder="Website"
+                      style={inputStyle}
+                    />
+                    <input
+                      value={newOwnedVenue.googleMapsUrl}
+                      onChange={(event) => setNewOwnedVenue((prev) => ({ ...prev, googleMapsUrl: event.target.value }))}
+                      placeholder="Google Maps URL"
                       style={inputStyle}
                     />
                   </div>
@@ -1136,6 +1478,46 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+
+          {(user.businessApprovalStatus && user.businessApprovalStatus !== "APPROVED") || venueApprovalStatus || claims.length > 0 ? (
+            <div style={{ display: "grid", gap: 12, marginBottom: 16 }}>
+              {user.businessApprovalStatus && user.businessApprovalStatus !== "APPROVED" ? (
+                <div style={{ padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(245,158,11,0.3)", backgroundColor: "rgba(245,158,11,0.08)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--foreground)" }}>Business approval: {user.businessApprovalStatus}</div>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                    {user.businessApprovalNotes || "Your business profile is pending admin review. Public activation and event publishing stay blocked until approval."}
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedVenueId && venueApprovalStatus && venueApprovalStatus !== "APPROVED" ? (
+                <div style={{ padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(245,158,11,0.3)", backgroundColor: "rgba(245,158,11,0.08)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--foreground)" }}>Venue approval: {venueApprovalStatus}</div>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                    {venueApprovalNotes || "This venue is waiting for admin approval before it appears publicly or can host match events."}
+                  </div>
+                </div>
+              ) : null}
+
+              {claims.length > 0 ? (
+                <div style={{ ...cardStyle, padding: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--foreground)", marginBottom: 10 }}>Venue claims</div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {claims.slice(0, 5).map((claim) => (
+                      <div key={claim.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, backgroundColor: "var(--secondary)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{claim.venueName}</div>
+                          <span style={badgeStyle}>{claim.status}</span>
+                        </div>
+                        {claim.notes ? <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>{claim.notes}</div> : null}
+                        {claim.adminNotes ? <div style={{ marginTop: 6, fontSize: 12, color: "var(--foreground)" }}>Admin note: {claim.adminNotes}</div> : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* Tab Navigation */}
           <div style={{ display: "inline-flex", padding: 4, backgroundColor: "var(--secondary)", borderRadius: 12, border: "1px solid var(--border)", maxWidth: "100%", overflowX: "auto", marginBottom: 24 }}>
@@ -1439,6 +1821,152 @@ export default function AdminPage() {
                 <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Update your public venue info and media shown on listing and venue pages.</p>
               </div>
               <div style={cardContentStyle}>
+                <div style={{ display: "grid", gap: 12, marginBottom: 20 }}>
+                  <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                    <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Venue approval</div>
+                      <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800, color: "var(--foreground)" }}>{venueApprovalStatus || "UNKNOWN"}</div>
+                      {venueApprovalNotes ? <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>{venueApprovalNotes}</div> : null}
+                    </div>
+                    <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Menu source</div>
+                      <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800, color: "var(--foreground)" }}>{menuSourceState.toUpperCase()}</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        {googleMenuCategories.length || googleDefaults?.menu?.sourceUrl ? "Google menu is available for revert." : "No Google menu snapshot stored."}
+                      </div>
+                    </div>
+                    <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>About source</div>
+                      <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800, color: "var(--foreground)" }}>{(descriptionSource || shortDescriptionSource || "NONE").toUpperCase()}</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        {googleDefaults?.editorialSummary ? "Google editorial summary is stored." : "Fallback Google summary will be generated on refresh."}
+                      </div>
+                    </div>
+                    <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Google price</div>
+                      <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800, color: "var(--foreground)" }}>{googleDefaults?.priceLevel || "Unavailable"}</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        Price source: {(priceRangeSource || "NONE").toUpperCase()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <GooglePlacePicker
+                    initialPlaceId={venueGooglePlaceId}
+                    disabled={linkingGooglePlace}
+                    onPlaceResolved={applyOwnerVenueGoogleDefaults}
+                  />
+
+                  {linkingGooglePlace ? (
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                      Linking Google Business profile and storing photo suggestions...
+                    </div>
+                  ) : null}
+
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    <button style={btnOutline(refreshingGoogleData || !venueGooglePlaceId)} disabled={refreshingGoogleData || !venueGooglePlaceId} onClick={() => void refreshVenueGoogleData()}>
+                      {refreshingGoogleData ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Re-syncing</> : "Re-sync Google Data"}
+                    </button>
+                    <button style={btnOutline(revertingGoogleData || !googleDefaults)} disabled={revertingGoogleData || !googleDefaults} onClick={() => void revertVenueToGoogleDefaults()}>
+                      {revertingGoogleData ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Reverting</> : "Revert to Google Defaults"}
+                    </button>
+                    <button
+                      style={btnOutline(googleImageActionKey === "revert:default" || !googleSuggestedImages.length)}
+                      disabled={googleImageActionKey === "revert:default" || !googleSuggestedImages.length}
+                      onClick={() => void updateGoogleImageSelection("revert")}
+                    >
+                      {googleImageActionKey === "revert:default" ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Resetting</> : "Revert Suggested Images"}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20, padding: 16, borderRadius: 14, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 16 }}>
+                    <div style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>Google About Default</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                        {googleDefaults?.editorialSummary || "No editorial summary in the Google snapshot yet. Re-sync will fall back to deterministic venue copy."}
+                      </div>
+                    </div>
+                    <div style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>Google Menu Snapshot</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                        {googleDefaults?.menu?.sourceUrl ? (
+                          <>
+                            Status: {googleDefaults.menu.scrapeStatus || "PENDING"}<br />
+                            Categories: {googleMenuCategories.length}<br />
+                            {googleDefaults.menu.error ? `Last error: ${googleDefaults.menu.error}` : "Menu import is ready to use when manual menu is not active."}
+                          </>
+                        ) : "No Google-linked menu URL stored yet."}
+                      </div>
+                    </div>
+                    <div style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>Google Reviews Snapshot</div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                        {googleReviews.length ? `${googleReviews.length} Google reviews stored. Average rating uses the Google refresh values shown on the public page.` : "No Google reviews stored yet."}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline", marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--foreground)" }}>Google Suggested Images</div>
+                      <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)", maxWidth: 720 }}>
+                        Manual cover and gallery uploads always override these Google defaults. Use the controls below to pick the best Google cover and gallery fallback set without downloading images into storage.
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                      {googleSuggestedImages.length ? `${googleSuggestedImages.length} Google photos available` : "No Google photos stored for this venue yet"}
+                    </div>
+                  </div>
+
+                  {googleSuggestedImages.length ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                      {googleSuggestedImages.map((photo) => {
+                        const actionKeyPrefix = photo.name;
+                        const dimensionLabel = photo.widthPx && photo.heightPx ? `${photo.widthPx}×${photo.heightPx}` : "Unknown size";
+                        return (
+                          <div key={photo.name} style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--card)", overflow: "hidden" }}>
+                            <img src={photo.previewUrl} alt={`${venueName || "Venue"} Google suggestion`} style={{ width: "100%", height: 148, objectFit: "cover" }} loading="lazy" />
+                            <div style={{ padding: 12, display: "grid", gap: 10 }}>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {photo.isSelectedCover && <span style={badgeStyle}>Selected Cover</span>}
+                                {photo.isSelectedGallery && <span style={badgeStyle}>In Gallery</span>}
+                                <span style={badgeStyle}>{dimensionLabel}</span>
+                              </div>
+                              {photo.authorAttributions?.length ? (
+                                <div style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                                  Photo credit: {photo.authorAttributions.map((author) => author.displayName).join(", ")}
+                                </div>
+                              ) : null}
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                <button
+                                  style={btnOutline(googleImageActionKey === `cover:${actionKeyPrefix}` || photo.isSelectedCover)}
+                                  disabled={googleImageActionKey === `cover:${actionKeyPrefix}` || photo.isSelectedCover}
+                                  onClick={() => void updateGoogleImageSelection("cover", photo.name)}
+                                >
+                                  {googleImageActionKey === `cover:${actionKeyPrefix}` ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving</> : "Use as Cover"}
+                                </button>
+                                <button
+                                  style={btnOutline(googleImageActionKey === `gallery:${actionKeyPrefix}` || photo.isSelectedGallery)}
+                                  disabled={googleImageActionKey === `gallery:${actionKeyPrefix}` || photo.isSelectedGallery}
+                                  onClick={() => void updateGoogleImageSelection("gallery", photo.name)}
+                                >
+                                  {googleImageActionKey === `gallery:${actionKeyPrefix}` ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving</> : "Add to Gallery"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ borderRadius: 12, border: "1px dashed var(--border)", padding: 16, fontSize: 12, color: "var(--muted-foreground)" }}>
+                      Link a Google Business profile above to fetch and score photo suggestions automatically. Use re-sync only if you want to refresh Google photos later.
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 20 }}>
                   <div>
                     <label style={labelStyle}>Venue name</label>
@@ -1451,11 +1979,110 @@ export default function AdminPage() {
                       <input value={venuePhone} onChange={(e) => setVenuePhone(e.target.value)} placeholder="+1 000 000 0000" style={{ ...inputStyle, paddingLeft: 36 }} />
                     </div>
                   </div>
+                  <div>
+                    <label style={labelStyle}>Website</label>
+                    <input value={venueWebsite} onChange={(e) => setVenueWebsite(e.target.value)} placeholder="https://example.com" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Google Maps URL</label>
+                    <input value={venueGoogleMapsUrl} onChange={(e) => setVenueGoogleMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." style={inputStyle} />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 20 }}>
+                  <div>
+                    <label style={labelStyle}>Address line 1</label>
+                    <input value={venueAddressLine1} onChange={(e) => setVenueAddressLine1(e.target.value)} placeholder="Street address" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>City</label>
+                    <input value={venueCity} onChange={(e) => setVenueCity(e.target.value)} placeholder="City" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>State / Province</label>
+                    <input value={venueStateProvince} onChange={(e) => setVenueStateProvince(e.target.value)} placeholder="State / Province" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Country</label>
+                    <input value={venueCountry} onChange={(e) => setVenueCountry(e.target.value)} placeholder="Country" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Postal code</label>
+                    <input value={venuePostalCode} onChange={(e) => setVenuePostalCode(e.target.value)} placeholder="Postal code" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Timezone</label>
+                    <input value={venueTimezone} onChange={(e) => setVenueTimezone(e.target.value)} placeholder="Timezone" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Latitude</label>
+                    <input value={venueLat} onChange={(e) => setVenueLat(e.target.value)} placeholder="Latitude" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Longitude</label>
+                    <input value={venueLng} onChange={(e) => setVenueLng(e.target.value)} placeholder="Longitude" style={inputStyle} />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Short description</label>
+                  <div style={{ marginBottom: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                    Keep this to one tight sentence. Focus on what makes the venue worth booking for match day: crowd, screen setup, signature food, patio, or neighborhood draw.
+                  </div>
+                  <textarea value={venueShortDescription} onChange={(e) => setVenueShortDescription(e.target.value)} placeholder="Example: Energetic sports bar with giant projector screens, patio seating, and game-day drink specials in Midtown." style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} />
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
                   <label style={labelStyle}>Description</label>
-                  <textarea value={venueDescription} onChange={(e) => setVenueDescription(e.target.value)} placeholder="Describe your venue atmosphere, food, and watch-party setup." style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} />
+                  <div style={{ marginBottom: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                    Write 3 to 5 concrete sentences. Cover the atmosphere, screen and sound setup, seating style, food and drink strengths, parking or reservation details, and what makes your venue different on match days.
+                  </div>
+                  <textarea value={venueDescription} onChange={(e) => setVenueDescription(e.target.value)} placeholder="Example: MatchWatch guests come here for a loud, high-energy soccer crowd, two projector walls, and guaranteed sound for major fixtures. We serve craft beer, wings, tacos, and late-night snacks, with patio overflow seating for big tournaments. Free parking is available behind the building, and larger groups should reserve early for derby and finals nights." style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} />
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Amenities & watch-party features</label>
+                  <div style={{ marginBottom: 10, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+                    Select the features guests care about most before booking: screen size, sound, drinks, parking, patio, accessibility, Wi-Fi, and special service options. These show up as public venue badges.
+                  </div>
+
+                  <div style={{ display: "grid", gap: 14 }}>
+                    <div>
+                      <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>Drinks & service</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
+                        {DRINK_TAGS.map((tag) => (
+                          <label key={tag} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", cursor: "pointer" }}>
+                            <input type="checkbox" checked={venueAmenities.includes(tag)} onChange={() => toggleVenueAmenity(tag)} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--primary)" }} />
+                            <span style={{ fontSize: 13, color: "var(--foreground)" }}>{tag}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>Venue features</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
+                        {VENUE_FEATURE_TAGS.map((tag) => (
+                          <label key={tag} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", cursor: "pointer" }}>
+                            <input type="checkbox" checked={venueAmenities.includes(tag)} onChange={() => toggleVenueAmenity(tag)} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--primary)" }} />
+                            <span style={{ fontSize: 13, color: "var(--foreground)" }}>{tag}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>Dietary & guest needs</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
+                        {DIETARY_TAGS.map((tag) => (
+                          <label key={tag} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", cursor: "pointer" }}>
+                            <input type="checkbox" checked={venueAmenities.includes(tag)} onChange={() => toggleVenueAmenity(tag)} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--primary)" }} />
+                            <span style={{ fontSize: 13, color: "var(--foreground)" }}>{tag}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Cover + Gallery */}
@@ -1475,9 +2102,14 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void onUploadCover(file); e.currentTarget.value = ""; }} />
+                    {!coverImageUrl && resolvedCoverImageUrl ? (
+                      <div style={{ marginBottom: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        Google-selected cover is shown here until you upload a manual replacement.
+                      </div>
+                    ) : null}
                     <div style={{ borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", overflow: "hidden" }}>
-                      {coverImageUrl ? (
-                        <img src={coverImageUrl} alt="Venue cover" style={{ width: "100%", height: 192, objectFit: "cover" }} />
+                      {effectiveCoverPreview ? (
+                        <img src={effectiveCoverPreview} alt="Venue cover" style={{ width: "100%", height: 192, objectFit: "cover" }} />
                       ) : (
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 192, fontSize: 13, color: "var(--muted-foreground)" }}>No cover image uploaded</div>
                       )}
@@ -1486,25 +2118,32 @@ export default function AdminPage() {
 
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <label style={labelStyle}>Gallery images ({galleryItems.length}/{MAX_GALLERY_IMAGES})</label>
+                      <label style={labelStyle}>Gallery images ({effectiveGalleryItems.length}/{MAX_GALLERY_IMAGES})</label>
                       <button style={btnOutline(uploadingGallery || galleryItems.length >= MAX_GALLERY_IMAGES)} disabled={uploadingGallery || galleryItems.length >= MAX_GALLERY_IMAGES} onClick={() => galleryInputRef.current?.click()}>
                         {uploadingGallery ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Uploading</> : <><ImagePlus size={14} /> Add Images</>}
                       </button>
                     </div>
+                    {galleryItems.length === 0 && resolvedGalleryImageUrls.length > 0 ? (
+                      <div style={{ marginBottom: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
+                        Google-selected gallery images are shown here until you upload manual replacements.
+                      </div>
+                    ) : null}
                     <input ref={galleryInputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => { const files = Array.from(e.target.files || []); if (files.length) void onUploadGallery(files); e.currentTarget.value = ""; }} />
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      {galleryItems.map((item, idx) => (
+                      {effectiveGalleryItems.map((item, idx) => (
                         <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden" }}>
                           <img src={item.url} alt={`Gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
-                          <button
-                            style={{ position: "absolute", top: 4, right: 4, width: 28, height: 28, borderRadius: 6, border: "none", backgroundColor: "rgba(239,68,68,0.9)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                            onClick={() => setGalleryItems((prev) => prev.filter((_, i) => i !== idx))}
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          {item.source === "manual" ? (
+                            <button
+                              style={{ position: "absolute", top: 4, right: 4, width: 28, height: 28, borderRadius: 6, border: "none", backgroundColor: "rgba(239,68,68,0.9)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                              onClick={() => setGalleryItems((prev) => prev.filter((_, i) => i !== idx))}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          ) : null}
                         </div>
                       ))}
-                      {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - galleryItems.length) }).map((_, idx) => (
+                      {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - effectiveGalleryItems.length) }).map((_, idx) => (
                         <div key={`empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 96, borderRadius: 10, border: "1px dashed var(--border)", fontSize: 12, color: "var(--muted-foreground)" }}>
                           Empty slot
                         </div>

@@ -19,7 +19,10 @@ import { AppShell } from "../components/AppShell";
 import { MatchCard } from "../components/MatchCard";
 import { MapListToggle } from "../components/MapListToggle";
 import { BookingDrawer } from "../components/BookingDrawer";
+import { PaginationControls } from "../components/PaginationControls";
 import { useData } from "../lib/data-provider";
+import { getLeagueVisual, getMatchDisplay } from "../lib/match-display";
+import { paginateItems } from "../lib/pagination";
 
 /* ═══════════════════════════════════════════════════
    AD PLACEMENT — Non-intrusive monetization slot
@@ -91,17 +94,85 @@ function LeagueFilterPills({
   );
 }
 
+function compareHomeMatches(a: { isFeatured: boolean; matchDateUTC: string }, b: { isFeatured: boolean; matchDateUTC: string }) {
+  if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+  return new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime();
+}
+
+function compareHomeVenues(a: { isFeatured: boolean; rating: number; name: string }, b: { isFeatured: boolean; rating: number; name: string }) {
+  if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+  if (b.rating !== a.rating) return b.rating - a.rating;
+  return a.name.localeCompare(b.name);
+}
+
+const PRIORITY_SOCCER_LEAGUES = [
+  { key: "mls", label: "MLS", match: (name: string) => name === "mls" || name.includes("major league soccer") },
+  { key: "premier-league", label: "Premier League", match: (name: string) => name.includes("premier league") },
+  { key: "la-liga", label: "La Liga", match: (name: string) => name.includes("la liga") },
+  { key: "bundesliga", label: "Bundesliga", match: (name: string) => name.includes("bundesliga") },
+  { key: "serie-a", label: "Serie A", match: (name: string) => name.includes("serie a") },
+  { key: "ligue-1", label: "Ligue 1", match: (name: string) => name.includes("ligue 1") },
+  { key: "ucl", label: "Champions League", match: (name: string) => name.includes("champions league") || name.includes("ucl") },
+  { key: "wc-qualifiers", label: "WC-Qualifiers", match: (name: string) => name.includes("fifa european qualifiers") || name.includes("wc-qualifiers") },
+] as const;
+
+const PRIORITY_SOCCER_LEAGUE_INDEX = new Map(PRIORITY_SOCCER_LEAGUES.map((entry, index) => [entry.key, index]));
+
+function normalizeLeagueName(value?: string | null) {
+  return (value || "").trim().toLowerCase();
+}
+
+function getPrioritySoccerLeagueKey(league?: { name?: string; shortName?: string } | null) {
+  const candidates = [normalizeLeagueName(league?.name), normalizeLeagueName(league?.shortName)].filter(Boolean);
+  const match = PRIORITY_SOCCER_LEAGUES.find((entry) => candidates.some((candidate) => entry.match(candidate)));
+  return match?.key ?? null;
+}
+
 /* ═══════════════════════════════════════════════════
    HOME PAGE — Assembles all critical components
    Fully linked: every match, venue, team → single page
    ═══════════════════════════════════════════════════ */
 export default function HomePage() {
   const [bookingOpen, setBookingOpen] = useState(false);
-  const [selectedVenueIdx, setSelectedVenueIdx] = useState(0);
-  const [homeLeagueFilter, setHomeLeagueFilter] = useState("all");
+  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
+  const [soccerLeagueFilter, setSoccerLeagueFilter] = useState("all");
+  const [soccerMatchesPage, setSoccerMatchesPage] = useState(1);
+  const [otherSportsFilter, setOtherSportsFilter] = useState("all");
+  const [otherSportsPage, setOtherSportsPage] = useState(1);
+  const [featuredVenuesPage, setFeaturedVenuesPage] = useState(1);
+  const [hostingVenuesPage, setHostingVenuesPage] = useState(1);
   const [hydrated, setHydrated] = useState(false);
   const [nowTs, setNowTs] = useState<number | null>(null);
-  const { matches: MATCHES, venues: VENUES, leagues, venueEvents, bookings, posts, getTeam, getLeague, getVenueEvents, isApiConnected } = useData();
+  const { matches: MATCHES, venues: VENUES, leagues, sports, venueEvents, bookings, posts, getTeam, getLeague, getVenueEvents, isApiConnected } = useData();
+
+  const soccerSportIds = useMemo(
+    () =>
+      new Set(
+        sports
+          .filter((sport) => sport.slug === "soccer" || sport.id === "soccer")
+          .map((sport) => sport.id),
+      ),
+    [sports],
+  );
+
+  const isLeagueSoccer = (league?: { sportId?: string; name?: string; shortName?: string } | null) => {
+    if (!league) return false;
+    if (league.sportId && soccerSportIds.has(league.sportId)) return true;
+
+    const candidates = [normalizeLeagueName(league.name), normalizeLeagueName(league.shortName)].filter(Boolean);
+    if (getPrioritySoccerLeagueKey(league)) return true;
+
+    return candidates.some((candidate) =>
+      candidate.includes("qualifiers")
+      || candidate.includes("champions league")
+      || candidate.includes("friendlies")
+      || candidate.includes("play-off")
+      || candidate.includes("liga mx")
+      || candidate.includes("nwsl")
+      || candidate.includes("major league soccer")
+      || candidate === "mls",
+    );
+  };
 
   useEffect(() => {
     setHydrated(true);
@@ -130,8 +201,10 @@ export default function HomePage() {
     })}`;
   };
 
-  // Prepare venue data for VenueCard display
-  const venueCards = VENUES.filter((v) => v.isActive).slice(0, 6);
+  const allActiveVenues = useMemo(
+    () => [...VENUES.filter((v) => v.isActive)].sort(compareHomeVenues),
+    [VENUES],
+  );
   const liveMatches = MATCHES.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED");
   const upcomingMatches = useMemo(
     () => MATCHES
@@ -144,27 +217,270 @@ export default function HomePage() {
       .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime()),
     [MATCHES, hydrated, nowTs],
   );
-  const filteredUpcomingMatches = useMemo(
+  const thisWeekMatches = useMemo(() => {
+    if (!hydrated || nowTs === null) {
+      return upcomingMatches;
+    }
+
+    const weekAheadTs = nowTs + 7 * 24 * 60 * 60 * 1000;
+    return upcomingMatches.filter((match) => {
+      const kickoffTs = new Date(match.matchDateUTC).getTime();
+      return kickoffTs >= nowTs && kickoffTs < weekAheadTs;
+    });
+  }, [hydrated, nowTs, upcomingMatches]);
+  const prioritySoccerUpcomingMatches = useMemo(
     () =>
-      upcomingMatches.filter((match) =>
-        homeLeagueFilter === "all" ? true : match.leagueId === homeLeagueFilter,
-      ),
-    [upcomingMatches, homeLeagueFilter],
+      upcomingMatches.filter((match) => {
+        const league = getLeague(match.leagueId);
+        return Boolean(getPrioritySoccerLeagueKey(league));
+      }),
+    [upcomingMatches, getLeague],
   );
-  const featuredMatch = filteredUpcomingMatches[0] || upcomingMatches[0] || MATCHES[0];
-  const selectedVenue = venueCards[selectedVenueIdx];
+  const prioritySoccerMatches = useMemo(
+    () =>
+      prioritySoccerUpcomingMatches.filter((match) => {
+        if (!hydrated || nowTs === null) return true;
+        const kickoffTs = new Date(match.matchDateUTC).getTime();
+        return kickoffTs < nowTs + 30 * 24 * 60 * 60 * 1000;
+      }),
+    [prioritySoccerUpcomingMatches, hydrated, nowTs],
+  );
+  const soccerLeagueOptions = useMemo(
+    () =>
+      PRIORITY_SOCCER_LEAGUES
+        .map((entry) => {
+          const league = leagues.find((candidate) => getPrioritySoccerLeagueKey(candidate) === entry.key);
+          if (!league) return null;
+          return {
+            id: entry.key,
+            shortName: league.shortName || entry.label,
+            logo: league.logo,
+            image: league.image,
+            label: entry.label,
+          };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
+    [leagues, prioritySoccerMatches, getLeague],
+  );
+  const filteredSoccerMatches = useMemo(
+    () =>
+      prioritySoccerMatches.filter((match) => {
+        if (soccerLeagueFilter === "all") return true;
+        const league = getLeague(match.leagueId);
+        return getPrioritySoccerLeagueKey(league) === soccerLeagueFilter;
+      }),
+    [prioritySoccerMatches, soccerLeagueFilter, getLeague],
+  );
+  const orderedSoccerMatches = useMemo(
+    () =>
+      [...filteredSoccerMatches].sort((a, b) => {
+        const aKey = getPrioritySoccerLeagueKey(getLeague(a.leagueId));
+        const bKey = getPrioritySoccerLeagueKey(getLeague(b.leagueId));
+        const aIndex = aKey ? PRIORITY_SOCCER_LEAGUE_INDEX.get(aKey) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+        const bIndex = bKey ? PRIORITY_SOCCER_LEAGUE_INDEX.get(bKey) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        return compareHomeMatches(a, b);
+      }),
+    [filteredSoccerMatches, getLeague],
+  );
+  const orderedPrioritySoccerMatches = useMemo(
+    () => [...prioritySoccerMatches].sort(compareHomeMatches),
+    [prioritySoccerMatches],
+  );
+  const otherSportsMatches = useMemo(
+    () =>
+      upcomingMatches.filter((match) => {
+        const league = getLeague(match.leagueId);
+        if (!league) return false;
+        return !isLeagueSoccer(league);
+      }),
+    [upcomingMatches, getLeague, sports],
+  );
+  const otherSportsOptions = useMemo(
+    () => {
+      const sportMap = new Map<string, { id: string; label: string }>();
+      for (const match of otherSportsMatches) {
+        const league = getLeague(match.leagueId);
+        const sportId = league?.sportId;
+        if (!sportId || sportMap.has(sportId)) continue;
+        const sport = sports.find((candidate) => candidate.id === sportId);
+        if (!sport) continue;
+        sportMap.set(sportId, { id: sport.id, label: sport.name });
+      }
+      return Array.from(sportMap.values());
+    },
+    [otherSportsMatches, getLeague, sports],
+  );
+  const orderedThisWeekMatches = useMemo(
+    () => [...thisWeekMatches].sort(compareHomeMatches),
+    [thisWeekMatches],
+  );
+  const orderedUpcomingMatches = useMemo(
+    () => [...upcomingMatches].sort(compareHomeMatches),
+    [upcomingMatches],
+  );
+  const filteredOtherSportsMatches = useMemo(
+    () =>
+      otherSportsMatches.filter((match) => {
+        if (otherSportsFilter === "all") return true;
+        const league = getLeague(match.leagueId);
+        return league?.sportId === otherSportsFilter;
+      }),
+    [otherSportsMatches, otherSportsFilter, getLeague],
+  );
+  const orderedOtherSportsMatches = useMemo(
+    () => [...filteredOtherSportsMatches].sort(compareHomeMatches),
+    [filteredOtherSportsMatches],
+  );
+  const featuredMatch = orderedSoccerMatches[0] || orderedPrioritySoccerMatches[0] || orderedThisWeekMatches[0] || orderedUpcomingMatches[0] || MATCHES[0];
+  const { currentPage: currentSoccerMatchesPage, totalPages: soccerMatchesTotalPages, pageItems: paginatedSoccerMatches } = useMemo(
+    () => paginateItems(orderedSoccerMatches, soccerMatchesPage),
+    [orderedSoccerMatches, soccerMatchesPage],
+  );
+  const { currentPage: currentOtherSportsPage, totalPages: otherSportsTotalPages, pageItems: paginatedOtherSportsMatches } = useMemo(
+    () => paginateItems(orderedOtherSportsMatches, otherSportsPage),
+    [orderedOtherSportsMatches, otherSportsPage],
+  );
+  const { currentPage: currentFeaturedVenuesPage, totalPages: featuredVenuesTotalPages, pageItems: paginatedFeaturedVenues } = useMemo(
+    () => paginateItems(allActiveVenues, featuredVenuesPage),
+    [allActiveVenues, featuredVenuesPage],
+  );
+  const selectedVenue = useMemo(
+    () => {
+      if (!selectedVenueId) return allActiveVenues[0];
+      return allActiveVenues.find((venue) => venue.id === selectedVenueId) || allActiveVenues[0];
+    },
+    [allActiveVenues, selectedVenueId],
+  );
   const selectedVenueEvent = featuredMatch && selectedVenue
     ? getVenueEvents(featuredMatch.id).find((event) => event.venueId === selectedVenue.id)
     : undefined;
   const selectedHome = featuredMatch ? getTeam(featuredMatch.homeTeamId) : undefined;
   const selectedAway = featuredMatch ? getTeam(featuredMatch.awayTeamId) : undefined;
   const selectedLeague = featuredMatch ? getLeague(featuredMatch.leagueId) : undefined;
+  const featuredMatchDisplay = featuredMatch
+    ? getMatchDisplay(featuredMatch, {
+        homeTeam: selectedHome,
+        awayTeam: selectedAway,
+        league: selectedLeague,
+      })
+    : null;
   const featuredVenueEvents = featuredMatch ? getVenueEvents(featuredMatch.id) : [];
-  const mapVenueCards = featuredVenueEvents.length > 0
-    ? featuredVenueEvents.map((event) => event.venue).slice(0, 6)
-    : venueCards;
+  const mapVenueCards = useMemo(() => {
+    if (featuredVenueEvents.length === 0) return allActiveVenues;
+
+    const seen = new Set<string>();
+    return featuredVenueEvents
+      .map((event) => event.venue)
+      .filter((venue) => {
+        if (seen.has(venue.id)) return false;
+        seen.add(venue.id);
+        return true;
+      })
+      .sort(compareHomeVenues);
+  }, [allActiveVenues, featuredVenueEvents]);
+  const { currentPage: currentHostingVenuesPage, totalPages: hostingVenuesTotalPages, pageItems: paginatedHostingVenues } = useMemo(
+    () => paginateItems(mapVenueCards, hostingVenuesPage),
+    [mapVenueCards, hostingVenuesPage],
+  );
   const getVenueCardImage = (venue: (typeof VENUES)[number]) =>
     venue.coverImageUrl || venue.galleryImageUrls?.[0] || "/assets/img-3.png";
+  const featuredMatchHeading = featuredMatch
+    ? `${featuredMatchDisplay?.label || "Match"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
+    : "UPCOMING MATCH";
+
+  const renderHomeMatchCard = (m: (typeof MATCHES)[number]) => {
+    const league = getLeague(m.leagueId);
+    if (!league) return null;
+
+    const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
+    const isFinished = m.status === "FINISHED";
+    const cardStatus: "SCHEDULED" | "LIVE" | "FINISHED" = isLive
+      ? "LIVE"
+      : isFinished
+        ? "FINISHED"
+        : "SCHEDULED";
+
+    if (m.eventFormat === "SINGLE_EVENT") {
+      return (
+        <MatchCard
+          key={m.id}
+          eventFormat="SINGLE_EVENT"
+          eventTitle={m.eventTitle || league.name}
+          eventSubtitle={m.eventSubtitle || undefined}
+          homeTeam=""
+          awayTeam=""
+          homeCrest=""
+          awayCrest=""
+          kickoff={formatKickoffLabel(m.matchDateUTC)}
+          league={league.shortName || league.name}
+          leagueLogo={league.logo}
+          leagueImage={league.image}
+          venueCount={m.venueCount}
+          status={cardStatus}
+          matchDay={m.stage || m.matchDay}
+          isHot={m.isHot}
+          onClick={() => { window.location.href = `/matches/${m.id}`; }}
+          style={{ minWidth: "unset", height: "100%" }}
+        />
+      );
+    }
+
+    const home = getTeam(m.homeTeamId);
+    const away = getTeam(m.awayTeamId);
+    const display = getMatchDisplay(m, { homeTeam: home, awayTeam: away, league });
+
+    return (
+      <MatchCard
+        key={m.id}
+        homeTeam={display.homeName}
+        awayTeam={display.awayName}
+        homeCrest={home?.crest || ""}
+        awayCrest={away?.crest || ""}
+        homeImage={home?.image}
+        awayImage={away?.image}
+        kickoff={formatKickoffLabel(m.matchDateUTC)}
+        league={league.shortName || league.name}
+        leagueLogo={league.logo}
+        leagueImage={league.image}
+        venueCount={m.venueCount}
+        status={cardStatus}
+        homeScore={m.homeScore ?? undefined}
+        awayScore={m.awayScore ?? undefined}
+        matchDay={m.stage || m.matchDay}
+        isHot={m.isHot}
+        onClick={() => { window.location.href = `/matches/${m.id}`; }}
+        style={{ minWidth: "unset", height: "100%" }}
+      />
+    );
+  };
+
+  useEffect(() => {
+    setSoccerMatchesPage(1);
+  }, [soccerLeagueFilter, orderedSoccerMatches.length]);
+
+  useEffect(() => {
+    setOtherSportsPage(1);
+  }, [otherSportsFilter, orderedOtherSportsMatches.length]);
+
+  useEffect(() => {
+    setFeaturedVenuesPage(1);
+  }, [allActiveVenues.length]);
+
+  useEffect(() => {
+    setHostingVenuesPage(1);
+  }, [featuredMatch?.id, mapVenueCards.length]);
+
+  useEffect(() => {
+    if (!selectedVenueId && allActiveVenues[0]?.id) {
+      setSelectedVenueId(allActiveVenues[0].id);
+      return;
+    }
+
+    if (selectedVenueId && !allActiveVenues.some((venue) => venue.id === selectedVenueId) && allActiveVenues[0]?.id) {
+      setSelectedVenueId(allActiveVenues[0].id);
+    }
+  }, [allActiveVenues, selectedVenueId]);
 
   return (
       <AppShell>
@@ -224,7 +540,8 @@ export default function HomePage() {
               (m, i) => {
                 const home = getTeam(m.homeTeamId);
                 const away = getTeam(m.awayTeamId);
-                if (!home || !away) return null;
+                const league = getLeague(m.leagueId);
+                const display = getMatchDisplay(m, { homeTeam: home, awayTeam: away, league });
                 return (
                   <Link
                     key={i}
@@ -232,15 +549,29 @@ export default function HomePage() {
                     className="inline-flex items-center gap-3 text-foreground hover:text-primary transition-colors"
                   >
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="font-body font-bold text-sm">
-                      {home.crest} {home.shortName}
-                    </span>
-                    <span className="font-mono text-sm font-black text-red-500">
-                      {m.homeScore}-{m.awayScore}
-                    </span>
-                    <span className="font-body font-bold text-sm">
-                      {away.shortName} {away.crest}
-                    </span>
+                    {display.isSingleEvent ? (
+                      <>
+                        <span className="font-body font-bold text-sm">{display.title}</span>
+                        {display.subtitle ? (
+                          <span className="font-body text-sm text-muted-foreground">{display.subtitle}</span>
+                        ) : null}
+                        <span className="font-mono text-sm font-black text-red-500">
+                          {league?.shortName || league?.name || "LIVE"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-body font-bold text-sm">
+                          {home?.crest ? `${home.crest} ` : ""}{display.homeName}
+                        </span>
+                        <span className="font-mono text-sm font-black text-red-500">
+                          {m.homeScore}-{m.awayScore}
+                        </span>
+                        <span className="font-body font-bold text-sm">
+                          {display.awayName}{away?.crest ? ` ${away.crest}` : ""}
+                        </span>
+                      </>
+                    )}
                     <span className="text-border mx-2">│</span>
                   </Link>
                 );
@@ -249,96 +580,56 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ─── Interactive Bento Box Match View ──────────── */}
+        {/* Soccer-first upcoming feed */}
         <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "96px 24px" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 48, gap: 16 }}>
             <div>
-              <div style={{ color: "var(--primary)", fontWeight: 700, letterSpacing: "0.16em", fontSize: 12, marginBottom: 8, textTransform: "uppercase" }}>UPCOMING MATCHES</div>
-              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>THIS WEEK</h2>
+              <div style={{ color: "var(--primary)", fontWeight: 700, letterSpacing: "0.16em", fontSize: 12, marginBottom: 8, textTransform: "uppercase" }}>SOCCER ONLY</div>
+              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>TOP SOCCER MATCHES</h2>
             </div>
-            {/* League Filters */}
             <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-                <button style={{
+              <button style={{
+                padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
+                border: "none", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                backgroundColor: soccerLeagueFilter === "all" ? "var(--foreground)" : "var(--secondary)",
+                color: soccerLeagueFilter === "all" ? "var(--background)" : "var(--secondary-foreground)",
+              }} onClick={() => setSoccerLeagueFilter("all")}>
+                All Soccer
+              </button>
+              {soccerLeagueOptions.map((lg) => (
+                <button key={lg.id} style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
                   padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
-                  border: "none", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-                  backgroundColor: homeLeagueFilter === "all" ? "var(--foreground)" : "var(--secondary)",
-                  color: homeLeagueFilter === "all" ? "var(--background)" : "var(--secondary-foreground)",
-                }} onClick={() => setHomeLeagueFilter("all")}>
-                    All Matches
+                  cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                  border: soccerLeagueFilter === lg.id ? "1px solid var(--primary)" : "1px solid var(--border)",
+                  color: soccerLeagueFilter === lg.id ? "var(--primary)" : "var(--muted-foreground)",
+                  backgroundColor: soccerLeagueFilter === lg.id ? "color-mix(in oklch, var(--primary) 10%, transparent)" : "var(--secondary)",
+                }} onClick={() => setSoccerLeagueFilter(lg.id)}>
+                  {lg.image ? <img src={lg.image} alt={lg.shortName} style={{ width: 16, height: 16, objectFit: "contain" }} /> : lg.logo} {lg.shortName}
                 </button>
-                {leagues.slice(0, 4).map((lg) => (
-                    <button key={lg.id} style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
-                      cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-                      border: homeLeagueFilter === lg.id ? "1px solid var(--primary)" : "1px solid var(--border)",
-                      color: homeLeagueFilter === lg.id ? "var(--primary)" : "var(--muted-foreground)",
-                      backgroundColor: homeLeagueFilter === lg.id ? "color-mix(in oklch, var(--primary) 10%, transparent)" : "var(--secondary)",
-                    }} onClick={() => setHomeLeagueFilter(lg.id)}>
-                        {lg.image ? <img src={lg.image} alt={lg.shortName} style={{ width: 16, height: 16, objectFit: "contain" }} /> : lg.logo} {lg.shortName}
-                    </button>
-                ))}
+              ))}
             </div>
           </div>
-          
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-            {filteredUpcomingMatches.length === 0 && (
-                <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "1 / -1", minHeight: 300 }}>
-                    <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", marginBottom: 16 }}>
-                        <Trophy style={{ width: 32, height: 32, opacity: 0.5 }} />
-                    </div>
-                    <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Matches Scheduled</h3>
-                    <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 400 }}>
-                        There are currently no featured matches in this category. Check back soon or select a different league to find watch parties.
-                    </p>
-                </div>
-            )}
-            {filteredUpcomingMatches.slice(0, 8).map((m) => {
-              const home = getTeam(m.homeTeamId);
-              const away = getTeam(m.awayTeamId);
-              const league = getLeague(m.leagueId);
-              if (!home || !away || !league) return null;
-              
-              const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
-              const isFinished = m.status === "FINISHED";
-              const cardStatus: "SCHEDULED" | "LIVE" | "FINISHED" = isLive
-                ? "LIVE"
-                : isFinished
-                  ? "FINISHED"
-                  : "SCHEDULED";
-              
-              return (
-                <MatchCard
-                  key={m.id}
-                  homeTeam={home.shortName || home.name}
-                  awayTeam={away.shortName || away.name}
-                  homeCrest={home.crest}
-                  awayCrest={away.crest}
-                  homeImage={home.image}
-                  awayImage={away.image}
-                  kickoff={formatKickoffLabel(m.matchDateUTC)}
-                  league={league.shortName || league.name}
-                  leagueLogo={league.logo}
-                  leagueImage={league.image}
-                  venueCount={m.venueCount}
-                  status={cardStatus}
-                  homeScore={m.homeScore ?? undefined}
-                  awayScore={m.awayScore ?? undefined}
-                  matchDay={m.stage || m.matchDay}
-                  isHot={m.isHot}
-                  onClick={() => { window.location.href = `/matches/${m.id}`; }}
-                  style={{ minWidth: "unset", height: "100%" }}
-                />
-              );
-            })}
 
-            {/* View All Tile */}
-            <Link href="/matches" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 24, border: "1px dashed var(--border)", padding: 32, minHeight: 280, textDecoration: "none", transition: "background-color 0.2s", color: "inherit" }}>
-                <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)", marginBottom: 16 }}>
-                    <CalendarDays style={{ width: 32, height: 32 }} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
+            {orderedSoccerMatches.length === 0 && (
+              <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "1 / -1", minHeight: 300 }}>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", marginBottom: 16 }}>
+                  <Trophy style={{ width: 32, height: 32, opacity: 0.5 }} />
                 </div>
-                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 20, color: "var(--foreground)", marginBottom: 8 }}>View Calendar</h3>
-                <p style={{ fontSize: 14, color: "var(--muted-foreground)", textAlign: "center" }}>See all upcoming fixtures and find parties.</p>
+                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Soccer Matches Scheduled</h3>
+                <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 440 }}>
+                  No MLS, Premier League, La Liga, Bundesliga, Serie A, or Ligue 1 matches are currently available in the upcoming schedule for this filter.
+                </p>
+              </div>
+            )}
+            {paginatedSoccerMatches.map((m) => renderHomeMatchCard(m))}
+          </div>
+          <PaginationControls currentPage={currentSoccerMatchesPage} totalPages={soccerMatchesTotalPages} onPageChange={setSoccerMatchesPage} />
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
+            <Link href="/matches" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 24px", borderRadius: 999, border: "1px solid var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)", textDecoration: "none", fontWeight: 700 }}>
+              <CalendarDays style={{ width: 18, height: 18 }} />
+              View All Matches
             </Link>
           </div>
         </section>
@@ -355,7 +646,7 @@ export default function HomePage() {
             </Link>
           </div>
           <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, position: "relative", zIndex: 10 }}>
-            {venueCards.map((v, i) => {
+            {paginatedFeaturedVenues.map((v) => {
               const venueImage = getVenueCardImage(v);
               return (
                 <div key={v.id} style={{ borderRadius: 28, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "0 12px 32px rgba(0,0,0,0.12)" }}>
@@ -389,7 +680,7 @@ export default function HomePage() {
                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)" }}>{v.upcomingEventsCount} Events</span>
                     <button
                       onClick={() => {
-                        setSelectedVenueIdx(i);
+                        setSelectedVenueId(v.id);
                         setBookingOpen(true);
                       }}
                       className="btn-primary"
@@ -402,15 +693,64 @@ export default function HomePage() {
               );
             })}
           </div>
+          <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px" }}>
+            <PaginationControls currentPage={currentFeaturedVenuesPage} totalPages={featuredVenuesTotalPages} onPageChange={setFeaturedVenuesPage} />
+          </div>
         </section>
+        {/* Other sports section */}
+        <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "64px 24px 24px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 40, gap: 16 }}>
+            <div>
+              <div style={{ color: "var(--primary)", fontWeight: 700, letterSpacing: "0.16em", fontSize: 12, marginBottom: 8, textTransform: "uppercase" }}>OTHER SPORTS</div>
+              <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(2rem, 5vw, 3rem)", fontWeight: 900, color: "var(--foreground)", margin: 0 }}>UPCOMING OTHER SPORTS</h2>
+            </div>
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+              <button style={{
+                padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
+                border: "none", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                backgroundColor: otherSportsFilter === "all" ? "var(--foreground)" : "var(--secondary)",
+                color: otherSportsFilter === "all" ? "var(--background)" : "var(--secondary-foreground)",
+              }} onClick={() => setOtherSportsFilter("all")}>
+                All Sports
+              </button>
+              {otherSportsOptions.map((sport) => (
+                <button key={sport.id} style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "8px 20px", borderRadius: 999, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
+                  cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                  border: otherSportsFilter === sport.id ? "1px solid var(--primary)" : "1px solid var(--border)",
+                  color: otherSportsFilter === sport.id ? "var(--primary)" : "var(--muted-foreground)",
+                  backgroundColor: otherSportsFilter === sport.id ? "color-mix(in oklch, var(--primary) 10%, transparent)" : "var(--secondary)",
+                }} onClick={() => setOtherSportsFilter(sport.id)}>
+                  {sport.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
+            {orderedOtherSportsMatches.length === 0 && (
+              <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 20%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gridColumn: "1 / -1", minHeight: 260 }}>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", marginBottom: 16 }}>
+                  <Trophy style={{ width: 32, height: 32, opacity: 0.5 }} />
+                </div>
+                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 700, fontSize: 24, color: "var(--foreground)", marginBottom: 8 }}>No Other Sports Scheduled</h3>
+                <p style={{ fontSize: 14, color: "var(--muted-foreground)", maxWidth: 420 }}>
+                  There are no upcoming non-soccer matches available for this filter.
+                </p>
+              </div>
+            )}
+            {paginatedOtherSportsMatches.map((m) => renderHomeMatchCard(m))}
+          </div>
+          <PaginationControls currentPage={currentOtherSportsPage} totalPages={otherSportsTotalPages} onPageChange={setOtherSportsPage} />
+        </section>
+
 
         {/* ─── Map / List Toggle View ────────────── */}
         <section style={{ width: "100%", maxWidth: 1400, margin: "0 auto", padding: "192px 24px 96px", position: "relative", zIndex: 10, backgroundColor: "var(--background)" }}>
           <div className="mb-12">
             <div className="text-primary font-bold tracking-widest text-xs mb-2">
-              {featuredMatch
-                ? `${selectedHome?.shortName || "HOME"} VS ${selectedAway?.shortName || "AWAY"} · ${formatDateLabel(featuredMatch.matchDateUTC)}`
-                : "UPCOMING MATCH"}
+              {featuredMatchHeading}
             </div>
             <h2 className="font-display text-4xl font-black text-foreground">
               FIND HOSTING VENUES
@@ -419,7 +759,11 @@ export default function HomePage() {
           
             <div className="bg-card rounded-3xl border border-border shadow-xl p-2 relative z-20">
               <MapListToggle
-                venues={mapVenueCards.map((v) => ({
+                venues={paginatedHostingVenues.map((v) => ({
+                  id: v.id,
+                  slug: v.slug,
+                  lat: v.lat,
+                  lng: v.lng,
                   name: v.name,
                   coverImage: getVenueCardImage(v),
                   city: v.city,
@@ -435,13 +779,12 @@ export default function HomePage() {
                   nextEvent: `${v.upcomingEventsCount} upcoming events`,
                 }))}
                 onVenueClick={(i) => {
-                  window.location.href = `/venues/${mapVenueCards[i]?.slug || ""}`;
+                  window.location.href = `/venues/${paginatedHostingVenues[i]?.slug || ""}`;
                 }}
                 onBookNow={(i) => {
-                  const venue = mapVenueCards[i];
-                  const venueIdx = venueCards.findIndex((v) => v.id === venue?.id);
-                  if (venueIdx !== -1) {
-                    setSelectedVenueIdx(venueIdx);
+                  const venue = paginatedHostingVenues[i];
+                  if (venue?.id) {
+                    setSelectedVenueId(venue.id);
                     setBookingOpen(true);
                   } else if (venue?.slug) {
                     window.location.href = `/venues/${venue.slug}`;
@@ -449,26 +792,26 @@ export default function HomePage() {
                 }}
               />
           </div>
+          <PaginationControls currentPage={currentHostingVenuesPage} totalPages={hostingVenuesTotalPages} onPageChange={setHostingVenuesPage} />
         </section>
 
         {/* ─── How It Works Section ──────────────── */}
         <section style={{ width: "100%", backgroundColor: "var(--secondary)", padding: "96px 0", marginTop: 48 }}>
             <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px" }}>
-                <div className="text-center mb-16">
+                <div className="text-center mb-20">
                     <div className="text-primary font-bold tracking-widest text-xs mb-2">HOW IT WORKS</div>
                     <h2 className="font-display text-4xl md:text-5xl font-black text-foreground">THREE EASY STEPS</h2>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative" style={{ marginTop: 24 }}>
                     <div className="hidden md:block absolute top-[40px] left-[15%] right-[15%] h-px bg-border z-0" />
                     {[
-                    { step: "01", icon: Trophy, title: "FIND A MATCH", desc: "Browse upcoming matches and find the one you want to watch", link: "/matches" },
-                    { step: "02", icon: MapPin, title: "PICK A VENUE", desc: "Explore nearby bars, lounges, and restaurants hosting watch parties", link: "/venues" },
-                    { step: "03", icon: Ticket, title: "RESERVE A SPOT", desc: "Book your spot with your group and show up ready to cheer", link: "/matches" },
-                    ].map((s: { step: string; icon: LucideIcon; title: string; desc: string; link: string }, i) => (
-                    <Link
+                    { step: "01", icon: Trophy, title: "FIND A MATCH", desc: "Browse upcoming matches and find the one you want to watch" },
+                    { step: "02", icon: MapPin, title: "PICK A VENUE", desc: "Explore nearby bars, lounges, and restaurants hosting watch parties" },
+                    { step: "03", icon: Ticket, title: "RESERVE A SPOT", desc: "Book your spot with your group and show up ready to cheer" },
+                    ].map((s: { step: string; icon: LucideIcon; title: string; desc: string }, i) => (
+                    <div
                         key={i}
-                        href={s.link}
                         className="relative z-10 flex flex-col items-center text-center group"
                     >
                         <div className="w-20 h-20 rounded-2xl bg-background border border-border shadow-md flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-background transition-colors duration-300 mb-6 group-hover:-translate-y-2 group-hover:shadow-xl">
@@ -477,8 +820,26 @@ export default function HomePage() {
                         <div className="font-mono text-xs text-primary font-bold mb-2 tracking-widest">STEP {s.step}</div>
                         <h3 className="font-display font-bold text-xl text-foreground mb-3">{s.title}</h3>
                         <p className="text-muted-foreground text-sm font-medium">{s.desc}</p>
-                    </Link>
+                    </div>
                     ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", marginTop: 40 }}>
+                    <Link
+                        href="/matches"
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "14px 28px",
+                            borderRadius: 999,
+                            backgroundColor: "var(--primary)",
+                            color: "var(--background)",
+                            fontWeight: 700,
+                            textDecoration: "none",
+                        }}
+                    >
+                        Get started
+                    </Link>
                 </div>
             </div>
         </section>
@@ -604,14 +965,21 @@ export default function HomePage() {
           onClose={() => setBookingOpen(false)}
           venueEventId={selectedVenueEvent?.id}
           venue={{
-            name: venueCards[selectedVenueIdx]?.name || "",
-            address: `${venueCards[selectedVenueIdx]?.addressLine1 || ""}, ${venueCards[selectedVenueIdx]?.city || ""}`,
+            name: selectedVenue?.name || "",
+            address: `${selectedVenue?.addressLine1 || ""}, ${selectedVenue?.city || ""}`,
           }}
           match={{
-            homeTeam: selectedHome?.shortName || "HOME",
-            awayTeam: selectedAway?.shortName || "AWAY",
-            homeCrest: selectedHome?.image || selectedHome?.crest || "HOME",
-            awayCrest: selectedAway?.image || selectedAway?.crest || "AWAY",
+            eventFormat: featuredMatch?.eventFormat,
+            title: featuredMatchDisplay?.title || "Match",
+            subtitle: featuredMatchDisplay?.subtitle,
+            homeTeam: featuredMatchDisplay?.homeName,
+            awayTeam: featuredMatchDisplay?.awayName,
+            homeCrest: selectedHome?.image || selectedHome?.crest || "",
+            awayCrest: selectedAway?.image || selectedAway?.crest || "",
+            eventBadge: (() => {
+              const visual = getLeagueVisual(selectedLeague);
+              return visual.image || visual.logo;
+            })(),
             kickoff: featuredMatch
               ? formatKickoffLabel(featuredMatch.matchDateUTC)
               : "TBD",

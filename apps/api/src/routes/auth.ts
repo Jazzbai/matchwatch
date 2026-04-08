@@ -1,6 +1,6 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { db } from '../db/client';
-import { users, auditLogs, refreshTokenSessions, venues } from '../db/schema';
+import { users, auditLogs, refreshTokenSessions, venueClaims, venues } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -10,6 +10,9 @@ import {
 import { apiResponse, apiError, generateUniqueSlug } from '../lib/utils';
 import { redis } from '../lib/redis';
 import { logger } from '../lib/logger';
+import { getGooglePlaceDetails } from '../lib/googlePlaces';
+import { getRequestIp, RecaptchaVerificationError, verifyRecaptchaToken } from '../lib/recaptcha';
+import { applyGoogleMenuSnapshot, buildGoogleVenueFields, findExistingVenueMatch } from '../lib/venueOnboarding';
 import {
     registerSchema, registerVenueSchema, loginSchema,
     verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema,
@@ -57,6 +60,22 @@ async function compareHash(raw: string, hash: string) {
     return compare(raw, hash);
 }
 
+async function enforceRecaptcha(c: Context, token: string | undefined, expectedAction: string) {
+    try {
+        await verifyRecaptchaToken({
+            token,
+            expectedAction,
+            remoteIp: getRequestIp(c.req.raw.headers),
+        });
+        return null;
+    } catch (error) {
+        if (error instanceof RecaptchaVerificationError) {
+            return c.json(apiError(error.code, error.message, error.details), error.status as 400 | 502 | 503);
+        }
+        throw error;
+    }
+}
+
 // ─── POST /register ─────────────────────────────
 auth.post('/register', authRateLimit, async (c) => {
     const body = await c.req.json();
@@ -65,12 +84,17 @@ auth.post('/register', authRateLimit, async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const { email, password, name, timezone, locale, website } = parsed.data;
+    const { email, password, name, timezone, locale, captchaToken, website } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
 
     // Honeypot check
     if (website) {
         return c.json(apiResponse({ message: 'Verification email sent' }), 201);
+    }
+
+    const recaptchaFailure = await enforceRecaptcha(c, captchaToken, 'register');
+    if (recaptchaFailure) {
+        return recaptchaFailure;
     }
 
     // Check if user already exists
@@ -112,10 +136,15 @@ auth.post('/register-venue', authRateLimit, async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const { email, password, name, timezone, locale, website, venue } = parsed.data;
+    const { email, password, name, timezone, locale, captchaToken, website, venue, claimVenueId, claimNotes, claimVerificationDocuments } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
     if (website) {
         return c.json(apiResponse({ message: 'Verification email sent' }), 201);
+    }
+
+    const recaptchaFailure = await enforceRecaptcha(c, captchaToken, 'register_venue');
+    if (recaptchaFailure) {
+        return recaptchaFailure;
     }
 
     const existing = await db
@@ -131,41 +160,153 @@ auth.post('/register-venue', authRateLimit, async (c) => {
     const verificationToken = uuidv4();
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    // Transaction: create user + venue
-    const [newUser] = await db.insert(users).values({
-        email: normalizedEmail,
-        passwordHash,
-        name,
-        timezone,
-        locale,
-        role: 'BUSINESS',
-        emailVerified: shouldAutoVerifyEmail(),
-        emailVerificationToken: shouldAutoVerifyEmail() ? null : verificationToken,
-        emailVerificationExpiresAt: shouldAutoVerifyEmail() ? null : verificationExpires,
-    }).returning();
+    const result = await db.transaction(async (tx) => {
+        const [newUser] = await tx.insert(users).values({
+            email: normalizedEmail,
+            passwordHash,
+            name,
+            timezone,
+            locale,
+            role: 'BUSINESS',
+            businessApprovalStatus: 'PENDING',
+            emailVerified: shouldAutoVerifyEmail(),
+            emailVerificationToken: shouldAutoVerifyEmail() ? null : verificationToken,
+            emailVerificationExpiresAt: shouldAutoVerifyEmail() ? null : verificationExpires,
+        }).returning();
 
-    const slug = generateUniqueSlug(venue.name);
+        if (claimVenueId) {
+            const [existingVenue] = await tx.select({
+                id: venues.id,
+                name: venues.name,
+                slug: venues.slug,
+            }).from(venues).where(eq(venues.id, claimVenueId)).limit(1);
 
-    await db.insert(venues).values({
-        ownerId: newUser.id,
-        name: venue.name,
-        slug,
-        addressLine1: venue.address,
-        city: venue.city,
-        country: venue.country,
-        lat: String(venue.lat),
-        lng: String(venue.lng),
-        timezone: venue.timezone,
-        phone: venue.phone,
-        description: venue.description,
-        amenities: venue.amenities,
-        cuisineTags: venue.cuisineTags,
-        priceRange: venue.priceRange,
-        capacity: venue.capacity,
+            if (!existingVenue) {
+                throw new Error('Claim target venue not found');
+            }
+
+            await tx.insert(venueClaims).values({
+                venueId: existingVenue.id,
+                claimantUserId: newUser.id,
+                notes: claimNotes || null,
+                verificationDocuments: claimVerificationDocuments || [],
+                status: 'PENDING',
+            });
+
+            return {
+                mode: 'claim' as const,
+                userId: newUser.id,
+                existingVenue,
+            };
+        }
+
+        if (!venue) {
+            throw new Error('Venue details are required');
+        }
+
+        let googleFields: ReturnType<typeof buildGoogleVenueFields> | null = null;
+        if (venue.googlePlaceId?.trim()) {
+            const snapshot = await getGooglePlaceDetails(venue.googlePlaceId.trim());
+            googleFields = buildGoogleVenueFields(snapshot);
+        }
+
+        const existingVenue = await findExistingVenueMatch({
+            googlePlaceId: googleFields?.googlePlaceId || venue.googlePlaceId,
+            name: venue.name,
+            addressLine1: googleFields?.addressLine1 || venue.address,
+            city: googleFields?.city || venue.city,
+        });
+
+        if (existingVenue) {
+            throw new Error(JSON.stringify({
+                code: 'VENUE_EXISTS',
+                venueId: existingVenue.id,
+                venueName: existingVenue.name,
+                venueSlug: existingVenue.slug,
+                venueCity: existingVenue.city,
+            }));
+        }
+
+        const venueInsert: typeof venues.$inferInsert = {
+            ownerId: newUser.id,
+            name: venue.name,
+            slug: generateUniqueSlug(venue.name),
+            description: venue.description,
+            addressLine1: venue.address,
+            city: venue.city,
+            country: venue.country,
+            lat: String(venue.lat),
+            lng: String(venue.lng),
+            timezone: venue.timezone,
+            phone: venue.phone,
+            amenities: venue.amenities,
+            vibes: venue.vibes,
+            cuisineTags: venue.cuisineTags,
+            priceRange: venue.priceRange,
+            capacity: venue.capacity,
+            approvalStatus: 'PENDING',
+            isActive: true,
+        };
+        if (googleFields) {
+            venueInsert.googlePlaceId = googleFields.googlePlaceId;
+            venueInsert.googleSourceSnapshot = googleFields.googleSourceSnapshot as unknown as Record<string, unknown>;
+            venueInsert.googleLastSyncedAt = new Date();
+            venueInsert.googleSyncStatus = 'SYNCED';
+            venueInsert.googleSyncError = null;
+            venueInsert.phone = googleFields.phone;
+            venueInsert.website = googleFields.website;
+            venueInsert.googleMapsUrl = googleFields.googleMapsUrl;
+            venueInsert.ratingOverride = googleFields.ratingOverride;
+            venueInsert.reviewCountOverride = googleFields.reviewCountOverride;
+            venueInsert.menuSource = googleFields.googleSourceSnapshot.menu ? 'GOOGLE' : 'NONE';
+        }
+
+        const [createdVenue] = await tx.insert(venues).values(venueInsert).returning({
+            id: venues.id,
+            name: venues.name,
+            slug: venues.slug,
+        });
+
+        if (googleFields?.googleSourceSnapshot) {
+            await applyGoogleMenuSnapshot(tx, createdVenue.id, googleFields.googleSourceSnapshot as Parameters<typeof applyGoogleMenuSnapshot>[2]);
+        }
+
+        return {
+            mode: 'venue' as const,
+            userId: newUser.id,
+            createdVenue,
+        };
+    }).catch((error: unknown) => {
+        if (error instanceof Error && error.message.startsWith('{')) {
+            const parsedError = JSON.parse(error.message);
+            if (parsedError.code === 'VENUE_EXISTS') {
+                return parsedError;
+            }
+        }
+        throw error;
     });
 
-    logger.info({ email: normalizedEmail, venueName: venue.name }, 'Venue owner registered');
-    return c.json(apiResponse({ message: 'Verification email sent' }), 201);
+    if ('code' in result && result.code === 'VENUE_EXISTS') {
+        return c.json(apiError('CONFLICT', 'This venue already exists. Own this business? Claim it now!', result), 409);
+    }
+
+    if (result.mode === 'claim') {
+        logger.info({ email: normalizedEmail, venueId: result.existingVenue.id }, 'Business owner registered with pending venue claim');
+        return c.json(apiResponse({
+            message: 'Business registration submitted. Your claim is pending admin review.',
+            businessApprovalStatus: 'PENDING',
+            claimStatus: 'PENDING',
+            venue: result.existingVenue,
+        }), 201);
+    }
+
+    logger.info({ email: normalizedEmail, venueName: result.createdVenue.name }, 'Venue owner registered with pending venue approval');
+    return c.json(apiResponse({
+        message: 'Business registration submitted. Your venue is pending admin approval.',
+        businessApprovalStatus: 'PENDING',
+        venueApprovalStatus: 'PENDING',
+        venue: result.createdVenue,
+    }), 201);
 });
 
 // ─── POST /verify-email ─────────────────────────
@@ -207,8 +348,13 @@ auth.post('/login', authRateLimit, async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
 
-    const { email, password, deviceName } = parsed.data;
+    const { email, password, deviceName, captchaToken } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
+
+    const recaptchaFailure = await enforceRecaptcha(c, captchaToken, 'login');
+    if (recaptchaFailure) {
+        return recaptchaFailure;
+    }
 
     const [user] = await db
         .select()

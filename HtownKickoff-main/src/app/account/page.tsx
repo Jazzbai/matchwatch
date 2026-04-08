@@ -183,7 +183,10 @@ export default function AccountPage() {
 
             const uploadRes = await fetch(presigned.data.uploadUrl, {
                 method: "PUT",
-                headers: { "Content-Type": file.type },
+                headers: {
+                    "Content-Type": file.type,
+                    ...(presigned.data.uploadHeaders || {}),
+                },
                 body: file,
             });
 

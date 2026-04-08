@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../lib/auth-context";
 import { api } from "../../lib/api";
+import { executeRecaptcha, isRecaptchaEnabled } from "../../lib/recaptcha";
 
 type AccountType = "fan" | "venue";
 
@@ -38,6 +39,7 @@ export default function LoginPage() {
   const [signupAccepted, setSignupAccepted] = React.useState(false);
   const [authTab, setAuthTab] = React.useState<"signin" | "signup">("signin");
   const [nextPath, setNextPath] = React.useState<string | null>(null);
+  const recaptchaEnabled = isRecaptchaEnabled();
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -70,7 +72,8 @@ export default function LoginPage() {
     setFormSuccess(null);
     try {
       const normalizedEmail = loginEmail.trim().toLowerCase();
-      await login(normalizedEmail, loginPassword);
+      const captchaToken = await executeRecaptcha("login");
+      await login(normalizedEmail, loginPassword, captchaToken);
       const me = await api.get<{ role: string }>("/user/me");
       const role = me.data.role;
       const isVenueRole = role === "BUSINESS" || role === "VENUE_OWNER" || role === "ADMIN" || role === "SUPER_ADMIN";
@@ -99,8 +102,11 @@ export default function LoginPage() {
     try {
       const normalizedEmail = signupEmail.trim().toLowerCase();
       const normalizedName = signupName.trim();
-      await register(normalizedEmail, signupPassword, normalizedName);
-      await login(normalizedEmail, signupPassword);
+      const registerCaptchaToken = await executeRecaptcha("register");
+      await register(normalizedEmail, signupPassword, normalizedName, registerCaptchaToken);
+      setFormSuccess("Account created. Signing you in...");
+      const loginCaptchaToken = await executeRecaptcha("login");
+      await login(normalizedEmail, signupPassword, loginCaptchaToken);
       setFormSuccess("Account created successfully.");
       router.push("/dashboard");
     } catch (err: unknown) {
@@ -283,6 +289,11 @@ export default function LoginPage() {
             >
               {isLoading ? "Signing in..." : "Sign In"}
             </button>
+            {recaptchaEnabled ? (
+              <p style={{ marginTop: -6, fontSize: 12, color: "var(--muted-foreground)" }}>
+                Protected by Google reCAPTCHA.
+              </p>
+            ) : null}
           </form>
         )}
 
@@ -363,6 +374,11 @@ export default function LoginPage() {
                   style={{ width: "100%", height: 48, borderRadius: 12, border: "none", cursor: "pointer", backgroundColor: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, fontSize: 15, fontFamily: "inherit", opacity: isLoading ? 0.7 : 1 }}>
                   {isLoading ? "Creating account..." : "Create Account"}
                 </button>
+                {recaptchaEnabled ? (
+                  <p style={{ marginTop: -4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                    Protected by Google reCAPTCHA.
+                  </p>
+                ) : null}
               </form>
             )}
           </>

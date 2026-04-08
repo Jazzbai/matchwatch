@@ -22,8 +22,21 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 const MATCH_FETCH_LIMIT = 50;
 const VENUE_FETCH_LIMIT = 50;
 const VENUE_MAX_PAGES = 4;
-const MATCH_MAX_PAGES = 3; // 150 matches — enough for 2 weeks of fixtures
+const VENUE_DEEP_MAX_PAGES = 50;
+const MATCH_MAX_PAGES = 20;
+
 const BOOKING_FETCH_LIMIT = 50;
+const FLAG_CDN_BASE = "https://flagcdn.com";
+const HOME_PRIORITY_SOCCER_LEAGUE_MATCHERS = [
+    (name: string) => name === "mls" || name.includes("major league soccer"),
+    (name: string) => name.includes("premier league"),
+    (name: string) => name.includes("la liga"),
+    (name: string) => name.includes("bundesliga"),
+    (name: string) => name.includes("serie a"),
+    (name: string) => name.includes("ligue 1"),
+    (name: string) => name.includes("champions league") || name.includes("ucl"),
+    (name: string) => name.includes("fifa european qualifiers") || name.includes("wc-qualifiers"),
+];
 
 type ApiMeta = {
     page: number;
@@ -35,6 +48,22 @@ type ApiMeta = {
 type ApiEnvelope<T> = {
     data: T | null;
     meta?: ApiMeta;
+};
+
+type ApiMatchFacets = {
+    sports: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        shortName?: string | null;
+    }>;
+    leagues: Array<{
+        id: string;
+        sportId?: string | null;
+        name: string;
+        shortName?: string | null;
+        logoUrl?: string | null;
+    }>;
 };
 
 interface DataContextType {
@@ -65,7 +94,7 @@ interface DataContextType {
     };
     isApiConnected: boolean;
     isLoading: boolean;
-    getTeam: (id: string) => Team | undefined;
+    getTeam: (id?: string) => Team | undefined;
     getLeague: (id: string) => League | undefined;
     getSport: (id: string) => Sport | undefined;
     getVenue: (idOrSlug: string) => Venue | undefined;
@@ -97,6 +126,10 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 type ApiMatch = {
     id: string;
+    isFeatured?: boolean | null;
+    eventFormat?: "HEAD_TO_HEAD" | "SINGLE_EVENT" | null;
+    eventTitle?: string | null;
+    eventSubtitle?: string | null;
     leagueId?: string | null;
     homeTeamId?: string | null;
     awayTeamId?: string | null;
@@ -180,25 +213,40 @@ function inferSportFromLeague(name: string): Sport {
 function resolveLeagueBranding(name: string, logoUrl?: string | null) {
     const safeName = sanitizeLegalText(name);
     const image = normalizeImageUrl(logoUrl);
+    const key = safeName.toLowerCase();
     if (image) {
-        const short = safeName
-            .split(/\s+/)
-            .map((chunk) => chunk[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 4) || "LG";
+        const short = key.includes("formula 1")
+            ? "F1"
+            : key.includes("nascar")
+                ? "NASCAR"
+                : key.includes("indycar")
+                    ? "INDY"
+                    : safeName
+                        .split(/\s+/)
+                        .map((chunk) => chunk[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 6) || "LG";
         return { logo: short, image };
     }
 
-    const key = safeName.toLowerCase();
     if (key.includes("premier league")) return { logo: "EPL", image: "/epl-logo.webp" };
     if (key.includes("la liga")) return { logo: "LL", image: "/laliga-logo.webp" };
     if (key.includes("bundesliga")) return { logo: "BL", image: "/bundesliga-logo.svg" };
     if (key.includes("serie a")) return { logo: "SA", image: "/seriea-logo.png" };
     if (key.includes("ligue 1")) return { logo: "L1" };
     if (key.includes("champions league")) return { logo: "UCL" };
+    if (key.includes("play-off")) return { logo: "PO" };
+    if (key.includes("friendlies")) return { logo: "INTL" };
     if (key.includes("world cup") || key.includes("global finals")) return { logo: "WC" };
     if (key === "mls" || key.includes("major league soccer")) return { logo: "MLS" };
+    if (key === "nfl" || key.includes("national football league")) return { logo: "NFL" };
+    if (key === "nba" || key.includes("national basketball association")) return { logo: "NBA" };
+    if (key === "mlb" || key.includes("major league baseball")) return { logo: "MLB" };
+    if (key === "nhl" || key.includes("national hockey league")) return { logo: "NHL" };
+    if (key.includes("formula 1")) return { logo: "F1" };
+    if (key.includes("nascar")) return { logo: "NASCAR" };
+    if (key.includes("indycar")) return { logo: "INDY" };
     return { logo: "LG" };
 }
 
@@ -218,7 +266,141 @@ function hashColor(input: string) {
     return palette[Math.abs(hash) % palette.length];
 }
 
+type NationalTeamMeta = {
+    countryCode: string;
+    flagCode: string;
+    shortName: string;
+};
+
+const NATIONAL_TEAM_META_BY_NAME: Record<string, NationalTeamMeta> = {
+    "Albania": { countryCode: "AL", flagCode: "al", shortName: "ALB" },
+    "Algeria": { countryCode: "DZ", flagCode: "dz", shortName: "ALG" },
+    "Argentina": { countryCode: "AR", flagCode: "ar", shortName: "ARG" },
+    "Armenia": { countryCode: "AM", flagCode: "am", shortName: "ARM" },
+    "Australia": { countryCode: "AU", flagCode: "au", shortName: "AUS" },
+    "Austria": { countryCode: "AT", flagCode: "at", shortName: "AUT" },
+    "Azerbaijan": { countryCode: "AZ", flagCode: "az", shortName: "AZE" },
+    "Belgium": { countryCode: "BE", flagCode: "be", shortName: "BEL" },
+    "Bolivia": { countryCode: "BO", flagCode: "bo", shortName: "BOL" },
+    "Bosnia and Herzegovina": { countryCode: "BA", flagCode: "ba", shortName: "BIH" },
+    "Brazil": { countryCode: "BR", flagCode: "br", shortName: "BRA" },
+    "Cameroon": { countryCode: "CM", flagCode: "cm", shortName: "CMR" },
+    "Canada": { countryCode: "CA", flagCode: "ca", shortName: "CAN" },
+    "Cape Verde": { countryCode: "CV", flagCode: "cv", shortName: "CPV" },
+    "Chile": { countryCode: "CL", flagCode: "cl", shortName: "CHI" },
+    "Colombia": { countryCode: "CO", flagCode: "co", shortName: "COL" },
+    "Costa Rica": { countryCode: "CR", flagCode: "cr", shortName: "CRC" },
+    "Croatia": { countryCode: "HR", flagCode: "hr", shortName: "CRO" },
+    "Curaçao": { countryCode: "CW", flagCode: "cw", shortName: "CUW" },
+    "Czechia": { countryCode: "CZ", flagCode: "cz", shortName: "CZE" },
+    "Denmark": { countryCode: "DK", flagCode: "dk", shortName: "DEN" },
+    "Ecuador": { countryCode: "EC", flagCode: "ec", shortName: "ECU" },
+    "Egypt": { countryCode: "EG", flagCode: "eg", shortName: "EGY" },
+    "England": { countryCode: "GB-ENG", flagCode: "gb-eng", shortName: "ENG" },
+    "Finland": { countryCode: "FI", flagCode: "fi", shortName: "FIN" },
+    "France": { countryCode: "FR", flagCode: "fr", shortName: "FRA" },
+    "Georgia": { countryCode: "GE", flagCode: "ge", shortName: "GEO" },
+    "Germany": { countryCode: "DE", flagCode: "de", shortName: "GER" },
+    "Ghana": { countryCode: "GH", flagCode: "gh", shortName: "GHA" },
+    "Greece": { countryCode: "GR", flagCode: "gr", shortName: "GRE" },
+    "Haiti": { countryCode: "HT", flagCode: "ht", shortName: "HAI" },
+    "Honduras": { countryCode: "HN", flagCode: "hn", shortName: "HON" },
+    "Hungary": { countryCode: "HU", flagCode: "hu", shortName: "HUN" },
+    "Iceland": { countryCode: "IS", flagCode: "is", shortName: "ISL" },
+    "Iran": { countryCode: "IR", flagCode: "ir", shortName: "IRN" },
+    "Ireland": { countryCode: "IE", flagCode: "ie", shortName: "IRL" },
+    "Israel": { countryCode: "IL", flagCode: "il", shortName: "ISR" },
+    "Italy": { countryCode: "IT", flagCode: "it", shortName: "ITA" },
+    "Ivory Coast": { countryCode: "CI", flagCode: "ci", shortName: "CIV" },
+    "Jamaica": { countryCode: "JM", flagCode: "jm", shortName: "JAM" },
+    "Japan": { countryCode: "JP", flagCode: "jp", shortName: "JPN" },
+    "Jordan": { countryCode: "JO", flagCode: "jo", shortName: "JOR" },
+    "Kosovo": { countryCode: "XK", flagCode: "xk", shortName: "KOS" },
+    "Mexico": { countryCode: "MX", flagCode: "mx", shortName: "MEX" },
+    "Montenegro": { countryCode: "ME", flagCode: "me", shortName: "MNE" },
+    "Morocco": { countryCode: "MA", flagCode: "ma", shortName: "MAR" },
+    "Netherlands": { countryCode: "NL", flagCode: "nl", shortName: "NED" },
+    "New Zealand": { countryCode: "NZ", flagCode: "nz", shortName: "NZL" },
+    "Nigeria": { countryCode: "NG", flagCode: "ng", shortName: "NGA" },
+    "Northern Ireland": { countryCode: "GB-NIR", flagCode: "gb-nir", shortName: "NIR" },
+    "North Macedonia": { countryCode: "MK", flagCode: "mk", shortName: "MKD" },
+    "Norway": { countryCode: "NO", flagCode: "no", shortName: "NOR" },
+    "Panama": { countryCode: "PA", flagCode: "pa", shortName: "PAN" },
+    "Paraguay": { countryCode: "PY", flagCode: "py", shortName: "PAR" },
+    "Peru": { countryCode: "PE", flagCode: "pe", shortName: "PER" },
+    "Poland": { countryCode: "PL", flagCode: "pl", shortName: "POL" },
+    "Portugal": { countryCode: "PT", flagCode: "pt", shortName: "POR" },
+    "Qatar": { countryCode: "QA", flagCode: "qa", shortName: "QAT" },
+    "Romania": { countryCode: "RO", flagCode: "ro", shortName: "ROU" },
+    "Saudi Arabia": { countryCode: "SA", flagCode: "sa", shortName: "KSA" },
+    "Scotland": { countryCode: "GB-SCT", flagCode: "gb-sct", shortName: "SCO" },
+    "Senegal": { countryCode: "SN", flagCode: "sn", shortName: "SEN" },
+    "Serbia": { countryCode: "RS", flagCode: "rs", shortName: "SRB" },
+    "Slovakia": { countryCode: "SK", flagCode: "sk", shortName: "SVK" },
+    "Slovenia": { countryCode: "SI", flagCode: "si", shortName: "SVN" },
+    "South Africa": { countryCode: "ZA", flagCode: "za", shortName: "RSA" },
+    "South Korea": { countryCode: "KR", flagCode: "kr", shortName: "KOR" },
+    "Spain": { countryCode: "ES", flagCode: "es", shortName: "ESP" },
+    "Sweden": { countryCode: "SE", flagCode: "se", shortName: "SWE" },
+    "Switzerland": { countryCode: "CH", flagCode: "ch", shortName: "SUI" },
+    "Tunisia": { countryCode: "TN", flagCode: "tn", shortName: "TUN" },
+    "Turkey": { countryCode: "TR", flagCode: "tr", shortName: "TUR" },
+    "Ukraine": { countryCode: "UA", flagCode: "ua", shortName: "UKR" },
+    "United Arab Emirates": { countryCode: "AE", flagCode: "ae", shortName: "UAE" },
+    "United States": { countryCode: "US", flagCode: "us", shortName: "USA" },
+    "Uruguay": { countryCode: "UY", flagCode: "uy", shortName: "URU" },
+    "Uzbekistan": { countryCode: "UZ", flagCode: "uz", shortName: "UZB" },
+    "Venezuela": { countryCode: "VE", flagCode: "ve", shortName: "VEN" },
+    "Wales": { countryCode: "GB-WLS", flagCode: "gb-wls", shortName: "WAL" },
+};
+
+const NATIONAL_TEAM_ALIASES: Record<string, string> = {
+    usa: "United States",
+    us: "United States",
+    usmnt: "United States",
+    "united states of america": "United States",
+    mex: "Mexico",
+    eng: "England",
+    sco: "Scotland",
+    wal: "Wales",
+    nir: "Northern Ireland",
+    ni: "Northern Ireland",
+    "cote d ivoire": "Ivory Coast",
+    "cote divoire": "Ivory Coast",
+    "cape verde islands": "Cape Verde",
+    curacao: "Curaçao",
+    "czech republic": "Czechia",
+    "korea republic": "South Korea",
+    "republic of korea": "South Korea",
+    korea: "South Korea",
+    uae: "United Arab Emirates",
+    ksa: "Saudi Arabia",
+};
+
+function normalizeTeamKey(input: string) {
+    return input
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+function resolveNationalTeamMeta(name: string) {
+    const normalized = normalizeTeamKey(name);
+    const canonical = NATIONAL_TEAM_ALIASES[normalized]
+        || Object.keys(NATIONAL_TEAM_META_BY_NAME).find((candidate) => normalizeTeamKey(candidate) === normalized);
+    return canonical ? NATIONAL_TEAM_META_BY_NAME[canonical] : null;
+}
+
+function buildFlagImageUrl(flagCode: string) {
+    return `${FLAG_CDN_BASE}/w80/${flagCode.toLowerCase()}.png`;
+}
+
 function toShortName(name: string) {
+    const national = resolveNationalTeamMeta(name);
+    if (national) return national.shortName;
     const words = name.trim().split(/\s+/);
     if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
     if (words.length === 2) return words.map((w) => w[0]).join("").toUpperCase();
@@ -226,54 +408,12 @@ function toShortName(name: string) {
 }
 
 function toFlagOrBall(name: string) {
-    const map: Record<string, string> = {
-        "united states": "US",
-        mexico: "MX",
-        canada: "CA",
-        brazil: "BR",
-        argentina: "AR",
-        germany: "DE",
-        england: "GB",
-        france: "FR",
-        spain: "ES",
-        portugal: "PT",
-        netherlands: "NL",
-        belgium: "BE",
-        japan: "JP",
-        "south korea": "KR",
-        morocco: "MA",
-        senegal: "SN",
-        uruguay: "UY",
-        croatia: "HR",
-        switzerland: "CH",
-    };
-    const key = name.toLowerCase();
-    return map[key] || "TEAM";
+    const national = resolveNationalTeamMeta(name);
+    return national?.shortName || "TEAM";
 }
 
 function toCountry(name: string) {
-    const map: Record<string, string> = {
-        "united states": "US",
-        mexico: "MX",
-        canada: "CA",
-        brazil: "BR",
-        argentina: "AR",
-        germany: "DE",
-        england: "GB",
-        france: "FR",
-        spain: "ES",
-        portugal: "PT",
-        netherlands: "NL",
-        belgium: "BE",
-        japan: "JP",
-        "south korea": "KR",
-        morocco: "MA",
-        senegal: "SN",
-        uruguay: "UY",
-        croatia: "HR",
-        switzerland: "CH",
-    };
-    return map[name.toLowerCase()] || "INT";
+    return resolveNationalTeamMeta(name)?.countryCode || "INT";
 }
 
 function toEventTimeLabel(isoOrNull: string | null | undefined) {
@@ -288,7 +428,20 @@ function shouldSkipBootstrapFetch(pathname: string) {
         || pathname === "/signup"
         || pathname === "/register"
         || pathname === "/register-venue"
-        || pathname.startsWith("/for-venues/register");
+        || pathname.startsWith("/for-venues/register")
+        || pathname.startsWith("/admin")
+        || pathname.startsWith("/jazzbai");
+}
+
+function getVenueDetailSlug(pathname: string) {
+    if (!pathname.startsWith("/venues/")) return null;
+    const slug = pathname.slice("/venues/".length).split("/")[0]?.trim();
+    if (!slug || slug === "[slug]") return null;
+    return slug;
+}
+
+function getVenueBootstrapMaxPages(pathname: string) {
+    return pathname.startsWith("/venues") ? VENUE_DEEP_MAX_PAGES : VENUE_MAX_PAGES;
 }
 
 function authHeader(): Record<string, string> {
@@ -352,6 +505,39 @@ async function safeFetchPaginated<T>(
     return rows;
 }
 
+async function fetchPrioritySoccerMatches(): Promise<{ matches: ApiMatch[]; facets: ApiMatchFacets | null }> {
+    const facets = await safeFetch<ApiMatchFacets>("/matches/facets");
+    if (!facets) {
+        return { matches: [], facets: null };
+    }
+
+    const targetLeagues = facets.leagues.filter((league) => {
+        const candidates = [league.name, league.shortName]
+            .map((value) => sanitizeLegalText(value || "").trim().toLowerCase())
+            .filter(Boolean);
+        return HOME_PRIORITY_SOCCER_LEAGUE_MATCHERS.some((matcher) => candidates.some((candidate) => matcher(candidate)));
+    });
+
+    if (targetLeagues.length === 0) {
+        return { matches: [], facets };
+    }
+
+    const matchGroups = await Promise.all(
+        targetLeagues.map((league) =>
+            safeFetchPaginated<ApiMatch>(`/matches?sort=date_asc&upcoming_only=true&league_id=${league.id}`, MATCH_FETCH_LIMIT, 1),
+        ),
+    );
+
+    const merged = new Map<string, ApiMatch>();
+    for (const rows of matchGroups) {
+        for (const match of rows || []) {
+            merged.set(match.id, match);
+        }
+    }
+
+    return { matches: Array.from(merged.values()), facets };
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
     const [matches, setMatches] = useState<Match[]>([]);
     const [venues, setVenues] = useState<Venue[]>([]);
@@ -368,7 +554,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchFromApi = useCallback(async () => {
-        if (typeof window !== "undefined" && shouldSkipBootstrapFetch(window.location.pathname)) {
+        const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+
+        if (pathname && shouldSkipBootstrapFetch(pathname)) {
             setIsLoading(false);
             return;
         }
@@ -378,10 +566,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
 
         const hasToken = typeof window !== "undefined" && Boolean(localStorage.getItem("accessToken"));
-        const [apiMatches, apiVenues, apiBookings] = await Promise.all([
+        const venueBootstrapMaxPages = getVenueBootstrapMaxPages(pathname);
+        const [apiMatches, apiVenues, apiBookings, prioritySoccerPayload] = await Promise.all([
             safeFetchPaginated<ApiMatch>("/matches?sort=date_asc", MATCH_FETCH_LIMIT, MATCH_MAX_PAGES),
-            safeFetchPaginated<any>("/venues?sort=featured", VENUE_FETCH_LIMIT, VENUE_MAX_PAGES),
+            safeFetchPaginated<any>("/venues?sort=featured", VENUE_FETCH_LIMIT, venueBootstrapMaxPages),
             hasToken ? safeFetch<any[]>(`/bookings?page=1&limit=${BOOKING_FETCH_LIMIT}`) : Promise.resolve([] as any[]),
+            fetchPrioritySoccerMatches(),
         ]);
 
         if (!apiMatches || !apiVenues) {
@@ -389,6 +579,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
             return;
         }
+
+        const mergedApiMatchMap = new Map<string, ApiMatch>();
+        for (const match of apiMatches) {
+            mergedApiMatchMap.set(match.id, match);
+        }
+        for (const match of prioritySoccerPayload.matches) {
+            mergedApiMatchMap.set(match.id, match);
+        }
+        const allApiMatches = Array.from(mergedApiMatchMap.values()).sort((a, b) => {
+            const aTs = new Date(a.matchDateUtc || "").getTime();
+            const bTs = new Date(b.matchDateUtc || "").getTime();
+            return aTs - bTs;
+        });
 
         const teamMap = new Map<string, Team>();
         const leagueMap = new Map<string, League>();
@@ -458,6 +661,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
             });
         };
 
+        for (const sport of prioritySoccerPayload.facets?.sports || []) {
+            upsertSport({
+                id: sport.id,
+                name: sport.name,
+                slug: sport.slug,
+                shortName: sport.shortName,
+            });
+        }
+
+        for (const league of prioritySoccerPayload.facets?.leagues || []) {
+            upsertLeague({
+                id: league.id,
+                sportId: league.sportId || undefined,
+                name: league.name,
+                shortName: league.shortName,
+                logoUrl: league.logoUrl,
+            });
+        }
+
         const upsertTeam = (
             teamId: string,
             teamName: string,
@@ -465,7 +687,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             crestUrl?: string | null,
         ) => {
             if (!teamId || !teamName) return;
-            const image = normalizeImageUrl(crestUrl);
+            const nationalTeam = resolveNationalTeamMeta(teamName);
+            const image = normalizeImageUrl(crestUrl) || (nationalTeam ? buildFlagImageUrl(nationalTeam.flagCode) : "");
             const existing = teamMap.get(teamId);
             if (existing) {
                 if (!existing.image && image) {
@@ -486,10 +709,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
             });
         };
 
-        const mappedMatches: Match[] = apiMatches.map((m) => {
+        const mappedMatches: Match[] = allApiMatches.map((m) => {
             const homeTeamId = m.homeTeamId || slugify(m.homeTeamName || `home-${m.id}`);
             const awayTeamId = m.awayTeamId || slugify(m.awayTeamName || `away-${m.id}`);
             const leagueId = m.leagueId || m.league?.id || "unknown-league";
+            const eventFormat = (m.eventFormat || "HEAD_TO_HEAD") as Match["eventFormat"];
 
             if (m.league?.id && m.league.name) {
                 if (m.league.sport?.id && m.league.sport.name && m.league.sport.slug) {
@@ -508,14 +732,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
                     logoUrl: m.league.logoUrl,
                 });
             }
-            if (m.homeTeamName) upsertTeam(homeTeamId, m.homeTeamName, leagueId, m.homeTeamCrestUrl);
-            if (m.awayTeamName) upsertTeam(awayTeamId, m.awayTeamName, leagueId, m.awayTeamCrestUrl);
+            if (eventFormat !== "SINGLE_EVENT") {
+                if (m.homeTeamName) upsertTeam(homeTeamId, m.homeTeamName, leagueId, m.homeTeamCrestUrl);
+                if (m.awayTeamName) upsertTeam(awayTeamId, m.awayTeamName, leagueId, m.awayTeamCrestUrl);
+            }
 
             const dateUtc = m.matchDateUtc || new Date().toISOString();
             return {
                 id: m.id,
-                homeTeamId,
-                awayTeamId,
+                isFeatured: Boolean(m.isFeatured),
+                homeTeamId: eventFormat === "SINGLE_EVENT" ? undefined : homeTeamId,
+                awayTeamId: eventFormat === "SINGLE_EVENT" ? undefined : awayTeamId,
+                homeTeamName: m.homeTeamName || undefined,
+                awayTeamName: m.awayTeamName || undefined,
                 leagueId,
                 matchDateUTC: dateUtc,
                 status: (m.status || "SCHEDULED") as MatchStatus,
@@ -526,6 +755,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 stadiumName: m.venueName || "",
                 venueCount: m.venueCount || 0,
                 isHot: (m.venueCount || 0) >= 10,
+                eventFormat,
+                eventTitle: m.eventTitle || undefined,
+                eventSubtitle: m.eventSubtitle || undefined,
             };
         });
 
@@ -541,10 +773,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
             galleryImageUrls: Array.isArray(withGallery.galleryImageUrls)
                 ? withGallery.galleryImageUrls.map((url: string) => normalizeImageUrl(url)).filter(Boolean)
                 : [],
+            imageSource: v.imageSource || "none",
+            coverImageAttributions: Array.isArray((v as { coverImageAttributions?: unknown[] }).coverImageAttributions)
+                ? ((v as { coverImageAttributions?: Array<{ displayName: string; uri?: string | null; photoUri?: string | null }> }).coverImageAttributions || [])
+                : [],
+            galleryImageAttributions: Array.isArray((v as { galleryImageAttributions?: unknown[] }).galleryImageAttributions)
+                ? ((v as { galleryImageAttributions?: Array<Array<{ displayName: string; uri?: string | null; photoUri?: string | null }>> }).galleryImageAttributions || [])
+                : [],
+            workingHours: [],
+            googleEditorialSummary: null,
+            googlePriceLevel: null,
+            googleReviews: [],
             addressLine1: v.addressLine1 || "",
             addressLine2: "",
             city: v.city || "",
-            state: "",
+            state: v.stateProvince || "",
             postalCode: "",
             lat: Number(v.lat || 0),
             lng: Number(v.lng || 0),
@@ -552,8 +795,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             website: "",
             instagram: "",
             capacity: v.capacity || 0,
-            rating: Number(v.averageRating || 0),
-            reviewCount: Number(v.totalReviews || 0),
+            rating: Number(v.ratingOverride ?? v.averageRating ?? 0),
+            reviewCount: Number(v.reviewCountOverride ?? v.totalReviews ?? 0),
             amenities: Array.isArray(v.amenities) ? v.amenities : [],
             cuisineTags: Array.isArray(v.cuisineTags) ? v.cuisineTags : [],
             priceRange: (v.priceRange || "MID") as PriceRange,
@@ -567,16 +810,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
             ownerName: "",
             ownerEmail: "",
             promotedVenueEventId: null,
+            descriptionSource: null,
+            shortDescriptionSource: null,
+            priceRangeSource: null,
         } satisfies Venue);
         });
 
-        // Only fetch venue detail (phone, website, description, gallery) — skip events/posts/reviews.
-        // Those are fetched on-demand when a user opens a specific venue page.
-        // This eliminates ~220 API calls that previously fired on every bootstrap.
+        const venueDetailSlug = getVenueDetailSlug(pathname);
+        const detailedVenueIds = new Set<string>();
+        if (venueDetailSlug) {
+            const detailedVenue = baseVenues.find((venue) => venue.slug === venueDetailSlug || venue.id === venueDetailSlug);
+            if (detailedVenue) {
+                detailedVenueIds.add(detailedVenue.id);
+            }
+        }
+
         const venueDetails = await Promise.all(
             baseVenues.map(async (venue) => {
-                const detail = await safeFetch<any>(`/venues/${venue.slug}`);
-                return { venue, detail, events: [] as any[], venuePosts: [] as any[], venueReviews: [] as any[] };
+                const shouldFetchDeepVenueData = detailedVenueIds.has(venue.id);
+                const events = await safeFetchPaginated<any>(`/venues/${venue.slug}/events`, VENUE_CHILD_LIMIT, 6);
+
+                if (!shouldFetchDeepVenueData) {
+                    return { venue, detail: null, events: events || [], venuePosts: [], venueReviews: [] };
+                }
+
+                const [detail, venuePosts, venueReviews] = await Promise.all([
+                    safeFetch<any>(`/venues/${venue.slug}`),
+                    safeFetchPaginated<any>(`/venues/${venue.slug}/posts`, VENUE_CHILD_LIMIT, 6),
+                    safeFetchPaginated<any>(`/venues/${venue.slug}/reviews`, VENUE_CHILD_LIMIT, 6),
+                ]);
+
+                return { venue, detail, events: events || [], venuePosts: venuePosts || [], venueReviews: venueReviews || [] };
+
             }),
         );
 
@@ -584,6 +849,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const mappedPosts: Post[] = [];
         const mappedReviews: Review[] = [];
         const mergedVenues: Venue[] = [];
+        const knownMatchIds = new Set(mappedMatches.map((match) => String(match.id).trim().toLowerCase()));
 
         for (const row of venueDetails) {
             const detail = row.detail;
@@ -597,8 +863,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 galleryImageUrls: Array.isArray(detail?.galleryImageUrls)
                     ? detail.galleryImageUrls.map((url: string) => normalizeImageUrl(url)).filter(Boolean)
                     : row.venue.galleryImageUrls || [],
+                imageSource: detail?.imageSource || row.venue.imageSource || "none",
+                coverImageAttributions: Array.isArray(detail?.coverImageAttributions)
+                    ? detail.coverImageAttributions
+                    : row.venue.coverImageAttributions || [],
+                galleryImageAttributions: Array.isArray(detail?.galleryImageAttributions)
+                    ? detail.galleryImageAttributions
+                    : row.venue.galleryImageAttributions || [],
+                workingHours: Array.isArray(detail?.workingHours) ? detail.workingHours : row.venue.workingHours || [],
+                googleEditorialSummary: detail?.googleEditorialSummary ?? row.venue.googleEditorialSummary ?? null,
+                googlePriceLevel: detail?.googlePriceLevel ?? row.venue.googlePriceLevel ?? null,
+                googleReviews: Array.isArray(detail?.googleReviews) ? detail.googleReviews : row.venue.googleReviews || [],
                 addressLine2: detail?.addressLine2 || "",
-                state: detail?.stateProvince || "",
+                state: detail?.stateProvince || row.venue.state || "",
                 postalCode: detail?.postalCode || "",
                 lat: Number(detail?.lat ?? row.venue.lat ?? 0),
                 lng: Number(detail?.lng ?? row.venue.lng ?? 0),
@@ -606,8 +883,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 website: detail?.website || "",
                 instagram: detail?.instagramHandle || "",
                 capacity: Number(detail?.capacity || row.venue.capacity || 0),
-                rating: Number(detail?.averageRating || row.venue.rating || 0),
-                reviewCount: Number(detail?.totalReviews || row.venue.reviewCount || 0),
+                rating: Number(detail?.ratingOverride ?? detail?.averageRating ?? row.venue.rating ?? 0),
+                reviewCount: Number(detail?.reviewCountOverride ?? detail?.totalReviews ?? row.venue.reviewCount ?? 0),
                 amenities: Array.isArray(detail?.amenities) ? detail.amenities : row.venue.amenities,
                 cuisineTags: Array.isArray(detail?.cuisineTags) ? detail.cuisineTags : row.venue.cuisineTags,
                 isVerified: detail?.isVerified ?? row.venue.isVerified,
@@ -618,6 +895,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 promotedVenueEventId: typeof detail?.promotedVenueEventId === "string"
                     ? detail.promotedVenueEventId
                     : null,
+                descriptionSource: detail?.descriptionSource ?? row.venue.descriptionSource ?? null,
+                shortDescriptionSource: detail?.shortDescriptionSource ?? row.venue.shortDescriptionSource ?? null,
+                priceRangeSource: detail?.priceRangeSource ?? row.venue.priceRangeSource ?? null,
             });
 
             for (const ev of events) {
@@ -627,6 +907,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 const leagueId = match?.leagueId || match?.league?.id || "unknown-league";
                 const homeTeamId = match?.homeTeamId || slugify(match?.homeTeamName || `home-${ev.id}`);
                 const awayTeamId = match?.awayTeamId || slugify(match?.awayTeamName || `away-${ev.id}`);
+                const eventFormat = ((match?.eventFormat || "HEAD_TO_HEAD") as Match["eventFormat"]);
 
                 if (match?.league?.id && match.league.name) {
                     if (match.league.sport?.id && match.league.sport.name && match.league.sport.slug) {
@@ -645,14 +926,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
                         logoUrl: match.league.logoUrl,
                     });
                 }
-                if (match?.homeTeamName) upsertTeam(homeTeamId, match.homeTeamName, leagueId, match.homeTeamCrestUrl);
-                if (match?.awayTeamName) upsertTeam(awayTeamId, match.awayTeamName, leagueId, match.awayTeamCrestUrl);
+                if (eventFormat !== "SINGLE_EVENT") {
+                    if (match?.homeTeamName) upsertTeam(homeTeamId, match.homeTeamName, leagueId, match.homeTeamCrestUrl);
+                    if (match?.awayTeamName) upsertTeam(awayTeamId, match.awayTeamName, leagueId, match.awayTeamCrestUrl);
+                }
 
-                if (eventMatchId && !mappedMatches.find((m) => String(m.id).trim().toLowerCase() === eventMatchId.toLowerCase())) {
+                const normalizedEventMatchId = eventMatchId.toLowerCase();
+                if (eventMatchId && !knownMatchIds.has(normalizedEventMatchId)) {
                     mappedMatches.push({
                         id: eventMatchId,
-                        homeTeamId,
-                        awayTeamId,
+                        isFeatured: Boolean(match?.isFeatured),
+                        homeTeamId: eventFormat === "SINGLE_EVENT" ? undefined : homeTeamId,
+                        awayTeamId: eventFormat === "SINGLE_EVENT" ? undefined : awayTeamId,
+                        homeTeamName: match?.homeTeamName || undefined,
+                        awayTeamName: match?.awayTeamName || undefined,
                         leagueId,
                         matchDateUTC: match?.matchDateUtc || new Date().toISOString(),
                         status: (match?.status || "SCHEDULED") as MatchStatus,
@@ -663,7 +950,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
                         stadiumName: match?.venueName || "",
                         venueCount: 0,
                         isHot: false,
+                        eventFormat,
+                        eventTitle: match?.eventTitle || undefined,
+                        eventSubtitle: match?.eventSubtitle || undefined,
                     });
+                    knownMatchIds.add(normalizedEventMatchId);
                 }
 
                 if (!eventMatchId) continue;
@@ -780,7 +1071,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
         };
     }, [fetchFromApi]);
 
-    const getTeam = (id: string) => teams.find((t) => t.id === id);
+    const getTeam = (id?: string) => {
+        if (!id) return undefined;
+
+        const existing = teams.find((t) => t.id === id);
+        if (existing) return existing;
+
+        const sourceMatch = matches.find((match) => match.homeTeamId === id || match.awayTeamId === id);
+        if (!sourceMatch) return undefined;
+
+        const isHome = sourceMatch.homeTeamId === id;
+        const fallbackName = isHome
+            ? sourceMatch.homeTeamName || "Home Team"
+            : sourceMatch.awayTeamName || "Away Team";
+
+        return {
+            id,
+            name: fallbackName,
+            shortName: toShortName(fallbackName),
+            crest: toFlagOrBall(fallbackName),
+            color: hashColor(id),
+            leagueId: sourceMatch.leagueId,
+            country: toCountry(fallbackName),
+            image: "",
+        } satisfies Team;
+    };
     const getLeague = (id: string) => leagues.find((l) => l.id === id);
     const getSport = (id: string) => sports.find((s) => s.id === id);
     const getVenue = (idOrSlug: string) => venues.find((v) => v.id === idOrSlug || v.slug === idOrSlug);

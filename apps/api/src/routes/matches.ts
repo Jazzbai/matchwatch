@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db/client';
-import { matches, leagues, sports, teams, venueEvents, venues } from '../db/schema';
-import { eq, and, gte, lte, desc, asc, count, inArray, or } from 'drizzle-orm';
+import { drivers, entrants, eventEntries, leagues, manufacturers, matches, sports, teams, venueEvents, venues } from '../db/schema';
+import { eq, and, gte, lte, desc, asc, count, inArray, or, sql } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { matchQuerySchema, matchVenueQuerySchema } from '@matchwatch/shared';
 import { optionalAuthMiddleware } from '../middleware';
@@ -55,7 +55,7 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
             .leftJoin(sports, eq(leagues.sportId, sports.id))
             .leftJoin(teams, eq(matches.homeTeamId, teams.id))
             .where(whereClause)
-            .orderBy(orderBy)
+            .orderBy(desc(matches.isFeatured), orderBy)
             .limit(limit)
             .offset(offset),
 
@@ -73,9 +73,12 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
             venueCount: count(),
         })
             .from(venueEvents)
+            .innerJoin(venues, eq(venueEvents.venueId, venues.id))
             .where(and(
                 inArray(venueEvents.matchId, matchIds),
                 eq(venueEvents.isActive, true),
+                eq(venues.isActive, true),
+                eq(venues.approvalStatus, 'APPROVED'),
             ))
             .groupBy(venueEvents.matchId)
         : [];
@@ -100,6 +103,10 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
         .map((r) => ({
             id: r.match.id,
             leagueId: r.match.leagueId,
+            isFeatured: r.match.isFeatured,
+            eventFormat: r.match.eventFormat,
+            eventTitle: r.match.eventTitle,
+            eventSubtitle: r.match.eventSubtitle,
             homeTeamId: r.match.homeTeamId,
             awayTeamId: r.match.awayTeamId,
             homeTeamName: r.match.homeTeamName || (r.match.homeTeamId ? teamMap.get(r.match.homeTeamId)?.name : null),
@@ -227,7 +234,7 @@ matchRoutes.get('/upcoming', async (c) => {
             inArray(matches.status, ['SCHEDULED', 'TIMED']),
             ...(leagueId ? [eq(matches.leagueId, leagueId)] : []),
         ))
-        .orderBy(asc(matches.matchDateUtc))
+        .orderBy(desc(matches.isFeatured), asc(matches.matchDateUtc))
         .limit(100);
 
     const teamIds = new Set<string>();
@@ -248,6 +255,10 @@ matchRoutes.get('/upcoming', async (c) => {
         grouped[dateKey].push({
             id: row.match.id,
             leagueId: row.match.leagueId,
+            isFeatured: row.match.isFeatured,
+            eventFormat: row.match.eventFormat,
+            eventTitle: row.match.eventTitle,
+            eventSubtitle: row.match.eventSubtitle,
             homeTeamId: row.match.homeTeamId,
             awayTeamId: row.match.awayTeamId,
             homeTeamName: row.match.homeTeamName || (row.match.homeTeamId ? teamMap.get(row.match.homeTeamId)?.name : null),
@@ -264,6 +275,95 @@ matchRoutes.get('/upcoming', async (c) => {
 });
 
 // ─── GET /:matchId ──────────────────────────────
+matchRoutes.get('/:matchId/entries', async (c) => {
+    const matchId = c.req.param('matchId');
+
+    const [matchRow] = await db.select({
+        id: matches.id,
+        eventFormat: matches.eventFormat,
+    }).from(matches).where(eq(matches.id, matchId)).limit(1);
+
+    if (!matchRow) {
+        return c.json(apiError('NOT_FOUND', 'Match not found'), 404);
+    }
+
+    const rows = await db.select({
+        id: eventEntries.id,
+        matchId: eventEntries.matchId,
+        externalId: eventEntries.externalId,
+        carNumber: eventEntries.carNumber,
+        displayName: eventEntries.displayName,
+        gridPosition: eventEntries.gridPosition,
+        startPosition: eventEntries.startPosition,
+        finishPosition: eventEntries.finishPosition,
+        status: eventEntries.status,
+        points: eventEntries.points,
+        metadata: eventEntries.metadata,
+        driverId: drivers.id,
+        driverName: drivers.name,
+        driverShortName: drivers.shortName,
+        driverNationality: drivers.nationality,
+        driverCountryCode: drivers.countryCode,
+        driverHeadshotUrl: drivers.headshotUrl,
+        entrantId: entrants.id,
+        entrantName: entrants.name,
+        entrantShortName: entrants.shortName,
+        entrantBrandColor: entrants.brandColor,
+        entrantLogoUrl: entrants.logoUrl,
+        manufacturerId: manufacturers.id,
+        manufacturerName: manufacturers.name,
+        manufacturerShortName: manufacturers.shortName,
+        manufacturerLogoUrl: manufacturers.logoUrl,
+    })
+        .from(eventEntries)
+        .leftJoin(drivers, eq(eventEntries.driverId, drivers.id))
+        .leftJoin(entrants, eq(eventEntries.entrantId, entrants.id))
+        .leftJoin(manufacturers, eq(eventEntries.manufacturerId, manufacturers.id))
+        .where(eq(eventEntries.matchId, matchId))
+        .orderBy(
+            sql`coalesce(${eventEntries.startPosition}, ${eventEntries.gridPosition}, 9999)`,
+            sql`coalesce(${eventEntries.finishPosition}, 9999)`,
+            asc(eventEntries.carNumber),
+            asc(drivers.name),
+        );
+
+    return c.json(apiResponse(rows.map((row) => ({
+        id: row.id,
+        matchId: row.matchId,
+        externalId: row.externalId,
+        carNumber: row.carNumber,
+        displayName: row.displayName,
+        gridPosition: row.gridPosition,
+        startPosition: row.startPosition,
+        finishPosition: row.finishPosition,
+        status: row.status,
+        points: row.points,
+        metadata: row.metadata,
+        driver: row.driverId ? {
+            id: row.driverId,
+            name: row.driverName,
+            shortName: row.driverShortName,
+            nationality: row.driverNationality,
+            countryCode: row.driverCountryCode,
+            headshotUrl: row.driverHeadshotUrl,
+        } : null,
+        entrant: row.entrantId ? {
+            id: row.entrantId,
+            name: row.entrantName,
+            shortName: row.entrantShortName,
+            brandColor: row.entrantBrandColor,
+            logoUrl: row.entrantLogoUrl,
+        } : null,
+        manufacturer: row.manufacturerId ? {
+            id: row.manufacturerId,
+            name: row.manufacturerName,
+            shortName: row.manufacturerShortName,
+            logoUrl: row.manufacturerLogoUrl,
+        } : null,
+        isSingleEvent: matchRow.eventFormat === 'SINGLE_EVENT',
+    }))));
+});
+
 matchRoutes.get('/:matchId', async (c) => {
     const matchId = c.req.param('matchId');
 
@@ -291,10 +391,17 @@ matchRoutes.get('/:matchId', async (c) => {
 
     const [venueCountResult] = await db.select({ count: count() })
         .from(venueEvents)
-        .where(and(eq(venueEvents.matchId, matchId), eq(venueEvents.isActive, true)));
+        .innerJoin(venues, eq(venueEvents.venueId, venues.id))
+        .where(and(
+            eq(venueEvents.matchId, matchId),
+            eq(venueEvents.isActive, true),
+            eq(venues.isActive, true),
+            eq(venues.approvalStatus, 'APPROVED'),
+        ));
 
     return c.json(apiResponse({
         ...row.match,
+        isFeatured: row.match.isFeatured,
         homeTeamName: row.match.homeTeamName || row.homeTeam?.name,
         awayTeamName: row.match.awayTeamName || awayTeam?.name,
         homeTeamCrestUrl: row.match.homeTeamCrestUrl || row.homeTeam?.crestUrl || null,
@@ -327,6 +434,7 @@ matchRoutes.get('/:matchId/venues', async (c) => {
             eq(venueEvents.matchId, matchId),
             eq(venueEvents.isActive, true),
             eq(venues.isActive, true),
+            eq(venues.approvalStatus, 'APPROVED'),
         ))
         .limit(limit)
         .offset(offset);
@@ -338,6 +446,7 @@ matchRoutes.get('/:matchId/venues', async (c) => {
             eq(venueEvents.matchId, matchId),
             eq(venueEvents.isActive, true),
             eq(venues.isActive, true),
+            eq(venues.approvalStatus, 'APPROVED'),
         ));
 
     const results = rows.map((r) => {
@@ -361,8 +470,8 @@ matchRoutes.get('/:matchId/venues', async (c) => {
                 vibes: r.venue.vibes,
                 cuisineTags: r.venue.cuisineTags,
                 priceRange: r.venue.priceRange,
-                averageRating: r.venue.averageRating,
-                totalReviews: r.venue.totalReviews,
+                averageRating: r.venue.ratingOverride ?? r.venue.averageRating,
+                totalReviews: r.venue.reviewCountOverride ?? r.venue.totalReviews,
                 isVerified: r.venue.isVerified,
                 distance: distance ? `${distance.toFixed(1)} km` : null,
             },

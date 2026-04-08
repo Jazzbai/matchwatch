@@ -11,19 +11,28 @@ export const CORE_SPORT_DATA = [
     { name: 'Baseball', slug: 'baseball', shortName: 'MLB', sortOrder: 3 },
     { name: 'Basketball', slug: 'basketball', shortName: 'NBA', sortOrder: 4 },
     { name: 'Hockey', slug: 'hockey', shortName: 'NHL', sortOrder: 5 },
+    { name: 'Motorsport', slug: 'motorsport', shortName: 'RACE', sortOrder: 6 },
 ];
 
 export const CORE_LEAGUE_DATA = [
-    { name: 'FIFA World Cup 2026', shortName: 'WC 2026', externalId: 'WC', country: 'US/MX/CA', sortOrder: 1 },
-    { name: 'Premier League', shortName: 'PL', externalId: 'PL', country: 'England', sortOrder: 2 },
-    { name: 'La Liga', shortName: 'La Liga', externalId: 'PD', country: 'Spain', sortOrder: 3 },
-    { name: 'Bundesliga', shortName: 'BL', externalId: 'BL1', country: 'Germany', sortOrder: 4 },
-    { name: 'Serie A', shortName: 'SA', externalId: 'SA', country: 'Italy', sortOrder: 5 },
-    { name: 'Ligue 1', shortName: 'L1', externalId: 'FL1', country: 'France', sortOrder: 6 },
-    { name: 'Champions League', shortName: 'UCL', externalId: 'CL', country: 'Europe', sortOrder: 7 },
-    { name: 'MLS', shortName: 'MLS', externalId: 'MLS', country: 'US/CA', sortOrder: 8 },
-    { name: 'Liga MX', shortName: 'Liga MX', externalId: 'LMX', country: 'Mexico', sortOrder: 9 },
-    { name: 'NWSL Women', shortName: 'NWSL', externalId: 'NWSL', country: 'USA', sortOrder: 10 },
+    { sportSlug: 'soccer', name: 'FIFA World Cup 2026', shortName: 'WC 2026', externalId: 'WC', country: 'US/MX/CA', sortOrder: 1 },
+    { sportSlug: 'soccer', name: 'Premier League', shortName: 'PL', externalId: 'PL', country: 'England', sortOrder: 2 },
+    { sportSlug: 'soccer', name: 'La Liga', shortName: 'La Liga', externalId: 'PD', country: 'Spain', sortOrder: 3 },
+    { sportSlug: 'soccer', name: 'Bundesliga', shortName: 'BL', externalId: 'BL1', country: 'Germany', sortOrder: 4 },
+    { sportSlug: 'soccer', name: 'Serie A', shortName: 'SA', externalId: 'SA', country: 'Italy', sortOrder: 5 },
+    { sportSlug: 'soccer', name: 'Ligue 1', shortName: 'L1', externalId: 'FL1', country: 'France', sortOrder: 6 },
+    { sportSlug: 'soccer', name: 'Champions League', shortName: 'UCL', externalId: 'CL', country: 'Europe', sortOrder: 7 },
+    { sportSlug: 'soccer', name: 'MLS', shortName: 'MLS', externalId: 'MLS', country: 'US/CA', sortOrder: 8 },
+    { sportSlug: 'soccer', name: 'Liga MX', shortName: 'Liga MX', externalId: 'LMX', country: 'Mexico', sortOrder: 9 },
+    { sportSlug: 'soccer', name: 'NWSL Women', shortName: 'NWSL', externalId: 'NWSL', country: 'USA', sortOrder: 10 },
+    { sportSlug: 'soccer', name: 'International Friendlies', shortName: 'INTL', externalId: 'INTL', country: 'Worldwide', sortOrder: 11 },
+    { sportSlug: 'american-football', name: 'NFL', shortName: 'NFL', externalId: 'NFL', country: 'USA', sortOrder: 1 },
+    { sportSlug: 'baseball', name: 'MLB', shortName: 'MLB', externalId: 'MLB', country: 'USA', sortOrder: 1 },
+    { sportSlug: 'basketball', name: 'NBA', shortName: 'NBA', externalId: 'NBA', country: 'USA', sortOrder: 1 },
+    { sportSlug: 'hockey', name: 'NHL', shortName: 'NHL', externalId: 'NHL', country: 'USA/Canada', sortOrder: 1 },
+    { sportSlug: 'motorsport', name: 'NASCAR Cup Series', shortName: 'NASCAR', externalId: 'NASCAR', country: 'USA', sortOrder: 1 },
+    { sportSlug: 'motorsport', name: 'IndyCar Series', shortName: 'IndyCar', externalId: 'INDYCAR', country: 'USA', sortOrder: 2 },
+    { sportSlug: 'motorsport', name: 'Formula 1', shortName: 'F1', externalId: 'F1', country: 'Worldwide', sortOrder: 3 },
 ];
 
 export async function ensureSportsSeeded() {
@@ -33,15 +42,21 @@ export async function ensureSportsSeeded() {
 export async function ensureLeaguesSeeded() {
     await ensureSportsSeeded();
     const sportRows = await db.select({ id: sports.id, slug: sports.slug }).from(sports);
-    const soccerSportId = sportRows.find((row) => row.slug === 'soccer')?.id;
-    if (!soccerSportId) {
-        throw new Error('Soccer sport row is missing');
-    }
-
-    const rows = CORE_LEAGUE_DATA.map((league) => ({
-        ...league,
-        sportId: soccerSportId,
-    }));
+    const sportIdBySlug = new Map(sportRows.map((row) => [row.slug, row.id]));
+    const rows = CORE_LEAGUE_DATA.map((league) => {
+        const sportId = sportIdBySlug.get(league.sportSlug);
+        if (!sportId) {
+            throw new Error(`Sport row is missing for ${league.sportSlug}`);
+        }
+        return {
+            name: league.name,
+            shortName: league.shortName,
+            externalId: league.externalId,
+            country: league.country,
+            sortOrder: league.sortOrder,
+            sportId,
+        };
+    });
     return db.insert(leagues).values(rows).onConflictDoNothing().returning();
 }
 

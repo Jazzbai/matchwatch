@@ -203,7 +203,7 @@ export const api = {
 // ─── Auth API ───────────────────────────────────
 
 export const authApi = {
-    register: (data: { email: string; password: string; name: string; timezone?: string; locale?: string }) =>
+    register: (data: { email: string; password: string; name: string; timezone?: string; locale?: string; captchaToken?: string }) =>
         apiFetch<{ message: string }>('/auth/register', {
             method: 'POST',
             body: { ...data, email: data.email.trim().toLowerCase(), name: data.name.trim() },
@@ -216,7 +216,8 @@ export const authApi = {
         name: string;
         timezone?: string;
         locale?: string;
-        venue: {
+        captchaToken?: string;
+        venue?: {
             name: string;
             address: string;
             city: string;
@@ -226,19 +227,31 @@ export const authApi = {
             timezone: string;
             phone?: string;
             description?: string;
+            shortDescription?: string;
             amenities?: string[];
+            vibes?: string[];
             cuisineTags?: string[];
             priceRange?: 'BUDGET' | 'MID' | 'UPSCALE' | 'LUXURY';
             capacity?: number;
+            googlePlaceId?: string;
         };
+        claimVenueId?: string;
+        claimNotes?: string;
+        claimVerificationDocuments?: string[];
     }) =>
-        apiFetch<{ message: string }>('/auth/register-venue', {
+        apiFetch<{
+            message: string;
+            businessApprovalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+            venueApprovalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+            claimStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+            venue?: { id: string; name: string; slug: string };
+        }>('/auth/register-venue', {
             method: 'POST',
             body: { ...data, email: data.email.trim().toLowerCase(), name: data.name.trim() },
             skipAuth: true,
         }),
 
-    login: (data: { email: string; password: string }) =>
+    login: (data: { email: string; password: string; captchaToken?: string }) =>
         apiFetch<{ accessToken: string; user: AuthUser }>('/auth/login', {
             method: 'POST',
             body: { ...data, email: data.email.trim().toLowerCase() },
@@ -277,12 +290,131 @@ export interface AuthUser {
     role: string;
     avatarUrl?: string;
     timezone?: string;
+    businessApprovalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    businessApprovalNotes?: string | null;
+}
+
+export interface ExistingVenueMatch {
+    id: string;
+    name: string;
+    slug: string;
+    city: string;
+    approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+}
+
+export interface GooglePlaceMenuItem {
+    name: string;
+    description?: string | null;
+    price?: string | number | null;
+}
+
+export interface GooglePlaceMenuSection {
+    name: string;
+    description?: string | null;
+    items: GooglePlaceMenuItem[];
+}
+
+export interface GooglePlaceReview {
+    authorName: string;
+    rating: number;
+    text?: string | null;
+    publishedAt?: string | null;
+    relativePublishTimeText?: string | null;
+    authorUrl?: string | null;
+    profilePhotoUrl?: string | null;
+    sourceUrl?: string | null;
+}
+
+export interface GooglePlaceSnapshot {
+    placeId: string;
+    displayName: string;
+    formattedAddress?: string | null;
+    addressLine1?: string | null;
+    city?: string | null;
+    stateProvince?: string | null;
+    country?: string | null;
+    postalCode?: string | null;
+    lat?: string | number | null;
+    lng?: string | number | null;
+    timezone?: string | null;
+    phone?: string | null;
+    website?: string | null;
+    googleMapsUrl?: string | null;
+    rating?: string | number | null;
+    reviewCount?: number | null;
+    editorialSummary?: string | null;
+    priceLevel?: string | null;
+    googleReviews?: GooglePlaceReview[];
+    workingHours?: Array<{
+        day: string;
+        hours: string;
+        sortOrder: number;
+        isClosed?: boolean;
+        isTwentyFourHours?: boolean;
+    }>;
+    menu?: {
+        sourceUrl?: string | null;
+        categories?: GooglePlaceMenuSection[];
+        scrapeStatus?: 'UNAVAILABLE' | 'PENDING' | 'SYNCED' | 'ERROR' | null;
+        scrapedAt?: string | null;
+        error?: string | null;
+    } | null;
+    photos?: Array<{
+        name: string;
+        widthPx?: number | null;
+        heightPx?: number | null;
+        authorAttributions?: Array<{
+            displayName: string;
+            uri?: string | null;
+            photoUri?: string | null;
+        }>;
+    }>;
+    photosFetchedAt?: string | null;
+    googleImageSelection?: {
+        coverPhotoName?: string | null;
+        galleryPhotoNames?: string[];
+        selectedAt?: string | null;
+        sourceHash?: string | null;
+    } | null;
+    googleSuggestedImages?: Array<{
+        name: string;
+        widthPx?: number | null;
+        heightPx?: number | null;
+        authorAttributions?: Array<{
+            displayName: string;
+            uri?: string | null;
+            photoUri?: string | null;
+        }>;
+        previewUrl: string;
+        isSelectedCover: boolean;
+        isSelectedGallery: boolean;
+    }>;
+}
+
+export interface GooglePlaceSearchResult {
+    placeId: string;
+    name: string;
+    formattedAddress?: string | null;
+    city?: string | null;
+    rating?: string | number | null;
+    reviewCount?: number | null;
+    existingVenue?: ExistingVenueMatch | null;
+}
+
+export interface GooglePlaceDetailsResponse {
+    googlePlaceId: string;
+    defaults: GooglePlaceSnapshot;
+    existingVenue?: ExistingVenueMatch | null;
 }
 
 export interface Match {
     id: string;
-    homeTeamName: string;
-    awayTeamName: string;
+    isFeatured?: boolean;
+    eventFormat?: 'HEAD_TO_HEAD' | 'SINGLE_EVENT';
+    eventTitle?: string | null;
+    eventSubtitle?: string | null;
+    homeTeamName?: string | null;
+    awayTeamName?: string | null;
     homeTeamCrestUrl?: string;
     awayTeamCrestUrl?: string;
     homeScore?: number | null;
@@ -309,24 +441,96 @@ export interface Venue {
     description?: string;
     addressLine1: string;
     city: string;
+    stateProvince?: string | null;
+    workingHours?: Array<{
+        day: string;
+        hours: string;
+        sortOrder: number;
+        isClosed?: boolean;
+        isTwentyFourHours?: boolean;
+    }>;
+    googleEditorialSummary?: string | null;
+    googlePriceLevel?: string | null;
+    googleReviews?: GooglePlaceReview[];
     coverImageUrl?: string;
     galleryImageUrls?: string[];
+    imageSource?: 'manual' | 'google' | 'none';
+    coverImageAttributions?: Array<{
+        displayName: string;
+        uri?: string | null;
+        photoUri?: string | null;
+    }>;
+    galleryImageAttributions?: Array<Array<{
+        displayName: string;
+        uri?: string | null;
+        photoUri?: string | null;
+    }>>;
     amenities: string[];
     cuisineTags: string[];
     priceRange: string;
     averageRating?: string;
     totalReviews?: number;
+    ratingOverride?: string | null;
+    reviewCountOverride?: number | null;
     isVerified: boolean;
     isFeatured: boolean;
     capacity?: number;
     distance?: string;
     followerCount?: number;
     isFollowing?: boolean;
+    approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    googlePlaceId?: string | null;
+    menuSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
+    descriptionSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
+    shortDescriptionSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
+    priceRangeSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
+}
+
+export interface BlogCategory {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+    sortOrder: number;
+    isActive: boolean;
+}
+
+export interface BlogPostSummary {
+    id: string;
+    title: string;
+    slug: string;
+    excerpt?: string | null;
+    featuredImageUrl?: string | null;
+    status: 'DRAFT' | 'PUBLISHED';
+    publishedAt?: string | null;
+    createdAt: string;
+    updatedAt?: string;
+    categoryIds?: string[];
+    categories: BlogCategory[];
+    authorName?: string | null;
+}
+
+export interface BlogPostDetail extends BlogPostSummary {
+    contentJson?: Record<string, unknown> | null;
+    contentHtml: string;
+    featuredImageS3Key?: string | null;
+}
+
+export interface BlogComment {
+    id: string;
+    postId: string;
+    content: string;
+    createdAt: string;
+    status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    userId?: string;
+    userName?: string | null;
+    userAvatarUrl?: string | null;
 }
 
 export interface PresignedUpload {
     uploadUrl: string;
     publicUrl: string;
+    uploadHeaders?: Record<string, string>;
     key: string;
     expiresIn: number;
 }
@@ -376,4 +580,21 @@ export const uploadApi = {
             method: 'POST',
             body: data,
         }),
+};
+
+export const placesApi = {
+    search: (query: string) =>
+        api.get<GooglePlaceSearchResult[]>('/places/search', { q: query.trim() }),
+    details: (placeId: string) =>
+        api.get<GooglePlaceDetailsResponse>('/places/details', { placeId: placeId.trim() }),
+};
+
+export const blogApi = {
+    listCategories: () => api.get<BlogCategory[]>('/blog/categories'),
+    listPosts: (params?: { q?: string; category?: string; page?: number; limit?: number }) =>
+        api.get<BlogPostSummary[]>('/blog/posts', params),
+    getPost: (slug: string) => api.get<BlogPostDetail>(`/blog/posts/${slug}`),
+    listComments: (postId: string) => api.get<BlogComment[]>(`/blog/posts/${postId}/comments`),
+    createComment: (postId: string, content: string) =>
+        api.post<BlogComment>(`/blog/posts/${postId}/comments`, { content }),
 };

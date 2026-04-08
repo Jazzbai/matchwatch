@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AppShell } from "../../components/AppShell";
+import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
+import { GooglePlacePicker } from "../../components/GooglePlacePicker";
+import type { GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../lib/api";
 
-type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches";
+type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "events" | "customEvents" | "sports" | "leagues" | "imports" | "matches" | "motorsportEntries" | "blog";
 
 type ApiListMeta = {
   page: number;
@@ -11,6 +13,28 @@ type ApiListMeta = {
   total: number;
   totalPages: number;
 };
+
+type VenueGalleryItem = {
+  url: string;
+  key: string;
+};
+
+type SuperAdminPresignedUpload = {
+  uploadUrl: string;
+  publicUrl: string;
+  uploadHeaders?: Record<string, string>;
+  key: string;
+  expiresIn: number;
+};
+
+const MAX_GALLERY_IMAGES = 5;
+const MAX_IMAGE_FILE_SIZE = 4 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
 
 type SuperAdminStats = {
   users: { total: number; active: number };
@@ -58,13 +82,16 @@ type SuperAdminSystem = {
 type LookupVenue = { id: string; name: string; city: string; ownerId: string };
 type LookupMatch = {
   id: string;
-  homeTeamName: string;
-  awayTeamName: string;
+  eventFormat?: MatchEventFormat | null;
+  eventTitle?: string | null;
+  eventSubtitle?: string | null;
+  homeTeamName: string | null;
+  awayTeamName: string | null;
   matchDateUtc: string;
   status: string;
   leagueId: string | null;
 };
-type LookupLeague = { id: string; sportId: string | null; name: string; shortName: string | null };
+type LookupLeague = { id: string; sportId: string | null; name: string; shortName: string | null; externalId?: string | null };
 type LookupSport = { id: string; name: string; slug: string; shortName: string | null };
 type LookupTeam = { id: string; leagueId?: string | null; name: string; shortName?: string | null; crestUrl?: string | null };
 type LookupStadium = { id: string; name: string; city?: string | null; country?: string | null };
@@ -153,17 +180,24 @@ type VenueRow = {
   website?: string | null;
   instagramHandle?: string | null;
   googleMapsUrl?: string | null;
+  googlePlaceId?: string | null;
   capacity?: number | null;
   amenities: string[];
   vibes: string[];
   cuisineTags: string[];
   priceRange?: "BUDGET" | "MID" | "UPSCALE" | "LUXURY" | null;
+  ratingOverride?: string | null;
+  reviewCountOverride?: number | null;
+  googleSourceSnapshot?: GooglePlaceSnapshot | null;
   isActive: boolean;
   isVerified: boolean;
   isFeatured: boolean;
   phone?: string | null;
   createdAt: string;
   updatedAt?: string;
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
+  approvalNotes?: string | null;
+  menuSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
 };
 
 type VenuePriceRange = "BUDGET" | "MID" | "UPSCALE" | "LUXURY";
@@ -191,15 +225,26 @@ type VenueEditorDraft = {
   website?: string | null;
   instagramHandle?: string | null;
   googleMapsUrl?: string | null;
+  googlePlaceId?: string | null;
   capacity?: string | number | null;
   amenities?: string[];
   vibes?: string[];
   cuisineTags?: string[];
   priceRange?: VenuePriceRange | null;
+  ratingOverride?: string | number | null;
+  reviewCountOverride?: string | number | null;
+  googleSourceSnapshot?: GooglePlaceSnapshot | null;
+  resolvedCoverImageUrl?: string | null;
+  resolvedGalleryImageUrls?: string[];
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
+  approvalNotes?: string | null;
+  menuSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
   isVerified?: boolean;
   isActive?: boolean;
   isFeatured?: boolean;
 };
+
+type MatchEventFormat = "HEAD_TO_HEAD" | "SINGLE_EVENT";
 
 type NewVenueForm = {
   ownerId: string;
@@ -224,14 +269,68 @@ type NewVenueForm = {
   website: string;
   instagramHandle: string;
   googleMapsUrl: string;
+  googlePlaceId: string;
   capacity: string;
   priceRange: VenuePriceRange;
   amenities: string[];
   vibes: string[];
   cuisineTags: string[];
+  ratingOverride: string;
+  reviewCountOverride: string;
+  googleSourceSnapshot?: GooglePlaceSnapshot | null;
+  resolvedCoverImageUrl?: string | null;
+  resolvedGalleryImageUrls?: string[];
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  approvalNotes: string;
   isVerified: boolean;
   isActive: boolean;
   isFeatured: boolean;
+};
+
+type BusinessApprovalRow = {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRow["role"];
+  businessApprovalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  businessApprovalNotes?: string | null;
+  businessApprovedAt?: string | null;
+  createdAt: string;
+};
+
+type VenueApprovalRow = {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  country: string;
+  ownerId?: string | null;
+  ownerEmail?: string | null;
+  ownerName?: string | null;
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  approvalNotes?: string | null;
+  isVerified: boolean;
+  googlePlaceId?: string | null;
+  createdAt: string;
+};
+
+type VenueClaimRow = {
+  id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  notes?: string | null;
+  adminNotes?: string | null;
+  verificationDocuments?: string[];
+  reviewedAt?: string | null;
+  createdAt: string;
+  venueId: string;
+  venueName: string;
+  venueSlug: string;
+  venueOwnerId?: string | null;
+  venueOwnerName?: string | null;
+  venueOwnerEmail?: string | null;
+  claimantUserId: string;
+  claimantName: string;
+  claimantEmail: string;
 };
 
 type VenueAttributeRow = {
@@ -302,13 +401,17 @@ type CustomEventDraft = {
 
 type MatchRow = {
   id: string;
+  isFeatured: boolean;
+  eventFormat?: MatchEventFormat;
+  eventTitle?: string | null;
+  eventSubtitle?: string | null;
   leagueId?: string | null;
   leagueName?: string | null;
   homeTeamId?: string | null;
   awayTeamId?: string | null;
   stadiumId?: string | null;
-  homeTeamName: string;
-  awayTeamName: string;
+  homeTeamName: string | null;
+  awayTeamName: string | null;
   homeTeamCrestUrl?: string | null;
   awayTeamCrestUrl?: string | null;
   matchDateUtc: string;
@@ -316,6 +419,46 @@ type MatchRow = {
   stage?: string | null;
   venueName?: string | null;
   createdAt: string;
+};
+
+type MotorsportEntryStatus = "ENTERED" | "ACTIVE" | "FINISHED" | "DNF" | "DNS" | "DSQ" | "WITHDRAWN";
+
+type MotorsportEntryRow = {
+  id: string;
+  matchId: string;
+  matchLabel?: string | null;
+  matchSubtitle?: string | null;
+  externalId?: string | null;
+  carNumber?: string | null;
+  displayName?: string | null;
+  gridPosition?: number | null;
+  startPosition?: number | null;
+  finishPosition?: number | null;
+  status: MotorsportEntryStatus;
+  points?: string | number | null;
+  metadata?: Record<string, unknown> | null;
+  driverId?: string | null;
+  driverName?: string | null;
+  driverShortName?: string | null;
+  driverNationality?: string | null;
+  driverCountryCode?: string | null;
+  driverHeadshotUrl?: string | null;
+  entrantId?: string | null;
+  entrantName?: string | null;
+  entrantShortName?: string | null;
+  entrantBrandColor?: string | null;
+  entrantLogoUrl?: string | null;
+  manufacturerId?: string | null;
+  manufacturerName?: string | null;
+  manufacturerShortName?: string | null;
+  manufacturerLogoUrl?: string | null;
+};
+
+type MotorsportEntryDraft = Omit<Partial<MotorsportEntryRow>, "gridPosition" | "startPosition" | "finishPosition" | "points"> & {
+  gridPosition?: string | number | null;
+  startPosition?: string | number | null;
+  finishPosition?: string | number | null;
+  points?: string | number | null;
 };
 
 type ListResponse<T> = {
@@ -597,11 +740,256 @@ function teamToOption(team: LookupTeam, leagueLabelById?: Map<string, string>): 
   };
 }
 
+function isNationalCompetitionLabel(value?: string | null) {
+  const label = String(value || "").trim().toLowerCase();
+  if (!label) return false;
+  return label.includes("world cup")
+    || label.startsWith("wc")
+    || label.includes("global finals")
+    || label.includes("uefa po")
+    || label.includes("play-off")
+    || label.includes("friendlies")
+    || label === "intl";
+}
+
 function stadiumToOption(stadium: LookupStadium): SearchPickerOption {
   return {
     id: stadium.id,
     label: stadium.name,
     subtitle: [stadium.city, stadium.country].filter(Boolean).join(", "),
+  };
+}
+
+function formatLookupMatchLabel(match: LookupMatch) {
+  if (match.eventFormat === "SINGLE_EVENT") {
+    return match.eventTitle?.trim() || "Untitled event";
+  }
+  return [match.homeTeamName, match.awayTeamName].filter(Boolean).join(" vs ") || "Unnamed match";
+}
+
+function formatLookupMatchSubtitle(match: LookupMatch) {
+  const kickoff = formatDateTime(match.matchDateUtc);
+  const secondary = match.eventFormat === "SINGLE_EVENT" ? match.eventSubtitle : match.status;
+  return [secondary, kickoff].filter(Boolean).join(" • ");
+}
+
+function parseOptionalNumber(value: string | number | null | undefined) {
+  if (value === "" || value === null || value === undefined) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeImageUrl(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (
+    raw.startsWith("http://")
+    || raw.startsWith("https://")
+    || raw.startsWith("/")
+    || raw.startsWith("blob:")
+    || raw.startsWith("data:")
+  ) return raw;
+  return `https://${raw}`;
+}
+
+function parseVenueGalleryItems(urls?: string[] | null, keys?: string[] | null): VenueGalleryItem[] {
+  const urlList = Array.isArray(urls) ? urls : [];
+  const keyList = Array.isArray(keys) ? keys : [];
+  return urlList
+    .map((url, idx) => ({
+      url: normalizeImageUrl(url),
+      key: String(keyList[idx] || "").trim(),
+    }))
+    .filter((item) => item.url)
+    .slice(0, MAX_GALLERY_IMAGES);
+}
+
+function galleryFieldsFromItems(items: VenueGalleryItem[]) {
+  return {
+    galleryImageUrls: items.map((item) => item.url),
+    galleryS3Keys: items.map((item) => item.key).filter(Boolean),
+  };
+}
+
+function resolveImageDisplayUrl(
+  value?: string | null,
+  key?: string | null,
+  localImagePreviews?: Record<string, string>,
+) {
+  const normalizedKey = String(key || "").trim();
+  return (normalizedKey ? localImagePreviews?.[normalizedKey] : "") || normalizeImageUrl(value);
+}
+
+function resolveVenueGalleryDisplayItems(
+  urls?: string[] | null,
+  keys?: string[] | null,
+  localImagePreviews?: Record<string, string>,
+) {
+  return parseVenueGalleryItems(urls, keys).map((item) => ({
+    ...item,
+    url: (item.key ? localImagePreviews?.[item.key] : "") || item.url,
+  }));
+}
+
+function buildGoogleCoverPreviewUrl(slugOrId: string) {
+  return `/api/v1/venues/${encodeURIComponent(slugOrId)}/cover-image`;
+}
+
+function buildGoogleGalleryPreviewUrl(slugOrId: string, index: number) {
+  return `/api/v1/venues/${encodeURIComponent(slugOrId)}/gallery/${index}`;
+}
+
+function getGoogleImagePreviewState(
+  snapshot?: GooglePlaceSnapshot | null,
+  options?: { slugOrId?: string | null },
+) {
+  const suggested = Array.isArray(snapshot?.googleSuggestedImages)
+    ? snapshot.googleSuggestedImages.filter((photo) => photo.previewUrl)
+    : [];
+  const selectedCover = suggested.find((photo) => photo.isSelectedCover);
+  const selectedGallery = suggested.filter((photo) => photo.isSelectedGallery);
+  const fallbackGalleryCount = Math.min(
+    MAX_GALLERY_IMAGES,
+    Math.max(
+      selectedGallery.length,
+      Array.isArray(snapshot?.googleImageSelection?.galleryPhotoNames) ? snapshot!.googleImageSelection!.galleryPhotoNames!.length : 0,
+      Array.isArray(snapshot?.photos) ? snapshot!.photos!.length : 0,
+    ),
+  );
+
+  if (options?.slugOrId?.trim()) {
+    return {
+      coverImageUrl: fallbackGalleryCount > 0 || suggested.length > 0 ? buildGoogleCoverPreviewUrl(options.slugOrId) : "",
+      galleryImageUrls: Array.from({ length: fallbackGalleryCount }, (_, index) => buildGoogleGalleryPreviewUrl(options.slugOrId!, index)),
+    };
+  }
+
+  return {
+    coverImageUrl: normalizeImageUrl(
+      selectedCover?.previewUrl || selectedGallery[0]?.previewUrl || suggested[0]?.previewUrl || "",
+    ),
+    galleryImageUrls: selectedGallery
+      .map((photo) => normalizeImageUrl(photo.previewUrl))
+      .filter(Boolean)
+      .slice(0, MAX_GALLERY_IMAGES),
+  };
+}
+
+function SuperAdminShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      suppressHydrationWarning
+      style={{
+        minHeight: "100dvh",
+        background: "var(--background)",
+        color: "var(--foreground)",
+        fontFamily: "var(--font-body), system-ui, sans-serif",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function buildVenueEditorDraft(row: VenueRow): VenueEditorDraft {
+  const googleImagePreviews = getGoogleImagePreviewState(row.googleSourceSnapshot, { slugOrId: row.slug });
+  const approvalStatus = row.approvalStatus || "PENDING";
+  return {
+    ownerId: row.ownerId,
+    name: row.name,
+    slug: row.slug,
+    description: row.description || "",
+    shortDescription: row.shortDescription || "",
+    addressLine1: row.addressLine1,
+    addressLine2: row.addressLine2 || "",
+    city: row.city,
+    stateProvince: row.stateProvince || "",
+    country: row.country,
+    postalCode: row.postalCode || "",
+    lat: String(row.lat),
+    lng: String(row.lng),
+    timezone: row.timezone,
+    phone: row.phone || "",
+    website: row.website || "",
+    instagramHandle: row.instagramHandle || "",
+    googleMapsUrl: row.googleMapsUrl || "",
+    googlePlaceId: row.googlePlaceId || "",
+    coverImageUrl: row.coverImageUrl || "",
+    coverImageS3Key: row.coverImageS3Key || "",
+    galleryImageUrls: row.galleryImageUrls || [],
+    galleryS3Keys: row.galleryS3Keys || [],
+    capacity: row.capacity == null ? "" : String(row.capacity),
+    priceRange: row.priceRange || "MID",
+    ratingOverride: row.ratingOverride ?? "",
+    reviewCountOverride: row.reviewCountOverride ?? "",
+    googleSourceSnapshot: row.googleSourceSnapshot || null,
+    resolvedCoverImageUrl: googleImagePreviews.coverImageUrl,
+    resolvedGalleryImageUrls: googleImagePreviews.galleryImageUrls,
+    approvalStatus,
+    approvalNotes: row.approvalNotes || "",
+    menuSource: row.menuSource || "NONE",
+    amenities: row.amenities || [],
+    vibes: row.vibes || [],
+    cuisineTags: row.cuisineTags || [],
+    isVerified: row.isVerified,
+    isActive: approvalStatus === "APPROVED" ? row.isActive : false,
+    isFeatured: row.isFeatured,
+  };
+}
+
+async function createSuperAdminPresignedUpload(data: {
+  filename: string;
+  contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  purpose: "venue_cover" | "venue_gallery";
+  fileSize: number;
+}) {
+  return superAdminFetch<SuperAdminPresignedUpload>("/uploads/presigned-url", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+async function deleteSuperAdminStorageKeys(keys: string[]) {
+  const normalized = keys.map((key) => key.trim()).filter(Boolean);
+  if (normalized.length === 0) return;
+  await superAdminFetch<{ deletedCount: number }>("/uploads/delete-objects", {
+    method: "POST",
+    body: JSON.stringify({ keys: normalized }),
+  });
+}
+
+async function uploadSuperAdminVenueImage(file: File, purpose: "venue_cover" | "venue_gallery") {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    throw new Error("Only JPG, PNG, WEBP, and GIF files are allowed.");
+  }
+  if (file.size > MAX_IMAGE_FILE_SIZE) {
+    throw new Error("Image is too large. Maximum file size is 4MB.");
+  }
+
+  const presigned = await createSuperAdminPresignedUpload({
+    filename: file.name,
+    contentType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+    purpose,
+    fileSize: file.size,
+  });
+
+  const putRes = await fetch(presigned.uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type,
+      ...(presigned.uploadHeaders || {}),
+    },
+    body: file,
+  });
+
+  if (!putRes.ok) {
+    throw new Error("Image upload failed. Check S3 configuration and try again.");
+  }
+
+  return {
+    url: normalizeImageUrl(presigned.publicUrl),
+    key: presigned.key,
+    previewUrl: URL.createObjectURL(file),
   };
 }
 
@@ -614,6 +1002,16 @@ const MATCH_STATUSES: Array<MatchRow["status"]> = [
   "POSTPONED",
   "CANCELLED",
   "SUSPENDED",
+];
+
+const MOTORSPORT_ENTRY_STATUSES: MotorsportEntryStatus[] = [
+  "ENTERED",
+  "ACTIVE",
+  "FINISHED",
+  "DNF",
+  "DNS",
+  "DSQ",
+  "WITHDRAWN",
 ];
 
 export default function JazzbaiSuperAdminPage() {
@@ -639,6 +1037,10 @@ export default function JazzbaiSuperAdminPage() {
   const [lookupStadiums, setLookupStadiums] = React.useState<LookupStadium[]>([]);
   const [lookupOwners, setLookupOwners] = React.useState<LookupOwner[]>([]);
   const [lookupAttributes, setLookupAttributes] = React.useState<LookupAttribute[]>([]);
+  const motorsportLookupMatches = React.useMemo(
+    () => lookupMatches.filter((match) => match.eventFormat === "SINGLE_EVENT"),
+    [lookupMatches],
+  );
 
   const [users, setUsers] = React.useState<UserRow[]>([]);
   const [usersMeta, setUsersMeta] = React.useState<ApiListMeta | null>(null);
@@ -657,6 +1059,9 @@ export default function JazzbaiSuperAdminPage() {
   const [venuesSearch, setVenuesSearch] = React.useState("");
   const [venuesLoading, setVenuesLoading] = React.useState(false);
   const [venueDrafts, setVenueDrafts] = React.useState<Record<string, VenueEditorDraft>>({});
+  const [businessApprovals, setBusinessApprovals] = React.useState<BusinessApprovalRow[]>([]);
+  const [venueApprovals, setVenueApprovals] = React.useState<VenueApprovalRow[]>([]);
+  const [venueClaims, setVenueClaims] = React.useState<VenueClaimRow[]>([]);
   const [newVenue, setNewVenue] = React.useState<NewVenueForm>({
     ownerId: "",
     name: "",
@@ -680,15 +1085,89 @@ export default function JazzbaiSuperAdminPage() {
     website: "",
     instagramHandle: "",
     googleMapsUrl: "",
+    googlePlaceId: "",
     capacity: "",
     priceRange: "MID" as const,
     amenities: [] as string[],
     vibes: [] as string[],
     cuisineTags: [] as string[],
+    ratingOverride: "",
+    reviewCountOverride: "",
+    googleSourceSnapshot: null,
+    resolvedCoverImageUrl: "",
+    resolvedGalleryImageUrls: [] as string[],
+    approvalStatus: "PENDING",
+    approvalNotes: "",
     isVerified: false,
-    isActive: true,
+    isActive: false,
     isFeatured: false,
   });
+  const [uploadingNewVenueCover, setUploadingNewVenueCover] = React.useState(false);
+  const [uploadingNewVenueGallery, setUploadingNewVenueGallery] = React.useState(false);
+  const [uploadingVenueCoverId, setUploadingVenueCoverId] = React.useState<string | null>(null);
+  const [uploadingVenueGalleryId, setUploadingVenueGalleryId] = React.useState<string | null>(null);
+  const newVenueCoverInputRef = React.useRef<HTMLInputElement | null>(null);
+  const newVenueGalleryInputRef = React.useRef<HTMLInputElement | null>(null);
+  const venueCoverInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
+  const venueGalleryInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
+  const [localImagePreviews, setLocalImagePreviews] = React.useState<Record<string, string>>({});
+  const localImagePreviewsRef = React.useRef<Record<string, string>>({});
+
+  React.useEffect(() => {
+    localImagePreviewsRef.current = localImagePreviews;
+  }, [localImagePreviews]);
+
+  React.useEffect(() => {
+    return () => {
+      Object.values(localImagePreviewsRef.current).forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
+    };
+  }, []);
+
+  const setLocalImagePreview = React.useCallback((key?: string | null, previewUrl?: string) => {
+    const normalizedKey = String(key || "").trim();
+    if (!normalizedKey || !previewUrl) return;
+    setLocalImagePreviews((prev) => {
+      const existing = prev[normalizedKey];
+      if (existing === previewUrl) return prev;
+      if (existing) URL.revokeObjectURL(existing);
+      return {
+        ...prev,
+        [normalizedKey]: previewUrl,
+      };
+    });
+  }, []);
+
+  const clearLocalImagePreviews = React.useCallback((keys: Array<string | null | undefined>) => {
+    const normalizedKeys = Array.from(new Set(
+      keys.map((key) => String(key || "").trim()).filter(Boolean),
+    ));
+    if (normalizedKeys.length === 0) return;
+    setLocalImagePreviews((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const key of normalizedKeys) {
+        const previewUrl = next[key];
+        if (!previewUrl) continue;
+        URL.revokeObjectURL(previewUrl);
+        delete next[key];
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, []);
+
+  const newVenueCoverDisplayUrl = React.useMemo(
+    () => resolveImageDisplayUrl(newVenue.coverImageUrl, newVenue.coverImageS3Key, localImagePreviews) || normalizeImageUrl(newVenue.resolvedCoverImageUrl),
+    [localImagePreviews, newVenue.coverImageS3Key, newVenue.coverImageUrl, newVenue.resolvedCoverImageUrl],
+  );
+  const newVenueGalleryDisplayItems = React.useMemo(
+    () => {
+      const manualItems = resolveVenueGalleryDisplayItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys, localImagePreviews);
+      if (manualItems.length > 0) return manualItems;
+      return (newVenue.resolvedGalleryImageUrls || []).map((url) => ({ url: normalizeImageUrl(url), key: "" })).filter((item) => item.url);
+    },
+    [localImagePreviews, newVenue.galleryImageUrls, newVenue.galleryS3Keys, newVenue.resolvedGalleryImageUrls],
+  );
 
   const [attributesRows, setAttributesRows] = React.useState<VenueAttributeRow[]>([]);
   const [attributesLoading, setAttributesLoading] = React.useState(false);
@@ -748,6 +1227,10 @@ export default function JazzbaiSuperAdminPage() {
   const [matchesLoading, setMatchesLoading] = React.useState(false);
   const [matchDrafts, setMatchDrafts] = React.useState<Record<string, Partial<MatchRow>>>({});
   const [newMatch, setNewMatch] = React.useState({
+    eventFormat: "HEAD_TO_HEAD" as MatchEventFormat,
+    isFeatured: false,
+    eventTitle: "",
+    eventSubtitle: "",
     leagueId: "",
     homeTeamId: "",
     awayTeamId: "",
@@ -757,6 +1240,31 @@ export default function JazzbaiSuperAdminPage() {
     matchDateUtc: "",
     status: "SCHEDULED" as MatchRow["status"],
     venueName: "",
+  });
+  const [motorsportEntries, setMotorsportEntries] = React.useState<MotorsportEntryRow[]>([]);
+  const [motorsportEntriesMeta, setMotorsportEntriesMeta] = React.useState<ApiListMeta | null>(null);
+  const [motorsportEntriesSearch, setMotorsportEntriesSearch] = React.useState("");
+  const [motorsportEntriesLoading, setMotorsportEntriesLoading] = React.useState(false);
+  const [motorsportEntriesMatchId, setMotorsportEntriesMatchId] = React.useState("");
+  const [motorsportEntryDrafts, setMotorsportEntryDrafts] = React.useState<Record<string, MotorsportEntryDraft>>({});
+  const [newMotorsportEntry, setNewMotorsportEntry] = React.useState({
+    matchId: "",
+    carNumber: "",
+    driverName: "",
+    driverShortName: "",
+    driverNationality: "",
+    driverCountryCode: "",
+    entrantName: "",
+    entrantShortName: "",
+    entrantBrandColor: "",
+    manufacturerName: "",
+    manufacturerShortName: "",
+    displayName: "",
+    gridPosition: "",
+    startPosition: "",
+    finishPosition: "",
+    status: "ENTERED" as MotorsportEntryStatus,
+    points: "",
   });
 
   const [sportsRows, setSportsRows] = React.useState<SportRow[]>([]);
@@ -860,6 +1368,46 @@ export default function JazzbaiSuperAdminPage() {
     }
   }, [venuesSearch]);
 
+  const loadApprovalQueues = React.useCallback(async () => {
+    const [businessResponse, venueResponse, claimResponse] = await Promise.all([
+      fetch("/api/v1/super-admin/approval/businesses?page=1&limit=50", { credentials: "include" }),
+      fetch("/api/v1/super-admin/approval/venues?page=1&limit=50", { credentials: "include" }),
+      fetch("/api/v1/super-admin/venue-claims?page=1&limit=50", { credentials: "include" }),
+    ]);
+    const [businessPayload, venuePayload, claimPayload] = await Promise.all([
+      businessResponse.json(),
+      venueResponse.json(),
+      claimResponse.json(),
+    ]);
+    if (!businessResponse.ok || !businessPayload?.success) throw new Error(formatApiErrorMessage(businessPayload, "Failed to load business approvals"));
+    if (!venueResponse.ok || !venuePayload?.success) throw new Error(formatApiErrorMessage(venuePayload, "Failed to load venue approvals"));
+    if (!claimResponse.ok || !claimPayload?.success) throw new Error(formatApiErrorMessage(claimPayload, "Failed to load venue claims"));
+    setBusinessApprovals(businessPayload.data || []);
+    setVenueApprovals(venuePayload.data || []);
+    setVenueClaims(claimPayload.data || []);
+  }, []);
+
+  const venueApprovalsByOwner = React.useMemo(() => {
+    const next = new Map<string, VenueApprovalRow[]>();
+    for (const row of venueApprovals) {
+      if (!row.ownerId) continue;
+      const existing = next.get(row.ownerId) || [];
+      existing.push(row);
+      next.set(row.ownerId, existing);
+    }
+    return next;
+  }, [venueApprovals]);
+
+  const venueClaimsByClaimant = React.useMemo(() => {
+    const next = new Map<string, VenueClaimRow[]>();
+    for (const row of venueClaims) {
+      const existing = next.get(row.claimantUserId) || [];
+      existing.push(row);
+      next.set(row.claimantUserId, existing);
+    }
+    return next;
+  }, [venueClaims]);
+
   const loadEvents = React.useCallback(async () => {
     setEventsLoading(true);
     try {
@@ -940,6 +1488,27 @@ export default function JazzbaiSuperAdminPage() {
     }
   }, [matchesSearch]);
 
+  const loadMotorsportEntries = React.useCallback(async () => {
+    setMotorsportEntriesLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "150",
+      });
+      if (motorsportEntriesSearch.trim()) params.set("search", motorsportEntriesSearch.trim());
+      if (motorsportEntriesMatchId) params.set("matchId", motorsportEntriesMatchId);
+      const response = await fetch(`/api/v1/super-admin/motorsport-entries?${params.toString()}`, {
+        credentials: "include",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load motorsport entries"));
+      setMotorsportEntries(payload.data || []);
+      setMotorsportEntriesMeta(payload.meta || null);
+    } finally {
+      setMotorsportEntriesLoading(false);
+    }
+  }, [motorsportEntriesMatchId, motorsportEntriesSearch]);
+
   const loadSportsAdmin = React.useCallback(async () => {
     setSportsLoading(true);
     try {
@@ -997,7 +1566,7 @@ export default function JazzbaiSuperAdminPage() {
     return rows;
   }, [mergeLookupStadiums]);
 
-  const createTeam = React.useCallback(async (payload: { name: string; shortName?: string; leagueId?: string | null }) => {
+  const createTeam = React.useCallback(async (payload: { name: string; shortName?: string; crestUrl?: string; leagueId?: string | null }) => {
     const team = await superAdminFetch<LookupTeam>("/teams", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -1025,7 +1594,7 @@ export default function JazzbaiSuperAdminPage() {
       return;
     }
     if (tab === "venues") {
-      await Promise.all([loadVenues(), loadLookups()]);
+      await Promise.all([loadVenues(), loadLookups(), loadApprovalQueues()]);
       return;
     }
     if (tab === "attributes") {
@@ -1056,8 +1625,15 @@ export default function JazzbaiSuperAdminPage() {
       await loadLookups();
       return;
     }
+    if (tab === "motorsportEntries") {
+      await Promise.all([loadMotorsportEntries(), loadLookups()]);
+      return;
+    }
+    if (tab === "blog") {
+      return;
+    }
     await Promise.all([loadMatches(), loadLookups()]);
-  }, [loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
+  }, [loadApprovalQueues, loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadMotorsportEntries, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
 
   React.useEffect(() => {
     async function checkSession() {
@@ -1085,6 +1661,16 @@ export default function JazzbaiSuperAdminPage() {
     if (newLeague.sportId || lookupSports.length === 0) return;
     setNewLeague((prev) => ({ ...prev, sportId: lookupSports[0].id }));
   }, [lookupSports, newLeague.sportId]);
+
+  React.useEffect(() => {
+    if (motorsportLookupMatches.length === 0) return;
+    if (!newMotorsportEntry.matchId) {
+      setNewMotorsportEntry((prev) => ({ ...prev, matchId: motorsportLookupMatches[0].id }));
+    }
+    if (!motorsportEntriesMatchId) {
+      setMotorsportEntriesMatchId(motorsportLookupMatches[0].id);
+    }
+  }, [motorsportEntriesMatchId, motorsportLookupMatches, newMotorsportEntry.matchId]);
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1168,21 +1754,89 @@ export default function JazzbaiSuperAdminPage() {
     }
   };
 
+  const applyGoogleDetailsToNewVenue = React.useCallback((details: GooglePlaceDetailsResponse) => {
+    const defaults = details.defaults;
+    const imagePreviews = getGoogleImagePreviewState(defaults);
+    const placeId = details.googlePlaceId || defaults.placeId;
+    const displayName = defaults.displayName || (defaults as GooglePlaceSnapshot & { name?: string }).name;
+    const addressLine1 = defaults.addressLine1
+      || defaults.formattedAddress
+      || (defaults as GooglePlaceSnapshot & { formattedAddress?: string | null }).formattedAddress;
+    setNewVenue((prev) => ({
+      ...prev,
+      googlePlaceId: placeId || prev.googlePlaceId,
+      name: displayName || prev.name,
+      addressLine1: addressLine1 || prev.addressLine1,
+      city: defaults.city || prev.city,
+      stateProvince: defaults.stateProvince || prev.stateProvince,
+      country: defaults.country || prev.country,
+      postalCode: defaults.postalCode || prev.postalCode,
+      lat: defaults.lat == null ? prev.lat : String(defaults.lat),
+      lng: defaults.lng == null ? prev.lng : String(defaults.lng),
+      timezone: defaults.timezone || prev.timezone,
+      phone: defaults.phone || prev.phone,
+      website: defaults.website || prev.website,
+      googleMapsUrl: defaults.googleMapsUrl || prev.googleMapsUrl,
+      ratingOverride: defaults.rating == null ? prev.ratingOverride : String(defaults.rating),
+      reviewCountOverride: defaults.reviewCount == null ? prev.reviewCountOverride : String(defaults.reviewCount),
+      googleSourceSnapshot: defaults,
+      resolvedCoverImageUrl: imagePreviews.coverImageUrl || prev.resolvedCoverImageUrl,
+      resolvedGalleryImageUrls: imagePreviews.galleryImageUrls.length ? imagePreviews.galleryImageUrls : prev.resolvedGalleryImageUrls,
+    }));
+  }, []);
+
+  const applyGoogleDetailsToVenueDraft = React.useCallback((venueId: string, details: GooglePlaceDetailsResponse) => {
+    const defaults = details.defaults;
+    const imagePreviews = getGoogleImagePreviewState(defaults);
+    const placeId = details.googlePlaceId || defaults.placeId;
+    const displayName = defaults.displayName || (defaults as GooglePlaceSnapshot & { name?: string }).name;
+    const addressLine1 = defaults.addressLine1
+      || defaults.formattedAddress
+      || (defaults as GooglePlaceSnapshot & { formattedAddress?: string | null }).formattedAddress;
+    setVenueDrafts((prev) => {
+      const draft = prev[venueId] || {};
+      return {
+        ...prev,
+        [venueId]: {
+          ...draft,
+          googlePlaceId: placeId || draft.googlePlaceId,
+          name: displayName || draft.name,
+          addressLine1: addressLine1 || draft.addressLine1,
+          city: defaults.city || draft.city,
+          stateProvince: defaults.stateProvince || draft.stateProvince,
+          country: defaults.country || draft.country,
+          postalCode: defaults.postalCode || draft.postalCode,
+          lat: defaults.lat == null ? draft.lat : String(defaults.lat),
+          lng: defaults.lng == null ? draft.lng : String(defaults.lng),
+          timezone: defaults.timezone || draft.timezone,
+          phone: defaults.phone || draft.phone,
+          website: defaults.website || draft.website,
+          googleMapsUrl: defaults.googleMapsUrl || draft.googleMapsUrl,
+          ratingOverride: defaults.rating == null ? draft.ratingOverride : String(defaults.rating),
+          reviewCountOverride: defaults.reviewCount == null ? draft.reviewCountOverride : String(defaults.reviewCount),
+          googleSourceSnapshot: defaults,
+          resolvedCoverImageUrl: imagePreviews.coverImageUrl || draft.resolvedCoverImageUrl,
+          resolvedGalleryImageUrls: imagePreviews.galleryImageUrls.length ? imagePreviews.galleryImageUrls : draft.resolvedGalleryImageUrls,
+        },
+      };
+    });
+  }, []);
+
   if (checkingSession) {
     return (
-      <AppShell>
+      <SuperAdminShell>
         <main style={{ maxWidth: 840, margin: "0 auto", padding: "48px 20px" }}>
           <div style={{ borderRadius: 14, border: "1px solid var(--border)", background: "var(--card)", padding: 24, color: "var(--muted-foreground)" }}>
             Checking super admin session...
           </div>
         </main>
-      </AppShell>
+      </SuperAdminShell>
     );
   }
 
   if (!authenticated) {
     return (
-      <AppShell>
+      <SuperAdminShell>
         <main style={{ maxWidth: 520, margin: "0 auto", padding: "72px 20px" }}>
           <section style={{ borderRadius: 16, border: "1px solid var(--border)", background: "var(--card)", padding: 24 }}>
             <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", fontWeight: 800 }}>
@@ -1237,7 +1891,7 @@ export default function JazzbaiSuperAdminPage() {
             </form>
           </section>
         </main>
-      </AppShell>
+      </SuperAdminShell>
     );
   }
 
@@ -1273,6 +1927,19 @@ export default function JazzbaiSuperAdminPage() {
     borderCollapse: "collapse",
     fontSize: 13,
     minWidth: 940,
+  };
+
+  const badgeStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    padding: "3px 10px",
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 800,
+    background: "var(--secondary)",
+    color: "var(--foreground)",
+    border: "1px solid var(--border)",
   };
 
   const thStyle: React.CSSProperties = {
@@ -1325,6 +1992,10 @@ export default function JazzbaiSuperAdminPage() {
   const sportsCount = sportsMeta?.total ?? sportsRows.length;
   const leaguesCount = adminLeaguesMeta?.total ?? adminLeagues.length;
   const matchesCount = matchesMeta?.total ?? matches.length;
+  const motorsportEntriesCount = motorsportEntriesMeta?.total ?? motorsportEntries.length;
+  const leagueById = new Map(
+    lookupLeagues.map((league) => [league.id, league]),
+  );
   const leagueLabelById = new Map(
     lookupLeagues.map((league) => [league.id, league.shortName || league.name]),
   );
@@ -1337,7 +2008,62 @@ export default function JazzbaiSuperAdminPage() {
       lookupAttributes.filter((item) => item.type === type).sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)),
     ]),
   );
-  const defaultTeamOptions = lookupTeams.slice(0, 12).map((team) => teamToOption(team, leagueLabelById));
+  const isNationalLeagueId = (leagueId?: string | null) => {
+    if (!leagueId) return false;
+    const league = leagueById.get(leagueId);
+    return isNationalCompetitionLabel(league?.externalId)
+      || isNationalCompetitionLabel(league?.shortName)
+      || isNationalCompetitionLabel(league?.name);
+  };
+
+  const isNationalTeamLookup = (team: LookupTeam) => {
+    if (!team.leagueId) return false;
+    return isNationalLeagueId(team.leagueId);
+  };
+
+  const teamMatchesLeagueSport = (team: LookupTeam, leagueId?: string | null) => {
+    if (!leagueId) return true;
+    if (!team.leagueId) return false;
+    const targetLeague = leagueById.get(leagueId);
+    const teamLeague = leagueById.get(team.leagueId);
+    if (!targetLeague?.sportId || !teamLeague?.sportId) return false;
+    return targetLeague.sportId === teamLeague.sportId;
+  };
+
+  const isCustomLeagueId = (leagueId?: string | null) => {
+    if (!leagueId) return false;
+    const league = leagueById.get(leagueId);
+    return !league?.externalId;
+  };
+
+  const isSingleEventLeagueId = (leagueId?: string | null) => {
+    if (!leagueId) return false;
+    const league = leagueById.get(leagueId);
+    return Boolean(league?.sportId && lookupSports.some((sport) => sport.id === league.sportId && sport.slug === "motorsport"));
+  };
+
+  const buildTeamPickerOptions = (leagueId?: string | null) => {
+    let source = lookupTeams;
+    if (leagueId) {
+      source = isNationalLeagueId(leagueId)
+        ? lookupTeams.filter((team) => isNationalTeamLookup(team))
+        : isCustomLeagueId(leagueId)
+          ? lookupTeams.filter((team) => teamMatchesLeagueSport(team, leagueId))
+          : lookupTeams.filter((team) => team.leagueId === leagueId);
+    }
+    return source.slice(0, 12).map((team) => teamToOption(team, leagueLabelById));
+  };
+
+  const searchTeamsForLeague = async (query: string, leagueId?: string | null) => {
+    const scopedLeagueId = leagueId && !isNationalLeagueId(leagueId) && !isCustomLeagueId(leagueId) ? leagueId : undefined;
+    const rows = await searchTeams(query, scopedLeagueId || undefined);
+    return leagueId && isNationalLeagueId(leagueId)
+      ? rows.filter((team) => isNationalTeamLookup(team))
+      : leagueId && isCustomLeagueId(leagueId)
+        ? rows.filter((team) => teamMatchesLeagueSport(team, leagueId))
+      : rows;
+  };
+
   const defaultStadiumOptions = lookupStadiums.slice(0, 12).map(stadiumToOption);
 
   const textareaStyle: React.CSSProperties = {
@@ -1364,8 +2090,216 @@ export default function JazzbaiSuperAdminPage() {
     return options.sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
   };
 
+  const uploadNewVenueCover = async (file: File) => {
+    setUploadingNewVenueCover(true);
+    setError(null);
+    const previousKey = String(newVenue.coverImageS3Key || "").trim();
+    try {
+      if (previousKey) {
+        await deleteSuperAdminStorageKeys([previousKey]);
+      }
+      const uploaded = await uploadSuperAdminVenueImage(file, "venue_cover");
+      setLocalImagePreview(uploaded.key, uploaded.previewUrl);
+      clearLocalImagePreviews(previousKey ? [previousKey] : []);
+      setNewVenue((prev) => ({
+        ...prev,
+        coverImageUrl: uploaded.url,
+        coverImageS3Key: uploaded.key,
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cover upload failed");
+    } finally {
+      setUploadingNewVenueCover(false);
+    }
+  };
+
+  const uploadNewVenueGallery = async (files: File[]) => {
+    const existingItems = parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys);
+    const slots = MAX_GALLERY_IMAGES - existingItems.length;
+    if (slots <= 0) {
+      setError(`Maximum ${MAX_GALLERY_IMAGES} gallery images allowed.`);
+      return;
+    }
+
+    setUploadingNewVenueGallery(true);
+    setError(null);
+    try {
+      const uploaded: VenueGalleryItem[] = [];
+      for (const file of files.slice(0, slots)) {
+        const nextUpload = await uploadSuperAdminVenueImage(file, "venue_gallery");
+        setLocalImagePreview(nextUpload.key, nextUpload.previewUrl);
+        uploaded.push(nextUpload);
+      }
+      setNewVenue((prev) => {
+        const nextItems = [...parseVenueGalleryItems(prev.galleryImageUrls, prev.galleryS3Keys), ...uploaded].slice(0, MAX_GALLERY_IMAGES);
+        return { ...prev, ...galleryFieldsFromItems(nextItems) };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gallery upload failed");
+    } finally {
+      setUploadingNewVenueGallery(false);
+    }
+  };
+
+  const removeNewVenueCover = async () => {
+    if (newVenue.coverImageS3Key) {
+      try {
+        await deleteSuperAdminStorageKeys([newVenue.coverImageS3Key]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove cover image");
+        return;
+      }
+    }
+    clearLocalImagePreviews([newVenue.coverImageS3Key]);
+    setNewVenue((prev) => ({ ...prev, coverImageUrl: "", coverImageS3Key: "" }));
+  };
+
+  const removeNewVenueGalleryImage = async (idx: number) => {
+    const items = parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys);
+    const item = items[idx];
+    if (!item) return;
+    if (item.key) {
+      try {
+        await deleteSuperAdminStorageKeys([item.key]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove gallery image");
+        return;
+      }
+    }
+    clearLocalImagePreviews([item.key]);
+    const nextItems = items.filter((_, index) => index !== idx);
+    setNewVenue((prev) => ({ ...prev, ...galleryFieldsFromItems(nextItems) }));
+  };
+
+  const uploadVenueDraftCover = async (venueId: string, file: File) => {
+    const row = venues.find((item) => item.id === venueId);
+    const draft = row ? (venueDrafts[venueId] ?? buildVenueEditorDraft(row)) : undefined;
+    if (!row || !draft) return;
+
+    setUploadingVenueCoverId(venueId);
+    setError(null);
+    const persistedKey = String(row.coverImageS3Key || "").trim();
+    try {
+      const currentUnsavedKey = String(draft.coverImageS3Key || "").trim();
+      if (currentUnsavedKey && currentUnsavedKey !== persistedKey) {
+        await deleteSuperAdminStorageKeys([currentUnsavedKey]);
+      }
+
+      const uploaded = await uploadSuperAdminVenueImage(file, "venue_cover");
+      setLocalImagePreview(uploaded.key, uploaded.previewUrl);
+      clearLocalImagePreviews(currentUnsavedKey && currentUnsavedKey !== uploaded.key ? [currentUnsavedKey] : []);
+      setVenueDrafts((prev) => ({
+        ...prev,
+        [venueId]: {
+          ...(prev[venueId] ?? buildVenueEditorDraft(row)),
+          coverImageUrl: uploaded.url,
+          coverImageS3Key: uploaded.key,
+        },
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cover upload failed");
+    } finally {
+      setUploadingVenueCoverId((current) => (current === venueId ? null : current));
+    }
+  };
+
+  const uploadVenueDraftGallery = async (venueId: string, files: File[]) => {
+    const row = venues.find((item) => item.id === venueId);
+    const draft = row ? (venueDrafts[venueId] ?? buildVenueEditorDraft(row)) : undefined;
+    if (!row || !draft) return;
+    const existingItems = parseVenueGalleryItems(draft.galleryImageUrls, draft.galleryS3Keys);
+    const slots = MAX_GALLERY_IMAGES - existingItems.length;
+    if (slots <= 0) {
+      setError(`Maximum ${MAX_GALLERY_IMAGES} gallery images allowed.`);
+      return;
+    }
+
+    setUploadingVenueGalleryId(venueId);
+    setError(null);
+    try {
+      const uploaded: VenueGalleryItem[] = [];
+      for (const file of files.slice(0, slots)) {
+        const nextUpload = await uploadSuperAdminVenueImage(file, "venue_gallery");
+        setLocalImagePreview(nextUpload.key, nextUpload.previewUrl);
+        uploaded.push(nextUpload);
+      }
+      setVenueDrafts((prev) => {
+        const baseDraft = prev[venueId] ?? buildVenueEditorDraft(row);
+        const nextItems = [...parseVenueGalleryItems(baseDraft.galleryImageUrls, baseDraft.galleryS3Keys), ...uploaded].slice(0, MAX_GALLERY_IMAGES);
+        return {
+          ...prev,
+          [venueId]: {
+            ...baseDraft,
+            ...galleryFieldsFromItems(nextItems),
+          },
+        };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gallery upload failed");
+    } finally {
+      setUploadingVenueGalleryId((current) => (current === venueId ? null : current));
+    }
+  };
+
+  const removeVenueDraftCover = async (venueId: string) => {
+    const row = venues.find((item) => item.id === venueId);
+    const draft = row ? (venueDrafts[venueId] ?? buildVenueEditorDraft(row)) : undefined;
+    if (!row || !draft) return;
+
+    const draftKey = String(draft.coverImageS3Key || "").trim();
+    const persistedKey = String(row.coverImageS3Key || "").trim();
+    if (draftKey && draftKey !== persistedKey) {
+      try {
+        await deleteSuperAdminStorageKeys([draftKey]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove cover image");
+        return;
+      }
+    }
+
+    clearLocalImagePreviews([draftKey]);
+    setVenueDrafts((prev) => ({
+      ...prev,
+      [venueId]: {
+        ...(prev[venueId] ?? buildVenueEditorDraft(row)),
+        coverImageUrl: "",
+        coverImageS3Key: "",
+      },
+    }));
+  };
+
+  const removeVenueDraftGalleryImage = async (venueId: string, idx: number) => {
+    const row = venues.find((item) => item.id === venueId);
+    const draft = row ? (venueDrafts[venueId] ?? buildVenueEditorDraft(row)) : undefined;
+    if (!row || !draft) return;
+
+    const items = parseVenueGalleryItems(draft.galleryImageUrls, draft.galleryS3Keys);
+    const item = items[idx];
+    if (!item) return;
+
+    const persistedKeys = new Set((row.galleryS3Keys || []).map((key) => key.trim()).filter(Boolean));
+    if (item.key && !persistedKeys.has(item.key)) {
+      try {
+        await deleteSuperAdminStorageKeys([item.key]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove gallery image");
+        return;
+      }
+    }
+
+    clearLocalImagePreviews([item.key]);
+    const nextItems = items.filter((_, index) => index !== idx);
+    setVenueDrafts((prev) => ({
+      ...prev,
+      [venueId]: {
+        ...(prev[venueId] ?? buildVenueEditorDraft(row)),
+        ...galleryFieldsFromItems(nextItems),
+      },
+    }));
+  };
+
   return (
-    <AppShell>
+    <SuperAdminShell>
       <main style={pageStyle}>
         <header style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
@@ -1413,6 +2347,8 @@ export default function JazzbaiSuperAdminPage() {
             ["leagues", "Leagues"],
             ["imports", "CSV Import"],
             ["matches", "Matches"],
+            ["motorsportEntries", "Motorsport Entries"],
+            ["blog", "Blog"],
           ] as Array<[TabId, string]>).map(([id, label]) => (
             <button
               key={id}
@@ -1625,17 +2561,193 @@ export default function JazzbaiSuperAdminPage() {
 
         {activeTab === "venues" && (
           <section style={{ display: "grid", gap: 14 }}>
+            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+              <div style={cardStyle}>
+                <div style={sectionHeadStyle}>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Business Approvals</h2>
+                </div>
+                <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                  {businessApprovals.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No business approvals queued.</div> : businessApprovals.slice(0, 6).map((row) => {
+                    const linkedVenueApprovals = venueApprovalsByOwner.get(row.id) || [];
+                    const linkedClaims = venueClaimsByClaimant.get(row.id) || [];
+                    const canApprove = row.businessApprovalStatus !== "APPROVED";
+                    const canReject = row.businessApprovalStatus !== "REJECTED";
+                    return (
+                      <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
+                          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.email}</div>
+                          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+                            Role: {row.role} | Submitted {formatDateTime(row.createdAt)}
+                          </div>
+                        </div>
+                        {linkedVenueApprovals.length > 0 && (
+                          <div style={{ borderRadius: 8, background: "var(--secondary)", padding: 10, display: "grid", gap: 6 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>
+                              Submitted Venues
+                            </div>
+                            {linkedVenueApprovals.map((venue) => (
+                              <div key={venue.id} style={{ fontSize: 12, color: "var(--foreground)" }}>
+                                {venue.name} | {venue.city}, {venue.country} | {venue.approvalStatus}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {linkedClaims.length > 0 && (
+                          <div style={{ borderRadius: 8, background: "var(--secondary)", padding: 10, display: "grid", gap: 6 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>
+                              Claim Requests
+                            </div>
+                            {linkedClaims.map((claim) => (
+                              <div key={claim.id} style={{ fontSize: 12, color: "var(--foreground)", display: "grid", gap: 2 }}>
+                                <div>{claim.venueName} | {claim.status} | {formatDateTime(claim.createdAt)}</div>
+                                <div style={{ color: "var(--muted-foreground)" }}>{claim.notes || "No claimant notes provided."}</div>
+                                <div style={{ color: "var(--muted-foreground)" }}>
+                                  Verification documents: {claim.verificationDocuments?.length || 0}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {linkedVenueApprovals.length === 0 && linkedClaims.length === 0 && (
+                          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                            No linked venue submission or claim was found for this account.
+                          </div>
+                        )}
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.businessApprovalNotes || "No admin notes yet."}</div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          {canApprove && (
+                            <button style={smallBtn("outline")} onClick={() => void runAction(`biz-approve-${row.id}`, async () => {
+                              await superAdminFetch(`/users/${row.id}/business-approval`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
+                              await loadApprovalQueues();
+                            })}>Approve</button>
+                          )}
+                          {canReject && (
+                            <button style={smallBtn("danger")} onClick={() => void runAction(`biz-reject-${row.id}`, async () => {
+                              await superAdminFetch(`/users/${row.id}/business-approval`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", notes: "Rejected by admin" }) });
+                              await loadApprovalQueues();
+                            })}>Reject</button>
+                          )}
+                          <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.businessApprovalStatus}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <div style={sectionHeadStyle}>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Venue Approvals</h2>
+                </div>
+                <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                  {venueApprovals.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No venue approvals queued.</div> : venueApprovals.slice(0, 6).map((row) => {
+                    const canApprove = row.approvalStatus !== "APPROVED";
+                    const canReject = row.approvalStatus !== "REJECTED";
+                    return (
+                      <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
+                          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.city}, {row.country} | {row.ownerName || row.ownerEmail || "No owner"}</div>
+                          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+                            Submitted {formatDateTime(row.createdAt)} | Verified: {row.isVerified ? "Yes" : "No"}
+                          </div>
+                          {row.googlePlaceId && (
+                            <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+                              Google Place ID: {row.googlePlaceId}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.approvalNotes || "No admin notes yet."}</div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          {canApprove && (
+                            <button style={smallBtn("outline")} onClick={() => void runAction(`venue-approve-${row.id}`, async () => {
+                              await superAdminFetch(`/venues/${row.id}/approval`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED", isVerified: true }) });
+                              await Promise.all([loadApprovalQueues(), loadVenues()]);
+                            })}>Approve</button>
+                          )}
+                          {canReject && (
+                            <button style={smallBtn("danger")} onClick={() => void runAction(`venue-reject-${row.id}`, async () => {
+                              await superAdminFetch(`/venues/${row.id}/approval`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", isVerified: false, notes: "Rejected by admin" }) });
+                              await Promise.all([loadApprovalQueues(), loadVenues()]);
+                            })}>Reject</button>
+                          )}
+                          <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.approvalStatus}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <div style={sectionHeadStyle}>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Venue Claims</h2>
+                </div>
+                <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                  {venueClaims.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No venue claims queued.</div> : venueClaims.slice(0, 6).map((row) => {
+                    const canApprove = row.status !== "APPROVED";
+                    const canReject = row.status !== "REJECTED";
+                    return (
+                      <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.venueName}</div>
+                          <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.claimantName} ({row.claimantEmail})</div>
+                          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>
+                            Current owner: {row.venueOwnerName || row.venueOwnerEmail || "Unassigned"} | Submitted {formatDateTime(row.createdAt)}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{row.notes || "No claim notes provided."}</div>
+                        {row.verificationDocuments && row.verificationDocuments.length > 0 && (
+                          <div style={{ borderRadius: 8, background: "var(--secondary)", padding: 10, display: "grid", gap: 6 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)" }}>
+                              Verification Documents
+                            </div>
+                            {row.verificationDocuments.map((url) => (
+                              <a key={url} href={url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "var(--primary)", textDecoration: "underline", overflowWrap: "anywhere" }}>
+                                {url}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        {row.adminNotes && <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Admin notes: {row.adminNotes}</div>}
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          {canApprove && (
+                            <button style={smallBtn("outline")} onClick={() => void runAction(`claim-approve-${row.id}`, async () => {
+                              await superAdminFetch(`/venue-claims/${row.id}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
+                              await Promise.all([loadApprovalQueues(), loadVenues(), loadLookups()]);
+                            })}>Approve + Transfer</button>
+                          )}
+                          {canReject && (
+                            <button style={smallBtn("danger")} onClick={() => void runAction(`claim-reject-${row.id}`, async () => {
+                              await superAdminFetch(`/venue-claims/${row.id}`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", adminNotes: "Rejected by admin" }) });
+                              await loadApprovalQueues();
+                            })}>Reject</button>
+                          )}
+                          <span style={{ ...badgeStyle, marginLeft: "auto" }}>{row.status}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
             <div style={cardStyle}>
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Venue</h2>
               </div>
               <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <GooglePlacePicker initialPlaceId={newVenue.googlePlaceId} onPlaceResolved={applyGoogleDetailsToNewVenue} />
+                </div>
                 <select style={inputStyle} value={newVenue.ownerId} onChange={(e) => setNewVenue((prev) => ({ ...prev, ownerId: e.target.value }))}>
                   <option value="">Owner</option>
                   {lookupOwners.map((owner) => (
                     <option key={owner.id} value={owner.id}>{owner.name} ({owner.email})</option>
                   ))}
                 </select>
+                <input style={inputStyle} placeholder="Google Place ID" value={newVenue.googlePlaceId} onChange={(e) => setNewVenue((prev) => ({ ...prev, googlePlaceId: e.target.value }))} />
                 <input style={inputStyle} placeholder="Venue name" value={newVenue.name} onChange={(e) => setNewVenue((prev) => ({ ...prev, name: e.target.value }))} />
                 <input style={inputStyle} placeholder="Slug (optional)" value={newVenue.slug} onChange={(e) => setNewVenue((prev) => ({ ...prev, slug: e.target.value }))} />
                 <input style={inputStyle} placeholder="Short description" value={newVenue.shortDescription} onChange={(e) => setNewVenue((prev) => ({ ...prev, shortDescription: e.target.value }))} />
@@ -1652,11 +2764,118 @@ export default function JazzbaiSuperAdminPage() {
                 <input style={inputStyle} placeholder="Website" value={newVenue.website} onChange={(e) => setNewVenue((prev) => ({ ...prev, website: e.target.value }))} />
                 <input style={inputStyle} placeholder="Instagram handle" value={newVenue.instagramHandle} onChange={(e) => setNewVenue((prev) => ({ ...prev, instagramHandle: e.target.value }))} />
                 <input style={inputStyle} placeholder="Google Maps URL" value={newVenue.googleMapsUrl} onChange={(e) => setNewVenue((prev) => ({ ...prev, googleMapsUrl: e.target.value }))} />
-                <input style={inputStyle} placeholder="Cover image URL" value={newVenue.coverImageUrl} onChange={(e) => setNewVenue((prev) => ({ ...prev, coverImageUrl: e.target.value }))} />
-                <input style={inputStyle} placeholder="Cover image S3 key" value={newVenue.coverImageS3Key} onChange={(e) => setNewVenue((prev) => ({ ...prev, coverImageS3Key: e.target.value }))} />
-                <input style={inputStyle} placeholder="Gallery URLs (comma separated)" value={toCsvList(newVenue.galleryImageUrls)} onChange={(e) => setNewVenue((prev) => ({ ...prev, galleryImageUrls: parseCsvList(e.target.value) }))} />
-                <input style={inputStyle} placeholder="Gallery S3 keys (comma separated)" value={toCsvList(newVenue.galleryS3Keys)} onChange={(e) => setNewVenue((prev) => ({ ...prev, galleryS3Keys: parseCsvList(e.target.value) }))} />
+                <div style={{ gridColumn: "1 / -1", display: "grid", gap: 14 }}>
+                  <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cover image</span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          {newVenue.coverImageUrl ? (
+                            <button type="button" style={smallBtn("danger")} onClick={() => void removeNewVenueCover()}>
+                              Remove
+                            </button>
+                          ) : null}
+                          <button type="button" style={smallBtn("outline", uploadingNewVenueCover)} disabled={uploadingNewVenueCover} onClick={() => newVenueCoverInputRef.current?.click()}>
+                            {uploadingNewVenueCover ? "Uploading..." : "Upload Cover"}
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        ref={newVenueCoverInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void uploadNewVenueCover(file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                      {!newVenue.coverImageUrl && newVenue.resolvedCoverImageUrl ? (
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                          Google-selected cover is shown here until a manual upload replaces it.
+                        </div>
+                      ) : null}
+                      <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", overflow: "hidden", minHeight: 160 }}>
+                        {newVenueCoverDisplayUrl ? (
+                          <img src={newVenueCoverDisplayUrl} alt="Venue cover" style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                        ) : (
+                          <div style={{ minHeight: 160, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted-foreground)" }}>
+                            No cover image
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Gallery images ({newVenueGalleryDisplayItems.length}/{MAX_GALLERY_IMAGES})</span>
+                        <button
+                          type="button"
+                          style={smallBtn("outline", uploadingNewVenueGallery || newVenueGalleryDisplayItems.length >= MAX_GALLERY_IMAGES)}
+                          disabled={uploadingNewVenueGallery || newVenueGalleryDisplayItems.length >= MAX_GALLERY_IMAGES}
+                          onClick={() => newVenueGalleryInputRef.current?.click()}
+                        >
+                          {uploadingNewVenueGallery ? "Uploading..." : "Add Images"}
+                        </button>
+                      </div>
+                      <input
+                        ref={newVenueGalleryInputRef}
+                        type="file"
+                        multiple
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length) void uploadNewVenueGallery(files);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                      {(!newVenue.galleryImageUrls || newVenue.galleryImageUrls.length === 0) && newVenue.resolvedGalleryImageUrls?.length ? (
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                          Google-selected gallery images are shown here until manual uploads replace them.
+                        </div>
+                      ) : null}
+                      <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
+                        {newVenueGalleryDisplayItems.map((item, idx) => (
+                          <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", background: "var(--secondary)" }}>
+                            <img src={item.url} alt={`Gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
+                            {idx < parseVenueGalleryItems(newVenue.galleryImageUrls, newVenue.galleryS3Keys).length ? (
+                              <button
+                                type="button"
+                                style={{ position: "absolute", top: 6, right: 6, border: "none", borderRadius: 6, padding: "4px 6px", background: "rgba(239,68,68,0.92)", color: "#fff", cursor: "pointer", fontSize: 11 }}
+                                onClick={() => void removeNewVenueGalleryImage(idx)}
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                        ))}
+                        {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - newVenueGalleryDisplayItems.length) }).map((_, idx) => (
+                          <div key={`new-venue-empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 96, borderRadius: 10, border: "1px dashed var(--border)", color: "var(--muted-foreground)", fontSize: 11 }}>
+                            Empty slot
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <input style={inputStyle} placeholder="Capacity" value={newVenue.capacity} onChange={(e) => setNewVenue((prev) => ({ ...prev, capacity: e.target.value }))} />
+                <select style={inputStyle} value={newVenue.approvalStatus} onChange={(e) => setNewVenue((prev) => {
+                  const approvalStatus = e.target.value as "PENDING" | "APPROVED" | "REJECTED";
+                  return {
+                    ...prev,
+                    approvalStatus,
+                    isActive: approvalStatus === "APPROVED" ? prev.isActive : false,
+                  };
+                })}>
+                  <option value="PENDING">PENDING</option>
+                  <option value="APPROVED">APPROVED</option>
+                  <option value="REJECTED">REJECTED</option>
+                </select>
+                <input style={inputStyle} type="number" min="0" max="5" step="0.1" placeholder="Displayed rating override" value={newVenue.ratingOverride} onChange={(e) => setNewVenue((prev) => ({ ...prev, ratingOverride: e.target.value }))} />
+                <input style={inputStyle} type="number" min="0" step="1" placeholder="Displayed review count override" value={newVenue.reviewCountOverride} onChange={(e) => setNewVenue((prev) => ({ ...prev, reviewCountOverride: e.target.value }))} />
+                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1" }} placeholder="Approval notes" value={newVenue.approvalNotes} onChange={(e) => setNewVenue((prev) => ({ ...prev, approvalNotes: e.target.value }))} />
                 <select style={inputStyle} value={newVenue.priceRange} onChange={(e) => setNewVenue((prev) => ({ ...prev, priceRange: e.target.value as "BUDGET" | "MID" | "UPSCALE" | "LUXURY" }))}>
                   <option value="BUDGET">BUDGET</option>
                   <option value="MID">MID</option>
@@ -1665,12 +2884,20 @@ export default function JazzbaiSuperAdminPage() {
                 </select>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                   <input type="checkbox" checked={newVenue.isVerified} onChange={(e) => setNewVenue((prev) => ({ ...prev, isVerified: e.target.checked }))} />
-                  Verified
+                  Verified badge
                 </label>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                  <input type="checkbox" checked={newVenue.isActive} onChange={(e) => setNewVenue((prev) => ({ ...prev, isActive: e.target.checked }))} />
-                  Active
+                  <input
+                    type="checkbox"
+                    checked={newVenue.isActive}
+                    disabled={newVenue.approvalStatus !== "APPROVED"}
+                    onChange={(e) => setNewVenue((prev) => ({ ...prev, isActive: e.target.checked }))}
+                  />
+                  Published
                 </label>
+                <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                  Only approved venues can be published publicly. Pending or rejected venues are automatically kept unpublished.
+                </div>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                   <input type="checkbox" checked={newVenue.isFeatured} onChange={(e) => setNewVenue((prev) => ({ ...prev, isFeatured: e.target.checked }))} />
                   Featured
@@ -1713,6 +2940,17 @@ export default function JazzbaiSuperAdminPage() {
                   style={smallBtn("primary", submittingAction === "create-venue")}
                   disabled={submittingAction === "create-venue"}
                   onClick={() => void runAction("create-venue", async () => {
+                    if (!newVenue.ownerId.trim()) {
+                      throw new Error("Select an owner before creating a venue.");
+                    }
+                    if (!newVenue.name.trim() || !newVenue.addressLine1.trim() || !newVenue.city.trim() || !newVenue.country.trim()) {
+                      throw new Error("Name, address, city, and country are required.");
+                    }
+                    const lat = Number(newVenue.lat);
+                    const lng = Number(newVenue.lng);
+                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                      throw new Error("Latitude and longitude must be valid numbers.");
+                    }
                     await superAdminFetch("/venues", {
                       method: "POST",
                       body: JSON.stringify({
@@ -1728,11 +2966,16 @@ export default function JazzbaiSuperAdminPage() {
                         website: newVenue.website || undefined,
                         instagramHandle: newVenue.instagramHandle || undefined,
                         googleMapsUrl: newVenue.googleMapsUrl || undefined,
+                        googlePlaceId: newVenue.googlePlaceId || undefined,
                         coverImageUrl: newVenue.coverImageUrl || undefined,
                         coverImageS3Key: newVenue.coverImageS3Key || undefined,
-                        lat: Number(newVenue.lat),
-                        lng: Number(newVenue.lng),
+                        lat,
+                        lng,
                         capacity: newVenue.capacity ? Number(newVenue.capacity) : undefined,
+                        ratingOverride: newVenue.ratingOverride ? Number(newVenue.ratingOverride) : undefined,
+                        reviewCountOverride: newVenue.reviewCountOverride ? Number(newVenue.reviewCountOverride) : undefined,
+                        approvalStatus: newVenue.approvalStatus,
+                        approvalNotes: newVenue.approvalNotes || undefined,
                       }),
                     });
                     setNewVenue({
@@ -1758,16 +3001,21 @@ export default function JazzbaiSuperAdminPage() {
                       website: "",
                       instagramHandle: "",
                       googleMapsUrl: "",
+                      googlePlaceId: "",
                       capacity: "",
                       priceRange: "MID",
                       amenities: [],
                       vibes: [],
                       cuisineTags: [],
+                      ratingOverride: "",
+                      reviewCountOverride: "",
+                      approvalStatus: "PENDING",
+                      approvalNotes: "",
                       isVerified: false,
-                      isActive: true,
+                      isActive: false,
                       isFeatured: false,
                     });
-                    await Promise.all([loadVenues(), loadLookups(), loadOverview()]);
+                    await Promise.all([loadVenues(), loadLookups(), loadOverview(), loadApprovalQueues()]);
                   })}
                 >
                   Create Venue
@@ -1785,45 +3033,27 @@ export default function JazzbaiSuperAdminPage() {
               </div>
               <div style={{ padding: 14, display: "grid", gap: 12 }}>
                 {venues.map((row) => {
-                  const draft = venueDrafts[row.id] ?? {
-                    ownerId: row.ownerId,
-                    name: row.name,
-                    slug: row.slug,
-                    description: row.description || "",
-                    shortDescription: row.shortDescription || "",
-                    addressLine1: row.addressLine1,
-                    addressLine2: row.addressLine2 || "",
-                    city: row.city,
-                    stateProvince: row.stateProvince || "",
-                    country: row.country,
-                    postalCode: row.postalCode || "",
-                    lat: String(row.lat),
-                    lng: String(row.lng),
-                    timezone: row.timezone,
-                    phone: row.phone || "",
-                    website: row.website || "",
-                    instagramHandle: row.instagramHandle || "",
-                    googleMapsUrl: row.googleMapsUrl || "",
-                    coverImageUrl: row.coverImageUrl || "",
-                    coverImageS3Key: row.coverImageS3Key || "",
-                    galleryImageUrls: row.galleryImageUrls || [],
-                    galleryS3Keys: row.galleryS3Keys || [],
-                    capacity: row.capacity == null ? "" : String(row.capacity),
-                    priceRange: row.priceRange || "MID",
-                    amenities: row.amenities || [],
-                    vibes: row.vibes || [],
-                    cuisineTags: row.cuisineTags || [],
-                    isVerified: row.isVerified,
-                    isActive: row.isActive,
-                    isFeatured: row.isFeatured,
-                  };
+                  const draft = venueDrafts[row.id] ?? buildVenueEditorDraft(row);
+                  const manualDraftGalleryItems = resolveVenueGalleryDisplayItems(
+                    Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [],
+                    Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [],
+                    localImagePreviews,
+                  );
+                  const draftGalleryItems = manualDraftGalleryItems.length > 0
+                    ? manualDraftGalleryItems
+                    : (draft.resolvedGalleryImageUrls || []).map((url) => ({ url: normalizeImageUrl(url), key: "" })).filter((item) => item.url);
+                  const draftCoverDisplayUrl = resolveImageDisplayUrl(
+                    draft.coverImageUrl,
+                    draft.coverImageS3Key,
+                    localImagePreviews,
+                  ) || normalizeImageUrl(draft.resolvedCoverImageUrl);
                   return (
                     <div key={row.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 14, display: "grid", gap: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                         <div>
                           <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{row.name}</div>
                           <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                            {row.id} • {ownerLabelById.get(row.ownerId) || row.ownerEmail || row.ownerId} • Created {formatDateTime(row.createdAt)}
+                            {row.id} • {ownerLabelById.get(row.ownerId) || row.ownerEmail || row.ownerId} • {row.approvalStatus || "PENDING"} • Created {formatDateTime(row.createdAt)}
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
@@ -1852,12 +3082,17 @@ export default function JazzbaiSuperAdminPage() {
                                   website: draft.website || null,
                                   instagramHandle: draft.instagramHandle || null,
                                   googleMapsUrl: draft.googleMapsUrl || null,
+                                  googlePlaceId: draft.googlePlaceId || undefined,
                                   coverImageUrl: draft.coverImageUrl || null,
                                   coverImageS3Key: draft.coverImageS3Key || null,
                                   galleryImageUrls: Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [],
                                   galleryS3Keys: Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [],
                                   capacity: draft.capacity ? Number(draft.capacity) : null,
                                   priceRange: draft.priceRange,
+                                  ratingOverride: draft.ratingOverride === "" || draft.ratingOverride == null ? null : Number(draft.ratingOverride),
+                                  reviewCountOverride: draft.reviewCountOverride === "" || draft.reviewCountOverride == null ? null : Number(draft.reviewCountOverride),
+                                  approvalStatus: draft.approvalStatus,
+                                  approvalNotes: draft.approvalNotes || null,
                                   amenities: Array.isArray(draft.amenities) ? draft.amenities : [],
                                   vibes: Array.isArray(draft.vibes) ? draft.vibes : [],
                                   cuisineTags: Array.isArray(draft.cuisineTags) ? draft.cuisineTags : [],
@@ -1866,17 +3101,37 @@ export default function JazzbaiSuperAdminPage() {
                                   isFeatured: draft.isFeatured,
                                 }),
                               });
-                              await Promise.all([loadVenues(), loadLookups(), loadOverview()]);
+                              await Promise.all([loadVenues(), loadLookups(), loadOverview(), loadApprovalQueues()]);
                             })}
                           >
                             Save
+                          </button>
+                          <button
+                            style={smallBtn("outline", submittingAction === `refresh-google-${row.id}`)}
+                            disabled={submittingAction === `refresh-google-${row.id}` || !draft.googlePlaceId}
+                            onClick={() => void runAction(`refresh-google-${row.id}`, async () => {
+                              await superAdminFetch(`/venues/${row.id}/google/refresh`, { method: "POST" });
+                              await Promise.all([loadVenues(), loadApprovalQueues()]);
+                            })}
+                          >
+                            Refresh Google
+                          </button>
+                          <button
+                            style={smallBtn("outline", submittingAction === `revert-google-${row.id}`)}
+                            disabled={submittingAction === `revert-google-${row.id}` || !draft.googlePlaceId}
+                            onClick={() => void runAction(`revert-google-${row.id}`, async () => {
+                              await superAdminFetch(`/venues/${row.id}/google/revert`, { method: "POST", body: JSON.stringify({ includeMenu: true }) });
+                              await Promise.all([loadVenues(), loadApprovalQueues()]);
+                            })}
+                          >
+                            Revert Defaults
                           </button>
                           <button
                             style={smallBtn("danger", submittingAction === `archive-venue-${row.id}`)}
                             disabled={submittingAction === `archive-venue-${row.id}`}
                             onClick={() => void runAction(`archive-venue-${row.id}`, async () => {
                               await superAdminFetch(`/venues/${row.id}`, { method: "DELETE" });
-                              await Promise.all([loadVenues(), loadLookups(), loadOverview()]);
+                              await Promise.all([loadVenues(), loadLookups(), loadOverview(), loadApprovalQueues()]);
                             })}
                           >
                             Archive
@@ -1885,12 +3140,16 @@ export default function JazzbaiSuperAdminPage() {
                       </div>
 
                       <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                        <div style={{ gridColumn: "1 / -1" }}>
+                          <GooglePlacePicker initialPlaceId={String(draft.googlePlaceId ?? "")} onPlaceResolved={(details) => applyGoogleDetailsToVenueDraft(row.id, details)} />
+                        </div>
                         <select style={inputStyle} value={String(draft.ownerId ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, ownerId: e.target.value } }))}>
                           <option value="">Owner</option>
                           {lookupOwners.map((owner) => (
                             <option key={owner.id} value={owner.id}>{owner.name} ({owner.email})</option>
                           ))}
                         </select>
+                        <input style={inputStyle} value={String(draft.googlePlaceId ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, googlePlaceId: e.target.value } }))} placeholder="Google Place ID" />
                         <input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} placeholder="Venue name" />
                         <input style={inputStyle} value={String(draft.slug ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, slug: e.target.value } }))} placeholder="Slug" />
                         <input style={inputStyle} value={String(draft.shortDescription ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortDescription: e.target.value } }))} placeholder="Short description" />
@@ -1907,11 +3166,126 @@ export default function JazzbaiSuperAdminPage() {
                         <input style={inputStyle} value={String(draft.website ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, website: e.target.value } }))} placeholder="Website" />
                         <input style={inputStyle} value={String(draft.instagramHandle ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, instagramHandle: e.target.value } }))} placeholder="Instagram handle" />
                         <input style={inputStyle} value={String(draft.googleMapsUrl ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, googleMapsUrl: e.target.value } }))} placeholder="Google Maps URL" />
-                        <input style={inputStyle} value={String(draft.coverImageUrl ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, coverImageUrl: e.target.value } }))} placeholder="Cover image URL" />
-                        <input style={inputStyle} value={String(draft.coverImageS3Key ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, coverImageS3Key: e.target.value } }))} placeholder="Cover image S3 key" />
-                        <input style={inputStyle} value={toCsvList(Array.isArray(draft.galleryImageUrls) ? draft.galleryImageUrls : [])} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, galleryImageUrls: parseCsvList(e.target.value) } }))} placeholder="Gallery URLs" />
-                        <input style={inputStyle} value={toCsvList(Array.isArray(draft.galleryS3Keys) ? draft.galleryS3Keys : [])} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, galleryS3Keys: parseCsvList(e.target.value) } }))} placeholder="Gallery S3 keys" />
+                        <div style={{ gridColumn: "1 / -1", display: "grid", gap: 14 }}>
+                          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                            <div style={{ display: "grid", gap: 10 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cover image</span>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  {draft.coverImageUrl ? (
+                                    <button type="button" style={smallBtn("danger")} onClick={() => void removeVenueDraftCover(row.id)}>
+                                      Remove
+                                    </button>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    style={smallBtn("outline", uploadingVenueCoverId === row.id)}
+                                    disabled={uploadingVenueCoverId === row.id}
+                                    onClick={() => venueCoverInputRefs.current[row.id]?.click()}
+                                  >
+                                    {uploadingVenueCoverId === row.id ? "Uploading..." : "Upload Cover"}
+                                  </button>
+                                </div>
+                              </div>
+                              <input
+                                ref={(node) => { venueCoverInputRefs.current[row.id] = node; }}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) void uploadVenueDraftCover(row.id, file);
+                                  e.currentTarget.value = "";
+                                }}
+                              />
+                              {!draft.coverImageUrl && draft.resolvedCoverImageUrl ? (
+                                <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                                  Google-selected cover is shown here until a manual upload replaces it.
+                                </div>
+                              ) : null}
+                              <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", overflow: "hidden", minHeight: 160 }}>
+                                {draftCoverDisplayUrl ? (
+                                  <img src={draftCoverDisplayUrl} alt={`${row.name} cover`} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                                ) : (
+                                  <div style={{ minHeight: 160, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted-foreground)" }}>
+                                    No cover image
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div style={{ display: "grid", gap: 10 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Gallery images ({draftGalleryItems.length}/{MAX_GALLERY_IMAGES})</span>
+                                <button
+                                  type="button"
+                                  style={smallBtn("outline", uploadingVenueGalleryId === row.id || draftGalleryItems.length >= MAX_GALLERY_IMAGES)}
+                                  disabled={uploadingVenueGalleryId === row.id || draftGalleryItems.length >= MAX_GALLERY_IMAGES}
+                                  onClick={() => venueGalleryInputRefs.current[row.id]?.click()}
+                                >
+                                  {uploadingVenueGalleryId === row.id ? "Uploading..." : "Add Images"}
+                                </button>
+                              </div>
+                              <input
+                                ref={(node) => { venueGalleryInputRefs.current[row.id] = node; }}
+                                type="file"
+                                multiple
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const files = Array.from(e.target.files || []);
+                                  if (files.length) void uploadVenueDraftGallery(row.id, files);
+                                  e.currentTarget.value = "";
+                                }}
+                              />
+                              {manualDraftGalleryItems.length === 0 && draft.resolvedGalleryImageUrls?.length ? (
+                                <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                                  Google-selected gallery images are shown here until manual uploads replace them.
+                                </div>
+                              ) : null}
+                              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}>
+                                {draftGalleryItems.map((item, idx) => (
+                                  <div key={`${item.url}-${idx}`} style={{ position: "relative", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden", background: "var(--secondary)" }}>
+                                    <img src={item.url} alt={`${row.name} gallery ${idx + 1}`} style={{ width: "100%", height: 96, objectFit: "cover" }} />
+                                    {idx < manualDraftGalleryItems.length ? (
+                                      <button
+                                        type="button"
+                                        style={{ position: "absolute", top: 6, right: 6, border: "none", borderRadius: 6, padding: "4px 6px", background: "rgba(239,68,68,0.92)", color: "#fff", cursor: "pointer", fontSize: 11 }}
+                                        onClick={() => void removeVenueDraftGalleryImage(row.id, idx)}
+                                      >
+                                        Remove
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                ))}
+                                {Array.from({ length: Math.max(0, MAX_GALLERY_IMAGES - draftGalleryItems.length) }).map((_, idx) => (
+                                  <div key={`${row.id}-gallery-empty-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 96, borderRadius: 10, border: "1px dashed var(--border)", color: "var(--muted-foreground)", fontSize: 11 }}>
+                                    Empty slot
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                         <input style={inputStyle} value={String(draft.capacity ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, capacity: e.target.value } }))} placeholder="Capacity" />
+                        <select style={inputStyle} value={String(draft.approvalStatus ?? "PENDING")} onChange={(e) => setVenueDrafts((prev) => {
+                          const approvalStatus = e.target.value as "PENDING" | "APPROVED" | "REJECTED";
+                          return {
+                            ...prev,
+                            [row.id]: {
+                              ...draft,
+                              approvalStatus,
+                              isActive: approvalStatus === "APPROVED" ? Boolean(draft.isActive) : false,
+                            },
+                          };
+                        })}>
+                          <option value="PENDING">PENDING</option>
+                          <option value="APPROVED">APPROVED</option>
+                          <option value="REJECTED">REJECTED</option>
+                        </select>
+                        <input style={inputStyle} type="number" min="0" max="5" step="0.1" value={String(draft.ratingOverride ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, ratingOverride: e.target.value } }))} placeholder="Displayed rating override" />
+                        <input style={inputStyle} type="number" min="0" step="1" value={String(draft.reviewCountOverride ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, reviewCountOverride: e.target.value } }))} placeholder="Displayed review count override" />
+                        <textarea style={{ ...textareaStyle, gridColumn: "1 / -1" }} value={String(draft.approvalNotes ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, approvalNotes: e.target.value } }))} placeholder="Approval notes" />
                         <select style={inputStyle} value={String(draft.priceRange ?? "MID")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, priceRange: e.target.value as VenueRow["priceRange"] } }))}>
                           <option value="BUDGET">BUDGET</option>
                           <option value="MID">MID</option>
@@ -1920,12 +3294,20 @@ export default function JazzbaiSuperAdminPage() {
                         </select>
                         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                           <input type="checkbox" checked={Boolean(draft.isVerified)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isVerified: e.target.checked } }))} />
-                          Verified
+                          Verified badge
                         </label>
                         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                          <input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} />
-                          Active
+                          <input
+                            type="checkbox"
+                            checked={Boolean(draft.isActive)}
+                            disabled={draft.approvalStatus !== "APPROVED"}
+                            onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))}
+                          />
+                          Published
                         </label>
+                        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                          Only approved venues can be published publicly. Pending or rejected venues remain unpublished.
+                        </div>
                         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                           <input type="checkbox" checked={Boolean(draft.isFeatured)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isFeatured: e.target.checked } }))} />
                           Featured
@@ -2256,7 +3638,7 @@ export default function JazzbaiSuperAdminPage() {
                   <option value="">Select match</option>
                   {lookupMatches.map((match) => (
                     <option key={match.id} value={match.id}>
-                      {match.homeTeamName} vs {match.awayTeamName} - {formatDateTime(match.matchDateUtc)}
+                      {formatLookupMatchLabel(match)} - {formatDateTime(match.matchDateUtc)}
                     </option>
                   ))}
                 </select>
@@ -2854,61 +4236,103 @@ export default function JazzbaiSuperAdminPage() {
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Match</h2>
               </div>
-              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1.8fr 1.8fr 1.8fr 1.6fr 1.2fr auto" }}>
-                <select style={inputStyle} value={newMatch.leagueId} onChange={(e) => setNewMatch((prev) => ({ ...prev, leagueId: e.target.value }))}>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                <select
+                  style={inputStyle}
+                  value={newMatch.eventFormat}
+                  onChange={(e) => setNewMatch((prev) => ({
+                    ...prev,
+                    eventFormat: e.target.value as MatchEventFormat,
+                    ...(e.target.value === "SINGLE_EVENT"
+                      ? { homeTeamId: "", awayTeamId: "", homeTeamName: "", awayTeamName: "" }
+                      : {}),
+                  }))}
+                >
+                  <option value="HEAD_TO_HEAD">Head to Head</option>
+                  <option value="SINGLE_EVENT">Single Event</option>
+                </select>
+                <select
+                  style={inputStyle}
+                  value={newMatch.leagueId}
+                  onChange={(e) => {
+                    const nextLeagueId = e.target.value;
+                    setNewMatch((prev) => ({
+                      ...prev,
+                      leagueId: nextLeagueId,
+                      eventFormat: isSingleEventLeagueId(nextLeagueId) ? "SINGLE_EVENT" : prev.eventFormat,
+                    }));
+                  }}
+                >
                   <option value="">League</option>
                   {lookupLeagues.map((league) => (
                     <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
                   ))}
                 </select>
-                <SearchPicker
-                  placeholder="Home team"
-                  value={newMatch.homeTeamName}
-                  selectedId={newMatch.homeTeamId || null}
-                  searchKey={newMatch.leagueId || "no-league"}
-                  initialOptions={defaultTeamOptions}
-                  excludeIds={newMatch.awayTeamId ? [newMatch.awayTeamId] : []}
-                  createHint="Create team"
-                  createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
-                  onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, homeTeamId: "", homeTeamName: nextValue }))}
-                  onSelect={(option) => setNewMatch((prev) => ({ ...prev, homeTeamId: option.id, homeTeamName: option.label }))}
-                  onCreate={async (query, extra) => {
-                    const team = await createTeam({
-                      name: query,
-                      shortName: extra.shortName?.trim() || undefined,
-                      leagueId: newMatch.leagueId || null,
-                    });
-                    setNewMatch((prev) => ({ ...prev, homeTeamId: team.id, homeTeamName: team.name }));
-                  }}
-                  search={async (query) => {
-                    const rows = await searchTeams(query, newMatch.leagueId || undefined);
-                    return rows.filter((team) => team.id !== newMatch.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
-                  }}
-                />
-                <SearchPicker
-                  placeholder="Away team"
-                  value={newMatch.awayTeamName}
-                  selectedId={newMatch.awayTeamId || null}
-                  searchKey={newMatch.leagueId || "no-league"}
-                  initialOptions={defaultTeamOptions}
-                  excludeIds={newMatch.homeTeamId ? [newMatch.homeTeamId] : []}
-                  createHint="Create team"
-                  createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
-                  onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, awayTeamId: "", awayTeamName: nextValue }))}
-                  onSelect={(option) => setNewMatch((prev) => ({ ...prev, awayTeamId: option.id, awayTeamName: option.label }))}
-                  onCreate={async (query, extra) => {
-                    const team = await createTeam({
-                      name: query,
-                      shortName: extra.shortName?.trim() || undefined,
-                      leagueId: newMatch.leagueId || null,
-                    });
-                    setNewMatch((prev) => ({ ...prev, awayTeamId: team.id, awayTeamName: team.name }));
-                  }}
-                  search={async (query) => {
-                    const rows = await searchTeams(query, newMatch.leagueId || undefined);
-                    return rows.filter((team) => team.id !== newMatch.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
-                  }}
-                />
+                {newMatch.eventFormat === "HEAD_TO_HEAD" ? (
+                  <>
+                    <SearchPicker
+                      placeholder="Home team"
+                      value={newMatch.homeTeamName}
+                      selectedId={newMatch.homeTeamId || null}
+                      searchKey={newMatch.leagueId || "no-league"}
+                      initialOptions={buildTeamPickerOptions(newMatch.leagueId)}
+                      excludeIds={newMatch.awayTeamId ? [newMatch.awayTeamId] : []}
+                      createHint="Create team"
+                      createFields={[
+                        { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                        { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                      ]}
+                      onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, homeTeamId: "", homeTeamName: nextValue }))}
+                      onSelect={(option) => setNewMatch((prev) => ({ ...prev, homeTeamId: option.id, homeTeamName: option.label }))}
+                      onCreate={async (query, extra) => {
+                        const team = await createTeam({
+                          name: query,
+                          shortName: extra.shortName?.trim() || undefined,
+                          crestUrl: extra.crestUrl?.trim() || undefined,
+                          leagueId: newMatch.leagueId || null,
+                        });
+                        setNewMatch((prev) => ({ ...prev, homeTeamId: team.id, homeTeamName: team.name }));
+                      }}
+                      search={async (query) => {
+                        const rows = await searchTeamsForLeague(query, newMatch.leagueId || undefined);
+                        return rows.filter((team) => team.id !== newMatch.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
+                      }}
+                    />
+                    <SearchPicker
+                      placeholder="Away team"
+                      value={newMatch.awayTeamName}
+                      selectedId={newMatch.awayTeamId || null}
+                      searchKey={newMatch.leagueId || "no-league"}
+                      initialOptions={buildTeamPickerOptions(newMatch.leagueId)}
+                      excludeIds={newMatch.homeTeamId ? [newMatch.homeTeamId] : []}
+                      createHint="Create team"
+                      createFields={[
+                        { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                        { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                      ]}
+                      onInputChange={(nextValue) => setNewMatch((prev) => ({ ...prev, awayTeamId: "", awayTeamName: nextValue }))}
+                      onSelect={(option) => setNewMatch((prev) => ({ ...prev, awayTeamId: option.id, awayTeamName: option.label }))}
+                      onCreate={async (query, extra) => {
+                        const team = await createTeam({
+                          name: query,
+                          shortName: extra.shortName?.trim() || undefined,
+                          crestUrl: extra.crestUrl?.trim() || undefined,
+                          leagueId: newMatch.leagueId || null,
+                        });
+                        setNewMatch((prev) => ({ ...prev, awayTeamId: team.id, awayTeamName: team.name }));
+                      }}
+                      search={async (query) => {
+                        const rows = await searchTeamsForLeague(query, newMatch.leagueId || undefined);
+                        return rows.filter((team) => team.id !== newMatch.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <input style={inputStyle} value={newMatch.eventTitle} onChange={(e) => setNewMatch((prev) => ({ ...prev, eventTitle: e.target.value }))} placeholder="Event title" />
+                    <input style={inputStyle} value={newMatch.eventSubtitle} onChange={(e) => setNewMatch((prev) => ({ ...prev, eventSubtitle: e.target.value }))} placeholder="Event subtitle" />
+                  </>
+                )}
                 <SearchPicker
                   placeholder="Stadium"
                   value={newMatch.venueName}
@@ -2938,6 +4362,14 @@ export default function JazzbaiSuperAdminPage() {
                     <option key={status} value={status}>{status}</option>
                   ))}
                 </select>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px", fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+                  <input
+                    type="checkbox"
+                    checked={newMatch.isFeatured}
+                    onChange={(e) => setNewMatch((prev) => ({ ...prev, isFeatured: e.target.checked }))}
+                  />
+                  Featured match
+                </label>
                 <button
                   style={smallBtn("primary", submittingAction === "create-match")}
                   disabled={submittingAction === "create-match"}
@@ -2945,18 +4377,26 @@ export default function JazzbaiSuperAdminPage() {
                     await superAdminFetch("/matches", {
                       method: "POST",
                       body: JSON.stringify({
+                        eventFormat: newMatch.eventFormat,
+                        eventTitle: newMatch.eventFormat === "SINGLE_EVENT" ? newMatch.eventTitle || null : null,
+                        eventSubtitle: newMatch.eventFormat === "SINGLE_EVENT" ? newMatch.eventSubtitle || null : null,
                         leagueId: newMatch.leagueId || null,
-                        homeTeamId: newMatch.homeTeamId || null,
-                        awayTeamId: newMatch.awayTeamId || null,
+                        homeTeamId: newMatch.eventFormat === "HEAD_TO_HEAD" ? newMatch.homeTeamId || null : null,
+                        awayTeamId: newMatch.eventFormat === "HEAD_TO_HEAD" ? newMatch.awayTeamId || null : null,
                         stadiumId: newMatch.stadiumId || null,
-                        homeTeamName: newMatch.homeTeamName,
-                        awayTeamName: newMatch.awayTeamName,
+                        homeTeamName: newMatch.eventFormat === "HEAD_TO_HEAD" ? newMatch.homeTeamName : null,
+                        awayTeamName: newMatch.eventFormat === "HEAD_TO_HEAD" ? newMatch.awayTeamName : null,
                         matchDateUtc: new Date(newMatch.matchDateUtc).toISOString(),
                         status: newMatch.status,
+                        isFeatured: newMatch.isFeatured,
                         venueName: newMatch.venueName || null,
                       }),
                     });
                     setNewMatch({
+                      eventFormat: "HEAD_TO_HEAD",
+                      isFeatured: false,
+                      eventTitle: "",
+                      eventSubtitle: "",
                       leagueId: "",
                       homeTeamId: "",
                       awayTeamId: "",
@@ -2988,10 +4428,12 @@ export default function JazzbaiSuperAdminPage() {
                   <thead>
                     <tr>
                       <th style={thStyle}>League</th>
+                      <th style={thStyle}>Format</th>
                       <th style={thStyle}>Home</th>
                       <th style={thStyle}>Away</th>
                       <th style={thStyle}>Kickoff</th>
                       <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Featured</th>
                       <th style={thStyle}>Venue</th>
                       <th style={thStyle}>Actions</th>
                     </tr>
@@ -2999,6 +4441,9 @@ export default function JazzbaiSuperAdminPage() {
                   <tbody>
                     {matches.map((row) => {
                       const draft = matchDrafts[row.id] ?? {
+                        eventFormat: row.eventFormat || "HEAD_TO_HEAD",
+                        eventTitle: row.eventTitle || "",
+                        eventSubtitle: row.eventSubtitle || "",
                         leagueId: row.leagueId || "",
                         homeTeamId: row.homeTeamId || "",
                         awayTeamId: row.awayTeamId || "",
@@ -3007,6 +4452,7 @@ export default function JazzbaiSuperAdminPage() {
                         awayTeamName: row.awayTeamName,
                         matchDateUtc: toDatetimeLocal(row.matchDateUtc),
                         status: row.status,
+                        isFeatured: row.isFeatured,
                         venueName: row.venueName || "",
                       };
                       return (
@@ -3020,56 +4466,99 @@ export default function JazzbaiSuperAdminPage() {
                             </select>
                           </td>
                           <td style={tdStyle}>
-                            <SearchPicker
-                              placeholder="Home team"
-                              value={String(draft.homeTeamName ?? "")}
-                              selectedId={String(draft.homeTeamId ?? "") || null}
-                              searchKey={String(draft.leagueId || "") || "no-league"}
-                              initialOptions={defaultTeamOptions}
-                              excludeIds={draft.awayTeamId ? [String(draft.awayTeamId)] : []}
-                              createHint="Create team"
-                              createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
-                              onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: "", homeTeamName: nextValue } }))}
-                              onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: option.id, homeTeamName: option.label } }))}
-                              onCreate={async (query, extra) => {
-                                const team = await createTeam({
-                                  name: query,
-                                  shortName: extra.shortName?.trim() || undefined,
-                                  leagueId: String(draft.leagueId || "") || null,
-                                });
-                                setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: team.id, homeTeamName: team.name } }));
-                              }}
-                              search={async (query) => {
-                                const rows = await searchTeams(query, String(draft.leagueId || "") || undefined);
-                                return rows.filter((team) => team.id !== draft.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
-                              }}
-                            />
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <select
+                                style={inputStyle}
+                                value={String(draft.eventFormat || "HEAD_TO_HEAD")}
+                                onChange={(e) => setMatchDrafts((prev) => ({
+                                  ...prev,
+                                  [row.id]: {
+                                    ...draft,
+                                    eventFormat: e.target.value as MatchEventFormat,
+                                    ...(e.target.value === "SINGLE_EVENT"
+                                      ? { homeTeamId: "", awayTeamId: "", homeTeamName: "", awayTeamName: "" }
+                                      : {}),
+                                  },
+                                }))}
+                              >
+                                <option value="HEAD_TO_HEAD">Head to Head</option>
+                                <option value="SINGLE_EVENT">Single Event</option>
+                              </select>
+                              {draft.eventFormat === "SINGLE_EVENT" && (
+                                <>
+                                  <input style={inputStyle} value={String(draft.eventTitle ?? "")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, eventTitle: e.target.value } }))} placeholder="Title" />
+                                  <input style={inputStyle} value={String(draft.eventSubtitle ?? "")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, eventSubtitle: e.target.value } }))} placeholder="Subtitle" />
+                                </>
+                              )}
+                            </div>
                           </td>
                           <td style={tdStyle}>
-                            <SearchPicker
-                              placeholder="Away team"
-                              value={String(draft.awayTeamName ?? "")}
-                              selectedId={String(draft.awayTeamId ?? "") || null}
-                              searchKey={String(draft.leagueId || "") || "no-league"}
-                              initialOptions={defaultTeamOptions}
-                              excludeIds={draft.homeTeamId ? [String(draft.homeTeamId)] : []}
-                              createHint="Create team"
-                              createFields={[{ key: "shortName", label: "Short name", placeholder: "Short name (optional)" }]}
-                              onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: "", awayTeamName: nextValue } }))}
-                              onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: option.id, awayTeamName: option.label } }))}
-                              onCreate={async (query, extra) => {
-                                const team = await createTeam({
-                                  name: query,
-                                  shortName: extra.shortName?.trim() || undefined,
-                                  leagueId: String(draft.leagueId || "") || null,
-                                });
-                                setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: team.id, awayTeamName: team.name } }));
-                              }}
-                              search={async (query) => {
-                                const rows = await searchTeams(query, String(draft.leagueId || "") || undefined);
-                                return rows.filter((team) => team.id !== draft.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
-                              }}
-                            />
+                            {draft.eventFormat === "HEAD_TO_HEAD" ? (
+                              <SearchPicker
+                                placeholder="Home team"
+                                value={String(draft.homeTeamName ?? "")}
+                                selectedId={String(draft.homeTeamId ?? "") || null}
+                                searchKey={String(draft.leagueId || "") || "no-league"}
+                                initialOptions={buildTeamPickerOptions(String(draft.leagueId || "") || undefined)}
+                                excludeIds={draft.awayTeamId ? [String(draft.awayTeamId)] : []}
+                                createHint="Create team"
+                                createFields={[
+                                  { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                                  { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                                ]}
+                                onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: "", homeTeamName: nextValue } }))}
+                                onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: option.id, homeTeamName: option.label } }))}
+                                onCreate={async (query, extra) => {
+                                  const team = await createTeam({
+                                    name: query,
+                                    shortName: extra.shortName?.trim() || undefined,
+                                    crestUrl: extra.crestUrl?.trim() || undefined,
+                                    leagueId: String(draft.leagueId || "") || null,
+                                  });
+                                  setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, homeTeamId: team.id, homeTeamName: team.name } }));
+                                }}
+                                search={async (query) => {
+                                  const rows = await searchTeamsForLeague(query, String(draft.leagueId || "") || undefined);
+                                  return rows.filter((team) => team.id !== draft.awayTeamId).map((team) => teamToOption(team, leagueLabelById));
+                                }}
+                              />
+                            ) : (
+                              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Single event</div>
+                            )}
+                          </td>
+                          <td style={tdStyle}>
+                            {draft.eventFormat === "HEAD_TO_HEAD" ? (
+                              <SearchPicker
+                                placeholder="Away team"
+                                value={String(draft.awayTeamName ?? "")}
+                                selectedId={String(draft.awayTeamId ?? "") || null}
+                                searchKey={String(draft.leagueId || "") || "no-league"}
+                                initialOptions={buildTeamPickerOptions(String(draft.leagueId || "") || undefined)}
+                                excludeIds={draft.homeTeamId ? [String(draft.homeTeamId)] : []}
+                                createHint="Create team"
+                                createFields={[
+                                  { key: "shortName", label: "Short name", placeholder: "Short name (optional)" },
+                                  { key: "crestUrl", label: "Crest URL", placeholder: "Crest URL (optional)" },
+                                ]}
+                                onInputChange={(nextValue) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: "", awayTeamName: nextValue } }))}
+                                onSelect={(option) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: option.id, awayTeamName: option.label } }))}
+                                onCreate={async (query, extra) => {
+                                  const team = await createTeam({
+                                    name: query,
+                                    shortName: extra.shortName?.trim() || undefined,
+                                    crestUrl: extra.crestUrl?.trim() || undefined,
+                                    leagueId: String(draft.leagueId || "") || null,
+                                  });
+                                  setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, awayTeamId: team.id, awayTeamName: team.name } }));
+                                }}
+                                search={async (query) => {
+                                  const rows = await searchTeamsForLeague(query, String(draft.leagueId || "") || undefined);
+                                  return rows.filter((team) => team.id !== draft.homeTeamId).map((team) => teamToOption(team, leagueLabelById));
+                                }}
+                              />
+                            ) : (
+                              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{String(draft.eventSubtitle ?? "") || "No subtitle"}</div>
+                            )}
                           </td>
                           <td style={tdStyle}><input style={inputStyle} type="datetime-local" value={String(draft.matchDateUtc ?? "")} onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, matchDateUtc: e.target.value } }))} /></td>
                           <td style={tdStyle}>
@@ -3078,6 +4567,16 @@ export default function JazzbaiSuperAdminPage() {
                                 <option key={status} value={status}>{status}</option>
                               ))}
                             </select>
+                          </td>
+                          <td style={tdStyle}>
+                            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(draft.isFeatured)}
+                                onChange={(e) => setMatchDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isFeatured: e.target.checked } }))}
+                              />
+                              Featured
+                            </label>
                           </td>
                           <td style={tdStyle}>
                             <SearchPicker
@@ -3113,14 +4612,18 @@ export default function JazzbaiSuperAdminPage() {
                                   await superAdminFetch(`/matches/${row.id}`, {
                                     method: "PATCH",
                                     body: JSON.stringify({
+                                      eventFormat: draft.eventFormat || "HEAD_TO_HEAD",
+                                      eventTitle: draft.eventFormat === "SINGLE_EVENT" ? draft.eventTitle || null : null,
+                                      eventSubtitle: draft.eventFormat === "SINGLE_EVENT" ? draft.eventSubtitle || null : null,
                                       leagueId: draft.leagueId || null,
-                                      homeTeamId: draft.homeTeamId || null,
-                                      awayTeamId: draft.awayTeamId || null,
+                                      homeTeamId: draft.eventFormat === "HEAD_TO_HEAD" ? draft.homeTeamId || null : null,
+                                      awayTeamId: draft.eventFormat === "HEAD_TO_HEAD" ? draft.awayTeamId || null : null,
                                       stadiumId: draft.stadiumId || null,
-                                      homeTeamName: draft.homeTeamName,
-                                      awayTeamName: draft.awayTeamName,
+                                      homeTeamName: draft.eventFormat === "HEAD_TO_HEAD" ? draft.homeTeamName : null,
+                                      awayTeamName: draft.eventFormat === "HEAD_TO_HEAD" ? draft.awayTeamName : null,
                                       matchDateUtc: draft.matchDateUtc ? new Date(String(draft.matchDateUtc)).toISOString() : undefined,
                                       status: draft.status,
+                                      isFeatured: Boolean(draft.isFeatured),
                                       venueName: draft.venueName || null,
                                     }),
                                   });
@@ -3150,8 +4653,267 @@ export default function JazzbaiSuperAdminPage() {
             </div>
           </section>
         )}
+
+        {activeTab === "motorsportEntries" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={{ ...cardStyle, overflow: "visible", position: "relative", zIndex: 20 }}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Motorsport Entry</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                <select style={inputStyle} value={newMotorsportEntry.matchId} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, matchId: e.target.value }))}>
+                  <option value="">Motorsport event</option>
+                  {motorsportLookupMatches.map((match) => (
+                    <option key={match.id} value={match.id}>{formatLookupMatchLabel(match)}</option>
+                  ))}
+                </select>
+                <input style={inputStyle} value={newMotorsportEntry.carNumber} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, carNumber: e.target.value }))} placeholder="Car number" />
+                <input style={inputStyle} value={newMotorsportEntry.driverName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverName: e.target.value }))} placeholder="Driver name" />
+                <input style={inputStyle} value={newMotorsportEntry.driverShortName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverShortName: e.target.value }))} placeholder="Driver short name" />
+                <input style={inputStyle} value={newMotorsportEntry.driverNationality} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverNationality: e.target.value }))} placeholder="Nationality" />
+                <input style={inputStyle} value={newMotorsportEntry.driverCountryCode} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, driverCountryCode: e.target.value.toUpperCase() }))} placeholder="Country code" />
+                <input style={inputStyle} value={newMotorsportEntry.entrantName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, entrantName: e.target.value }))} placeholder="Entrant / team" />
+                <input style={inputStyle} value={newMotorsportEntry.entrantShortName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, entrantShortName: e.target.value }))} placeholder="Team short name" />
+                <input style={inputStyle} value={newMotorsportEntry.entrantBrandColor} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, entrantBrandColor: e.target.value }))} placeholder="Brand color" />
+                <input style={inputStyle} value={newMotorsportEntry.manufacturerName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, manufacturerName: e.target.value }))} placeholder="Manufacturer" />
+                <input style={inputStyle} value={newMotorsportEntry.manufacturerShortName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, manufacturerShortName: e.target.value }))} placeholder="Manufacturer short name" />
+                <input style={inputStyle} value={newMotorsportEntry.displayName} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, displayName: e.target.value }))} placeholder="Display name (optional)" />
+                <input style={inputStyle} value={newMotorsportEntry.gridPosition} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, gridPosition: e.target.value }))} placeholder="Grid" />
+                <input style={inputStyle} value={newMotorsportEntry.startPosition} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, startPosition: e.target.value }))} placeholder="Start" />
+                <input style={inputStyle} value={newMotorsportEntry.finishPosition} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, finishPosition: e.target.value }))} placeholder="Finish" />
+                <select style={inputStyle} value={newMotorsportEntry.status} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, status: e.target.value as MotorsportEntryStatus }))}>
+                  {MOTORSPORT_ENTRY_STATUSES.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+                <input style={inputStyle} value={newMotorsportEntry.points} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, points: e.target.value }))} placeholder="Points" />
+                <button
+                  style={smallBtn("primary", submittingAction === "create-motorsport-entry")}
+                  disabled={submittingAction === "create-motorsport-entry"}
+                  onClick={() => void runAction("create-motorsport-entry", async () => {
+                    await superAdminFetch("/motorsport-entries", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        matchId: newMotorsportEntry.matchId,
+                        carNumber: newMotorsportEntry.carNumber || undefined,
+                        driverName: newMotorsportEntry.driverName || undefined,
+                        driverShortName: newMotorsportEntry.driverShortName || undefined,
+                        driverNationality: newMotorsportEntry.driverNationality || undefined,
+                        driverCountryCode: newMotorsportEntry.driverCountryCode || undefined,
+                        entrantName: newMotorsportEntry.entrantName || undefined,
+                        entrantShortName: newMotorsportEntry.entrantShortName || undefined,
+                        entrantBrandColor: newMotorsportEntry.entrantBrandColor || undefined,
+                        manufacturerName: newMotorsportEntry.manufacturerName || undefined,
+                        manufacturerShortName: newMotorsportEntry.manufacturerShortName || undefined,
+                        displayName: newMotorsportEntry.displayName || undefined,
+                        gridPosition: parseOptionalNumber(newMotorsportEntry.gridPosition),
+                        startPosition: parseOptionalNumber(newMotorsportEntry.startPosition),
+                        finishPosition: parseOptionalNumber(newMotorsportEntry.finishPosition),
+                        status: newMotorsportEntry.status,
+                        points: parseOptionalNumber(newMotorsportEntry.points),
+                      }),
+                    });
+                    setNewMotorsportEntry({
+                      matchId: newMotorsportEntry.matchId,
+                      carNumber: "",
+                      driverName: "",
+                      driverShortName: "",
+                      driverNationality: "",
+                      driverCountryCode: "",
+                      entrantName: "",
+                      entrantShortName: "",
+                      entrantBrandColor: "",
+                      manufacturerName: "",
+                      manufacturerShortName: "",
+                      displayName: "",
+                      gridPosition: "",
+                      startPosition: "",
+                      finishPosition: "",
+                      status: "ENTERED",
+                      points: "",
+                    });
+                    setMotorsportEntriesMatchId((prev) => prev || newMotorsportEntry.matchId);
+                    await Promise.all([loadMotorsportEntries(), loadLookups()]);
+                  })}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Motorsport Entries ({motorsportEntriesCount})</h2>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <select style={{ ...inputStyle, minWidth: 240 }} value={motorsportEntriesMatchId} onChange={(e) => setMotorsportEntriesMatchId(e.target.value)}>
+                    <option value="">All motorsport events</option>
+                    {motorsportLookupMatches.map((match) => (
+                      <option key={match.id} value={match.id}>{formatLookupMatchLabel(match)}</option>
+                    ))}
+                  </select>
+                  <input value={motorsportEntriesSearch} onChange={(e) => setMotorsportEntriesSearch(e.target.value)} placeholder="Search entries" style={{ ...inputStyle, minWidth: 220 }} />
+                  <button style={smallBtn("outline", motorsportEntriesLoading)} onClick={() => void loadMotorsportEntries()} disabled={motorsportEntriesLoading}>Search</button>
+                </div>
+              </div>
+              <div style={tableWrapStyle}>
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Event</th>
+                      <th style={thStyle}>Car</th>
+                      <th style={thStyle}>Driver</th>
+                      <th style={thStyle}>Entrant</th>
+                      <th style={thStyle}>Manufacturer</th>
+                      <th style={thStyle}>Grid</th>
+                      <th style={thStyle}>Start</th>
+                      <th style={thStyle}>Finish</th>
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Points</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {motorsportEntries.map((row) => {
+                      const draft = motorsportEntryDrafts[row.id] ?? {
+                        matchId: row.matchId,
+                        carNumber: row.carNumber || "",
+                        displayName: row.displayName || "",
+                        driverName: row.driverName || "",
+                        driverShortName: row.driverShortName || "",
+                        driverNationality: row.driverNationality || "",
+                        driverCountryCode: row.driverCountryCode || "",
+                        entrantName: row.entrantName || "",
+                        entrantShortName: row.entrantShortName || "",
+                        entrantBrandColor: row.entrantBrandColor || "",
+                        manufacturerName: row.manufacturerName || "",
+                        manufacturerShortName: row.manufacturerShortName || "",
+                        gridPosition: row.gridPosition ?? "",
+                        startPosition: row.startPosition ?? "",
+                        finishPosition: row.finishPosition ?? "",
+                        status: row.status,
+                        points: row.points ?? "",
+                      };
+                      return (
+                        <tr key={row.id}>
+                          <td style={tdStyle}>
+                            <select style={{ ...inputStyle, minWidth: 220 }} value={String(draft.matchId ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, matchId: e.target.value } }))}>
+                              <option value="">Motorsport event</option>
+                              {motorsportLookupMatches.map((match) => (
+                                <option key={match.id} value={match.id}>{formatLookupMatchLabel(match)}</option>
+                              ))}
+                            </select>
+                            <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted-foreground)" }}>
+                              {row.matchSubtitle || formatLookupMatchSubtitle(lookupMatches.find((match) => match.id === (draft.matchId || row.matchId)) || {
+                                id: row.matchId,
+                                eventFormat: "SINGLE_EVENT",
+                                eventTitle: row.matchLabel || "",
+                                eventSubtitle: row.matchSubtitle || "",
+                                homeTeamName: null,
+                                awayTeamName: null,
+                                matchDateUtc: "",
+                                status: "",
+                                leagueId: null,
+                              })}
+                            </div>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.carNumber ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, carNumber: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String(draft.driverName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, driverName: e.target.value } }))} />
+                              <input style={inputStyle} value={String(draft.driverShortName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, driverShortName: e.target.value } }))} placeholder="Short" />
+                            </div>
+                          </td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String(draft.entrantName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, entrantName: e.target.value } }))} />
+                              <input style={inputStyle} value={String(draft.entrantShortName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, entrantShortName: e.target.value } }))} placeholder="Short" />
+                            </div>
+                          </td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String(draft.manufacturerName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, manufacturerName: e.target.value } }))} />
+                              <input style={inputStyle} value={String(draft.manufacturerShortName ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, manufacturerShortName: e.target.value } }))} placeholder="Short" />
+                            </div>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.gridPosition ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, gridPosition: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.startPosition ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, startPosition: e.target.value } }))} /></td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.finishPosition ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, finishPosition: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <select style={inputStyle} value={String(draft.status ?? "ENTERED")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, status: e.target.value as MotorsportEntryStatus } }))}>
+                              {MOTORSPORT_ENTRY_STATUSES.map((status) => (
+                                <option key={status} value={status}>{status}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={tdStyle}><input style={inputStyle} value={String(draft.points ?? "")} onChange={(e) => setMotorsportEntryDrafts((prev) => ({ ...prev, [row.id]: { ...draft, points: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                style={smallBtn("primary", submittingAction === `save-entry-${row.id}`)}
+                                disabled={submittingAction === `save-entry-${row.id}`}
+                                onClick={() => void runAction(`save-entry-${row.id}`, async () => {
+                                  await superAdminFetch(`/motorsport-entries/${row.id}`, {
+                                    method: "PATCH",
+                                    body: JSON.stringify({
+                                      matchId: draft.matchId || row.matchId,
+                                      carNumber: draft.carNumber || null,
+                                      displayName: draft.displayName || null,
+                                      driverName: draft.driverName || undefined,
+                                      driverShortName: draft.driverShortName || null,
+                                      driverNationality: draft.driverNationality || null,
+                                      driverCountryCode: draft.driverCountryCode || null,
+                                      entrantName: draft.entrantName || undefined,
+                                      entrantShortName: draft.entrantShortName || null,
+                                      entrantBrandColor: draft.entrantBrandColor || null,
+                                      manufacturerName: draft.manufacturerName || undefined,
+                                      manufacturerShortName: draft.manufacturerShortName || null,
+                                      gridPosition: parseOptionalNumber(draft.gridPosition as string | number | null | undefined),
+                                      startPosition: parseOptionalNumber(draft.startPosition as string | number | null | undefined),
+                                      finishPosition: parseOptionalNumber(draft.finishPosition as string | number | null | undefined),
+                                      status: draft.status,
+                                      points: parseOptionalNumber(draft.points as string | number | null | undefined),
+                                    }),
+                                  });
+                                  await loadMotorsportEntries();
+                                })}
+                              >
+                                Save
+                              </button>
+                              <button
+                                style={smallBtn("danger", submittingAction === `delete-entry-${row.id}`)}
+                                disabled={submittingAction === `delete-entry-${row.id}`}
+                                onClick={() => void runAction(`delete-entry-${row.id}`, async () => {
+                                  await superAdminFetch(`/motorsport-entries/${row.id}`, { method: "DELETE" });
+                                  await loadMotorsportEntries();
+                                })}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {motorsportEntries.length === 0 && !motorsportEntriesLoading && (
+                      <tr>
+                        <td style={{ ...tdStyle, textAlign: "center", color: "var(--muted-foreground)" }} colSpan={11}>
+                          No motorsport entries found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "blog" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <BlogAdminPanel />
+          </section>
+        )}
       </main>
-    </AppShell>
+    </SuperAdminShell>
   );
 }
-

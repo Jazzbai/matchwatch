@@ -5,6 +5,14 @@ import { eq, and, count, desc, asc, sql, ilike, inArray, gte } from 'drizzle-orm
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { venueQuerySchema, paginationSchema } from '@matchwatch/shared';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware';
+import { buildGoogleVenueFields } from '../lib/venueOnboarding';
+import { getGooglePhotoMediaUri, type GoogleSourceSnapshot } from '../lib/googlePlaces';
+import { getPublicGoogleReviews, isGoogleSyncStale, refreshVenueFromGoogle } from '../lib/googleVenueSync';
+import {
+    buildVenueImageRenderPayload,
+    normalizeGoogleSourceSnapshot,
+    resolveSelectedGooglePhotos,
+} from '../lib/venueImages';
 
 const venueRoutes = new Hono();
 
@@ -25,12 +33,173 @@ function promotedVenueEventIdFromMetadata(metadata: unknown): string | null {
     return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : null;
 }
 
-/** Downsize Google Places photo URLs to a smaller width for list/card thumbnails */
-function toThumbnailUrl(url: string, maxwidth = 600): string {
-    return url.replace(/maxwidth=\d+/, `maxwidth=${maxwidth}`);
+function venueImagePayloadForRow(venue: typeof venues.$inferSelect) {
+    return buildVenueImageRenderPayload({
+        slugOrId: venue.slug || venue.id,
+        coverImageUrl: venue.coverImageUrl,
+        manualGalleryImageUrls: galleryImageUrlsFromMetadata(venue.metadata),
+        snapshot: (venue.googleSourceSnapshot || null) as GoogleSourceSnapshot | null,
+    });
+}
+
+function venueWorkingHoursForRow(venue: typeof venues.$inferSelect) {
+    const normalizedSnapshot = normalizeGoogleSourceSnapshot((venue.googleSourceSnapshot || {}) as GoogleSourceSnapshot);
+    return Array.isArray(normalizedSnapshot.workingHours) ? normalizedSnapshot.workingHours : [];
+}
+
+async function getPublicVenueBySlugOrId(slugOrId: string) {
+    const [venue] = await db.select().from(venues).where(
+        sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
+    ).limit(1);
+
+    if (!venue || !venue.isActive || venue.approvalStatus !== 'APPROVED') {
+        return null;
+    }
+
+    return venue;
+}
+
+async function refreshVenueGoogleSnapshot(venue: typeof venues.$inferSelect) {
+    if (!venue.googlePlaceId) return venue;
+    const refreshed = await refreshVenueFromGoogle(venue);
+    const googleFields = buildGoogleVenueFields(refreshed.snapshot);
+    return {
+        ...venue,
+        googlePlaceId: googleFields.googlePlaceId,
+        googleSourceSnapshot: refreshed.snapshot as typeof venue.googleSourceSnapshot,
+        googleLastSyncedAt: new Date(),
+        googleSyncStatus: 'SYNCED' as typeof venue.googleSyncStatus,
+        googleSyncError: null,
+        ratingOverride: googleFields.ratingOverride,
+        reviewCountOverride: googleFields.reviewCountOverride,
+        description: (refreshed.updates.description as typeof venue.description | undefined) ?? venue.description,
+        shortDescription: (refreshed.updates.shortDescription as typeof venue.shortDescription | undefined) ?? venue.shortDescription,
+        priceRange: (refreshed.updates.priceRange as typeof venue.priceRange | undefined) ?? venue.priceRange,
+        descriptionSource: (refreshed.updates.descriptionSource as typeof venue.descriptionSource | undefined) ?? venue.descriptionSource,
+        shortDescriptionSource: (refreshed.updates.shortDescriptionSource as typeof venue.shortDescriptionSource | undefined) ?? venue.shortDescriptionSource,
+        priceRangeSource: (refreshed.updates.priceRangeSource as typeof venue.priceRangeSource | undefined) ?? venue.priceRangeSource,
+    };
+}
+
+async function resolveVenueGooglePhotoRedirect(venue: typeof venues.$inferSelect, photoName: string) {
+    try {
+        return await getGooglePhotoMediaUri(photoName);
+    } catch (error) {
+        if (!venue.googlePlaceId) throw error;
+
+        const refreshedVenue = await refreshVenueGoogleSnapshot(venue);
+        const refreshedSnapshot = normalizeGoogleSourceSnapshot((refreshedVenue.googleSourceSnapshot || {}) as GoogleSourceSnapshot);
+        if (!(refreshedSnapshot.photos || []).some((photo) => photo.name === photoName)) {
+            throw error;
+        }
+
+        return getGooglePhotoMediaUri(photoName);
+    }
+
 }
 
 // ─── GET / ──────────────────────────────────────
+venueRoutes.get('/:slugOrId/cover-image', async (c) => {
+    const slugOrId = c.req.param('slugOrId');
+    const venue = await getPublicVenueBySlugOrId(slugOrId);
+    if (!venue) {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
+
+    const manualCover = venue.coverImageUrl?.trim() || null;
+    if (manualCover) {
+        return c.redirect(manualCover, 302);
+    }
+
+    const manualGallery = galleryImageUrlsFromMetadata(venue.metadata);
+    const { cover, gallery } = resolveSelectedGooglePhotos(
+        normalizeGoogleSourceSnapshot((venue.googleSourceSnapshot || {}) as GoogleSourceSnapshot),
+    );
+
+    if (cover?.name) {
+        try {
+            const photoUri = await resolveVenueGooglePhotoRedirect(venue, cover.name);
+            return c.redirect(photoUri, 302);
+        } catch {
+            // fall through to the next valid image source
+        }
+    }
+
+    if (manualGallery[0]) {
+        return c.redirect(manualGallery[0], 302);
+    }
+
+    if (gallery[0]?.name) {
+        try {
+            const photoUri = await resolveVenueGooglePhotoRedirect(venue, gallery[0].name);
+            return c.redirect(photoUri, 302);
+        } catch {
+            // fall through to 404
+        }
+    }
+
+    return c.json(apiError('NOT_FOUND', 'Venue cover image not found'), 404);
+});
+
+venueRoutes.get('/:slugOrId/gallery/:index', async (c) => {
+    const slugOrId = c.req.param('slugOrId');
+    const galleryIndex = Number.parseInt(c.req.param('index'), 10);
+    if (!Number.isInteger(galleryIndex) || galleryIndex < 0) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid gallery index'), 400);
+    }
+
+    const venue = await getPublicVenueBySlugOrId(slugOrId);
+    if (!venue) {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
+
+    const manualGallery = galleryImageUrlsFromMetadata(venue.metadata);
+    if (galleryIndex < manualGallery.length) {
+        return c.redirect(manualGallery[galleryIndex]!, 302);
+    }
+
+    const normalizedSnapshot = normalizeGoogleSourceSnapshot((venue.googleSourceSnapshot || {}) as GoogleSourceSnapshot);
+    const { gallery } = resolveSelectedGooglePhotos(normalizedSnapshot);
+    const googleIndex = galleryIndex - manualGallery.length;
+    const googlePhoto = gallery[googleIndex] || null;
+    if (!googlePhoto?.name) {
+        return c.json(apiError('NOT_FOUND', 'Venue gallery image not found'), 404);
+    }
+
+    try {
+        const photoUri = await resolveVenueGooglePhotoRedirect(venue, googlePhoto.name);
+        return c.redirect(photoUri, 302);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Google gallery image lookup failed';
+        return c.json(apiError('SERVICE_UNAVAILABLE', message), 503);
+    }
+});
+
+venueRoutes.get('/:slugOrId/google-photo', async (c) => {
+    const slugOrId = c.req.param('slugOrId');
+    const photoName = c.req.query('name')?.trim();
+    if (!photoName) {
+        return c.json(apiError('VALIDATION_ERROR', 'Google photo name is required'), 400);
+    }
+
+    const venue = await getPublicVenueBySlugOrId(slugOrId);
+    if (!venue) {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
+
+    const normalizedSnapshot = normalizeGoogleSourceSnapshot((venue.googleSourceSnapshot || {}) as GoogleSourceSnapshot);
+    if (!(normalizedSnapshot.photos || []).some((photo) => photo.name === photoName)) {
+        return c.json(apiError('NOT_FOUND', 'Google photo not found for venue'), 404);
+    }
+
+    try {
+        const photoUri = await resolveVenueGooglePhotoRedirect(venue, photoName);
+        return c.redirect(photoUri, 302);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Google photo lookup failed';
+        return c.json(apiError('SERVICE_UNAVAILABLE', message), 503);
+    }
+});
 venueRoutes.get('/', async (c) => {
     const query = venueQuerySchema.safeParse(c.req.query());
     if (!query.success) {
@@ -40,7 +209,7 @@ venueRoutes.get('/', async (c) => {
     const { q, city, lat, lng, is_verified, page, limit } = query.data;
     const offset = paginationOffset(page, limit);
 
-    let conditions: any[] = [eq(venues.isActive, true)];
+    let conditions: any[] = [eq(venues.isActive, true), eq(venues.approvalStatus, 'APPROVED')];
     if (city) conditions.push(ilike(venues.city, `%${city}%`));
     if (q) conditions.push(ilike(venues.name, `%${q}%`));
     if (is_verified !== undefined) conditions.push(eq(venues.isVerified, is_verified));
@@ -48,7 +217,15 @@ venueRoutes.get('/', async (c) => {
     const whereClause = and(...conditions);
 
     const [rows, [totalResult]] = await Promise.all([
-        db.select().from(venues).where(whereClause).orderBy(desc(venues.isFeatured), desc(venues.averageRating)).limit(limit).offset(offset),
+        db.select()
+            .from(venues)
+            .where(whereClause)
+            .orderBy(
+                desc(venues.isFeatured),
+                desc(sql`coalesce(${venues.ratingOverride}, ${venues.averageRating})`),
+            )
+            .limit(limit)
+            .offset(offset),
         db.select({ count: count() }).from(venues).where(whereClause),
     ]);
 
@@ -71,12 +248,8 @@ venueRoutes.get('/', async (c) => {
         const distance = lat && lng
             ? haversineDistance(lat, lng, Number(v.lat), Number(v.lng))
             : null;
-        const rawGallery = galleryImageUrlsFromMetadata(v.metadata);
-        // Use smaller thumbnails (600px) for list cards — saves 60-70% bandwidth
-        const galleryImageUrls = rawGallery.map(u => toThumbnailUrl(u, 600));
-        const coverImageUrl = v.coverImageUrl
-            ? toThumbnailUrl(v.coverImageUrl, 600)
-            : galleryImageUrls[0] || null;
+        const { googleSuggestedImages: _googleSuggestedImages, ...imagePayload } = venueImagePayloadForRow(v);
+
 
         return {
             id: v.id,
@@ -85,16 +258,22 @@ venueRoutes.get('/', async (c) => {
             shortDescription: v.shortDescription,
             addressLine1: v.addressLine1,
             city: v.city,
+            stateProvince: v.stateProvince,
             lat: Number(v.lat),
             lng: Number(v.lng),
-            coverImageUrl,
-            galleryImageUrls,
+            coverImageUrl: imagePayload.coverImageUrl,
+            galleryImageUrls: imagePayload.galleryImageUrls,
+            imageSource: imagePayload.imageSource,
+            coverImageAttributions: imagePayload.coverImageAttributions,
+            galleryImageAttributions: imagePayload.galleryImageAttributions,
             amenities: v.amenities,
             vibes: v.vibes,
             cuisineTags: v.cuisineTags,
             priceRange: v.priceRange,
             averageRating: v.averageRating,
             totalReviews: v.totalReviews,
+            ratingOverride: v.ratingOverride,
+            reviewCountOverride: v.reviewCountOverride,
             isVerified: v.isVerified,
             isFeatured: v.isFeatured,
             capacity: v.capacity,
@@ -137,12 +316,14 @@ venueRoutes.get('/following', authMiddleware, async (c) => {
     const [totalResult] = await db.select({ count: count() }).from(follows).where(eq(follows.userId, user.id));
 
     return c.json(apiResponse(
-        rows.map(r => ({
-            ...r.venue,
-            coverImageUrl: r.venue.coverImageUrl || galleryImageUrlsFromMetadata(r.venue.metadata)[0] || null,
-            galleryImageUrls: galleryImageUrlsFromMetadata(r.venue.metadata),
-            followedAt: r.followedAt,
-        })),
+        rows.map(r => {
+            const { googleSuggestedImages: _googleSuggestedImages, ...imagePayload } = venueImagePayloadForRow(r.venue);
+            return {
+                ...r.venue,
+                ...imagePayload,
+                followedAt: r.followedAt,
+            };
+        }),
         paginationMeta(page, limit, Number(totalResult?.count ?? 0)),
     ));
 });
@@ -150,14 +331,17 @@ venueRoutes.get('/following', authMiddleware, async (c) => {
 // ─── GET /:slugOrId ─────────────────────────────
 venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
     const slugOrId = c.req.param('slugOrId');
-
-    const [venue] = await db.select().from(venues).where(
-        sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
-    ).limit(1);
-
-    if (!venue || !venue.isActive) {
+    const venue = await getPublicVenueBySlugOrId(slugOrId);
+    if (!venue) {
         return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
     }
+    if (venue.googlePlaceId && isGoogleSyncStale(venue.googleLastSyncedAt)) {
+        void refreshVenueFromGoogle(venue).catch(() => undefined);
+    }
+    const { googleSuggestedImages: _googleSuggestedImages, ...imagePayload } = venueImagePayloadForRow(venue);
+    const workingHours = venueWorkingHoursForRow(venue);
+    const normalizedSnapshot = normalizeGoogleSourceSnapshot((venue.googleSourceSnapshot || {}) as GoogleSourceSnapshot);
+    const googleReviews = getPublicGoogleReviews(normalizedSnapshot);
 
     const upcomingEvents = await db.select({
         event: venueEvents,
@@ -218,8 +402,12 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
     c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     return c.json(apiResponse({
         ...venue,
-        coverImageUrl: venue.coverImageUrl || galleryUrls[0] || null,
-        galleryImageUrls: galleryUrls,
+        ...imagePayload,
+        workingHours,
+        googleEditorialSummary: normalizedSnapshot.editorialSummary || null,
+        googlePriceLevel: normalizedSnapshot.priceLevel || null,
+        googleReviews,
+
         promotedVenueEventId,
         followerCount: Number(followerResult?.count ?? 0),
         isFollowing,
@@ -263,6 +451,11 @@ venueRoutes.get('/:slugOrId/events', async (c) => {
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
 
+    const [publicVenue] = await db.select({ approvalStatus: venues.approvalStatus, isActive: venues.isActive }).from(venues).where(eq(venues.id, venue.id)).limit(1);
+    if (!publicVenue || !publicVenue.isActive || publicVenue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
+
     const rows = await db.select({
         event: venueEvents,
         match: matches,
@@ -288,6 +481,10 @@ venueRoutes.get('/:slugOrId/custom-events', async (c) => {
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    const [publicVenue] = await db.select({ approvalStatus: venues.approvalStatus, isActive: venues.isActive }).from(venues).where(eq(venues.id, venue.id)).limit(1);
+    if (!publicVenue || !publicVenue.isActive || publicVenue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
 
     const rows = await db.select().from(venueCustomEvents)
         .where(and(
@@ -314,6 +511,10 @@ venueRoutes.get('/:slugOrId/posts', async (c) => {
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    const [publicVenue] = await db.select({ approvalStatus: venues.approvalStatus, isActive: venues.isActive }).from(venues).where(eq(venues.id, venue.id)).limit(1);
+    if (!publicVenue || !publicVenue.isActive || publicVenue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
 
     const rows = await db.select().from(posts)
         .where(and(eq(posts.venueId, venue.id), eq(posts.isPublished, true)))
@@ -332,6 +533,10 @@ venueRoutes.get('/:slugOrId/menu', async (c) => {
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    const [publicVenue] = await db.select({ approvalStatus: venues.approvalStatus, isActive: venues.isActive }).from(venues).where(eq(venues.id, venue.id)).limit(1);
+    if (!publicVenue || !publicVenue.isActive || publicVenue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
 
     const categories = await db.select().from(menuCategories)
         .where(and(eq(menuCategories.venueId, venue.id), eq(menuCategories.isActive, true)))
@@ -364,6 +569,10 @@ venueRoutes.get('/:slugOrId/reviews', async (c) => {
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
     ).limit(1);
     if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    const [publicVenue] = await db.select({ approvalStatus: venues.approvalStatus, isActive: venues.isActive }).from(venues).where(eq(venues.id, venue.id)).limit(1);
+    if (!publicVenue || !publicVenue.isActive || publicVenue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
 
     const rows = await db.select({
         review: reviews,
@@ -450,3 +659,5 @@ venueRoutes.post('/:slugOrId/reviews', authMiddleware, async (c) => {
 });
 
 export default venueRoutes;
+
+

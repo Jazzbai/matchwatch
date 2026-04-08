@@ -19,7 +19,15 @@ export const notificationTypeEnum = pgEnum('notification_type', [
 export const priceRangeEnum = pgEnum('price_range', ['BUDGET', 'MID', 'UPSCALE', 'LUXURY']);
 export const venueAttributeTypeEnum = pgEnum('venue_attribute_type', ['AMENITY', 'VIBE', 'CUISINE']);
 export const claimStatusEnum = pgEnum('claim_status', ['PENDING', 'APPROVED', 'REJECTED']);
+export const approvalStatusEnum = pgEnum('approval_status', ['PENDING', 'APPROVED', 'REJECTED']);
+export const googleSyncStatusEnum = pgEnum('google_sync_status', ['NEVER_SYNCED', 'SYNCED', 'ERROR']);
+export const venueMenuSourceEnum = pgEnum('venue_menu_source', ['NONE', 'GOOGLE', 'MANUAL']);
+export const googleFieldSourceEnum = pgEnum('google_field_source', ['NONE', 'GOOGLE', 'MANUAL']);
 export const discountTypeEnum = pgEnum('discount_type', ['PERCENTAGE', 'FIXED', 'FREE_ITEM']);
+export const matchEventFormatEnum = pgEnum('match_event_format', ['HEAD_TO_HEAD', 'SINGLE_EVENT']);
+export const motorsportEntryStatusEnum = pgEnum('motorsport_entry_status', ['ENTERED', 'ACTIVE', 'FINISHED', 'DNF', 'DNS', 'DSQ', 'WITHDRAWN']);
+export const blogPublishStatusEnum = pgEnum('blog_publish_status', ['DRAFT', 'PUBLISHED']);
+export const blogCommentStatusEnum = pgEnum('blog_comment_status', ['PENDING', 'APPROVED', 'REJECTED']);
 
 // ─── Users ──────────────────────────────────────
 
@@ -44,6 +52,10 @@ export const users = pgTable('users', {
     timezone: varchar('timezone', { length: 50 }).default('UTC').notNull(),
     locale: varchar('locale', { length: 10 }).default('en').notNull(),
     pushToken: varchar('push_token'),
+    businessApprovalStatus: approvalStatusEnum('business_approval_status').default('PENDING').notNull(),
+    businessApprovalNotes: text('business_approval_notes'),
+    businessApprovedAt: timestamp('business_approved_at'),
+    businessApprovedBy: uuid('business_approved_by'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at'),
@@ -152,6 +164,10 @@ export const matches = pgTable('matches', {
     id: uuid('id').primaryKey().defaultRandom(),
     externalMatchId: varchar('external_match_id', { length: 50 }).unique(),
     leagueId: uuid('league_id').references(() => leagues.id),
+    isFeatured: boolean('is_featured').default(false).notNull(),
+    eventFormat: matchEventFormatEnum('event_format').default('HEAD_TO_HEAD').notNull(),
+    eventTitle: varchar('event_title', { length: 200 }),
+    eventSubtitle: varchar('event_subtitle', { length: 200 }),
     homeTeamId: uuid('home_team_id').references(() => teams.id),
     awayTeamId: uuid('away_team_id').references(() => teams.id),
     stadiumId: uuid('stadium_id').references(() => stadiums.id),
@@ -173,6 +189,78 @@ export const matches = pgTable('matches', {
     index('matches_league_idx').on(table.leagueId),
     index('matches_date_idx').on(table.matchDateUtc),
     index('matches_status_idx').on(table.status),
+]);
+
+// ─── Motorsport Participants ────────────────────────────────────────
+
+export const drivers = pgTable('drivers', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    externalId: varchar('external_id', { length: 80 }).unique(),
+    name: varchar('name', { length: 150 }).notNull(),
+    shortName: varchar('short_name', { length: 60 }),
+    nationality: varchar('nationality', { length: 80 }),
+    countryCode: varchar('country_code', { length: 3 }),
+    headshotUrl: varchar('headshot_url'),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('drivers_name_idx').on(table.name),
+]);
+
+export const entrants = pgTable('entrants', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    externalId: varchar('external_id', { length: 80 }).unique(),
+    leagueId: uuid('league_id').references(() => leagues.id),
+    name: varchar('name', { length: 150 }).notNull(),
+    shortName: varchar('short_name', { length: 60 }),
+    brandColor: varchar('brand_color', { length: 20 }),
+    logoUrl: varchar('logo_url'),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('entrants_league_idx').on(table.leagueId),
+    index('entrants_name_idx').on(table.name),
+]);
+
+export const manufacturers = pgTable('manufacturers', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    externalId: varchar('external_id', { length: 80 }).unique(),
+    leagueId: uuid('league_id').references(() => leagues.id),
+    name: varchar('name', { length: 150 }).notNull(),
+    shortName: varchar('short_name', { length: 60 }),
+    logoUrl: varchar('logo_url'),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('manufacturers_league_idx').on(table.leagueId),
+    index('manufacturers_name_idx').on(table.name),
+]);
+
+export const eventEntries = pgTable('event_entries', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    matchId: uuid('match_id').notNull().references(() => matches.id, { onDelete: 'cascade' }),
+    externalId: varchar('external_id', { length: 120 }).unique(),
+    carNumber: varchar('car_number', { length: 20 }),
+    driverId: uuid('driver_id').references(() => drivers.id),
+    entrantId: uuid('entrant_id').references(() => entrants.id),
+    manufacturerId: uuid('manufacturer_id').references(() => manufacturers.id),
+    displayName: varchar('display_name', { length: 200 }),
+    gridPosition: integer('grid_position'),
+    startPosition: integer('start_position'),
+    finishPosition: integer('finish_position'),
+    status: motorsportEntryStatusEnum('status').default('ENTERED').notNull(),
+    points: decimal('points', { precision: 8, scale: 2 }),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('event_entries_match_idx').on(table.matchId),
+    index('event_entries_driver_idx').on(table.driverId),
+    index('event_entries_entrant_idx').on(table.entrantId),
+    index('event_entries_manufacturer_idx').on(table.manufacturerId),
 ]);
 
 // ─── Venues ─────────────────────────────────────
@@ -200,13 +288,28 @@ export const venues = pgTable('venues', {
     website: varchar('website', { length: 255 }),
     instagramHandle: varchar('instagram_handle', { length: 100 }),
     googleMapsUrl: varchar('google_maps_url'),
+    googlePlaceId: varchar('google_place_id', { length: 255 }),
+    googleSourceSnapshot: jsonb('google_source_snapshot').default({}),
+    googleLastSyncedAt: timestamp('google_last_synced_at'),
+    googleSyncStatus: googleSyncStatusEnum('google_sync_status').default('NEVER_SYNCED').notNull(),
+    googleSyncError: text('google_sync_error'),
+    descriptionSource: googleFieldSourceEnum('description_source').default('NONE').notNull(),
+    shortDescriptionSource: googleFieldSourceEnum('short_description_source').default('NONE').notNull(),
+    approvalStatus: approvalStatusEnum('approval_status').default('PENDING').notNull(),
+    approvalNotes: text('approval_notes'),
+    approvedAt: timestamp('approved_at'),
+    approvedBy: uuid('approved_by').references(() => users.id),
+    menuSource: venueMenuSourceEnum('menu_source').default('NONE').notNull(),
     capacity: integer('capacity'),
     averageRating: decimal('average_rating', { precision: 3, scale: 2 }).default('0'),
     totalReviews: integer('total_reviews').default(0),
+    ratingOverride: decimal('rating_override', { precision: 3, scale: 2 }),
+    reviewCountOverride: integer('review_count_override'),
     amenities: text('amenities').array().notNull().default([]),
     vibes: text('vibes').array().notNull().default([]),
     cuisineTags: text('cuisine_tags').array().notNull().default([]),
     priceRange: priceRangeEnum('price_range').default('MID'),
+    priceRangeSource: googleFieldSourceEnum('price_range_source').default('NONE').notNull(),
     isVerified: boolean('is_verified').default(false).notNull(),
     isActive: boolean('is_active').default(true).notNull(),
     isFeatured: boolean('is_featured').default(false).notNull(),
@@ -219,6 +322,7 @@ export const venues = pgTable('venues', {
     index('venues_owner_idx').on(table.ownerId),
     index('venues_city_idx').on(table.city),
     index('venues_slug_idx').on(table.slug),
+    uniqueIndex('venues_google_place_id_unique').on(table.googlePlaceId),
 ]);
 
 export const venueAttributes = pgTable('venue_attributes', {
@@ -365,6 +469,65 @@ export const posts = pgTable('posts', {
     index('posts_author_idx').on(table.authorId),
 ]);
 
+export const blogCategories = pgTable('blog_categories', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: varchar('name', { length: 120 }).notNull(),
+    slug: varchar('slug', { length: 160 }).notNull().unique(),
+    description: text('description'),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('blog_categories_active_idx').on(table.isActive),
+    index('blog_categories_sort_idx').on(table.sortOrder),
+]);
+
+export const blogPosts = pgTable('blog_posts', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    authorId: uuid('author_id').notNull().references(() => users.id),
+    title: varchar('title', { length: 200 }).notNull(),
+    slug: varchar('slug', { length: 220 }).notNull().unique(),
+    excerpt: varchar('excerpt', { length: 500 }),
+    featuredImageUrl: varchar('featured_image_url'),
+    featuredImageS3Key: varchar('featured_image_s3_key'),
+    contentJson: jsonb('content_json').default({}).notNull(),
+    contentHtml: text('content_html').default('').notNull(),
+    status: blogPublishStatusEnum('status').default('DRAFT').notNull(),
+    publishedAt: timestamp('published_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    deletedAt: timestamp('deleted_at'),
+}, (table) => [
+    index('blog_posts_status_idx').on(table.status),
+    index('blog_posts_published_at_idx').on(table.publishedAt),
+    index('blog_posts_author_idx').on(table.authorId),
+]);
+
+export const blogPostCategories = pgTable('blog_post_categories', {
+    postId: uuid('post_id').notNull().references(() => blogPosts.id, { onDelete: 'cascade' }),
+    categoryId: uuid('category_id').notNull().references(() => blogCategories.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+    primaryKey({ columns: [table.postId, table.categoryId] }),
+]);
+
+export const blogComments = pgTable('blog_comments', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    postId: uuid('post_id').notNull().references(() => blogPosts.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    status: blogCommentStatusEnum('status').default('PENDING').notNull(),
+    moderatedBy: uuid('moderated_by').references(() => users.id),
+    moderatedAt: timestamp('moderated_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('blog_comments_post_idx').on(table.postId),
+    index('blog_comments_status_idx').on(table.status),
+    index('blog_comments_user_idx').on(table.userId),
+]);
+
 // ─── Follows ────────────────────────────────────
 
 export const follows = pgTable('follows', {
@@ -454,6 +617,7 @@ export const venueClaims = pgTable('venue_claims', {
     status: claimStatusEnum('status').default('PENDING').notNull(),
     verificationDocuments: text('verification_documents').array().default([]),
     notes: text('notes'),
+    adminNotes: text('admin_notes'),
     reviewedBy: uuid('reviewed_by').references(() => users.id),
     reviewedAt: timestamp('reviewed_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -501,6 +665,8 @@ export const usersRelations = relations(users, ({ many }) => ({
     notifications: many(notifications),
     teamInterests: many(userTeamInterests),
     venues: many(venues),
+    blogPosts: many(blogPosts),
+    blogComments: many(blogComments),
 }));
 
 export const venuesRelations = relations(venues, ({ one, many }) => ({
@@ -518,6 +684,7 @@ export const matchesRelations = relations(matches, ({ one, many }) => ({
     homeTeam: one(teams, { fields: [matches.homeTeamId], references: [teams.id], relationName: 'homeTeam' }),
     awayTeam: one(teams, { fields: [matches.awayTeamId], references: [teams.id], relationName: 'awayTeam' }),
     stadium: one(stadiums, { fields: [matches.stadiumId], references: [stadiums.id] }),
+    eventEntries: many(eventEntries),
     venueEvents: many(venueEvents),
 }));
 
@@ -550,8 +717,50 @@ export const teamsRelations = relations(teams, ({ one }) => ({
     league: one(leagues, { fields: [teams.leagueId], references: [leagues.id] }),
 }));
 
+export const driversRelations = relations(drivers, ({ many }) => ({
+    eventEntries: many(eventEntries),
+}));
+
+export const entrantsRelations = relations(entrants, ({ one, many }) => ({
+    league: one(leagues, { fields: [entrants.leagueId], references: [leagues.id] }),
+    eventEntries: many(eventEntries),
+}));
+
+export const manufacturersRelations = relations(manufacturers, ({ one, many }) => ({
+    league: one(leagues, { fields: [manufacturers.leagueId], references: [leagues.id] }),
+    eventEntries: many(eventEntries),
+}));
+
+export const eventEntriesRelations = relations(eventEntries, ({ one }) => ({
+    match: one(matches, { fields: [eventEntries.matchId], references: [matches.id] }),
+    driver: one(drivers, { fields: [eventEntries.driverId], references: [drivers.id] }),
+    entrant: one(entrants, { fields: [eventEntries.entrantId], references: [entrants.id] }),
+    manufacturer: one(manufacturers, { fields: [eventEntries.manufacturerId], references: [manufacturers.id] }),
+}));
+
 export const stadiumsRelations = relations(stadiums, ({ many }) => ({
     matches: many(matches),
 }));
 
 export const venueAttributesRelations = relations(venueAttributes, () => ({}));
+
+export const blogCategoriesRelations = relations(blogCategories, ({ many }) => ({
+    postCategories: many(blogPostCategories),
+}));
+
+export const blogPostsRelations = relations(blogPosts, ({ one, many }) => ({
+    author: one(users, { fields: [blogPosts.authorId], references: [users.id] }),
+    categories: many(blogPostCategories),
+    comments: many(blogComments),
+}));
+
+export const blogPostCategoriesRelations = relations(blogPostCategories, ({ one }) => ({
+    post: one(blogPosts, { fields: [blogPostCategories.postId], references: [blogPosts.id] }),
+    category: one(blogCategories, { fields: [blogPostCategories.categoryId], references: [blogCategories.id] }),
+}));
+
+export const blogCommentsRelations = relations(blogComments, ({ one }) => ({
+    post: one(blogPosts, { fields: [blogComments.postId], references: [blogPosts.id] }),
+    user: one(users, { fields: [blogComments.userId], references: [users.id], relationName: 'blogCommentAuthor' }),
+    moderator: one(users, { fields: [blogComments.moderatedBy], references: [users.id], relationName: 'blogCommentModerator' }),
+}));

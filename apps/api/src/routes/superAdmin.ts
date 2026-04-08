@@ -6,18 +6,28 @@ import bcrypt from 'bcryptjs';
 import os from 'os';
 import { execSync } from 'child_process';
 import { timingSafeEqual } from 'crypto';
+import DOMPurify from 'isomorphic-dompurify';
 import { S3Client, HeadBucketCommand } from '@aws-sdk/client-s3';
-import { and, count, desc, eq, gte, lte, ilike, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, lte, ilike, inArray, or, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
+    blogCategories,
+    blogComments,
+    blogPostCategories,
+    blogPosts,
     bookings,
+    drivers,
+    entrants,
+    eventEntries,
     sports,
     leagues,
+    manufacturers,
     stadiums,
     matches,
     menuCategories,
     teams,
     users,
+    venueClaims,
     venueAttributes,
     venueCustomEvents,
     venueEvents,
@@ -26,6 +36,17 @@ import {
 import { apiError, apiResponse, generateUniqueSlug, paginationMeta, paginationOffset } from '../lib/utils';
 import { hashPassword } from '../lib/auth';
 import { authRateLimit } from '../middleware';
+import { createPresignedUpload as createStoragePresignedUpload, deleteStorageObjects, STORAGE_MAX_FILE_SIZE } from '../lib/storage';
+import { type GoogleSourceSnapshot } from '../lib/googlePlaces';
+import {
+    buildGoogleSyncUpdates,
+    enrichGoogleMenuSnapshot,
+    getAllowedGoogleAmenities,
+    refreshVenueFromGoogle,
+    sanitizeAmenities,
+} from '../lib/googleVenueSync';
+import { applyGoogleMenuSnapshot, buildGoogleVenueFields } from '../lib/venueOnboarding';
+import { presignedUploadSchema } from '@matchwatch/shared';
 
 declare module 'hono' {
     interface ContextVariableMap {
@@ -67,6 +88,11 @@ const updateUserSchema = z.object({
     isSuspended: z.boolean().optional(),
     password: z.string().min(10).max(200).optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const reviewBusinessApprovalSchema = z.object({
+    status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+    notes: z.string().max(2000).nullable().optional(),
+});
 
 const createSportSchema = z.object({
     name: z.string().min(2).max(80),
@@ -168,6 +194,7 @@ const createVenueSchema = z.object({
     website: z.string().url().optional(),
     instagramHandle: z.string().max(100).optional(),
     googleMapsUrl: z.string().url().optional(),
+    googlePlaceId: z.string().max(255).nullable().optional(),
     coverImageUrl: z.string().url().optional(),
     coverImageS3Key: z.string().max(500).optional(),
     galleryImageUrls: galleryUrlArraySchema.optional(),
@@ -177,6 +204,8 @@ const createVenueSchema = z.object({
     cuisineTags: venueArraySchema.default([]),
     priceRange: z.enum(['BUDGET', 'MID', 'UPSCALE', 'LUXURY']).default('MID'),
     capacity: z.coerce.number().int().positive().optional(),
+    approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'),
+    approvalNotes: z.string().max(2000).optional(),
     isVerified: z.boolean().default(false),
     isActive: z.boolean().default(true),
     isFeatured: z.boolean().default(false),
@@ -217,7 +246,73 @@ const updateVenueSchema = z.object({
     isFeatured: z.boolean().optional(),
     priceRange: z.enum(['BUDGET', 'MID', 'UPSCALE', 'LUXURY']).optional(),
     capacity: z.coerce.number().int().positive().nullable().optional(),
+    ratingOverride: z.coerce.number().min(0).max(5).nullable().optional(),
+    reviewCountOverride: z.coerce.number().int().min(0).nullable().optional(),
+    googlePlaceId: z.string().max(255).nullable().optional(),
+    approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+    approvalNotes: z.string().max(2000).nullable().optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const reviewVenueApprovalSchema = z.object({
+    status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+    notes: z.string().max(2000).nullable().optional(),
+    isVerified: z.boolean().optional(),
+});
+
+const reviewVenueClaimSchema = z.object({
+    status: z.enum(['APPROVED', 'REJECTED']),
+    adminNotes: z.string().max(2000).nullable().optional(),
+});
+
+const revertVenueGoogleSchema = z.object({
+    includeMenu: z.boolean().default(false),
+});
+
+const createBlogCategorySchema = z.object({
+    name: z.string().min(2).max(120),
+    slug: z.string().max(160).optional(),
+    description: z.string().max(500).optional(),
+    sortOrder: z.coerce.number().int().default(0),
+    isActive: z.boolean().default(true),
+});
+
+const updateBlogCategorySchema = z.object({
+    name: z.string().min(2).max(120).optional(),
+    slug: z.string().max(160).optional(),
+    description: z.string().max(500).nullable().optional(),
+    sortOrder: z.coerce.number().int().optional(),
+    isActive: z.boolean().optional(),
+}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const createBlogPostSchema = z.object({
+    title: z.string().min(3).max(200),
+    slug: z.string().max(220).optional(),
+    excerpt: z.string().max(500).nullable().optional(),
+    featuredImageUrl: z.string().url().nullable().optional(),
+    featuredImageS3Key: z.string().max(500).nullable().optional(),
+    contentJson: z.any().optional(),
+    renderedHtml: z.string().default(''),
+    status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),
+    publishedAt: z.string().datetime().nullable().optional(),
+    categoryIds: z.array(z.string().uuid()).default([]),
+});
+
+const updateBlogPostSchema = z.object({
+    title: z.string().min(3).max(200).optional(),
+    slug: z.string().max(220).optional(),
+    excerpt: z.string().max(500).nullable().optional(),
+    featuredImageUrl: z.string().url().nullable().optional(),
+    featuredImageS3Key: z.string().max(500).nullable().optional(),
+    contentJson: z.any().optional(),
+    renderedHtml: z.string().optional(),
+    status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
+    publishedAt: z.string().datetime().nullable().optional(),
+    categoryIds: z.array(z.string().uuid()).optional(),
+}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
+
+const updateBlogCommentSchema = z.object({
+    status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+});
 
 const venueAttributeQuerySchema = z.object({
     type: z.enum(['AMENITY', 'VIBE', 'CUISINE']).optional(),
@@ -286,6 +381,10 @@ const updateCustomEventSchema = z.object({
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
 const createMatchSchema = z.object({
+    isFeatured: z.boolean().default(false),
+    eventFormat: z.enum(['HEAD_TO_HEAD', 'SINGLE_EVENT']).default('HEAD_TO_HEAD'),
+    eventTitle: z.string().max(200).nullable().optional(),
+    eventSubtitle: z.string().max(200).nullable().optional(),
     leagueId: z.string().uuid().nullable().optional(),
     homeTeamId: z.string().uuid().nullable().optional(),
     awayTeamId: z.string().uuid().nullable().optional(),
@@ -301,18 +400,28 @@ const createMatchSchema = z.object({
     venueName: z.string().max(200).nullable().optional(),
     externalMatchId: z.string().max(50).optional(),
 }).superRefine((value, ctx) => {
-    if (!value.homeTeamId && !value.homeTeamName?.trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home team is required', path: ['homeTeamName'] });
-    }
-    if (!value.awayTeamId && !value.awayTeamName?.trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Away team is required', path: ['awayTeamName'] });
-    }
-    if (value.homeTeamId && value.awayTeamId && value.homeTeamId === value.awayTeamId) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home and away teams must be different', path: ['awayTeamId'] });
+    if (value.eventFormat === 'SINGLE_EVENT') {
+        if (!value.eventTitle?.trim()) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Event title is required', path: ['eventTitle'] });
+        }
+    } else {
+        if (!value.homeTeamId && !value.homeTeamName?.trim()) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home team is required', path: ['homeTeamName'] });
+        }
+        if (!value.awayTeamId && !value.awayTeamName?.trim()) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Away team is required', path: ['awayTeamName'] });
+        }
+        if (value.homeTeamId && value.awayTeamId && value.homeTeamId === value.awayTeamId) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home and away teams must be different', path: ['awayTeamId'] });
+        }
     }
 });
 
 const updateMatchSchema = z.object({
+    isFeatured: z.boolean().optional(),
+    eventFormat: z.enum(['HEAD_TO_HEAD', 'SINGLE_EVENT']).optional(),
+    eventTitle: z.string().max(200).nullable().optional(),
+    eventSubtitle: z.string().max(200).nullable().optional(),
     leagueId: z.string().uuid().nullable().optional(),
     homeTeamId: z.string().uuid().nullable().optional(),
     awayTeamId: z.string().uuid().nullable().optional(),
@@ -335,6 +444,72 @@ const updateMatchSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Home and away teams must be different', path: ['awayTeamId'] });
     }
 });
+
+const motorsportEntryStatusSchema = z.enum(['ENTERED', 'ACTIVE', 'FINISHED', 'DNF', 'DNS', 'DSQ', 'WITHDRAWN']);
+
+const motorsportEntryQuerySchema = paginationQuerySchema.extend({
+    matchId: z.string().uuid().optional(),
+});
+
+const createMotorsportEntrySchema = z.object({
+    matchId: z.string().uuid(),
+    externalId: z.string().max(120).optional(),
+    carNumber: z.string().max(20).optional(),
+    driverId: z.string().uuid().nullable().optional(),
+    driverName: z.string().min(2).max(150).optional(),
+    driverShortName: z.string().max(60).optional(),
+    driverNationality: z.string().max(80).optional(),
+    driverCountryCode: z.string().max(3).optional(),
+    driverHeadshotUrl: z.string().url().optional(),
+    entrantId: z.string().uuid().nullable().optional(),
+    entrantName: z.string().min(2).max(150).optional(),
+    entrantShortName: z.string().max(60).optional(),
+    entrantBrandColor: z.string().max(20).optional(),
+    entrantLogoUrl: z.string().url().optional(),
+    manufacturerId: z.string().uuid().nullable().optional(),
+    manufacturerName: z.string().min(2).max(150).optional(),
+    manufacturerShortName: z.string().max(60).optional(),
+    manufacturerLogoUrl: z.string().url().optional(),
+    displayName: z.string().max(200).optional(),
+    gridPosition: z.coerce.number().int().nullable().optional(),
+    startPosition: z.coerce.number().int().nullable().optional(),
+    finishPosition: z.coerce.number().int().nullable().optional(),
+    status: motorsportEntryStatusSchema.default('ENTERED'),
+    points: z.union([z.coerce.number(), z.string()]).nullable().optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+}).superRefine((value, ctx) => {
+    if (!value.driverId && !value.driverName?.trim() && !value.displayName?.trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Driver name or display name is required', path: ['driverName'] });
+    }
+});
+
+const updateMotorsportEntrySchema = z.object({
+    matchId: z.string().uuid().optional(),
+    externalId: z.string().max(120).nullable().optional(),
+    carNumber: z.string().max(20).nullable().optional(),
+    driverId: z.string().uuid().nullable().optional(),
+    driverName: z.string().min(2).max(150).optional(),
+    driverShortName: z.string().max(60).nullable().optional(),
+    driverNationality: z.string().max(80).nullable().optional(),
+    driverCountryCode: z.string().max(3).nullable().optional(),
+    driverHeadshotUrl: z.string().url().nullable().optional(),
+    entrantId: z.string().uuid().nullable().optional(),
+    entrantName: z.string().min(2).max(150).optional(),
+    entrantShortName: z.string().max(60).nullable().optional(),
+    entrantBrandColor: z.string().max(20).nullable().optional(),
+    entrantLogoUrl: z.string().url().nullable().optional(),
+    manufacturerId: z.string().uuid().nullable().optional(),
+    manufacturerName: z.string().min(2).max(150).optional(),
+    manufacturerShortName: z.string().max(60).nullable().optional(),
+    manufacturerLogoUrl: z.string().url().nullable().optional(),
+    displayName: z.string().max(200).nullable().optional(),
+    gridPosition: z.coerce.number().int().nullable().optional(),
+    startPosition: z.coerce.number().int().nullable().optional(),
+    finishPosition: z.coerce.number().int().nullable().optional(),
+    status: motorsportEntryStatusSchema.optional(),
+    points: z.union([z.coerce.number(), z.string()]).nullable().optional(),
+    metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
 const matchImportSchema = z.object({
     csv: z.string().min(1),
@@ -416,6 +591,19 @@ function sanitizeGalleryKeys(values?: string[] | null) {
     return (values || []).map((value) => value.trim()).filter(Boolean).slice(0, 5);
 }
 
+function sanitizeBlogHtml(value?: string | null) {
+    return DOMPurify.sanitize(value || '');
+}
+
+async function syncBlogPostCategoryIds(postId: string, categoryIds: string[]) {
+    await db.delete(blogPostCategories).where(eq(blogPostCategories.postId, postId));
+    if (categoryIds.length === 0) return;
+    await db.insert(blogPostCategories).values(categoryIds.map((categoryId) => ({
+        postId,
+        categoryId,
+    })));
+}
+
 async function resolveVenueOwner(ownerId?: string, ownerEmail?: string) {
     if (ownerId) {
         const [owner] = await db.select({
@@ -445,8 +633,21 @@ async function getTeamById(teamId: string) {
         name: teams.name,
         shortName: teams.shortName,
         crestUrl: teams.crestUrl,
-    }).from(teams).where(and(eq(teams.id, teamId), eq(teams.isActive, true))).limit(1);
+        sportId: leagues.sportId,
+    }).from(teams)
+        .leftJoin(leagues, eq(teams.leagueId, leagues.id))
+        .where(and(eq(teams.id, teamId), eq(teams.isActive, true)))
+        .limit(1);
     return team ?? null;
+}
+
+async function getLeagueById(leagueId: string) {
+    const [league] = await db.select({
+        id: leagues.id,
+        sportId: leagues.sportId,
+        name: leagues.name,
+    }).from(leagues).where(and(eq(leagues.id, leagueId), eq(leagues.isActive, true))).limit(1);
+    return league ?? null;
 }
 
 async function getStadiumById(stadiumId: string) {
@@ -460,9 +661,16 @@ async function getStadiumById(stadiumId: string) {
 }
 
 async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.infer<typeof updateMatchSchema>) {
+    const eventFormat = input.eventFormat || 'HEAD_TO_HEAD';
     const homeTeamId = input.homeTeamId === undefined ? undefined : (input.homeTeamId || null);
     const awayTeamId = input.awayTeamId === undefined ? undefined : (input.awayTeamId || null);
     const stadiumId = input.stadiumId === undefined ? undefined : (input.stadiumId || null);
+    const leagueId = input.leagueId === undefined ? undefined : (input.leagueId || null);
+
+    const league = leagueId ? await getLeagueById(leagueId) : null;
+    if (leagueId && !league) {
+        return { error: apiError('NOT_FOUND', 'League not found'), status: 404 as const };
+    }
 
     const homeTeam = homeTeamId ? await getTeamById(homeTeamId) : null;
     if (homeTeamId && !homeTeam) {
@@ -478,6 +686,15 @@ async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.inf
         return { error: apiError('VALIDATION_ERROR', 'Home and away teams must be different'), status: 400 as const };
     }
 
+    if (league?.sportId) {
+        if (homeTeam?.sportId && homeTeam.sportId !== league.sportId) {
+            return { error: apiError('VALIDATION_ERROR', 'Home team does not belong to the same sport as the selected league'), status: 400 as const };
+        }
+        if (awayTeam?.sportId && awayTeam.sportId !== league.sportId) {
+            return { error: apiError('VALIDATION_ERROR', 'Away team does not belong to the same sport as the selected league'), status: 400 as const };
+        }
+    }
+
     const stadium = stadiumId ? await getStadiumById(stadiumId) : null;
     if (stadiumId && !stadium) {
         return { error: apiError('NOT_FOUND', 'Stadium not found'), status: 404 as const };
@@ -487,20 +704,28 @@ async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.inf
     const awayTeamName = awayTeam?.name ?? input.awayTeamName?.trim();
     const venueName = stadium?.name ?? (input.venueName === null ? null : input.venueName?.trim() || undefined);
 
-    if (homeTeamName && awayTeamName && homeTeamName.localeCompare(awayTeamName, undefined, { sensitivity: 'accent' }) === 0) {
+    if (eventFormat === 'HEAD_TO_HEAD' && homeTeamName && awayTeamName && homeTeamName.localeCompare(awayTeamName, undefined, { sensitivity: 'accent' }) === 0) {
         return { error: apiError('VALIDATION_ERROR', 'Home and away teams must be different'), status: 400 as const };
     }
 
     return {
         values: {
-            leagueId: input.leagueId === undefined ? undefined : (input.leagueId || null),
-            homeTeamId,
-            awayTeamId,
+            isFeatured: input.isFeatured,
+            eventFormat,
+            eventTitle: input.eventTitle === undefined ? undefined : (input.eventTitle?.trim() || null),
+            eventSubtitle: input.eventSubtitle === undefined ? undefined : (input.eventSubtitle?.trim() || null),
+            leagueId,
+            homeTeamId: eventFormat === 'HEAD_TO_HEAD' ? homeTeamId : null,
+            awayTeamId: eventFormat === 'HEAD_TO_HEAD' ? awayTeamId : null,
             stadiumId,
-            homeTeamName,
-            awayTeamName,
-            homeTeamCrestUrl: homeTeam?.crestUrl ?? (input.homeTeamCrestUrl !== undefined ? input.homeTeamCrestUrl : input.homeTeamId !== undefined || input.homeTeamName !== undefined ? null : undefined),
-            awayTeamCrestUrl: awayTeam?.crestUrl ?? (input.awayTeamCrestUrl !== undefined ? input.awayTeamCrestUrl : input.awayTeamId !== undefined || input.awayTeamName !== undefined ? null : undefined),
+            homeTeamName: eventFormat === 'HEAD_TO_HEAD' ? (homeTeamName || null) : null,
+            awayTeamName: eventFormat === 'HEAD_TO_HEAD' ? (awayTeamName || null) : null,
+            homeTeamCrestUrl: eventFormat === 'HEAD_TO_HEAD'
+                ? (homeTeam?.crestUrl ?? (input.homeTeamCrestUrl !== undefined ? input.homeTeamCrestUrl : input.homeTeamId !== undefined || input.homeTeamName !== undefined ? null : undefined))
+                : null,
+            awayTeamCrestUrl: eventFormat === 'HEAD_TO_HEAD'
+                ? (awayTeam?.crestUrl ?? (input.awayTeamCrestUrl !== undefined ? input.awayTeamCrestUrl : input.awayTeamId !== undefined || input.awayTeamName !== undefined ? null : undefined))
+                : null,
             matchDateUtc: input.matchDateUtc ? new Date(input.matchDateUtc) : undefined,
             status: input.status,
             matchDay: input.matchDay === undefined ? undefined : (input.matchDay || null),
@@ -509,6 +734,224 @@ async function buildMatchValues(input: z.infer<typeof createMatchSchema> | z.inf
             externalMatchId: input.externalMatchId === undefined ? undefined : (input.externalMatchId || null),
         },
     };
+}
+
+async function getMatchById(matchId: string) {
+    const [match] = await db.select({
+        id: matches.id,
+        leagueId: matches.leagueId,
+        eventFormat: matches.eventFormat,
+    }).from(matches).where(eq(matches.id, matchId)).limit(1);
+    return match ?? null;
+}
+
+async function resolveDriver(values: {
+    driverId?: string | null;
+    driverName?: string | null;
+    driverShortName?: string | null;
+    driverNationality?: string | null;
+    driverCountryCode?: string | null;
+    driverHeadshotUrl?: string | null;
+}) {
+    if (values.driverId) {
+        const [driver] = await db.select({ id: drivers.id }).from(drivers).where(eq(drivers.id, values.driverId)).limit(1);
+        return driver?.id ?? null;
+    }
+
+    const driverName = values.driverName?.trim();
+    if (!driverName) return null;
+
+    const [existing] = await db.select({ id: drivers.id })
+        .from(drivers)
+        .where(ilike(drivers.name, driverName))
+        .limit(1);
+    if (existing) return existing.id;
+
+    const [created] = await db.insert(drivers).values({
+        name: driverName,
+        shortName: values.driverShortName?.trim() || null,
+        nationality: values.driverNationality?.trim() || null,
+        countryCode: values.driverCountryCode?.trim().toUpperCase() || null,
+        headshotUrl: values.driverHeadshotUrl?.trim() || null,
+    }).returning({ id: drivers.id });
+    return created?.id ?? null;
+}
+
+async function resolveEntrant(leagueId: string | null | undefined, values: {
+    entrantId?: string | null;
+    entrantName?: string | null;
+    entrantShortName?: string | null;
+    entrantBrandColor?: string | null;
+    entrantLogoUrl?: string | null;
+}) {
+    if (values.entrantId) {
+        const [entrant] = await db.select({ id: entrants.id }).from(entrants).where(eq(entrants.id, values.entrantId)).limit(1);
+        return entrant?.id ?? null;
+    }
+
+    const entrantName = values.entrantName?.trim();
+    if (!entrantName) return null;
+
+    const [existing] = await db.select({ id: entrants.id })
+        .from(entrants)
+        .where(and(
+            ilike(entrants.name, entrantName),
+            leagueId ? eq(entrants.leagueId, leagueId) : sql`true`,
+        ))
+        .limit(1);
+    if (existing) return existing.id;
+
+    const [created] = await db.insert(entrants).values({
+        leagueId: leagueId ?? null,
+        name: entrantName,
+        shortName: values.entrantShortName?.trim() || null,
+        brandColor: values.entrantBrandColor?.trim() || null,
+        logoUrl: values.entrantLogoUrl?.trim() || null,
+    }).returning({ id: entrants.id });
+    return created?.id ?? null;
+}
+
+async function resolveManufacturer(leagueId: string | null | undefined, values: {
+    manufacturerId?: string | null;
+    manufacturerName?: string | null;
+    manufacturerShortName?: string | null;
+    manufacturerLogoUrl?: string | null;
+}) {
+    if (values.manufacturerId) {
+        const [manufacturer] = await db.select({ id: manufacturers.id }).from(manufacturers).where(eq(manufacturers.id, values.manufacturerId)).limit(1);
+        return manufacturer?.id ?? null;
+    }
+
+    const manufacturerName = values.manufacturerName?.trim();
+    if (!manufacturerName) return null;
+
+    const [existing] = await db.select({ id: manufacturers.id })
+        .from(manufacturers)
+        .where(and(
+            ilike(manufacturers.name, manufacturerName),
+            leagueId ? eq(manufacturers.leagueId, leagueId) : sql`true`,
+        ))
+        .limit(1);
+    if (existing) return existing.id;
+
+    const [created] = await db.insert(manufacturers).values({
+        leagueId: leagueId ?? null,
+        name: manufacturerName,
+        shortName: values.manufacturerShortName?.trim() || null,
+        logoUrl: values.manufacturerLogoUrl?.trim() || null,
+    }).returning({ id: manufacturers.id });
+    return created?.id ?? null;
+}
+
+function normalizeEntryPoints(points: string | number | null | undefined) {
+    if (points === undefined) return undefined;
+    if (points === null || points === '') return null;
+    const numeric = typeof points === 'number' ? points : Number(points);
+    return Number.isFinite(numeric) ? numeric.toFixed(2) : null;
+}
+
+async function buildMotorsportEntryValues(input: z.infer<typeof createMotorsportEntrySchema> | z.infer<typeof updateMotorsportEntrySchema>, existingMatchId?: string) {
+    const matchId = input.matchId ?? existingMatchId;
+    if (!matchId) {
+        return { error: apiError('VALIDATION_ERROR', 'Match is required'), status: 400 as const };
+    }
+
+    const match = await getMatchById(matchId);
+    if (!match) {
+        return { error: apiError('NOT_FOUND', 'Match not found'), status: 404 as const };
+    }
+    if (match.eventFormat !== 'SINGLE_EVENT') {
+        return { error: apiError('VALIDATION_ERROR', 'Motorsport entries can only be attached to SINGLE_EVENT matches'), status: 400 as const };
+    }
+
+    const [driverId, entrantId, manufacturerId] = await Promise.all([
+        resolveDriver({
+            driverId: input.driverId ?? null,
+            driverName: 'driverName' in input ? input.driverName ?? null : null,
+            driverShortName: 'driverShortName' in input ? input.driverShortName ?? null : null,
+            driverNationality: 'driverNationality' in input ? input.driverNationality ?? null : null,
+            driverCountryCode: 'driverCountryCode' in input ? input.driverCountryCode ?? null : null,
+            driverHeadshotUrl: 'driverHeadshotUrl' in input ? input.driverHeadshotUrl ?? null : null,
+        }),
+        resolveEntrant(match.leagueId, {
+            entrantId: input.entrantId ?? null,
+            entrantName: 'entrantName' in input ? input.entrantName ?? null : null,
+            entrantShortName: 'entrantShortName' in input ? input.entrantShortName ?? null : null,
+            entrantBrandColor: 'entrantBrandColor' in input ? input.entrantBrandColor ?? null : null,
+            entrantLogoUrl: 'entrantLogoUrl' in input ? input.entrantLogoUrl ?? null : null,
+        }),
+        resolveManufacturer(match.leagueId, {
+            manufacturerId: input.manufacturerId ?? null,
+            manufacturerName: 'manufacturerName' in input ? input.manufacturerName ?? null : null,
+            manufacturerShortName: 'manufacturerShortName' in input ? input.manufacturerShortName ?? null : null,
+            manufacturerLogoUrl: 'manufacturerLogoUrl' in input ? input.manufacturerLogoUrl ?? null : null,
+        }),
+    ]);
+
+    return {
+        values: {
+            matchId: match.id,
+            externalId: input.externalId === undefined ? undefined : (input.externalId?.trim() || null),
+            carNumber: input.carNumber === undefined ? undefined : (input.carNumber?.trim() || null),
+            driverId,
+            entrantId,
+            manufacturerId,
+            displayName: input.displayName === undefined ? undefined : (input.displayName?.trim() || null),
+            gridPosition: input.gridPosition === undefined ? undefined : (input.gridPosition ?? null),
+            startPosition: input.startPosition === undefined ? undefined : (input.startPosition ?? null),
+            finishPosition: input.finishPosition === undefined ? undefined : (input.finishPosition ?? null),
+            status: input.status,
+            points: normalizeEntryPoints(input.points),
+            metadata: input.metadata === undefined ? undefined : (input.metadata ?? null),
+        },
+    };
+}
+
+async function listMotorsportEntries(where?: ReturnType<typeof and> | ReturnType<typeof eq>) {
+    return db.select({
+        id: eventEntries.id,
+        matchId: eventEntries.matchId,
+        externalId: eventEntries.externalId,
+        carNumber: eventEntries.carNumber,
+        displayName: eventEntries.displayName,
+        gridPosition: eventEntries.gridPosition,
+        startPosition: eventEntries.startPosition,
+        finishPosition: eventEntries.finishPosition,
+        status: eventEntries.status,
+        points: eventEntries.points,
+        metadata: eventEntries.metadata,
+        matchEventTitle: matches.eventTitle,
+        matchEventSubtitle: matches.eventSubtitle,
+        matchHomeTeamName: matches.homeTeamName,
+        matchAwayTeamName: matches.awayTeamName,
+        driverId: drivers.id,
+        driverName: drivers.name,
+        driverShortName: drivers.shortName,
+        driverNationality: drivers.nationality,
+        driverCountryCode: drivers.countryCode,
+        driverHeadshotUrl: drivers.headshotUrl,
+        entrantId: entrants.id,
+        entrantName: entrants.name,
+        entrantShortName: entrants.shortName,
+        entrantBrandColor: entrants.brandColor,
+        entrantLogoUrl: entrants.logoUrl,
+        manufacturerId: manufacturers.id,
+        manufacturerName: manufacturers.name,
+        manufacturerShortName: manufacturers.shortName,
+        manufacturerLogoUrl: manufacturers.logoUrl,
+    })
+        .from(eventEntries)
+        .innerJoin(matches, eq(eventEntries.matchId, matches.id))
+        .leftJoin(drivers, eq(eventEntries.driverId, drivers.id))
+        .leftJoin(entrants, eq(eventEntries.entrantId, entrants.id))
+        .leftJoin(manufacturers, eq(eventEntries.manufacturerId, manufacturers.id))
+        .where(where)
+        .orderBy(
+            desc(matches.matchDateUtc),
+            sql`coalesce(${eventEntries.startPosition}, ${eventEntries.gridPosition}, 9999)`,
+            asc(eventEntries.carNumber),
+            asc(drivers.name),
+        );
 }
 
 function galleryImageUrlsFromMetadata(metadata: unknown): string[] {
@@ -525,6 +968,85 @@ function metadataRecord(metadata: unknown): Record<string, unknown> {
     return metadata as Record<string, unknown>;
 }
 
+function normalizeVenueModerationState<T extends {
+    approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+    isActive?: boolean;
+}>(
+    input: T,
+    fallbackApprovalStatus: 'PENDING' | 'APPROVED' | 'REJECTED' = 'PENDING',
+    fallbackIsActive = false,
+) {
+    const approvalStatus = input.approvalStatus ?? fallbackApprovalStatus;
+    const requestedIsActive = input.isActive ?? fallbackIsActive;
+    return {
+        approvalStatus,
+        isActive: approvalStatus === 'APPROVED' ? requestedIsActive : false,
+    };
+}
+
+function formatVenueMutationError(error: unknown) {
+    const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: unknown }).code || '') : '';
+    const message = typeof error === 'object' && error && 'message' in error ? String((error as { message?: unknown }).message || '') : '';
+    const detail = `${code} ${message}`.toLowerCase();
+
+    if (code === '23505' || detail.includes('duplicate key')) {
+        if (detail.includes('google_place')) {
+            return { status: 409 as const, body: apiError('CONFLICT', 'Google Place ID is already linked to another venue') };
+        }
+        if (detail.includes('slug')) {
+            return { status: 409 as const, body: apiError('CONFLICT', 'Venue slug already exists') };
+        }
+        return { status: 409 as const, body: apiError('CONFLICT', 'Venue update conflicts with an existing record') };
+    }
+
+    return { status: 500 as const, body: apiError('INTERNAL_ERROR', 'Failed to save venue') };
+}
+
+const deleteUploadSchema = z.object({
+    keys: z.array(z.string().min(1).max(500)).min(1).max(20),
+});
+
+function normalizeStorageKey(value: unknown) {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function normalizeStorageKeys(values: unknown) {
+    if (!Array.isArray(values)) return [] as string[];
+    return values
+        .map((value) => normalizeStorageKey(value))
+        .filter((value): value is string => Boolean(value));
+}
+
+async function cleanupRemovedVenueMedia(params: {
+    previousCoverKey?: string | null;
+    previousGalleryKeys?: string[] | null;
+    nextCoverKey?: string | null;
+    nextGalleryKeys?: string[] | null;
+}) {
+    const removedKeys = new Set<string>();
+    const previousCoverKey = normalizeStorageKey(params.previousCoverKey);
+    const nextCoverKey = normalizeStorageKey(params.nextCoverKey);
+
+    if (previousCoverKey && previousCoverKey !== nextCoverKey) {
+        removedKeys.add(previousCoverKey);
+    }
+
+    const nextGalleryKeySet = new Set(normalizeStorageKeys(params.nextGalleryKeys));
+    for (const key of normalizeStorageKeys(params.previousGalleryKeys)) {
+        if (!nextGalleryKeySet.has(key)) {
+            removedKeys.add(key);
+        }
+    }
+
+    if (removedKeys.size === 0) return;
+
+    try {
+        await deleteStorageObjects(Array.from(removedKeys));
+    } catch {
+        // Best effort cleanup only. Keep DB update successful even if object deletion fails.
+    }
+}
+
 function mapVenueRow(row: {
     id: string;
     ownerId: string;
@@ -533,7 +1055,9 @@ function mapVenueRow(row: {
     name: string;
     slug: string;
     description?: string | null;
+    descriptionSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
     shortDescription?: string | null;
+    shortDescriptionSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
     addressLine1: string;
     addressLine2?: string | null;
     city: string;
@@ -550,17 +1074,25 @@ function mapVenueRow(row: {
     website?: string | null;
     instagramHandle?: string | null;
     googleMapsUrl?: string | null;
+    googlePlaceId?: string | null;
+    approvalStatus?: string | null;
+    approvalNotes?: string | null;
+    menuSource?: string | null;
     capacity?: number | null;
     amenities: string[];
     vibes: string[];
     cuisineTags: string[];
     priceRange?: string | null;
+    priceRangeSource?: 'NONE' | 'GOOGLE' | 'MANUAL' | null;
     isVerified: boolean;
     isActive: boolean;
     isFeatured: boolean;
+    ratingOverride?: string | number | null;
+    reviewCountOverride?: number | null;
     createdAt: Date;
     updatedAt?: Date;
     metadata?: unknown;
+    googleSourceSnapshot?: unknown;
 }) {
     return {
         ...row,
@@ -571,6 +1103,16 @@ function mapVenueRow(row: {
         amenities: row.amenities || [],
         vibes: row.vibes || [],
         cuisineTags: row.cuisineTags || [],
+        ratingOverride: row.ratingOverride === null || row.ratingOverride === undefined ? null : Number(row.ratingOverride),
+        reviewCountOverride: row.reviewCountOverride ?? null,
+        googlePlaceId: row.googlePlaceId ?? null,
+        approvalStatus: row.approvalStatus ?? null,
+        approvalNotes: row.approvalNotes ?? null,
+        menuSource: row.menuSource ?? null,
+        descriptionSource: row.descriptionSource ?? null,
+        shortDescriptionSource: row.shortDescriptionSource ?? null,
+        priceRangeSource: row.priceRangeSource ?? null,
+        googleSourceSnapshot: row.googleSourceSnapshot ?? null,
     };
 }
 
@@ -723,6 +1265,47 @@ superAdminRoutes.get('/session', async (c) => {
 });
 
 superAdminRoutes.use('*', superAdminAuthMiddleware);
+
+superAdminRoutes.post('/uploads/presigned-url', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = presignedUploadSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const { filename, contentType, purpose, fileSize } = parsed.data;
+    if (fileSize > STORAGE_MAX_FILE_SIZE) {
+        return c.json(apiError('VALIDATION_ERROR', 'File too large. Max size is 4MB.'), 400);
+    }
+
+    try {
+        const actorId = `super-admin-${c.get('superAdmin').username}`;
+        return c.json(apiResponse(await createStoragePresignedUpload({
+            actorId,
+            filename,
+            contentType,
+            purpose,
+            fileSize,
+        })));
+    } catch {
+        return c.json(apiError('INTERNAL_ERROR', 'Failed to generate upload URL'), 500);
+    }
+});
+
+superAdminRoutes.post('/uploads/delete-objects', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = deleteUploadSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    try {
+        const result = await deleteStorageObjects(parsed.data.keys);
+        return c.json(apiResponse(result));
+    } catch {
+        return c.json(apiError('INTERNAL_ERROR', 'Failed to delete upload objects'), 500);
+    }
+});
 
 superAdminRoutes.get('/stats', async (c) => {
     const now = new Date();
@@ -889,6 +1472,9 @@ superAdminRoutes.get('/lookups', async (c) => {
         }).from(venues).where(eq(venues.isActive, true)).orderBy(desc(venues.createdAt)).limit(300),
         db.select({
             id: matches.id,
+            eventFormat: matches.eventFormat,
+            eventTitle: matches.eventTitle,
+            eventSubtitle: matches.eventSubtitle,
             homeTeamName: matches.homeTeamName,
             awayTeamName: matches.awayTeamName,
             matchDateUtc: matches.matchDateUtc,
@@ -904,6 +1490,7 @@ superAdminRoutes.get('/lookups', async (c) => {
             sportId: leagues.sportId,
             name: leagues.name,
             shortName: leagues.shortName,
+            externalId: leagues.externalId,
         }).from(leagues).where(eq(leagues.isActive, true)).orderBy(leagues.name),
         db.select({
             id: sports.id,
@@ -1659,7 +2246,9 @@ superAdminRoutes.get('/venues', async (c) => {
             name: venues.name,
             slug: venues.slug,
             description: venues.description,
+            descriptionSource: venues.descriptionSource,
             shortDescription: venues.shortDescription,
+            shortDescriptionSource: venues.shortDescriptionSource,
             addressLine1: venues.addressLine1,
             addressLine2: venues.addressLine2,
             city: venues.city,
@@ -1676,11 +2265,19 @@ superAdminRoutes.get('/venues', async (c) => {
             website: venues.website,
             instagramHandle: venues.instagramHandle,
             googleMapsUrl: venues.googleMapsUrl,
+            googlePlaceId: venues.googlePlaceId,
+            approvalStatus: venues.approvalStatus,
+            approvalNotes: venues.approvalNotes,
+            menuSource: venues.menuSource,
             capacity: venues.capacity,
             amenities: venues.amenities,
             vibes: venues.vibes,
             cuisineTags: venues.cuisineTags,
             priceRange: venues.priceRange,
+            priceRangeSource: venues.priceRangeSource,
+            ratingOverride: venues.ratingOverride,
+            reviewCountOverride: venues.reviewCountOverride,
+            googleSourceSnapshot: venues.googleSourceSnapshot,
             metadata: venues.metadata,
             isActive: venues.isActive,
             isVerified: venues.isVerified,
@@ -1721,44 +2318,60 @@ superAdminRoutes.post('/venues', async (c) => {
         }).where(eq(users.id, owner.id));
     }
 
-    const [created] = await db.insert(venues).values({
-        ownerId: owner.id,
-        name: parsed.data.name.trim(),
-        slug: parsed.data.slug?.trim() || generateUniqueSlug(parsed.data.name),
-        description: parsed.data.description?.trim() || null,
-        shortDescription: parsed.data.shortDescription?.trim() || null,
-        addressLine1: parsed.data.addressLine1.trim(),
-        addressLine2: parsed.data.addressLine2?.trim() || null,
-        city: parsed.data.city.trim(),
-        stateProvince: parsed.data.stateProvince?.trim() || null,
-        country: parsed.data.country.trim(),
-        postalCode: parsed.data.postalCode?.trim() || null,
-        lat: String(parsed.data.lat),
-        lng: String(parsed.data.lng),
-        timezone: parsed.data.timezone.trim(),
-        phone: parsed.data.phone?.trim() || null,
-        website: parsed.data.website?.trim() || null,
-        instagramHandle: parsed.data.instagramHandle?.trim() || null,
-        googleMapsUrl: parsed.data.googleMapsUrl?.trim() || null,
-        coverImageUrl: parsed.data.coverImageUrl || null,
-        coverImageS3Key: parsed.data.coverImageS3Key?.trim() || null,
-        galleryS3Keys: sanitizeGalleryKeys(parsed.data.galleryS3Keys),
-        amenities: parsed.data.amenities,
-        vibes: parsed.data.vibes,
-        cuisineTags: parsed.data.cuisineTags,
-        priceRange: parsed.data.priceRange,
-        capacity: parsed.data.capacity || null,
-        isVerified: parsed.data.isVerified,
-        isActive: parsed.data.isActive,
-        isFeatured: parsed.data.isFeatured,
-        metadata: {
-            galleryImageUrls: sanitizeGalleryUrls(parsed.data.galleryImageUrls),
-        },
-    }).returning({
-        id: venues.id,
-        slug: venues.slug,
-        name: venues.name,
-    });
+    let created: { id: string; slug: string; name: string };
+    try {
+        const moderationState = normalizeVenueModerationState(parsed.data, parsed.data.approvalStatus, parsed.data.isActive);
+        [created] = await db.insert(venues).values({
+            ownerId: owner.id,
+            name: parsed.data.name.trim(),
+            slug: parsed.data.slug?.trim() || generateUniqueSlug(parsed.data.name),
+            description: parsed.data.description?.trim() || null,
+            descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
+            shortDescription: parsed.data.shortDescription?.trim() || null,
+            shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
+            addressLine1: parsed.data.addressLine1.trim(),
+            addressLine2: parsed.data.addressLine2?.trim() || null,
+            city: parsed.data.city.trim(),
+            stateProvince: parsed.data.stateProvince?.trim() || null,
+            country: parsed.data.country.trim(),
+            postalCode: parsed.data.postalCode?.trim() || null,
+            lat: String(parsed.data.lat),
+            lng: String(parsed.data.lng),
+            timezone: parsed.data.timezone.trim(),
+            phone: parsed.data.phone?.trim() || null,
+            website: parsed.data.website?.trim() || null,
+            instagramHandle: parsed.data.instagramHandle?.trim() || null,
+            googleMapsUrl: parsed.data.googleMapsUrl?.trim() || null,
+            googlePlaceId: parsed.data.googlePlaceId?.trim() || null,
+            coverImageUrl: parsed.data.coverImageUrl || null,
+            coverImageS3Key: parsed.data.coverImageS3Key?.trim() || null,
+            galleryS3Keys: sanitizeGalleryKeys(parsed.data.galleryS3Keys),
+            amenities: parsed.data.amenities,
+            vibes: parsed.data.vibes,
+            cuisineTags: parsed.data.cuisineTags,
+            priceRange: parsed.data.priceRange,
+            priceRangeSource: parsed.data.priceRange ? 'MANUAL' : 'NONE',
+            capacity: parsed.data.capacity || null,
+            isVerified: parsed.data.isVerified,
+            isActive: moderationState.isActive,
+            isFeatured: parsed.data.isFeatured,
+            approvalStatus: moderationState.approvalStatus,
+            approvalNotes: parsed.data.approvalNotes?.trim() || null,
+            approvedAt: moderationState.approvalStatus === 'APPROVED' ? new Date() : null,
+            ratingOverride: null,
+            reviewCountOverride: null,
+            metadata: {
+                galleryImageUrls: sanitizeGalleryUrls(parsed.data.galleryImageUrls),
+            },
+        }).returning({
+            id: venues.id,
+            slug: venues.slug,
+            name: venues.name,
+        });
+    } catch (error) {
+        const formatted = formatVenueMutationError(error);
+        return c.json(formatted.body, formatted.status);
+    }
 
     return c.json(apiResponse(created), 201);
 });
@@ -1775,6 +2388,10 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
         id: venues.id,
         slug: venues.slug,
         metadata: venues.metadata,
+        coverImageS3Key: venues.coverImageS3Key,
+        galleryS3Keys: venues.galleryS3Keys,
+        approvalStatus: venues.approvalStatus,
+        isActive: venues.isActive,
     }).from(venues).where(eq(venues.id, venueId)).limit(1);
     if (!existingVenue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
 
@@ -1808,6 +2425,18 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
     if (parsed.data.amenities !== undefined) updates.amenities = parsed.data.amenities;
     if (parsed.data.vibes !== undefined) updates.vibes = parsed.data.vibes;
     if (parsed.data.cuisineTags !== undefined) updates.cuisineTags = parsed.data.cuisineTags;
+    if (parsed.data.description !== undefined) {
+        updates.description = parsed.data.description?.trim() || null;
+        updates.descriptionSource = parsed.data.description?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.shortDescription !== undefined) {
+        updates.shortDescription = parsed.data.shortDescription?.trim() || null;
+        updates.shortDescriptionSource = parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE';
+    }
+    if (parsed.data.priceRange !== undefined) {
+        updates.priceRange = parsed.data.priceRange;
+        updates.priceRangeSource = parsed.data.priceRange ? 'MANUAL' : 'NONE';
+    }
     if (parsed.data.galleryS3Keys !== undefined) {
         updates.galleryS3Keys = sanitizeGalleryKeys(parsed.data.galleryS3Keys);
     }
@@ -1818,8 +2447,47 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
             galleryImageUrls: sanitizeGalleryUrls(parsed.data.galleryImageUrls),
         };
     }
+    if (parsed.data.ratingOverride !== undefined) {
+        updates.ratingOverride = parsed.data.ratingOverride;
+    }
+    if (parsed.data.reviewCountOverride !== undefined) {
+        updates.reviewCountOverride = parsed.data.reviewCountOverride;
+    }
+    if (parsed.data.googlePlaceId !== undefined) {
+        updates.googlePlaceId = parsed.data.googlePlaceId?.trim() || null;
+    }
+    if (parsed.data.approvalStatus !== undefined) {
+        updates.approvalStatus = parsed.data.approvalStatus;
+        updates.approvedAt = parsed.data.approvalStatus === 'APPROVED' ? new Date() : null;
+    }
+    if (parsed.data.approvalNotes !== undefined) {
+        updates.approvalNotes = parsed.data.approvalNotes;
+    }
+    if (parsed.data.approvalStatus !== undefined || parsed.data.isActive !== undefined) {
+        const moderationState = normalizeVenueModerationState(
+            parsed.data,
+            existingVenue.approvalStatus,
+            existingVenue.isActive,
+        );
+        updates.approvalStatus = moderationState.approvalStatus;
+        updates.isActive = moderationState.isActive;
+        if (parsed.data.approvalStatus !== undefined) {
+            updates.approvedAt = moderationState.approvalStatus === 'APPROVED' ? new Date() : null;
+        }
+    }
 
-    await db.update(venues).set(updates).where(eq(venues.id, venueId));
+    try {
+        await db.update(venues).set(updates).where(eq(venues.id, venueId));
+    } catch (error) {
+        const formatted = formatVenueMutationError(error);
+        return c.json(formatted.body, formatted.status);
+    }
+    await cleanupRemovedVenueMedia({
+        previousCoverKey: existingVenue.coverImageS3Key,
+        previousGalleryKeys: existingVenue.galleryS3Keys,
+        nextCoverKey: parsed.data.coverImageS3Key !== undefined ? parsed.data.coverImageS3Key : existingVenue.coverImageS3Key,
+        nextGalleryKeys: parsed.data.galleryS3Keys !== undefined ? sanitizeGalleryKeys(parsed.data.galleryS3Keys) : existingVenue.galleryS3Keys,
+    });
     return c.json(apiResponse({ message: 'Venue updated' }));
 });
 
@@ -2112,6 +2780,7 @@ superAdminRoutes.get('/matches', async (c) => {
         ? or(
             ilike(matches.homeTeamName, `%${search}%`),
             ilike(matches.awayTeamName, `%${search}%`),
+            ilike(matches.eventTitle, `%${search}%`),
             ilike(leagues.name, `%${search}%`),
         )
         : undefined;
@@ -2121,6 +2790,10 @@ superAdminRoutes.get('/matches', async (c) => {
             id: matches.id,
             leagueId: matches.leagueId,
             leagueName: leagues.name,
+            isFeatured: matches.isFeatured,
+            eventFormat: matches.eventFormat,
+            eventTitle: matches.eventTitle,
+            eventSubtitle: matches.eventSubtitle,
             homeTeamId: matches.homeTeamId,
             awayTeamId: matches.awayTeamId,
             stadiumId: matches.stadiumId,
@@ -2159,11 +2832,21 @@ superAdminRoutes.post('/matches', async (c) => {
         return c.json(normalized.error, normalized.status);
     }
 
-    if (!normalized.values.homeTeamName || !normalized.values.awayTeamName || !normalized.values.matchDateUtc) {
+    if (!normalized.values.matchDateUtc) {
+        return c.json(apiError('VALIDATION_ERROR', 'Match requires kickoff time'), 400);
+    }
+    if (normalized.values.eventFormat === 'HEAD_TO_HEAD' && (!normalized.values.homeTeamName || !normalized.values.awayTeamName)) {
         return c.json(apiError('VALIDATION_ERROR', 'Match requires teams and kickoff time'), 400);
+    }
+    if (normalized.values.eventFormat === 'SINGLE_EVENT' && !normalized.values.eventTitle) {
+        return c.json(apiError('VALIDATION_ERROR', 'Single event requires an event title'), 400);
     }
 
     const [created] = await db.insert(matches).values({
+        isFeatured: normalized.values.isFeatured ?? false,
+        eventFormat: normalized.values.eventFormat || 'HEAD_TO_HEAD',
+        eventTitle: normalized.values.eventTitle ?? null,
+        eventSubtitle: normalized.values.eventSubtitle ?? null,
         leagueId: normalized.values.leagueId ?? null,
         homeTeamId: normalized.values.homeTeamId ?? null,
         awayTeamId: normalized.values.awayTeamId ?? null,
@@ -2180,6 +2863,7 @@ superAdminRoutes.post('/matches', async (c) => {
         externalMatchId: normalized.values.externalMatchId ?? null,
     }).returning({
         id: matches.id,
+        eventTitle: matches.eventTitle,
         homeTeamName: matches.homeTeamName,
         awayTeamName: matches.awayTeamName,
     });
@@ -2342,6 +3026,723 @@ superAdminRoutes.delete('/matches/:matchId', async (c) => {
         message: 'Match deleted',
         mode: 'deleted',
     }));
+});
+
+superAdminRoutes.get('/motorsport-entries', async (c) => {
+    const parsed = motorsportEntryQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+    }
+
+    const { page, limit, search, matchId } = parsed.data;
+    const offset = paginationOffset(page, limit);
+
+    const conditions = [];
+    if (matchId) conditions.push(eq(eventEntries.matchId, matchId));
+    if (search?.trim()) {
+        conditions.push(or(
+            ilike(drivers.name, `%${search.trim()}%`),
+            ilike(entrants.name, `%${search.trim()}%`),
+            ilike(manufacturers.name, `%${search.trim()}%`),
+            ilike(eventEntries.displayName, `%${search.trim()}%`),
+            ilike(eventEntries.carNumber, `%${search.trim()}%`),
+        ));
+    }
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [rows, [totalResult]] = await Promise.all([
+        listMotorsportEntries(where).then((data) => data.slice(offset, offset + limit)),
+        db.select({ count: count() })
+            .from(eventEntries)
+            .innerJoin(matches, eq(eventEntries.matchId, matches.id))
+            .leftJoin(drivers, eq(eventEntries.driverId, drivers.id))
+            .leftJoin(entrants, eq(eventEntries.entrantId, entrants.id))
+            .leftJoin(manufacturers, eq(eventEntries.manufacturerId, manufacturers.id))
+            .where(where),
+    ]);
+
+    return c.json(apiResponse(rows.map((row) => ({
+        id: row.id,
+        matchId: row.matchId,
+        matchLabel: row.matchEventTitle || [row.matchHomeTeamName, row.matchAwayTeamName].filter(Boolean).join(' vs '),
+        matchSubtitle: row.matchEventSubtitle,
+        externalId: row.externalId,
+        carNumber: row.carNumber,
+        displayName: row.displayName,
+        gridPosition: row.gridPosition,
+        startPosition: row.startPosition,
+        finishPosition: row.finishPosition,
+        status: row.status,
+        points: row.points,
+        metadata: row.metadata,
+        driverId: row.driverId,
+        driverName: row.driverName,
+        driverShortName: row.driverShortName,
+        driverNationality: row.driverNationality,
+        driverCountryCode: row.driverCountryCode,
+        driverHeadshotUrl: row.driverHeadshotUrl,
+        entrantId: row.entrantId,
+        entrantName: row.entrantName,
+        entrantShortName: row.entrantShortName,
+        entrantBrandColor: row.entrantBrandColor,
+        entrantLogoUrl: row.entrantLogoUrl,
+        manufacturerId: row.manufacturerId,
+        manufacturerName: row.manufacturerName,
+        manufacturerShortName: row.manufacturerShortName,
+        manufacturerLogoUrl: row.manufacturerLogoUrl,
+    })), paginationMeta(page, limit, Number(totalResult?.count || 0))));
+});
+
+superAdminRoutes.post('/motorsport-entries', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createMotorsportEntrySchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const normalized = await buildMotorsportEntryValues(parsed.data);
+    if ('error' in normalized) {
+        return c.json(normalized.error, normalized.status);
+    }
+
+    const [created] = await db.insert(eventEntries).values({
+        matchId: normalized.values.matchId,
+        externalId: normalized.values.externalId ?? null,
+        carNumber: normalized.values.carNumber ?? null,
+        driverId: normalized.values.driverId ?? null,
+        entrantId: normalized.values.entrantId ?? null,
+        manufacturerId: normalized.values.manufacturerId ?? null,
+        displayName: normalized.values.displayName ?? null,
+        gridPosition: normalized.values.gridPosition ?? null,
+        startPosition: normalized.values.startPosition ?? null,
+        finishPosition: normalized.values.finishPosition ?? null,
+        status: normalized.values.status ?? 'ENTERED',
+        points: normalized.values.points ?? null,
+        metadata: normalized.values.metadata ?? null,
+    }).returning({ id: eventEntries.id });
+
+    return c.json(apiResponse(created), 201);
+});
+
+superAdminRoutes.patch('/motorsport-entries/:entryId', async (c) => {
+    const entryId = c.req.param('entryId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateMotorsportEntrySchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({
+        id: eventEntries.id,
+        matchId: eventEntries.matchId,
+    }).from(eventEntries).where(eq(eventEntries.id, entryId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Motorsport entry not found'), 404);
+
+    const normalized = await buildMotorsportEntryValues(parsed.data, existing.matchId);
+    if ('error' in normalized) {
+        return c.json(normalized.error, normalized.status);
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    for (const [key, value] of Object.entries(normalized.values)) {
+        if (value === undefined) continue;
+        updates[key] = value;
+    }
+
+    await db.update(eventEntries).set(updates).where(eq(eventEntries.id, entryId));
+    return c.json(apiResponse({ message: 'Motorsport entry updated' }));
+});
+
+superAdminRoutes.delete('/motorsport-entries/:entryId', async (c) => {
+    const entryId = c.req.param('entryId');
+    const [existing] = await db.select({ id: eventEntries.id }).from(eventEntries).where(eq(eventEntries.id, entryId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Motorsport entry not found'), 404);
+
+    await db.delete(eventEntries).where(eq(eventEntries.id, entryId));
+    return c.json(apiResponse({ message: 'Motorsport entry deleted' }));
+});
+
+superAdminRoutes.get('/blog/categories', async (c) => {
+    const rows = await db.select({
+        id: blogCategories.id,
+        name: blogCategories.name,
+        slug: blogCategories.slug,
+        description: blogCategories.description,
+        sortOrder: blogCategories.sortOrder,
+        isActive: blogCategories.isActive,
+        createdAt: blogCategories.createdAt,
+        updatedAt: blogCategories.updatedAt,
+    }).from(blogCategories).orderBy(blogCategories.sortOrder, blogCategories.name);
+
+    return c.json(apiResponse(rows));
+});
+
+superAdminRoutes.post('/blog/categories', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createBlogCategorySchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const slug = slugifyValue(parsed.data.slug?.trim() || parsed.data.name);
+    const [existing] = await db.select({ id: blogCategories.id }).from(blogCategories).where(eq(blogCategories.slug, slug)).limit(1);
+    if (existing) return c.json(apiError('CONFLICT', 'Blog category slug already exists'), 409);
+
+    const [created] = await db.insert(blogCategories).values({
+        name: parsed.data.name.trim(),
+        slug,
+        description: parsed.data.description?.trim() || null,
+        sortOrder: parsed.data.sortOrder,
+        isActive: parsed.data.isActive,
+    }).returning();
+
+    return c.json(apiResponse(created), 201);
+});
+
+superAdminRoutes.patch('/blog/categories/:categoryId', async (c) => {
+    const categoryId = c.req.param('categoryId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateBlogCategorySchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({ id: blogCategories.id }).from(blogCategories).where(eq(blogCategories.id, categoryId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Blog category not found'), 404);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name.trim();
+    if (parsed.data.slug !== undefined) updates.slug = slugifyValue(parsed.data.slug);
+    if (parsed.data.description !== undefined) updates.description = parsed.data.description?.trim() || null;
+    if (parsed.data.sortOrder !== undefined) updates.sortOrder = parsed.data.sortOrder;
+    if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+
+    await db.update(blogCategories).set(updates).where(eq(blogCategories.id, categoryId));
+    return c.json(apiResponse({ message: 'Blog category updated' }));
+});
+
+superAdminRoutes.delete('/blog/categories/:categoryId', async (c) => {
+    const categoryId = c.req.param('categoryId');
+    const [existing] = await db.select({ id: blogCategories.id }).from(blogCategories).where(eq(blogCategories.id, categoryId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Blog category not found'), 404);
+
+    await db.update(blogCategories).set({ isActive: false, updatedAt: new Date() }).where(eq(blogCategories.id, categoryId));
+    return c.json(apiResponse({ message: 'Blog category archived' }));
+});
+
+superAdminRoutes.get('/blog/posts', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+
+    const { page, limit, search } = parsed.data;
+    const offset = paginationOffset(page, limit);
+    const where = search
+        ? or(
+            ilike(blogPosts.title, `%${search}%`),
+            ilike(blogPosts.slug, `%${search}%`),
+            ilike(blogPosts.excerpt, `%${search}%`),
+        )
+        : undefined;
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: blogPosts.id,
+            slug: blogPosts.slug,
+            title: blogPosts.title,
+            excerpt: blogPosts.excerpt,
+            featuredImageUrl: blogPosts.featuredImageUrl,
+            status: blogPosts.status,
+            publishedAt: blogPosts.publishedAt,
+            createdAt: blogPosts.createdAt,
+            updatedAt: blogPosts.updatedAt,
+            authorId: blogPosts.authorId,
+            authorName: users.name,
+        })
+            .from(blogPosts)
+            .leftJoin(users, eq(blogPosts.authorId, users.id))
+            .where(where)
+            .orderBy(desc(blogPosts.createdAt))
+            .limit(limit)
+            .offset(offset),
+        db.select({ count: count() }).from(blogPosts).where(where),
+    ]);
+
+    const postIds = rows.map((row) => row.id);
+    const categoriesByPost = new Map<string, Array<{ id: string; name: string; slug: string }>>();
+    if (postIds.length > 0) {
+        const categoryRows = await db.select({
+            postId: blogPostCategories.postId,
+            id: blogCategories.id,
+            name: blogCategories.name,
+            slug: blogCategories.slug,
+        })
+            .from(blogPostCategories)
+            .innerJoin(blogCategories, eq(blogPostCategories.categoryId, blogCategories.id))
+            .where(inArray(blogPostCategories.postId, postIds));
+        for (const row of categoryRows) {
+            if (!categoriesByPost.has(row.postId)) categoriesByPost.set(row.postId, []);
+            categoriesByPost.get(row.postId)?.push({ id: row.id, name: row.name, slug: row.slug });
+        }
+    }
+
+    return c.json(apiResponse(rows.map((row) => ({
+        ...row,
+        categories: categoriesByPost.get(row.id) || [],
+    })), paginationMeta(page, limit, Number(totalResult?.count || 0))));
+});
+
+superAdminRoutes.get('/blog/posts/:postId', async (c) => {
+    const postId = c.req.param('postId');
+    const [row] = await db.select().from(blogPosts).where(eq(blogPosts.id, postId)).limit(1);
+    if (!row) return c.json(apiError('NOT_FOUND', 'Blog post not found'), 404);
+
+    const categoryRows = await db.select({
+        id: blogCategories.id,
+        name: blogCategories.name,
+        slug: blogCategories.slug,
+    })
+        .from(blogPostCategories)
+        .innerJoin(blogCategories, eq(blogPostCategories.categoryId, blogCategories.id))
+        .where(eq(blogPostCategories.postId, postId));
+
+    return c.json(apiResponse({
+        ...row,
+        categories: categoryRows,
+        categoryIds: categoryRows.map((category) => category.id),
+    }));
+});
+
+superAdminRoutes.post('/blog/posts', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = createBlogPostSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const categoryIds = Array.from(new Set(parsed.data.categoryIds));
+    if (categoryIds.length > 0) {
+        const found = await db.select({ id: blogCategories.id }).from(blogCategories).where(inArray(blogCategories.id, categoryIds));
+        if (found.length !== categoryIds.length) return c.json(apiError('NOT_FOUND', 'One or more categories were not found'), 404);
+    }
+
+    const title = parsed.data.title.trim();
+    const slug = slugifyValue(parsed.data.slug?.trim() || title);
+    const [existing] = await db.select({ id: blogPosts.id }).from(blogPosts).where(eq(blogPosts.slug, slug)).limit(1);
+    if (existing) return c.json(apiError('CONFLICT', 'Blog post slug already exists'), 409);
+
+    const [author] = await db.select({ id: users.id }).from(users)
+        .where(and(
+            eq(users.isActive, true),
+            inArray(users.role, ['SUPER_ADMIN', 'ADMIN']),
+        ))
+        .orderBy(users.createdAt)
+        .limit(1);
+    if (!author) return c.json(apiError('NOT_FOUND', 'No admin user found to own blog posts'), 404);
+
+    const [created] = await db.insert(blogPosts).values({
+        title,
+        slug,
+        excerpt: parsed.data.excerpt?.trim() || null,
+        featuredImageUrl: parsed.data.featuredImageUrl?.trim() || null,
+        featuredImageS3Key: parsed.data.featuredImageS3Key?.trim() || null,
+        contentJson: parsed.data.contentJson ?? null,
+        contentHtml: sanitizeBlogHtml(parsed.data.renderedHtml),
+        status: parsed.data.status,
+        publishedAt: parsed.data.publishedAt ? new Date(parsed.data.publishedAt) : parsed.data.status === 'PUBLISHED' ? new Date() : null,
+        authorId: author.id,
+    }).returning({ id: blogPosts.id });
+
+    await syncBlogPostCategoryIds(created.id, categoryIds);
+    return c.json(apiResponse({ id: created.id }), 201);
+});
+
+superAdminRoutes.patch('/blog/posts/:postId', async (c) => {
+    const postId = c.req.param('postId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateBlogPostSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({ id: blogPosts.id }).from(blogPosts).where(eq(blogPosts.id, postId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Blog post not found'), 404);
+
+    if (parsed.data.categoryIds) {
+        const found = await db.select({ id: blogCategories.id }).from(blogCategories).where(inArray(blogCategories.id, parsed.data.categoryIds));
+        if (found.length !== parsed.data.categoryIds.length) return c.json(apiError('NOT_FOUND', 'One or more categories were not found'), 404);
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.title !== undefined) updates.title = parsed.data.title.trim();
+    if (parsed.data.slug !== undefined) updates.slug = slugifyValue(parsed.data.slug);
+    if (parsed.data.excerpt !== undefined) updates.excerpt = parsed.data.excerpt?.trim() || null;
+    if (parsed.data.featuredImageUrl !== undefined) updates.featuredImageUrl = parsed.data.featuredImageUrl?.trim() || null;
+    if (parsed.data.featuredImageS3Key !== undefined) updates.featuredImageS3Key = parsed.data.featuredImageS3Key?.trim() || null;
+    if (parsed.data.contentJson !== undefined) updates.contentJson = parsed.data.contentJson ?? null;
+    if (parsed.data.renderedHtml !== undefined) updates.contentHtml = sanitizeBlogHtml(parsed.data.renderedHtml);
+    if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+    if (parsed.data.publishedAt !== undefined) updates.publishedAt = parsed.data.publishedAt ? new Date(parsed.data.publishedAt) : null;
+
+    await db.update(blogPosts).set(updates).where(eq(blogPosts.id, postId));
+    if (parsed.data.categoryIds) {
+        await syncBlogPostCategoryIds(postId, Array.from(new Set(parsed.data.categoryIds)));
+    }
+
+    return c.json(apiResponse({ message: 'Blog post updated' }));
+});
+
+superAdminRoutes.delete('/blog/posts/:postId', async (c) => {
+    const postId = c.req.param('postId');
+    const [existing] = await db.select({ id: blogPosts.id }).from(blogPosts).where(eq(blogPosts.id, postId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Blog post not found'), 404);
+
+    await db.delete(blogPostCategories).where(eq(blogPostCategories.postId, postId));
+    await db.delete(blogComments).where(eq(blogComments.postId, postId));
+    await db.delete(blogPosts).where(eq(blogPosts.id, postId));
+    return c.json(apiResponse({ message: 'Blog post deleted' }));
+});
+
+superAdminRoutes.get('/blog/comments', async (c) => {
+    const status = c.req.query('status');
+    const rows = await db.select({
+        id: blogComments.id,
+        postId: blogComments.postId,
+        postTitle: blogPosts.title,
+        userId: blogComments.userId,
+        userName: users.name,
+        content: blogComments.content,
+        status: blogComments.status,
+        createdAt: blogComments.createdAt,
+    })
+        .from(blogComments)
+        .innerJoin(blogPosts, eq(blogComments.postId, blogPosts.id))
+        .innerJoin(users, eq(blogComments.userId, users.id))
+        .where(status ? eq(blogComments.status, status as 'PENDING' | 'APPROVED' | 'REJECTED') : undefined)
+        .orderBy(desc(blogComments.createdAt))
+        .limit(200);
+
+    return c.json(apiResponse(rows));
+});
+
+superAdminRoutes.patch('/blog/comments/:commentId', async (c) => {
+    const commentId = c.req.param('commentId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = updateBlogCommentSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({ id: blogComments.id }).from(blogComments).where(eq(blogComments.id, commentId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Blog comment not found'), 404);
+
+    await db.update(blogComments).set({
+        status: parsed.data.status,
+        moderatedBy: null,
+        moderatedAt: new Date(),
+        updatedAt: new Date(),
+    }).where(eq(blogComments.id, commentId));
+
+    return c.json(apiResponse({ message: 'Blog comment updated' }));
+});
+
+superAdminRoutes.get('/approval/businesses', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+
+    const { page, limit, search } = parsed.data;
+    const offset = paginationOffset(page, limit);
+    const where = and(
+        or(eq(users.role, 'BUSINESS'), eq(users.role, 'VENUE_OWNER')),
+        ...(search ? [or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`))] : []),
+    );
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: users.id,
+            email: users.email,
+            name: users.name,
+            role: users.role,
+            businessApprovalStatus: users.businessApprovalStatus,
+            businessApprovalNotes: users.businessApprovalNotes,
+            businessApprovedAt: users.businessApprovedAt,
+            createdAt: users.createdAt,
+        }).from(users).where(where).orderBy(desc(users.createdAt)).limit(limit).offset(offset),
+        db.select({ count: count() }).from(users).where(where),
+    ]);
+
+    return c.json(apiResponse(rows, paginationMeta(page, limit, Number(totalResult?.count ?? 0))));
+});
+
+superAdminRoutes.patch('/users/:userId/business-approval', async (c) => {
+    const userId = c.req.param('userId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = reviewBusinessApprovalSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'User not found'), 404);
+
+    await db.update(users).set({
+        businessApprovalStatus: parsed.data.status,
+        businessApprovalNotes: parsed.data.notes ?? null,
+        businessApprovedAt: parsed.data.status === 'APPROVED' ? new Date() : null,
+        updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+
+    return c.json(apiResponse({ message: 'Business approval updated' }));
+});
+
+superAdminRoutes.get('/approval/venues', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+
+    const { page, limit, search } = parsed.data;
+    const offset = paginationOffset(page, limit);
+    const where = search
+        ? or(ilike(venues.name, `%${search}%`), ilike(venues.city, `%${search}%`))
+        : undefined;
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: venues.id,
+            name: venues.name,
+            slug: venues.slug,
+            city: venues.city,
+            country: venues.country,
+            ownerId: venues.ownerId,
+            ownerEmail: users.email,
+            ownerName: users.name,
+            approvalStatus: venues.approvalStatus,
+            approvalNotes: venues.approvalNotes,
+            isVerified: venues.isVerified,
+            googlePlaceId: venues.googlePlaceId,
+            createdAt: venues.createdAt,
+        })
+            .from(venues)
+            .leftJoin(users, eq(venues.ownerId, users.id))
+            .where(where)
+            .orderBy(desc(venues.createdAt))
+            .limit(limit)
+            .offset(offset),
+        db.select({ count: count() }).from(venues).where(where),
+    ]);
+
+    return c.json(apiResponse(rows, paginationMeta(page, limit, Number(totalResult?.count ?? 0))));
+});
+
+superAdminRoutes.patch('/venues/:venueId/approval', async (c) => {
+    const venueId = c.req.param('venueId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = reviewVenueApprovalSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select({ id: venues.id, isActive: venues.isActive }).from(venues).where(eq(venues.id, venueId)).limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+
+    const moderationState = normalizeVenueModerationState({
+        approvalStatus: parsed.data.status,
+        isActive: existing.isActive,
+    }, parsed.data.status, existing.isActive);
+
+    await db.update(venues).set({
+        approvalStatus: moderationState.approvalStatus,
+        approvalNotes: parsed.data.notes ?? null,
+        approvedAt: moderationState.approvalStatus === 'APPROVED' ? new Date() : null,
+        isVerified: parsed.data.isVerified ?? (parsed.data.status === 'APPROVED'),
+        isActive: moderationState.isActive,
+        updatedAt: new Date(),
+    }).where(eq(venues.id, venueId));
+
+    return c.json(apiResponse({ message: 'Venue approval updated' }));
+});
+
+superAdminRoutes.get('/venue-claims', async (c) => {
+    const parsed = paginationQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+
+    const { page, limit } = parsed.data;
+    const offset = paginationOffset(page, limit);
+
+    const [rows, [totalResult]] = await Promise.all([
+        db.select({
+            id: venueClaims.id,
+            status: venueClaims.status,
+            notes: venueClaims.notes,
+            adminNotes: venueClaims.adminNotes,
+            verificationDocuments: venueClaims.verificationDocuments,
+            reviewedAt: venueClaims.reviewedAt,
+            createdAt: venueClaims.createdAt,
+            venueId: venues.id,
+            venueName: venues.name,
+            venueSlug: venues.slug,
+            venueOwnerId: venues.ownerId,
+            claimantUserId: venueClaims.claimantUserId,
+            claimantName: users.name,
+            claimantEmail: users.email,
+        })
+            .from(venueClaims)
+            .innerJoin(venues, eq(venueClaims.venueId, venues.id))
+            .innerJoin(users, eq(venueClaims.claimantUserId, users.id))
+            .orderBy(desc(venueClaims.createdAt))
+            .limit(limit)
+            .offset(offset),
+        db.select({ count: count() }).from(venueClaims),
+    ]);
+
+    const ownerIds = Array.from(new Set(rows.map((row) => row.venueOwnerId).filter((value): value is string => Boolean(value))));
+    const ownerRows = ownerIds.length
+        ? await db.select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+        }).from(users).where(inArray(users.id, ownerIds))
+        : [];
+    const ownerMap = new Map(ownerRows.map((row) => [row.id, row]));
+
+    return c.json(apiResponse(rows.map((row) => {
+        const owner = row.venueOwnerId ? ownerMap.get(row.venueOwnerId) : null;
+        return {
+            ...row,
+            venueOwnerName: owner?.name ?? null,
+            venueOwnerEmail: owner?.email ?? null,
+        };
+    }), paginationMeta(page, limit, Number(totalResult?.count ?? 0))));
+});
+
+superAdminRoutes.patch('/venue-claims/:claimId', async (c) => {
+    const claimId = c.req.param('claimId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = reviewVenueClaimSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [claim] = await db.select({
+        id: venueClaims.id,
+        venueId: venueClaims.venueId,
+        claimantUserId: venueClaims.claimantUserId,
+    }).from(venueClaims).where(eq(venueClaims.id, claimId)).limit(1);
+    if (!claim) return c.json(apiError('NOT_FOUND', 'Claim not found'), 404);
+
+    await db.transaction(async (tx) => {
+        await tx.update(venueClaims).set({
+            status: parsed.data.status,
+            adminNotes: parsed.data.adminNotes ?? null,
+            reviewedAt: new Date(),
+        }).where(eq(venueClaims.id, claimId));
+
+        if (parsed.data.status === 'APPROVED') {
+            await tx.update(venues).set({
+                ownerId: claim.claimantUserId,
+                updatedAt: new Date(),
+            }).where(eq(venues.id, claim.venueId));
+        }
+    });
+
+    return c.json(apiResponse({ message: 'Venue claim reviewed' }));
+});
+
+superAdminRoutes.post('/venues/:venueId/google/refresh', async (c) => {
+    const venueId = c.req.param('venueId');
+    const [venue] = await db.select({
+        id: venues.id,
+        slug: venues.slug,
+        name: venues.name,
+        description: venues.description,
+        shortDescription: venues.shortDescription,
+        googlePlaceId: venues.googlePlaceId,
+        googleSourceSnapshot: venues.googleSourceSnapshot,
+        googleLastSyncedAt: venues.googleLastSyncedAt,
+        googleSyncStatus: venues.googleSyncStatus,
+        googleSyncError: venues.googleSyncError,
+        amenities: venues.amenities,
+        menuSource: venues.menuSource,
+        descriptionSource: venues.descriptionSource,
+        shortDescriptionSource: venues.shortDescriptionSource,
+        priceRange: venues.priceRange,
+        priceRangeSource: venues.priceRangeSource,
+        phone: venues.phone,
+        website: venues.website,
+        googleMapsUrl: venues.googleMapsUrl,
+        ratingOverride: venues.ratingOverride,
+        reviewCountOverride: venues.reviewCountOverride,
+    }).from(venues).where(eq(venues.id, venueId)).limit(1);
+    if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    if (!venue.googlePlaceId) return c.json(apiError('VALIDATION_ERROR', 'Venue is not linked to a Google Place'), 400);
+
+    const { snapshot, defaults } = await refreshVenueFromGoogle(venue);
+    return c.json(apiResponse({ message: 'Google venue data refreshed', snapshot, defaults }));
+});
+
+superAdminRoutes.post('/venues/:venueId/google/revert', async (c) => {
+    const venueId = c.req.param('venueId');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = revertVenueGoogleSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [venue] = await db.select({
+        id: venues.id,
+        slug: venues.slug,
+        name: venues.name,
+        menuSource: venues.menuSource,
+        googleSourceSnapshot: venues.googleSourceSnapshot,
+    }).from(venues).where(eq(venues.id, venueId)).limit(1);
+    if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    if (!venue.googleSourceSnapshot || typeof venue.googleSourceSnapshot !== 'object' || Array.isArray(venue.googleSourceSnapshot)) {
+        return c.json(apiError('NOT_FOUND', 'No Google defaults stored for this venue'), 404);
+    }
+
+    const snapshot = await enrichGoogleMenuSnapshot(venue.googleSourceSnapshot as Parameters<typeof applyGoogleMenuSnapshot>[2]);
+    const googleFields = buildGoogleVenueFields(snapshot);
+    const googleAmenities = await getAllowedGoogleAmenities(snapshot as GoogleSourceSnapshot);
+    const googleDefaults = await buildGoogleSyncUpdates({
+        ...venue,
+        googleSourceSnapshot: snapshot,
+        description: null,
+        shortDescription: null,
+        descriptionSource: 'NONE',
+        shortDescriptionSource: 'NONE',
+        priceRange: null,
+        priceRangeSource: 'NONE',
+        amenities: [],
+        googlePlaceId: snapshot.placeId,
+        googleLastSyncedAt: null,
+        googleSyncStatus: 'NEVER_SYNCED',
+        googleSyncError: null,
+        phone: null,
+        website: null,
+        googleMapsUrl: null,
+        ratingOverride: null,
+        reviewCountOverride: null,
+    }, snapshot);
+    const revertedDescription = typeof googleDefaults.updates.description === 'string'
+        ? googleDefaults.updates.description
+        : null;
+    const revertedShortDescription = typeof googleDefaults.updates.shortDescription === 'string'
+        ? googleDefaults.updates.shortDescription
+        : null;
+    const revertedPriceRange = typeof googleDefaults.updates.priceRange === 'string'
+        ? googleDefaults.updates.priceRange as 'BUDGET' | 'MID' | 'UPSCALE' | 'LUXURY'
+        : null;
+
+    await db.transaction(async (tx) => {
+        await tx.update(venues).set({
+            name: snapshot.displayName,
+            addressLine1: googleFields.addressLine1,
+            city: googleFields.city,
+            stateProvince: googleFields.stateProvince,
+            country: googleFields.country,
+            postalCode: googleFields.postalCode,
+            ...(googleFields.lat !== null ? { lat: googleFields.lat } : {}),
+            ...(googleFields.lng !== null ? { lng: googleFields.lng } : {}),
+            timezone: googleFields.timezone,
+            phone: googleFields.phone,
+            website: googleFields.website,
+            googleMapsUrl: googleFields.googleMapsUrl,
+            ratingOverride: googleFields.ratingOverride,
+            reviewCountOverride: googleFields.reviewCountOverride,
+            amenities: await sanitizeAmenities(googleAmenities),
+            description: revertedDescription,
+            shortDescription: revertedShortDescription,
+            descriptionSource: revertedDescription ? 'GOOGLE' : 'NONE',
+            shortDescriptionSource: revertedShortDescription ? 'GOOGLE' : 'NONE',
+            priceRange: revertedPriceRange,
+            priceRangeSource: revertedPriceRange ? 'GOOGLE' : 'NONE',
+            menuSource: parsed.data.includeMenu ? (snapshot.menu?.categories?.length ? 'GOOGLE' : 'NONE') : venue.menuSource,
+            googleSourceSnapshot: snapshot,
+            updatedAt: new Date(),
+        }).where(eq(venues.id, venueId));
+
+        if (parsed.data.includeMenu) {
+            await applyGoogleMenuSnapshot(tx, venueId, snapshot);
+        }
+    });
+
+    return c.json(apiResponse({ message: 'Venue reverted to Google defaults', snapshot, defaults: googleDefaults.defaults }));
 });
 
 export default superAdminRoutes;

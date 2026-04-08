@@ -23,6 +23,8 @@ async function getProfileHandler(c: any) {
         timezone: users.timezone,
         locale: users.locale,
         emailVerified: users.emailVerified,
+        businessApprovalStatus: users.businessApprovalStatus,
+        businessApprovalNotes: users.businessApprovalNotes,
         createdAt: users.createdAt,
     }).from(users).where(eq(users.id, auth.id)).limit(1);
 

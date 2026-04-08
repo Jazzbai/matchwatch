@@ -117,11 +117,15 @@ export const ALL_TEAMS = [...NATIONAL_TEAMS, ...CLUB_TEAMS];
 
 // ─── Match Data ──────────────────────────────────
 export type MatchStatus = "SCHEDULED" | "TIMED" | "IN_PLAY" | "PAUSED" | "FINISHED" | "POSTPONED" | "CANCELLED";
+export type MatchEventFormat = "HEAD_TO_HEAD" | "SINGLE_EVENT";
 
 export interface Match {
     id: string;
-    homeTeamId: string;
-    awayTeamId: string;
+    isFeatured: boolean;
+    homeTeamId?: string;
+    awayTeamId?: string;
+    homeTeamName?: string;
+    awayTeamName?: string;
     leagueId: string;
     matchDateUTC: string;
     status: MatchStatus;
@@ -132,9 +136,12 @@ export interface Match {
     stadiumName: string;
     venueCount: number;
     isHot: boolean;
+    eventFormat?: MatchEventFormat;
+    eventTitle?: string;
+    eventSubtitle?: string;
 }
 
-export const MATCHES: Match[] = [
+const RAW_MATCHES: Omit<Match, "isFeatured">[] = [
     // Global Finals 2026 — Group Stage
     { id: "wc-1", homeTeamId: "usa", awayTeamId: "england", leagueId: "wc-2026", matchDateUTC: "2026-06-14T00:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group A", stadiumName: "NRG Stadium, Houston", venueCount: 24, isHot: true },
     { id: "wc-2", homeTeamId: "mexico", awayTeamId: "brazil", leagueId: "wc-2026", matchDateUTC: "2026-06-15T21:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group B", stadiumName: "NRG Stadium, Houston", venueCount: 18, isHot: true },
@@ -156,6 +163,11 @@ export const MATCHES: Match[] = [
     { id: "mls-3", homeTeamId: "dynamo", awayTeamId: "fc-dallas", leagueId: "mls", matchDateUTC: "2026-03-07T01:30:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Week 6", stage: "Texas Derby", stadiumName: "Shell Energy Stadium", venueCount: 15, isHot: true },
 ];
 
+export const MATCHES: Match[] = RAW_MATCHES.map((match) => ({
+    ...match,
+    isFeatured: false,
+}));
+
 // ─── Venue Data ──────────────────────────────────
 export type PriceRange = "BUDGET" | "MID" | "UPSCALE" | "LUXURY";
 
@@ -167,6 +179,36 @@ export interface Venue {
     description: string;
     coverImageUrl?: string;
     galleryImageUrls?: string[];
+    imageSource?: "manual" | "google" | "none";
+    coverImageAttributions?: Array<{
+        displayName: string;
+        uri?: string | null;
+        photoUri?: string | null;
+    }>;
+    galleryImageAttributions?: Array<Array<{
+        displayName: string;
+        uri?: string | null;
+        photoUri?: string | null;
+    }>>;
+    workingHours?: Array<{
+        day: string;
+        hours: string;
+        sortOrder: number;
+        isClosed?: boolean;
+        isTwentyFourHours?: boolean;
+    }>;
+    googleEditorialSummary?: string | null;
+    googlePriceLevel?: string | null;
+    googleReviews?: Array<{
+        authorName: string;
+        rating: number;
+        text?: string | null;
+        publishedAt?: string | null;
+        relativePublishTimeText?: string | null;
+        authorUrl?: string | null;
+        profilePhotoUrl?: string | null;
+        sourceUrl?: string | null;
+    }>;
     addressLine1: string;
     addressLine2: string;
     city: string;
@@ -193,6 +235,9 @@ export interface Venue {
     ownerName: string;
     ownerEmail: string;
     promotedVenueEventId?: string | null;
+    descriptionSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+    shortDescriptionSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+    priceRangeSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
 }
 
 export const AMENITY_LABELS: Record<string, { icon: string; label: string }> = {

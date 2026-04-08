@@ -96,6 +96,8 @@ AUTO_VERIFY_EMAIL=true
 AUTH_RATE_LIMIT_MAX=200
 PUBLIC_RATE_LIMIT_MAX=2000
 MATCH_SYNC_PROVIDER=API_FOOTBALL
+THE_SPORTS_DB_API_KEY=
+JOLPICA_BASE_URL=https://api.jolpi.ca/ergast
 
 # ─── CORS / App URL (HTTPS) ──────────────────────
 CORS_ORIGINS=https://matchwatch.us,https://www.matchwatch.us
@@ -235,3 +237,4 @@ sudo nginx -t
 sudo systemctl status nginx --no-pager
 sudo certbot certificates
 ```
+
