@@ -52,6 +52,7 @@ export const users = pgTable('users', {
     timezone: varchar('timezone', { length: 50 }).default('UTC').notNull(),
     locale: varchar('locale', { length: 10 }).default('en').notNull(),
     pushToken: varchar('push_token'),
+    phone: varchar('phone', { length: 20 }).unique(),
     businessApprovalStatus: approvalStatusEnum('business_approval_status').default('PENDING').notNull(),
     businessApprovalNotes: text('business_approval_notes'),
     businessApprovedAt: timestamp('business_approved_at'),
@@ -667,7 +668,69 @@ export const usersRelations = relations(users, ({ many }) => ({
     venues: many(venues),
     blogPosts: many(blogPosts),
     blogComments: many(blogComments),
+    predictions: many(predictions),
+    venueCheckins: many(venueCheckins),
 }));
+
+// ─── Match Point: Phone Auth ─────────────────────
+
+export const phoneAuthSessions = pgTable('phone_auth_sessions', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    phone: varchar('phone', { length: 20 }).notNull(),
+    otpHash: varchar('otp_hash', { length: 255 }).notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    verified: boolean('verified').default(false).notNull(),
+    attempts: integer('attempts').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+    index('phone_auth_phone_idx').on(table.phone),
+]);
+
+// ─── Match Point: Predictions ────────────────────
+
+export const predictions = pgTable('predictions', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    matchId: uuid('match_id').notNull().references(() => matches.id, { onDelete: 'cascade' }),
+    venueId: uuid('venue_id').references(() => venues.id, { onDelete: 'set null' }),
+    predictedWinner: varchar('predicted_winner', { length: 10 }).notNull(), // 'home' | 'away' | 'draw'
+    predictedHomeScore: integer('predicted_home_score'),
+    predictedAwayScore: integer('predicted_away_score'),
+    points: integer('points').default(0).notNull(),
+    settled: boolean('settled').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('predictions_user_match_idx').on(table.userId, table.matchId),
+    index('predictions_match_idx').on(table.matchId),
+    index('predictions_user_idx').on(table.userId),
+    index('predictions_settled_idx').on(table.settled),
+]);
+
+// ─── Match Point: Venue Check-ins ────────────────
+
+export const venueCheckins = pgTable('venue_checkins', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    venueId: uuid('venue_id').notNull().references(() => venues.id, { onDelete: 'cascade' }),
+    matchId: uuid('match_id').references(() => matches.id, { onDelete: 'set null' }),
+    source: varchar('source', { length: 20 }).default('qr').notNull(), // 'qr' | 'manual'
+    checkedInAt: timestamp('checked_in_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('checkins_user_venue_match_idx').on(table.userId, table.venueId, table.matchId),
+    index('checkins_venue_idx').on(table.venueId),
+    index('checkins_user_idx').on(table.userId),
+]);
+
+// ─── Match Point: Venue QR Banners ───────────────
+
+export const venueQrBanners = pgTable('venue_qr_banners', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    venueId: uuid('venue_id').notNull().references(() => venues.id, { onDelete: 'cascade' }).unique(),
+    title: varchar('title', { length: 200 }).default('Scan to Predict & Win').notNull(),
+    landingUrl: varchar('landing_url', { length: 500 }).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
 export const venuesRelations = relations(venues, ({ one, many }) => ({
     owner: one(users, { fields: [venues.ownerId], references: [users.id] }),
@@ -763,4 +826,20 @@ export const blogCommentsRelations = relations(blogComments, ({ one }) => ({
     post: one(blogPosts, { fields: [blogComments.postId], references: [blogPosts.id] }),
     user: one(users, { fields: [blogComments.userId], references: [users.id], relationName: 'blogCommentAuthor' }),
     moderator: one(users, { fields: [blogComments.moderatedBy], references: [users.id], relationName: 'blogCommentModerator' }),
+}));
+
+export const predictionsRelations = relations(predictions, ({ one }) => ({
+    user: one(users, { fields: [predictions.userId], references: [users.id] }),
+    match: one(matches, { fields: [predictions.matchId], references: [matches.id] }),
+    venue: one(venues, { fields: [predictions.venueId], references: [venues.id] }),
+}));
+
+export const venueCheckinsRelations = relations(venueCheckins, ({ one }) => ({
+    user: one(users, { fields: [venueCheckins.userId], references: [users.id] }),
+    venue: one(venues, { fields: [venueCheckins.venueId], references: [venues.id] }),
+    match: one(matches, { fields: [venueCheckins.matchId], references: [matches.id] }),
+}));
+
+export const venueQrBannersRelations = relations(venueQrBanners, ({ one }) => ({
+    venue: one(venues, { fields: [venueQrBanners.venueId], references: [venues.id] }),
 }));
