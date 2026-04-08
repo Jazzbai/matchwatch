@@ -16,7 +16,7 @@ const TIERS = [
     {
         id: "title",
         name: "Title Sponsor",
-        price: "$5,000 / tournament",
+        price: "$5,000 / World Cup",
         color: "#f59e0b",
         perks: [
             "Logo top of Match Point hero",
@@ -24,13 +24,13 @@ const TIERS = [
             "Logo on every QR banner in all venues",
             "Social media shoutout (10k+ fans)",
             "Venue notification blast to all followers",
-            "Prize branding (winner drinks on you)",
+            "Car giveaway branding (World Cup grand prize winner)",
         ],
     },
     {
         id: "gold",
         name: "Gold Sponsor",
-        price: "$2,000 / tournament",
+        price: "$2,000 / World Cup",
         color: "#22c55e",
         perks: [
             "Logo in sponsors bar",

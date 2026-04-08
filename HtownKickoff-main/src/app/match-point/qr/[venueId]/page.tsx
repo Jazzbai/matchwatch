@@ -105,7 +105,7 @@ export default function QrBannerPage() {
                     borderRadius: 14, padding: "14px 18px", marginBottom: 24,
                     fontSize: 13, color: "#166534", fontWeight: 700, lineHeight: 1.5,
                 }}>
-                    🏆 Top scorer this month wins a FREE appetizer + VIP table!
+                    🏆 Top World Cup predictor wins a brand new car — sponsored by Ford, GM & Chrysler!
                 </div>
 
                 {/* URL hint */}
