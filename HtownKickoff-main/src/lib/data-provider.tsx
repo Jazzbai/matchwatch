@@ -828,7 +828,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const venueDetails = await Promise.all(
             baseVenues.map(async (venue) => {
                 const shouldFetchDeepVenueData = detailedVenueIds.has(venue.id);
-                const events = await safeFetchPaginated<any>(`/venues/${venue.slug}/events`, VENUE_CHILD_LIMIT, 6);
+                const events = await safeFetchPaginated<any>(`/venues/${venue.slug}/events`, VENUE_FETCH_LIMIT, 6);
 
                 if (!shouldFetchDeepVenueData) {
                     return { venue, detail: null, events: events || [], venuePosts: [], venueReviews: [] };
@@ -836,8 +836,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
                 const [detail, venuePosts, venueReviews] = await Promise.all([
                     safeFetch<any>(`/venues/${venue.slug}`),
-                    safeFetchPaginated<any>(`/venues/${venue.slug}/posts`, VENUE_CHILD_LIMIT, 6),
-                    safeFetchPaginated<any>(`/venues/${venue.slug}/reviews`, VENUE_CHILD_LIMIT, 6),
+                    safeFetchPaginated<any>(`/venues/${venue.slug}/posts`, VENUE_FETCH_LIMIT, 6),
+                    safeFetchPaginated<any>(`/venues/${venue.slug}/reviews`, VENUE_FETCH_LIMIT, 6),
                 ]);
 
                 return { venue, detail, events: events || [], venuePosts: venuePosts || [], venueReviews: venueReviews || [] };
