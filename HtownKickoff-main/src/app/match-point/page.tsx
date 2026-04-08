@@ -95,7 +95,7 @@ export default function MatchPointPage() {
                 .then((res) => setMyPredictions(Array.isArray(res.data) ? res.data : []))
                 .catch(() => {});
         }
-        api.get<{ data: { leaderboard: LeaderboardEntry[] } }>("/predictions/leaderboard?limit=10")
+        api.get<{ leaderboard: LeaderboardEntry[] }>("/predictions/leaderboard?limit=10")
             .then((res) => setLeaderboard(res.data?.leaderboard ?? []))
             .catch(() => {});
     }, [user]);
