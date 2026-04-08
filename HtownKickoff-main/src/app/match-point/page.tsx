@@ -348,6 +348,43 @@ export default function MatchPointPage() {
                 </div>
             </div>
 
+            {/* ── Sponsors ── */}
+            <div style={{ borderTop: "1px solid var(--border)", marginTop: 60, padding: "48px 24px" }}>
+                <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+                    <p style={{ textAlign: "center", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: "var(--muted-foreground)", textTransform: "uppercase", marginBottom: 28 }}>
+                        Official Sponsors
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 40 }}>
+                        {SPONSORS.map((s) => (
+                            <a
+                                key={s.name}
+                                href={s.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={s.name}
+                                style={{ opacity: 0.55, transition: "opacity 0.2s", display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "var(--foreground)" }}
+                                onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                                onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.55")}
+                            >
+                                {s.logo
+                                    ? <img src={s.logo} alt={s.name} style={{ height: 36, objectFit: "contain", maxWidth: 120 }} />
+                                    : <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: "-0.02em" }}>{s.name}</span>
+                                }
+                            </a>
+                        ))}
+                        {/* Become a sponsor CTA */}
+                        <a
+                            href="mailto:sponsors@matchwatch.us"
+                            style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 99, border: "1.5px dashed var(--border)", fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)", textDecoration: "none", transition: "border-color 0.2s, color 0.2s" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.color = "#22c55e"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
+                        >
+                            + Become a Sponsor
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <PhoneAuthModal
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
@@ -362,6 +399,14 @@ export default function MatchPointPage() {
         </div>
     );
 }
+
+// ── Sponsor data — replace with real logos/URLs ──
+const SPONSORS: { name: string; url: string; logo?: string }[] = [
+    { name: "Modelo", url: "https://www.modelousa.com", logo: "/sponsors/modelo.png" },
+    { name: "Buffalo Wild Wings", url: "https://www.buffalowildwings.com", logo: "/sponsors/bww.png" },
+    { name: "Visit Houston", url: "https://www.visithoustontexas.com", logo: "/sponsors/visit-houston.png" },
+    { name: "Audi", url: "https://www.audiusa.com", logo: "/sponsors/audi.png" },
+];
 
 // — static-ish styles —
 
