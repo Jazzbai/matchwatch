@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useData } from "../../lib/data-provider";
 import { useAuth } from "../../lib/auth-context";
 import { api } from "../../lib/api";
@@ -28,48 +28,75 @@ type LeaderboardEntry = {
 };
 
 export default function MatchPointPage() {
-    const { matches, venues, isLoading } = useData();
+    const { matches, venues, isLoading, getTeam } = useData();
     const { user } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // QR scan params: pre-selected venue + match from URL
+    const qrVenueId = searchParams.get("venue") ?? null;
+    const qrMatchId = searchParams.get("match") ?? null;
+    const qrVenue = qrVenueId ? venues.find((v) => v.id === qrVenueId) : null;
 
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [myPredictions, setMyPredictions] = useState<Prediction[]>([]);
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
     const [submitting, setSubmitting] = useState<string | null>(null);
     const [pendingPred, setPendingPred] = useState<{ matchId: string; winner: "home" | "away" | "draw" } | null>(null);
-    const [selectedVenueId, setSelectedVenueId] = useState<Record<string, string>>({});
+    const [checkedInVenueId, setCheckedInVenueId] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
 
-    // Upcoming matches only (next 7 days)
+    // Pre-fill venue selection from QR param for all match cards
+    const [selectedVenueId, setSelectedVenueId] = useState<Record<string, string>>(
+        qrVenueId && qrMatchId ? { [qrMatchId]: qrVenueId } : {},
+    );
+
+    // Upcoming matches — QR-linked match pinned first
     const upcoming = useMemo(() => {
         const now = new Date();
-        const cutoff = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        return matches
+        const cutoff = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+        const list = matches
             .filter((m) => {
-                const d = new Date(m.matchDateUtc);
+                const d = new Date(m.matchDateUTC);
                 return d > now && d < cutoff && ["SCHEDULED", "TIMED"].includes(m.status);
             })
-            .sort((a, b) => new Date(a.matchDateUtc).getTime() - new Date(b.matchDateUtc).getTime())
+            .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime())
             .slice(0, 12);
-    }, [matches]);
+        if (qrMatchId) {
+            return [...list.filter((m) => m.id === qrMatchId), ...list.filter((m) => m.id !== qrMatchId)];
+        }
+        return list;
+    }, [matches, qrMatchId]);
 
     // Finished matches with results
     const finished = useMemo(() =>
         matches
             .filter((m) => m.status === "FINISHED" && m.homeScore !== null)
-            .sort((a, b) => new Date(b.matchDateUtc).getTime() - new Date(a.matchDateUtc).getTime())
+            .sort((a, b) => new Date(b.matchDateUTC).getTime() - new Date(a.matchDateUTC).getTime())
             .slice(0, 6),
         [matches],
     );
 
+    // Auto-check in if arriving via QR with venue+match
+    useEffect(() => {
+        if (!qrVenueId || !user || checkedInVenueId === qrVenueId) return;
+        api.post("/checkins", { venueId: qrVenueId, matchId: qrMatchId ?? undefined, source: "qr" })
+            .then(() => {
+                setCheckedInVenueId(qrVenueId);
+                showToast(`✓ Checked in at ${qrVenue?.name ?? "venue"}! +1 bonus point`);
+            })
+            .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, qrVenueId]);
+
     useEffect(() => {
         if (user) {
             api.get<{ data: Prediction[] }>("/predictions?limit=50")
-                .then((res) => setMyPredictions(res.data || []))
+                .then((res) => setMyPredictions(Array.isArray(res.data) ? res.data : []))
                 .catch(() => {});
         }
         api.get<{ data: { leaderboard: LeaderboardEntry[] } }>("/predictions/leaderboard?limit=10")
-            .then((res) => setLeaderboard(res.data?.leaderboard || []))
+            .then((res) => setLeaderboard(res.data?.leaderboard ?? []))
             .catch(() => {});
     }, [user]);
 
@@ -144,9 +171,9 @@ export default function MatchPointPage() {
                         Predict match winners, earn points, and climb the leaderboard. Win prizes at your favorite Houston watch party venue.
                     </p>
                     <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-                        <div style={statChip("🏆", "Correct score = 5 pts")} />
-                        <div style={statChip("✓", "Correct winner = 2 pts")} />
-                        <div style={statChip("📍", "Check in = +1 bonus")} />
+                        <div style={statChipStyle}>🏆 Correct score = 5 pts</div>
+                        <div style={statChipStyle}>✓ Correct winner = 2 pts</div>
+                        <div style={statChipStyle}>📍 Check in = +1 bonus</div>
                     </div>
                 </div>
             </div>
@@ -170,18 +197,18 @@ export default function MatchPointPage() {
                                 <div key={match.id} style={matchCard}>
                                     {/* Match header */}
                                     <div style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 700, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                                        {formatMatchTime(match.matchDateUtc)}
+                                        {formatMatchTime(match.matchDateUTC)}
                                     </div>
                                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
                                         {/* Home */}
                                         <div style={{ flex: 1, textAlign: "right" }}>
-                                            {match.homeTeamCrestUrl && <img src={match.homeTeamCrestUrl} alt="" style={{ width: 36, height: 36, objectFit: "contain", marginBottom: 4 }} loading="lazy" />}
+                                            {getTeam(match.homeTeamId)?.image && <img src={getTeam(match.homeTeamId)!.image} alt="" style={{ width: 36, height: 36, objectFit: "contain", marginBottom: 4 }} loading="lazy" />}
                                             <div style={{ fontWeight: 800, fontSize: 15 }}>{match.homeTeamName}</div>
                                         </div>
                                         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted-foreground)", flexShrink: 0 }}>VS</div>
                                         {/* Away */}
                                         <div style={{ flex: 1, textAlign: "left" }}>
-                                            {match.awayTeamCrestUrl && <img src={match.awayTeamCrestUrl} alt="" style={{ width: 36, height: 36, objectFit: "contain", marginBottom: 4 }} loading="lazy" />}
+                                            {getTeam(match.awayTeamId)?.image && <img src={getTeam(match.awayTeamId)!.image} alt="" style={{ width: 36, height: 36, objectFit: "contain", marginBottom: 4 }} loading="lazy" />}
                                             <div style={{ fontWeight: 800, fontSize: 15 }}>{match.awayTeamName}</div>
                                         </div>
                                     </div>
@@ -336,16 +363,14 @@ export default function MatchPointPage() {
     );
 }
 
-function statChip(icon: string, label: string): React.CSSProperties {
-    return {
-        display: "inline-flex", alignItems: "center", gap: 6,
-        padding: "8px 16px", borderRadius: 99,
-        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-        fontSize: 13, fontWeight: 700, color: "var(--foreground)",
-    } as React.CSSProperties;
-}
-
 // — static-ish styles —
+
+const statChipStyle: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 6,
+    padding: "8px 16px", borderRadius: 99,
+    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+    fontSize: 13, fontWeight: 700, color: "var(--foreground)",
+};
 const sectionHead: React.CSSProperties = {
     fontSize: 20, fontWeight: 900, marginBottom: 16,
 };
