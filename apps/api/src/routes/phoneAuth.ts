@@ -23,37 +23,33 @@ function normalizePhone(raw: string): string {
     return digits.startsWith('+') ? digits : `+1${digits}`; // default US if no country code
 }
 
-// Send OTP via Twilio Verify (or log in dev if no credentials)
+// Send OTP via Telnyx (or log in dev if no credentials)
 async function sendOtp(phone: string, otp: string): Promise<void> {
-    const sid = process.env.TWILIO_ACCOUNT_SID;
-    const token = process.env.TWILIO_AUTH_TOKEN;
-    const serviceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+    const apiKey = process.env.TELNYX_API_KEY;
+    const fromNumber = process.env.TELNYX_PHONE_NUMBER;
 
-    if (!sid || !token || !serviceSid) {
+    if (!apiKey || !fromNumber) {
         // Dev mode: log OTP to console
         console.log(`\n[PHONE AUTH DEV] OTP for ${phone}: ${otp}\n`);
         return;
     }
 
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
-    const body = new URLSearchParams({
-        To: phone,
-        From: process.env.TWILIO_PHONE_NUMBER || '',
-        Body: `Your MatchWatch prediction code: ${otp}. Valid for ${OTP_EXPIRY_MINUTES} minutes.`,
-    });
-
-    const res = await fetch(url, {
+    const res = await fetch('https://api.telnyx.com/v2/messages', {
         method: 'POST',
         headers: {
-            Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
         },
-        body: body.toString(),
+        body: JSON.stringify({
+            from: fromNumber,
+            to: phone,
+            text: `Your MatchWatch code: ${otp}. Valid for ${OTP_EXPIRY_MINUTES} minutes.`,
+        }),
     });
 
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(`Twilio error: ${JSON.stringify(err)}`);
+        throw new Error(`Telnyx error: ${JSON.stringify(err)}`);
     }
 }
 
