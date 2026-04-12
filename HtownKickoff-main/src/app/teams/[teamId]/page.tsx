@@ -27,6 +27,15 @@ type TeamDetail = {
     goalDifference: number;
     form?: string | null;
   } | null;
+  fanPlaces: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    city?: string | null;
+    country?: string | null;
+    shortDescription?: string | null;
+    coverImageUrl?: string | null;
+  }>;
   recentMatches: Array<{ id: string; homeTeamName?: string | null; awayTeamName?: string | null; homeScore?: number | null; awayScore?: number | null; matchDateUtc: string; status: string }>;
   upcomingMatches: Array<{ id: string; homeTeamName?: string | null; awayTeamName?: string | null; matchDateUtc: string; status: string }>;
 };
@@ -116,6 +125,32 @@ export default function TeamPage({ params }: { params: Promise<{ teamId: string 
           </div>
         ) : null}
 
+        {team.fanPlaces.length > 0 ? (
+          <div className="card-flat" style={{ padding: 20 }}>
+            <h2 className="font-display text-h3" style={{ color: "var(--foreground)", margin: "0 0 14px" }}>Fan Places</h2>
+            <div className="fanPlacesRail">
+              {team.fanPlaces.map((venue) => (
+                <Link key={venue.id} href={`/venues/${venue.slug}`} className="fanPlaceCard">
+                  <div className="fanPlaceImageWrap">
+                    {venue.coverImageUrl ? (
+                      <img src={venue.coverImageUrl} alt={venue.name} className="fanPlaceImage" />
+                    ) : (
+                      <div className="fanPlaceImagePlaceholder">{venue.name.slice(0, 1)}</div>
+                    )}
+                  </div>
+                  <div className="fanPlaceBody">
+                    <div className="fanPlaceTitle">{venue.name}</div>
+                    {(venue.city || venue.country) ? (
+                      <div className="fanPlaceMeta">{[venue.city, venue.country].filter(Boolean).join(", ")}</div>
+                    ) : null}
+                    {venue.shortDescription ? <p className="fanPlaceDescription">{venue.shortDescription}</p> : null}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }}>
           <div className="card-flat" style={{ padding: 20 }}>
             <h2 className="font-display text-h3" style={{ color: "var(--foreground)", margin: "0 0 14px" }}>Upcoming Fixtures</h2>
@@ -149,6 +184,81 @@ export default function TeamPage({ params }: { params: Promise<{ teamId: string 
           </div>
         </div>
       </section>
+      <style jsx>{`
+        .fanPlacesRail {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 14px;
+        }
+        .fanPlaceCard {
+          display: grid;
+          gap: 12px;
+          text-decoration: none;
+          color: inherit;
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          overflow: hidden;
+          background: var(--secondary);
+          min-width: 0;
+        }
+        .fanPlaceImageWrap {
+          width: 100%;
+          height: 152px;
+          background: color-mix(in oklch, var(--primary) 12%, var(--secondary));
+        }
+        .fanPlaceImage {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .fanPlaceImagePlaceholder {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 42px;
+          font-weight: 900;
+          color: var(--primary);
+        }
+        .fanPlaceBody {
+          display: grid;
+          gap: 6px;
+          padding: 0 14px 14px;
+        }
+        .fanPlaceTitle {
+          font-size: 18px;
+          font-weight: 800;
+          color: var(--foreground);
+        }
+        .fanPlaceMeta {
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: var(--primary);
+        }
+        .fanPlaceDescription {
+          margin: 0;
+          color: var(--muted-foreground);
+          line-height: 1.6;
+          font-size: 14px;
+        }
+        @media (max-width: 720px) {
+          .fanPlacesRail {
+            display: flex;
+            overflow-x: auto;
+            gap: 12px;
+            padding-bottom: 4px;
+            scroll-snap-type: x proximity;
+          }
+          .fanPlaceCard {
+            flex: 0 0 84vw;
+            max-width: 320px;
+            scroll-snap-align: start;
+          }
+        }
+      `}</style>
     </AppShell>
   );
 }

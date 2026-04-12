@@ -110,6 +110,28 @@ type LookupAttribute = {
   isActive: boolean;
 };
 
+type FanVenueSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  city: string;
+  shortDescription?: string | null;
+  coverImageUrl?: string | null;
+  isActive?: boolean;
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
+};
+
+type FanTeamSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  shortName?: string | null;
+  crestUrl?: string | null;
+  leagueId?: string | null;
+  leagueName?: string | null;
+  isActive?: boolean;
+};
+
 type UserRow = {
   id: string;
   email: string;
@@ -202,6 +224,7 @@ type VenueRow = {
   approvalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
   approvalNotes?: string | null;
   menuSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+  fanTeams?: FanTeamSummary[];
 };
 
 type VenuePriceRange = "BUDGET" | "MID" | "UPSCALE" | "LUXURY";
@@ -243,6 +266,7 @@ type VenueEditorDraft = {
   approvalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
   approvalNotes?: string | null;
   menuSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+  fanTeamIds?: string[];
   isVerified?: boolean;
   isActive?: boolean;
   isFeatured?: boolean;
@@ -286,6 +310,7 @@ type NewVenueForm = {
   resolvedGalleryImageUrls?: string[];
   approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
   approvalNotes: string;
+  fanTeamIds: string[];
   isVerified: boolean;
   isActive: boolean;
   isFeatured: boolean;
@@ -353,11 +378,23 @@ type TeamAdminRow = {
   leagueId?: string | null;
   leagueName?: string | null;
   name: string;
+  slug?: string | null;
   shortName?: string | null;
   crestUrl?: string | null;
   externalId?: string | null;
+  fanPlaces?: FanVenueSummary[];
   isActive: boolean;
   createdAt: string;
+};
+
+type TeamAdminDraft = {
+  leagueId?: string | null;
+  name?: string;
+  shortName?: string | null;
+  crestUrl?: string | null;
+  externalId?: string | null;
+  fanVenueIds?: string[];
+  isActive?: boolean;
 };
 
 type MatchEventRow = {
@@ -932,6 +969,7 @@ function buildVenueEditorDraft(row: VenueRow): VenueEditorDraft {
     approvalStatus,
     approvalNotes: row.approvalNotes || "",
     menuSource: row.menuSource || "NONE",
+    fanTeamIds: (row.fanTeams || []).map((team) => team.id),
     amenities: row.amenities || [],
     vibes: row.vibes || [],
     cuisineTags: row.cuisineTags || [],
@@ -939,6 +977,106 @@ function buildVenueEditorDraft(row: VenueRow): VenueEditorDraft {
     isActive: approvalStatus === "APPROVED" ? row.isActive : false,
     isFeatured: row.isFeatured,
   };
+}
+
+function buildTeamAdminDraft(row: TeamAdminRow): TeamAdminDraft {
+  return {
+    leagueId: row.leagueId || "",
+    name: row.name,
+    shortName: row.shortName || "",
+    crestUrl: row.crestUrl || "",
+    externalId: row.externalId || "",
+    fanVenueIds: (row.fanPlaces || []).map((venue) => venue.id),
+    isActive: row.isActive,
+  };
+}
+
+function filterBySearch<T>(items: T[], search: string, getText: (item: T) => string) {
+  const query = search.trim().toLowerCase();
+  if (!query) return items;
+  return items.filter((item) => getText(item).toLowerCase().includes(query));
+}
+
+function LinkChecklist<T extends { id: string }>({
+  title,
+  searchPlaceholder,
+  searchValue,
+  onSearchChange,
+  allOptions,
+  options,
+  selectedIds,
+  onToggle,
+  renderLabel,
+  emptyText,
+}: {
+  title: string;
+  searchPlaceholder: string;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  allOptions?: T[];
+  options: T[];
+  selectedIds: string[];
+  onToggle: (id: string, checked: boolean) => void;
+  renderLabel: (option: T) => React.ReactNode;
+  emptyText: string;
+}) {
+  const labelOptions = allOptions ?? options;
+  const checklistInputStyle: React.CSSProperties = {
+    width: "100%",
+    borderRadius: 12,
+    border: "1px solid var(--border)",
+    background: "var(--background)",
+    color: "var(--foreground)",
+    padding: "10px 12px",
+    fontSize: 14,
+    outline: "none",
+  };
+  return (
+    <div style={{ display: "grid", gap: 10, border: "1px solid var(--border)", borderRadius: 12, padding: 12, background: "var(--secondary)" }}>
+      <div style={{ display: "grid", gap: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>{title}</div>
+        <input
+          style={checklistInputStyle}
+          value={searchValue}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder={searchPlaceholder}
+        />
+      </div>
+      {selectedIds.length > 0 ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {selectedIds.map((id) => {
+            const option = labelOptions.find((item) => item.id === id);
+            const label = option ? renderLabel(option) : id;
+            return (
+              <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: "color-mix(in oklch, var(--primary) 16%, var(--card))", color: "var(--foreground)", fontSize: 12 }}>
+                <span>{label}</span>
+                <button
+                  type="button"
+                  onClick={() => onToggle(id, false)}
+                  style={{ border: "none", background: "transparent", color: "var(--muted-foreground)", cursor: "pointer", padding: 0, fontSize: 14, lineHeight: 1 }}
+                  aria-label={`Remove ${typeof label === "string" ? label : "selection"}`}
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+      <div style={{ display: "grid", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+        {options.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{emptyText}</div> : options.map((option) => (
+          <label key={option.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "var(--foreground)" }}>
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(option.id)}
+              onChange={(e) => onToggle(option.id, e.target.checked)}
+            />
+            <span>{renderLabel(option)}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 async function createSuperAdminPresignedUpload(data: {
@@ -1063,6 +1201,7 @@ export default function JazzbaiSuperAdminPage() {
   const [venuesSearch, setVenuesSearch] = React.useState("");
   const [venuesLoading, setVenuesLoading] = React.useState(false);
   const [venueDrafts, setVenueDrafts] = React.useState<Record<string, VenueEditorDraft>>({});
+  const [venueTeamSearch, setVenueTeamSearch] = React.useState<Record<string, string>>({});
   const [businessApprovals, setBusinessApprovals] = React.useState<BusinessApprovalRow[]>([]);
   const [venueApprovals, setVenueApprovals] = React.useState<VenueApprovalRow[]>([]);
   const [venueClaims, setVenueClaims] = React.useState<VenueClaimRow[]>([]);
@@ -1102,6 +1241,7 @@ export default function JazzbaiSuperAdminPage() {
     resolvedGalleryImageUrls: [] as string[],
     approvalStatus: "PENDING",
     approvalNotes: "",
+    fanTeamIds: [] as string[],
     isVerified: false,
     isActive: false,
     isFeatured: false,
@@ -1190,13 +1330,15 @@ export default function JazzbaiSuperAdminPage() {
   const [teamsMeta, setTeamsMeta] = React.useState<ApiListMeta | null>(null);
   const [teamsSearch, setTeamsSearch] = React.useState("");
   const [teamsLoading, setTeamsLoading] = React.useState(false);
-  const [teamDrafts, setTeamDrafts] = React.useState<Record<string, Partial<TeamAdminRow>>>({});
+  const [teamDrafts, setTeamDrafts] = React.useState<Record<string, TeamAdminDraft>>({});
+  const [teamVenueSearch, setTeamVenueSearch] = React.useState<Record<string, string>>({});
   const [newAdminTeam, setNewAdminTeam] = React.useState({
     leagueId: "",
     name: "",
     shortName: "",
     crestUrl: "",
     externalId: "",
+    fanVenueIds: [] as string[],
     isActive: true,
   });
 
@@ -2914,6 +3056,27 @@ export default function JazzbaiSuperAdminPage() {
                   Featured
                 </label>
                 <textarea style={{ ...textareaStyle, gridColumn: "1 / -1" }} placeholder="Description" value={newVenue.description} onChange={(e) => setNewVenue((prev) => ({ ...prev, description: e.target.value }))} />
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <LinkChecklist
+                    title="Fan Teams"
+                    searchPlaceholder="Search teams to link"
+                    searchValue={venueTeamSearch.new || ""}
+                    onSearchChange={(value) => setVenueTeamSearch((prev) => ({ ...prev, new: value }))}
+                    allOptions={lookupTeams}
+                    options={filterBySearch(lookupTeams, venueTeamSearch.new || "", (team) => `${team.name} ${team.shortName || ""}`)}
+                    selectedIds={newVenue.fanTeamIds}
+                    onToggle={(teamId, checked) =>
+                      setNewVenue((prev) => ({
+                        ...prev,
+                        fanTeamIds: checked
+                          ? Array.from(new Set([...prev.fanTeamIds, teamId]))
+                          : prev.fanTeamIds.filter((id) => id !== teamId),
+                      }))
+                    }
+                    renderLabel={(team) => `${team.name}${team.shortName ? ` (${team.shortName})` : ""}`}
+                    emptyText="No teams match this search."
+                  />
+                </div>
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Amenities</span>
                   <select multiple style={multiSelectStyle} value={newVenue.amenities} onChange={(e) => {
@@ -2987,6 +3150,7 @@ export default function JazzbaiSuperAdminPage() {
                         reviewCountOverride: newVenue.reviewCountOverride ? Number(newVenue.reviewCountOverride) : undefined,
                         approvalStatus: newVenue.approvalStatus,
                         approvalNotes: newVenue.approvalNotes || undefined,
+                        fanTeamIds: newVenue.fanTeamIds,
                       }),
                     });
                     setNewVenue({
@@ -3025,6 +3189,7 @@ export default function JazzbaiSuperAdminPage() {
                       isVerified: false,
                       isActive: false,
                       isFeatured: false,
+                      fanTeamIds: [],
                     });
                     await Promise.all([loadVenues(), loadLookups(), loadOverview(), loadApprovalQueues()]);
                   })}
@@ -3110,6 +3275,7 @@ export default function JazzbaiSuperAdminPage() {
                                   isVerified: draft.isVerified,
                                   isActive: draft.isActive,
                                   isFeatured: draft.isFeatured,
+                                  fanTeamIds: Array.isArray(draft.fanTeamIds) ? draft.fanTeamIds : [],
                                 }),
                               });
                               await Promise.all([loadVenues(), loadLookups(), loadOverview(), loadApprovalQueues()]);
@@ -3323,6 +3489,30 @@ export default function JazzbaiSuperAdminPage() {
                           <input type="checkbox" checked={Boolean(draft.isFeatured)} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isFeatured: e.target.checked } }))} />
                           Featured
                         </label>
+                        <div style={{ gridColumn: "1 / -1" }}>
+                          <LinkChecklist
+                            title="Fan Teams"
+                            searchPlaceholder="Search teams to link"
+                            searchValue={venueTeamSearch[row.id] || ""}
+                            onSearchChange={(value) => setVenueTeamSearch((prev) => ({ ...prev, [row.id]: value }))}
+                            allOptions={lookupTeams}
+                            options={filterBySearch(lookupTeams, venueTeamSearch[row.id] || "", (team) => `${team.name} ${team.shortName || ""}`)}
+                            selectedIds={Array.isArray(draft.fanTeamIds) ? draft.fanTeamIds : []}
+                            onToggle={(teamId, checked) =>
+                              setVenueDrafts((prev) => ({
+                                ...prev,
+                                [row.id]: {
+                                  ...draft,
+                                  fanTeamIds: checked
+                                    ? Array.from(new Set([...(draft.fanTeamIds || []), teamId]))
+                                    : (draft.fanTeamIds || []).filter((id) => id !== teamId),
+                                },
+                              }))
+                            }
+                            renderLabel={(team) => `${team.name}${team.shortName ? ` (${team.shortName})` : ""}`}
+                            emptyText="No teams match this search."
+                          />
+                        </div>
                         <textarea style={{ ...textareaStyle, gridColumn: "1 / -1" }} value={String(draft.description ?? "")} onChange={(e) => setVenueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, description: e.target.value } }))} placeholder="Description" />
                         <label style={{ display: "grid", gap: 6 }}>
                           <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Amenities</span>
@@ -3514,6 +3704,27 @@ export default function JazzbaiSuperAdminPage() {
                   <input type="checkbox" checked={newAdminTeam.isActive} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, isActive: e.target.checked }))} />
                   Active
                 </label>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <LinkChecklist
+                    title="Fan Places"
+                    searchPlaceholder="Search venues to link"
+                    searchValue={teamVenueSearch.new || ""}
+                    onSearchChange={(value) => setTeamVenueSearch((prev) => ({ ...prev, new: value }))}
+                    allOptions={lookupVenues}
+                    options={filterBySearch(lookupVenues, teamVenueSearch.new || "", (venue) => `${venue.name} ${venue.city}`)}
+                    selectedIds={newAdminTeam.fanVenueIds}
+                    onToggle={(venueId, checked) =>
+                      setNewAdminTeam((prev) => ({
+                        ...prev,
+                        fanVenueIds: checked
+                          ? Array.from(new Set([...prev.fanVenueIds, venueId]))
+                          : prev.fanVenueIds.filter((id) => id !== venueId),
+                      }))
+                    }
+                    renderLabel={(venue) => `${venue.name}${venue.city ? ` (${venue.city})` : ""}`}
+                    emptyText="No venues match this search."
+                  />
+                </div>
                 <button
                   style={smallBtn("primary", submittingAction === "create-admin-team")}
                   disabled={submittingAction === "create-admin-team"}
@@ -3521,15 +3732,16 @@ export default function JazzbaiSuperAdminPage() {
                     await superAdminFetch("/teams", {
                       method: "POST",
                       body: JSON.stringify({
-                        leagueId: newAdminTeam.leagueId || null,
-                        name: newAdminTeam.name,
-                        shortName: newAdminTeam.shortName || null,
-                        crestUrl: newAdminTeam.crestUrl || null,
-                        externalId: newAdminTeam.externalId || null,
-                        isActive: newAdminTeam.isActive,
-                      }),
-                    });
-                    setNewAdminTeam({ leagueId: "", name: "", shortName: "", crestUrl: "", externalId: "", isActive: true });
+                      leagueId: newAdminTeam.leagueId || null,
+                      name: newAdminTeam.name,
+                      shortName: newAdminTeam.shortName || null,
+                      crestUrl: newAdminTeam.crestUrl || null,
+                      externalId: newAdminTeam.externalId || null,
+                      isActive: newAdminTeam.isActive,
+                      fanVenueIds: newAdminTeam.fanVenueIds,
+                    }),
+                  });
+                    setNewAdminTeam({ leagueId: "", name: "", shortName: "", crestUrl: "", externalId: "", isActive: true, fanVenueIds: [] });
                     await Promise.all([loadTeamsAdmin(), loadLookups()]);
                   })}
                 >
@@ -3557,20 +3769,14 @@ export default function JazzbaiSuperAdminPage() {
                       <th style={thStyle}>Crest URL</th>
                       <th style={thStyle}>External</th>
                       <th style={thStyle}>Active</th>
+                      <th style={thStyle}>Fan Places</th>
                       <th style={thStyle}>Created</th>
                       <th style={thStyle}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {teamsRows.map((row) => {
-                      const draft = teamDrafts[row.id] ?? {
-                        leagueId: row.leagueId || "",
-                        name: row.name,
-                        shortName: row.shortName || "",
-                        crestUrl: row.crestUrl || "",
-                        externalId: row.externalId || "",
-                        isActive: row.isActive,
-                      };
+                      const draft = teamDrafts[row.id] ?? buildTeamAdminDraft(row);
                       return (
                         <tr key={row.id}>
                           <td style={tdStyle}>{row.id}</td>
@@ -3587,6 +3793,30 @@ export default function JazzbaiSuperAdminPage() {
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.crestUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, crestUrl: e.target.value } }))} /></td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
                           <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
+                          <td style={{ ...tdStyle, minWidth: 280 }}>
+                            <LinkChecklist
+                              title="Fan Places"
+                              searchPlaceholder="Search venues to link"
+                              searchValue={teamVenueSearch[row.id] || ""}
+                              onSearchChange={(value) => setTeamVenueSearch((prev) => ({ ...prev, [row.id]: value }))}
+                              allOptions={lookupVenues}
+                              options={filterBySearch(lookupVenues, teamVenueSearch[row.id] || "", (venue) => `${venue.name} ${venue.city}`)}
+                              selectedIds={draft.fanVenueIds || []}
+                              onToggle={(venueId, checked) =>
+                                setTeamDrafts((prev) => ({
+                                  ...prev,
+                                  [row.id]: {
+                                    ...draft,
+                                    fanVenueIds: checked
+                                      ? Array.from(new Set([...(draft.fanVenueIds || []), venueId]))
+                                      : (draft.fanVenueIds || []).filter((id) => id !== venueId),
+                                  },
+                                }))
+                              }
+                              renderLabel={(venue) => `${venue.name}${venue.city ? ` (${venue.city})` : ""}`}
+                              emptyText="No venues match this search."
+                            />
+                          </td>
                           <td style={tdStyle}>{formatDateTime(row.createdAt)}</td>
                           <td style={tdStyle}>
                             <div style={{ display: "flex", gap: 6 }}>
@@ -3603,6 +3833,7 @@ export default function JazzbaiSuperAdminPage() {
                                       crestUrl: draft.crestUrl || null,
                                       externalId: draft.externalId || null,
                                       isActive: draft.isActive,
+                                      fanVenueIds: draft.fanVenueIds || [],
                                     }),
                                   });
                                   await Promise.all([loadTeamsAdmin(), loadLookups()]);

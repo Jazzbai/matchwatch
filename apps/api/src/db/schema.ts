@@ -554,6 +554,18 @@ export const venues = pgTable('venues', {
     uniqueIndex('venues_google_place_id_unique').on(table.googlePlaceId),
 ]);
 
+export const teamFanVenues = pgTable('team_fan_venues', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+    venueId: uuid('venue_id').notNull().references(() => venues.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('team_fan_venues_team_venue_unique').on(table.teamId, table.venueId),
+    index('team_fan_venues_team_idx').on(table.teamId),
+    index('team_fan_venues_venue_idx').on(table.venueId),
+]);
+
 export const venueAttributes = pgTable('venue_attributes', {
     id: uuid('id').primaryKey().defaultRandom(),
     type: venueAttributeTypeEnum('type').notNull(),
@@ -906,6 +918,7 @@ export const venuesRelations = relations(venues, ({ one, many }) => ({
     posts: many(posts),
     follows: many(follows),
     reviews: many(reviews),
+    fanTeamLinks: many(teamFanVenues),
 }));
 
 export const matchesRelations = relations(matches, ({ one, many }) => ({
@@ -953,6 +966,12 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
     league: one(leagues, { fields: [teams.leagueId], references: [leagues.id] }),
     standingsRows: many(standingsRows),
     matchParticipants: many(matchParticipants),
+    fanVenueLinks: many(teamFanVenues),
+}));
+
+export const teamFanVenuesRelations = relations(teamFanVenues, ({ one }) => ({
+    team: one(teams, { fields: [teamFanVenues.teamId], references: [teams.id] }),
+    venue: one(venues, { fields: [teamFanVenues.venueId], references: [venues.id] }),
 }));
 
 export const driversRelations = relations(drivers, ({ many }) => ({

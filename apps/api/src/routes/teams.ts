@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
 import { and, desc, eq, gte } from 'drizzle-orm';
 import { db } from '../db/client';
-import { leagues, matches, teams } from '../db/schema';
+import { leagues, matches, teamFanVenues, teams, venues } from '../db/schema';
 import { getLatestLeagueStandings } from '../lib/standings';
 import { apiError, apiResponse } from '../lib/utils';
+import { buildVenueImageRenderPayload } from '../lib/venueImages';
 
 const teamRoutes = new Hono();
 
@@ -51,11 +52,45 @@ teamRoutes.get('/:slug', async (c) => {
     const teamUpcoming = upcoming.filter((match) => match.homeTeamId === row.team.id || match.awayTeamId === row.team.id).slice(0, 8);
     const standings = row.team.leagueId ? await getLatestLeagueStandings(row.team.leagueId) : null;
     const standingsRow = standings?.rows.find((entry) => entry.team?.id === row.team.id) || null;
+    const fanPlaceRows = await db.select({
+        id: venues.id,
+        slug: venues.slug,
+        name: venues.name,
+        city: venues.city,
+        country: venues.country,
+        shortDescription: venues.shortDescription,
+        coverImageUrl: venues.coverImageUrl,
+        googleSourceSnapshot: venues.googleSourceSnapshot,
+    })
+        .from(teamFanVenues)
+        .innerJoin(venues, eq(teamFanVenues.venueId, venues.id))
+        .where(and(
+            eq(teamFanVenues.teamId, row.team.id),
+            eq(venues.isActive, true),
+            eq(venues.approvalStatus, 'APPROVED'),
+        ));
+    const fanPlaces = fanPlaceRows.map((venue) => {
+        const imagePayload = buildVenueImageRenderPayload({
+            slugOrId: venue.slug || venue.id,
+            coverImageUrl: venue.coverImageUrl,
+            snapshot: venue.googleSourceSnapshot as any,
+        });
+        return {
+            id: venue.id,
+            slug: venue.slug,
+            name: venue.name,
+            city: venue.city,
+            country: venue.country,
+            shortDescription: venue.shortDescription,
+            coverImageUrl: imagePayload.coverImageUrl,
+        };
+    });
 
     return c.json(apiResponse({
         ...row.team,
         league: row.league,
         standingsRow,
+        fanPlaces,
         recentMatches: teamRecent,
         upcomingMatches: teamUpcoming,
     }));

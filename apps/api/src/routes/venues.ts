@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/client';
-import { venues, venueEvents, matches, posts, menuCategories, menuItems, follows, reviews, users, venueCustomEvents } from '../db/schema';
+import { venues, venueEvents, matches, posts, menuCategories, menuItems, follows, reviews, users, venueCustomEvents, teamFanVenues, teams, leagues } from '../db/schema';
 import { eq, and, gte, count, desc, asc, sql, ilike } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { venueQuerySchema, paginationSchema } from '@matchwatch/shared';
@@ -376,6 +376,27 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
             .limit(1);
         isFollowing = !!follow;
     }
+    const fanTeams = await db.select({
+        id: teams.id,
+        slug: teams.slug,
+        name: teams.name,
+        shortName: teams.shortName,
+        crestUrl: teams.crestUrl,
+        shortDescription: teams.shortDescription,
+        leagueId: teams.leagueId,
+        leagueName: leagues.name,
+        leagueSlug: leagues.slug,
+        leagueShortName: leagues.shortName,
+        leagueLogoUrl: leagues.logoUrl,
+    })
+        .from(teamFanVenues)
+        .innerJoin(teams, eq(teamFanVenues.teamId, teams.id))
+        .leftJoin(leagues, eq(teams.leagueId, leagues.id))
+        .where(and(
+            eq(teamFanVenues.venueId, venue.id),
+            eq(teams.isActive, true),
+        ))
+        .orderBy(teams.name);
 
     return c.json(apiResponse({
         ...venue,
@@ -408,6 +429,21 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
         })),
         customEvents,
         recentPosts,
+        fanTeams: fanTeams.map((team) => ({
+            id: team.id,
+            slug: team.slug,
+            name: team.name,
+            shortName: team.shortName,
+            crestUrl: team.crestUrl,
+            shortDescription: team.shortDescription,
+            league: team.leagueId ? {
+                id: team.leagueId,
+                slug: team.leagueSlug,
+                name: team.leagueName,
+                shortName: team.leagueShortName,
+                logoUrl: team.leagueLogoUrl,
+            } : null,
+        })),
     }));
 });
 

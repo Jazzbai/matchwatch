@@ -29,6 +29,7 @@ import {
     players,
     staticPages,
     teams,
+    teamFanVenues,
     users,
     venueClaims,
     venueAttributes,
@@ -152,6 +153,7 @@ const createTeamSchema = z.object({
     shortName: z.string().max(30).nullable().optional(),
     crestUrl: z.string().url().nullable().optional(),
     externalId: z.string().max(20).nullable().optional(),
+    fanVenueIds: z.array(z.string().uuid()).max(200).optional(),
     isActive: z.boolean().default(true),
 });
 
@@ -161,6 +163,7 @@ const updateTeamSchema = z.object({
     shortName: z.string().max(30).nullable().optional(),
     crestUrl: z.string().url().nullable().optional(),
     externalId: z.string().max(20).nullable().optional(),
+    fanVenueIds: z.array(z.string().uuid()).max(200).optional(),
     isActive: z.boolean().optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
@@ -212,6 +215,7 @@ const createVenueSchema = z.object({
     capacity: z.coerce.number().int().positive().optional(),
     approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'),
     approvalNotes: z.string().max(2000).optional(),
+    fanTeamIds: z.array(z.string().uuid()).max(200).optional(),
     isVerified: z.boolean().default(false),
     isActive: z.boolean().default(true),
     isFeatured: z.boolean().default(false),
@@ -257,6 +261,7 @@ const updateVenueSchema = z.object({
     googlePlaceId: z.string().max(255).nullable().optional(),
     approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
     approvalNotes: z.string().max(2000).nullable().optional(),
+    fanTeamIds: z.array(z.string().uuid()).max(200).optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
 const reviewVenueApprovalSchema = z.object({
@@ -1125,6 +1130,181 @@ function mapVenueRow(row: {
     };
 }
 
+type AdminFanVenueSummary = {
+    id: string;
+    slug: string;
+    name: string;
+    city: string;
+    shortDescription?: string | null;
+    coverImageUrl?: string | null;
+    isActive: boolean;
+    approvalStatus?: string | null;
+};
+
+type AdminFanTeamSummary = {
+    id: string;
+    slug: string;
+    name: string;
+    shortName?: string | null;
+    crestUrl?: string | null;
+    leagueId?: string | null;
+    leagueName?: string | null;
+    isActive: boolean;
+};
+
+type DbExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+function uniqueUuidIds(values?: string[] | null) {
+    return Array.from(new Set((values || []).map((value) => value.trim()).filter(Boolean)));
+}
+
+async function ensureActiveVenueIdsExist(venueIds: string[]) {
+    if (venueIds.length === 0) return;
+    const rows = await db.select({ id: venues.id }).from(venues)
+        .where(and(eq(venues.isActive, true), inArray(venues.id, venueIds)));
+    if (rows.length !== venueIds.length) {
+        throw new Error('One or more fan venues are missing or inactive');
+    }
+}
+
+async function ensureActiveTeamIdsExist(teamIds: string[]) {
+    if (teamIds.length === 0) return;
+    const rows = await db.select({ id: teams.id }).from(teams)
+        .where(and(eq(teams.isActive, true), inArray(teams.id, teamIds)));
+    if (rows.length !== teamIds.length) {
+        throw new Error('One or more fan teams are missing or inactive');
+    }
+}
+
+async function syncTeamFanVenueLinks(tx: DbExecutor, teamId: string, venueIds: string[]) {
+    const nextIds = uniqueUuidIds(venueIds);
+    const currentRows = await tx.select({ venueId: teamFanVenues.venueId }).from(teamFanVenues)
+        .where(eq(teamFanVenues.teamId, teamId));
+    const currentIds = currentRows.map((row) => row.venueId);
+    const nextSet = new Set(nextIds);
+    const currentSet = new Set(currentIds);
+    const idsToDelete = currentIds.filter((venueId) => !nextSet.has(venueId));
+    const idsToInsert = nextIds.filter((venueId) => !currentSet.has(venueId));
+
+    if (idsToDelete.length > 0) {
+        await tx.delete(teamFanVenues).where(and(
+            eq(teamFanVenues.teamId, teamId),
+            inArray(teamFanVenues.venueId, idsToDelete),
+        ));
+    }
+
+    if (idsToInsert.length > 0) {
+        const now = new Date();
+        await tx.insert(teamFanVenues).values(idsToInsert.map((venueId) => ({
+            teamId,
+            venueId,
+            createdAt: now,
+            updatedAt: now,
+        })));
+    }
+}
+
+async function syncVenueFanTeamLinks(tx: DbExecutor, venueId: string, teamIds: string[]) {
+    const nextIds = uniqueUuidIds(teamIds);
+    const currentRows = await tx.select({ teamId: teamFanVenues.teamId }).from(teamFanVenues)
+        .where(eq(teamFanVenues.venueId, venueId));
+    const currentIds = currentRows.map((row) => row.teamId);
+    const nextSet = new Set(nextIds);
+    const currentSet = new Set(currentIds);
+    const idsToDelete = currentIds.filter((teamId) => !nextSet.has(teamId));
+    const idsToInsert = nextIds.filter((teamId) => !currentSet.has(teamId));
+
+    if (idsToDelete.length > 0) {
+        await tx.delete(teamFanVenues).where(and(
+            eq(teamFanVenues.venueId, venueId),
+            inArray(teamFanVenues.teamId, idsToDelete),
+        ));
+    }
+
+    if (idsToInsert.length > 0) {
+        const now = new Date();
+        await tx.insert(teamFanVenues).values(idsToInsert.map((teamId) => ({
+            teamId,
+            venueId,
+            createdAt: now,
+            updatedAt: now,
+        })));
+    }
+}
+
+async function loadFanVenuesForTeams(teamIds: string[]) {
+    if (teamIds.length === 0) return new Map<string, AdminFanVenueSummary[]>();
+    const rows = await db.select({
+        teamId: teamFanVenues.teamId,
+        venueId: venues.id,
+        slug: venues.slug,
+        name: venues.name,
+        city: venues.city,
+        shortDescription: venues.shortDescription,
+        coverImageUrl: venues.coverImageUrl,
+        isActive: venues.isActive,
+        approvalStatus: venues.approvalStatus,
+    })
+        .from(teamFanVenues)
+        .innerJoin(venues, eq(teamFanVenues.venueId, venues.id))
+        .where(inArray(teamFanVenues.teamId, teamIds))
+        .orderBy(venues.name);
+
+    const grouped = new Map<string, AdminFanVenueSummary[]>();
+    for (const row of rows) {
+        const list = grouped.get(row.teamId) || [];
+        list.push({
+            id: row.venueId,
+            slug: row.slug,
+            name: row.name,
+            city: row.city,
+            shortDescription: row.shortDescription,
+            coverImageUrl: row.coverImageUrl,
+            isActive: row.isActive,
+            approvalStatus: row.approvalStatus,
+        });
+        grouped.set(row.teamId, list);
+    }
+    return grouped;
+}
+
+async function loadFanTeamsForVenues(venueIds: string[]) {
+    if (venueIds.length === 0) return new Map<string, AdminFanTeamSummary[]>();
+    const rows = await db.select({
+        venueId: teamFanVenues.venueId,
+        teamId: teams.id,
+        slug: teams.slug,
+        name: teams.name,
+        shortName: teams.shortName,
+        crestUrl: teams.crestUrl,
+        leagueId: teams.leagueId,
+        leagueName: leagues.name,
+        isActive: teams.isActive,
+    })
+        .from(teamFanVenues)
+        .innerJoin(teams, eq(teamFanVenues.teamId, teams.id))
+        .leftJoin(leagues, eq(teams.leagueId, leagues.id))
+        .where(inArray(teamFanVenues.venueId, venueIds))
+        .orderBy(teams.name);
+
+    const grouped = new Map<string, AdminFanTeamSummary[]>();
+    for (const row of rows) {
+        const list = grouped.get(row.venueId) || [];
+        list.push({
+            id: row.teamId,
+            slug: row.slug,
+            name: row.name,
+            shortName: row.shortName,
+            crestUrl: row.crestUrl,
+            leagueId: row.leagueId,
+            leagueName: row.leagueName,
+            isActive: row.isActive,
+        });
+        grouped.set(row.venueId, list);
+    }
+    return grouped;
+}
+
 function getSuperAdminUsername(): string | null {
     const username = process.env.SUPER_ADMIN_USERNAME?.trim();
     return username || null;
@@ -1736,7 +1916,13 @@ superAdminRoutes.get('/teams', async (c) => {
             db.select({ count: count() }).from(teams).where(queryWhere),
         ]);
 
-        return c.json(apiResponse(rows, paginationMeta(parsed.data.page, parsed.data.limit, Number(totalResult?.count || 0))));
+        const fanVenuesByTeamId = await loadFanVenuesForTeams(rows.map((row) => row.id));
+        const payload = rows.map((row) => ({
+            ...row,
+            fanPlaces: fanVenuesByTeamId.get(row.id) || [],
+        }));
+
+        return c.json(apiResponse(payload, paginationMeta(parsed.data.page, parsed.data.limit, Number(totalResult?.count || 0))));
     }
 
     const rows = await db.select({
@@ -1746,8 +1932,11 @@ superAdminRoutes.get('/teams', async (c) => {
         shortName: teams.shortName,
         crestUrl: teams.crestUrl,
     }).from(teams).where(queryWhere).orderBy(teams.name).limit(parsed.data.limit);
-
-    return c.json(apiResponse(rows));
+    const fanVenuesByTeamId = await loadFanVenuesForTeams(rows.map((row) => row.id));
+    return c.json(apiResponse(rows.map((row) => ({
+        ...row,
+        fanPlaces: fanVenuesByTeamId.get(row.id) || [],
+    }))));
 });
 
 superAdminRoutes.post('/teams', async (c) => {
@@ -1762,6 +1951,13 @@ superAdminRoutes.post('/teams', async (c) => {
             .where(and(eq(leagues.id, parsed.data.leagueId), eq(leagues.isActive, true)))
             .limit(1);
         if (!league) return c.json(apiError('NOT_FOUND', 'League not found'), 404);
+    }
+    const fanVenueIds = uniqueUuidIds(parsed.data.fanVenueIds);
+    try {
+        await ensureActiveVenueIdsExist(fanVenueIds);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Invalid fan venues';
+        return c.json(apiError('VALIDATION_ERROR', message), 400);
     }
 
     const trimmedName = parsed.data.name.trim();
@@ -1780,23 +1976,35 @@ superAdminRoutes.post('/teams', async (c) => {
         .limit(1);
     if (existingTeam) return c.json(apiResponse(existingTeam), 200);
 
-    const [created] = await db.insert(teams).values({
-        leagueId: parsed.data.leagueId || null,
-        name: trimmedName,
-        slug: generateUniqueSlug(trimmedName),
-        shortName: parsed.data.shortName?.trim() || null,
-        crestUrl: parsed.data.crestUrl?.trim() || null,
-        externalId: parsed.data.externalId?.trim() || null,
-        isActive: parsed.data.isActive,
-    }).returning({
-        id: teams.id,
-        leagueId: teams.leagueId,
-        name: teams.name,
-        shortName: teams.shortName,
-        crestUrl: teams.crestUrl,
+    const created = await db.transaction(async (tx) => {
+        const [inserted] = await tx.insert(teams).values({
+            leagueId: parsed.data.leagueId || null,
+            name: trimmedName,
+            slug: generateUniqueSlug(trimmedName),
+            shortName: parsed.data.shortName?.trim() || null,
+            crestUrl: parsed.data.crestUrl?.trim() || null,
+            externalId: parsed.data.externalId?.trim() || null,
+            isActive: parsed.data.isActive,
+        }).returning({
+            id: teams.id,
+            leagueId: teams.leagueId,
+            name: teams.name,
+            shortName: teams.shortName,
+            crestUrl: teams.crestUrl,
+            slug: teams.slug,
+            isActive: teams.isActive,
+        });
+
+        await syncTeamFanVenueLinks(tx, inserted.id, fanVenueIds);
+        return inserted;
     });
 
-    return c.json(apiResponse(created), 201);
+    const fanPlaces = (await loadFanVenuesForTeams([created.id])).get(created.id) || [];
+
+    return c.json(apiResponse({
+        ...created,
+        fanPlaces,
+    }), 201);
 });
 
 superAdminRoutes.patch('/teams/:teamId', async (c) => {
@@ -1816,6 +2024,15 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
             .limit(1);
         if (!league) return c.json(apiError('NOT_FOUND', 'League not found'), 404);
     }
+    const fanVenueIds = parsed.data.fanVenueIds !== undefined ? uniqueUuidIds(parsed.data.fanVenueIds) : undefined;
+    if (fanVenueIds) {
+        try {
+            await ensureActiveVenueIdsExist(fanVenueIds);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Invalid fan venues';
+            return c.json(apiError('VALIDATION_ERROR', message), 400);
+        }
+    }
 
     const updates: Record<string, unknown> = {};
     if (parsed.data.leagueId !== undefined) updates.leagueId = parsed.data.leagueId || null;
@@ -1825,7 +2042,14 @@ superAdminRoutes.patch('/teams/:teamId', async (c) => {
     if (parsed.data.externalId !== undefined) updates.externalId = parsed.data.externalId?.trim() || null;
     if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
 
-    await db.update(teams).set(updates).where(eq(teams.id, teamId));
+    await db.transaction(async (tx) => {
+        if (Object.keys(updates).length > 0) {
+            await tx.update(teams).set(updates).where(eq(teams.id, teamId));
+        }
+        if (fanVenueIds !== undefined) {
+            await syncTeamFanVenueLinks(tx, teamId, fanVenueIds);
+        }
+    });
     return c.json(apiResponse({ message: 'Team updated' }));
 });
 
@@ -2306,8 +2530,12 @@ superAdminRoutes.get('/venues', async (c) => {
     ]);
 
     const mapped = rows.map(mapVenueRow);
+    const fanTeamsByVenueId = await loadFanTeamsForVenues(mapped.map((row) => row.id));
 
-    return c.json(apiResponse(mapped, paginationMeta(page, limit, Number(totalResult?.count || 0))));
+    return c.json(apiResponse(mapped.map((row) => ({
+        ...row,
+        fanTeams: fanTeamsByVenueId.get(row.id) || [],
+    })), paginationMeta(page, limit, Number(totalResult?.count || 0))));
 });
 
 superAdminRoutes.post('/venues', async (c) => {
@@ -2321,6 +2549,13 @@ superAdminRoutes.post('/venues', async (c) => {
     if (!owner) {
         return c.json(apiError('NOT_FOUND', 'Owner user not found'), 404);
     }
+    const fanTeamIds = uniqueUuidIds(parsed.data.fanTeamIds);
+    try {
+        await ensureActiveTeamIdsExist(fanTeamIds);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Invalid fan teams';
+        return c.json(apiError('VALIDATION_ERROR', message), 400);
+    }
 
     if (owner.role === 'USER' || owner.role === 'VENUE_OWNER') {
         await db.update(users).set({
@@ -2332,59 +2567,68 @@ superAdminRoutes.post('/venues', async (c) => {
     let created: { id: string; slug: string; name: string };
     try {
         const moderationState = normalizeVenueModerationState(parsed.data, parsed.data.approvalStatus, parsed.data.isActive);
-        [created] = await db.insert(venues).values({
-            ownerId: owner.id,
-            name: parsed.data.name.trim(),
-            slug: parsed.data.slug?.trim() || generateUniqueSlug(parsed.data.name),
-            description: parsed.data.description?.trim() || null,
-            descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
-            shortDescription: parsed.data.shortDescription?.trim() || null,
-            shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
-            addressLine1: parsed.data.addressLine1.trim(),
-            addressLine2: parsed.data.addressLine2?.trim() || null,
-            city: parsed.data.city.trim(),
-            stateProvince: parsed.data.stateProvince?.trim() || null,
-            country: parsed.data.country.trim(),
-            postalCode: parsed.data.postalCode?.trim() || null,
-            lat: String(parsed.data.lat),
-            lng: String(parsed.data.lng),
-            timezone: parsed.data.timezone.trim(),
-            phone: parsed.data.phone?.trim() || null,
-            website: parsed.data.website?.trim() || null,
-            instagramHandle: parsed.data.instagramHandle?.trim() || null,
-            googleMapsUrl: parsed.data.googleMapsUrl?.trim() || null,
-            googlePlaceId: parsed.data.googlePlaceId?.trim() || null,
-            coverImageUrl: parsed.data.coverImageUrl || null,
-            coverImageS3Key: parsed.data.coverImageS3Key?.trim() || null,
-            galleryS3Keys: sanitizeGalleryKeys(parsed.data.galleryS3Keys),
-            amenities: parsed.data.amenities,
-            vibes: parsed.data.vibes,
-            cuisineTags: parsed.data.cuisineTags,
-            priceRange: parsed.data.priceRange,
-            priceRangeSource: parsed.data.priceRange ? 'MANUAL' : 'NONE',
-            capacity: parsed.data.capacity || null,
-            isVerified: parsed.data.isVerified,
-            isActive: moderationState.isActive,
-            isFeatured: parsed.data.isFeatured,
-            approvalStatus: moderationState.approvalStatus,
-            approvalNotes: parsed.data.approvalNotes?.trim() || null,
-            approvedAt: moderationState.approvalStatus === 'APPROVED' ? new Date() : null,
-            ratingOverride: null,
-            reviewCountOverride: null,
-            metadata: {
-                galleryImageUrls: sanitizeGalleryUrls(parsed.data.galleryImageUrls),
-            },
-        }).returning({
-            id: venues.id,
-            slug: venues.slug,
-            name: venues.name,
+        created = await db.transaction(async (tx) => {
+            const [inserted] = await tx.insert(venues).values({
+                ownerId: owner.id,
+                name: parsed.data.name.trim(),
+                slug: parsed.data.slug?.trim() || generateUniqueSlug(parsed.data.name),
+                description: parsed.data.description?.trim() || null,
+                descriptionSource: parsed.data.description?.trim() ? 'MANUAL' : 'NONE',
+                shortDescription: parsed.data.shortDescription?.trim() || null,
+                shortDescriptionSource: parsed.data.shortDescription?.trim() ? 'MANUAL' : 'NONE',
+                addressLine1: parsed.data.addressLine1.trim(),
+                addressLine2: parsed.data.addressLine2?.trim() || null,
+                city: parsed.data.city.trim(),
+                stateProvince: parsed.data.stateProvince?.trim() || null,
+                country: parsed.data.country.trim(),
+                postalCode: parsed.data.postalCode?.trim() || null,
+                lat: String(parsed.data.lat),
+                lng: String(parsed.data.lng),
+                timezone: parsed.data.timezone.trim(),
+                phone: parsed.data.phone?.trim() || null,
+                website: parsed.data.website?.trim() || null,
+                instagramHandle: parsed.data.instagramHandle?.trim() || null,
+                googleMapsUrl: parsed.data.googleMapsUrl?.trim() || null,
+                googlePlaceId: parsed.data.googlePlaceId?.trim() || null,
+                coverImageUrl: parsed.data.coverImageUrl || null,
+                coverImageS3Key: parsed.data.coverImageS3Key?.trim() || null,
+                galleryS3Keys: sanitizeGalleryKeys(parsed.data.galleryS3Keys),
+                amenities: parsed.data.amenities,
+                vibes: parsed.data.vibes,
+                cuisineTags: parsed.data.cuisineTags,
+                priceRange: parsed.data.priceRange,
+                priceRangeSource: parsed.data.priceRange ? 'MANUAL' : 'NONE',
+                capacity: parsed.data.capacity || null,
+                isVerified: parsed.data.isVerified,
+                isActive: moderationState.isActive,
+                isFeatured: parsed.data.isFeatured,
+                approvalStatus: moderationState.approvalStatus,
+                approvalNotes: parsed.data.approvalNotes?.trim() || null,
+                approvedAt: moderationState.approvalStatus === 'APPROVED' ? new Date() : null,
+                ratingOverride: null,
+                reviewCountOverride: null,
+                metadata: {
+                    galleryImageUrls: sanitizeGalleryUrls(parsed.data.galleryImageUrls),
+                },
+            }).returning({
+                id: venues.id,
+                slug: venues.slug,
+                name: venues.name,
+            });
+
+            await syncVenueFanTeamLinks(tx, inserted.id, fanTeamIds);
+            return inserted;
         });
     } catch (error) {
         const formatted = formatVenueMutationError(error);
         return c.json(formatted.body, formatted.status);
     }
 
-    return c.json(apiResponse(created), 201);
+    const fanTeams = (await loadFanTeamsForVenues([created.id])).get(created.id) || [];
+    return c.json(apiResponse({
+        ...created,
+        fanTeams,
+    }), 201);
 });
 
 superAdminRoutes.patch('/venues/:venueId', async (c) => {
@@ -2416,11 +2660,21 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
             }).where(eq(users.id, owner.id));
         }
     }
+    const fanTeamIds = parsed.data.fanTeamIds !== undefined ? uniqueUuidIds(parsed.data.fanTeamIds) : undefined;
+    if (fanTeamIds) {
+        try {
+            await ensureActiveTeamIdsExist(fanTeamIds);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Invalid fan teams';
+            return c.json(apiError('VALIDATION_ERROR', message), 400);
+        }
+    }
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     for (const [key, value] of Object.entries(parsed.data)) {
         if (value === undefined) continue;
         if (key === 'galleryImageUrls') continue;
+        if (key === 'fanTeamIds') continue;
         if (key === 'lat' || key === 'lng') {
             updates[key] = String(value);
         } else {
@@ -2488,7 +2742,12 @@ superAdminRoutes.patch('/venues/:venueId', async (c) => {
     }
 
     try {
-        await db.update(venues).set(updates).where(eq(venues.id, venueId));
+        await db.transaction(async (tx) => {
+            await tx.update(venues).set(updates).where(eq(venues.id, venueId));
+            if (fanTeamIds !== undefined) {
+                await syncVenueFanTeamLinks(tx, venueId, fanTeamIds);
+            }
+        });
     } catch (error) {
         const formatted = formatVenueMutationError(error);
         return c.json(formatted.body, formatted.status);

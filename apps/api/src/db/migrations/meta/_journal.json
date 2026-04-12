@@ -78,6 +78,13 @@
                         "when":  1775030000000,
                         "tag":  "0010_entity_pages_predictions",
                         "breakpoints":  true
+                    },
+                    {
+                        "idx":  11,
+                        "version":  "7",
+                        "when":  1775998800000,
+                        "tag":  "0011_team_fan_venues",
+                        "breakpoints":  true
                     }
                 ]
 }
