@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { use } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "../../../components/AppShell";
 import { api } from "../../../lib/api";
 
@@ -15,7 +16,40 @@ type TeamDetail = {
   heroImageUrl?: string | null;
   shortDescription?: string | null;
   description?: string | null;
+  website?: string | null;
   country?: string | null;
+  primaryStadium?: {
+    id: string;
+    slug: string;
+    name: string;
+    shortName?: string | null;
+    city?: string | null;
+    country?: string | null;
+    imageUrl?: string | null;
+  } | null;
+  secondaryStadiums: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    shortName?: string | null;
+    city?: string | null;
+    country?: string | null;
+    imageUrl?: string | null;
+  }>;
+  players: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    shortName?: string | null;
+    headshotUrl?: string | null;
+    nationality?: string | null;
+    shirtNumber?: string | null;
+    position?: string | null;
+    isCaptain?: boolean;
+    sortOrder?: number | null;
+  }>;
+  canonicalSlug?: string;
+  canonicalPath?: string;
   league?: { id: string; name: string; slug: string; shortName?: string | null; logoUrl?: string | null } | null;
   standingsRow?: {
     rank: number;
@@ -42,6 +76,7 @@ type TeamDetail = {
 
 export default function TeamPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = use(params);
+  const router = useRouter();
   const [team, setTeam] = React.useState<TeamDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -63,6 +98,12 @@ export default function TeamPage({ params }: { params: Promise<{ teamId: string 
       cancelled = true;
     };
   }, [teamId]);
+
+  React.useEffect(() => {
+    if (team?.canonicalSlug && team.canonicalSlug !== teamId && team.canonicalPath) {
+      router.replace(team.canonicalPath);
+    }
+  }, [router, team?.canonicalPath, team?.canonicalSlug, teamId]);
 
   if (loading) {
     return <AppShell><section style={{ padding: "64px 20px", textAlign: "center", color: "var(--muted-foreground)" }}>Loading team...</section></AppShell>;
@@ -102,6 +143,55 @@ export default function TeamPage({ params }: { params: Promise<{ teamId: string 
       </section>
 
       <section style={{ padding: "24px 20px 48px", maxWidth: 1120, margin: "0 auto", display: "grid", gap: 20 }}>
+        {(team.country || team.website || team.league || team.primaryStadium) ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            {team.country ? <div className="card-flat" style={{ padding: 16 }}><div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>Country</div><div style={{ marginTop: 8, color: "var(--foreground)", fontWeight: 800 }}>{team.country}</div></div> : null}
+            {team.website ? <div className="card-flat" style={{ padding: 16 }}><div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>Website</div><a href={team.website} target="_blank" rel="noreferrer" style={{ marginTop: 8, display: "inline-block", color: "var(--primary)", fontWeight: 800, textDecoration: "none" }}>{team.website.replace(/^https?:\/\//, "")}</a></div> : null}
+            {team.league ? <div className="card-flat" style={{ padding: 16 }}><div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>League</div><Link href={`/leagues/${team.league.slug}`} style={{ marginTop: 8, display: "inline-block", color: "var(--primary)", fontWeight: 800, textDecoration: "none" }}>{team.league.name}</Link></div> : null}
+            {team.primaryStadium ? (
+              <div className="card-flat" style={{ padding: 16 }}>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>Home Stadium</div>
+                <Link href={`/stadiums/${team.primaryStadium.slug}`} style={{ marginTop: 8, display: "inline-block", color: "var(--primary)", fontWeight: 800, textDecoration: "none" }}>
+                  {team.primaryStadium.name}
+                </Link>
+                {(team.primaryStadium.city || team.primaryStadium.country) ? (
+                  <div style={{ marginTop: 6, color: "var(--muted-foreground)", fontSize: 12 }}>
+                    {[team.primaryStadium.city, team.primaryStadium.country].filter(Boolean).join(", ")}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {(team.primaryStadium || team.secondaryStadiums.length > 0) ? (
+          <div className="card-flat" style={{ padding: 20 }}>
+            <h2 className="font-display text-h3" style={{ color: "var(--foreground)", margin: "0 0 14px" }}>Stadiums</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+              {[team.primaryStadium, ...team.secondaryStadiums].filter(Boolean).map((stadium, index) => {
+                if (!stadium) return null;
+                const isPrimary = index === 0 && team.primaryStadium?.id === stadium.id;
+                return (
+                  <Link
+                    key={stadium.id}
+                    href={`/stadiums/${stadium.slug}`}
+                    style={{ textDecoration: "none", color: "inherit", border: "1px solid var(--border)", borderRadius: 14, padding: 14, background: "var(--secondary)", display: "grid", gap: 10 }}
+                  >
+                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                      {stadium.imageUrl ? <img src={stadium.imageUrl} alt="" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12 }} /> : null}
+                      <div>
+                        <div style={{ fontWeight: 800, color: "var(--foreground)" }}>{stadium.name}</div>
+                        {(stadium.city || stadium.country) ? <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>{[stadium.city, stadium.country].filter(Boolean).join(", ")}</div> : null}
+                      </div>
+                    </div>
+                    {isPrimary ? <div style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Primary home stadium</div> : null}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
         {team.standingsRow ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
             {[
@@ -144,6 +234,35 @@ export default function TeamPage({ params }: { params: Promise<{ teamId: string 
                       <div className="fanPlaceMeta">{[venue.city, venue.country].filter(Boolean).join(", ")}</div>
                     ) : null}
                     {venue.shortDescription ? <p className="fanPlaceDescription">{venue.shortDescription}</p> : null}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {team.players.length > 0 ? (
+          <div className="card-flat" style={{ padding: 20 }}>
+            <h2 className="font-display text-h3" style={{ color: "var(--foreground)", margin: "0 0 14px" }}>Players</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+              {team.players.map((player) => (
+                <Link
+                  key={player.id}
+                  href={`/players/${player.slug}`}
+                  style={{ textDecoration: "none", color: "inherit", border: "1px solid var(--border)", borderRadius: 14, padding: 14, background: "var(--secondary)", display: "grid", gap: 10 }}
+                >
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    {player.headshotUrl ? <img src={player.headshotUrl} alt="" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 14 }} /> : null}
+                    <div>
+                      <div style={{ fontWeight: 800, color: "var(--foreground)" }}>
+                        {player.name} {player.isCaptain ? <span style={{ color: "var(--primary)" }}>(C)</span> : null}
+                      </div>
+                      {player.position ? <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>{player.position}</div> : null}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12, color: "var(--muted-foreground)" }}>
+                    <span>{player.nationality || "Player"}</span>
+                    <span>{player.shirtNumber ? `#${player.shirtNumber}` : ""}</span>
                   </div>
                 </Link>
               ))}

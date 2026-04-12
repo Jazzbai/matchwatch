@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, ne } from 'drizzle-orm';
 import { db } from '../db/client';
 import { leagueSeasons, leagues, matches, sports, standingsRows, standingsSnapshots, teams } from '../db/schema';
 
@@ -20,6 +20,104 @@ export type ComputedStandingRow = {
 };
 
 const DRAW_SPORT_SLUGS = new Set(['soccer']);
+const CROSS_YEAR_SOCCER_LEAGUE_CODES = new Set(['PL', 'PD', 'BL1', 'SA', 'FL1', 'CL']);
+
+type LeagueSeasonContext = {
+  leagueId: string;
+  externalId: string | null;
+  sportSlug: string | null;
+};
+
+type SeasonBlueprint = {
+  label: string;
+  year: number;
+  externalId: string;
+  startsAt: Date;
+  endsAt: Date;
+  isCurrent: boolean;
+};
+
+const leagueSeasonContextCache = new Map<string, LeagueSeasonContext>();
+
+function getUtcMonth(referenceDate: Date) {
+  return referenceDate.getUTCMonth();
+}
+
+function toUtcDate(year: number, month: number, day: number, endOfDay = false) {
+  return new Date(Date.UTC(
+    year,
+    month,
+    day,
+    endOfDay ? 23 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 999 : 0,
+  ));
+}
+
+function buildCrossYearSeasonBlueprint(referenceDate: Date, now: Date): SeasonBlueprint {
+  const month = getUtcMonth(referenceDate);
+  const startYear = month >= 6 ? referenceDate.getUTCFullYear() : referenceDate.getUTCFullYear() - 1;
+  const endYear = startYear + 1;
+  const label = `${startYear}/${String(endYear).slice(-2)}`;
+  const startsAt = toUtcDate(startYear, 6, 1);
+  const endsAt = toUtcDate(endYear, 5, 30, true);
+  const nowMonth = getUtcMonth(now);
+  const currentStartYear = nowMonth >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
+
+  return {
+    label,
+    year: startYear,
+    externalId: `${startYear}-${endYear}`,
+    startsAt,
+    endsAt,
+    isCurrent: startYear === currentStartYear,
+  };
+}
+
+function buildCalendarYearSeasonBlueprint(referenceDate: Date, now: Date): SeasonBlueprint {
+  const year = referenceDate.getUTCFullYear();
+
+  return {
+    label: `${year} Season`,
+    year,
+    externalId: String(year),
+    startsAt: toUtcDate(year, 0, 1),
+    endsAt: toUtcDate(year, 11, 31, true),
+    isCurrent: year === now.getUTCFullYear(),
+  };
+}
+
+function buildSeasonBlueprint(context: LeagueSeasonContext, referenceDate: Date, now = new Date()) {
+  const externalId = (context.externalId || '').trim().toUpperCase();
+  if (context.sportSlug === 'soccer' && CROSS_YEAR_SOCCER_LEAGUE_CODES.has(externalId)) {
+    return buildCrossYearSeasonBlueprint(referenceDate, now);
+  }
+  return buildCalendarYearSeasonBlueprint(referenceDate, now);
+}
+
+async function getLeagueSeasonContext(leagueId: string): Promise<LeagueSeasonContext> {
+  const cached = leagueSeasonContextCache.get(leagueId);
+  if (cached) return cached;
+
+  const [row] = await db
+    .select({
+      leagueId: leagues.id,
+      externalId: leagues.externalId,
+      sportSlug: sports.slug,
+    })
+    .from(leagues)
+    .leftJoin(sports, eq(leagues.sportId, sports.id))
+    .where(eq(leagues.id, leagueId))
+    .limit(1);
+
+  if (!row) {
+    throw new Error(`League ${leagueId} not found while resolving season`);
+  }
+
+  leagueSeasonContextCache.set(leagueId, row);
+  return row;
+}
 
 function pointsForResult(sportSlug: string | null | undefined, result: 'W' | 'D' | 'L') {
   if (result === 'W') return DRAW_SPORT_SLUGS.has(sportSlug || '') ? 3 : 1;
@@ -27,29 +125,82 @@ function pointsForResult(sportSlug: string | null | undefined, result: 'W' | 'D'
   return 0;
 }
 
-export async function ensureCurrentSeason(leagueId: string) {
-  const [existing] = await db
+export async function ensureSeasonForDate(leagueId: string, referenceDate: Date) {
+  const context = await getLeagueSeasonContext(leagueId);
+  const blueprint = buildSeasonBlueprint(context, referenceDate);
+
+  let [existing] = await db
     .select()
     .from(leagueSeasons)
-    .where(and(eq(leagueSeasons.leagueId, leagueId), eq(leagueSeasons.isCurrent, true)))
+    .where(and(eq(leagueSeasons.leagueId, leagueId), eq(leagueSeasons.externalId, blueprint.externalId)))
     .limit(1);
 
-  if (existing) return existing;
+  if (!existing) {
+    [existing] = await db
+      .select()
+      .from(leagueSeasons)
+      .where(and(eq(leagueSeasons.leagueId, leagueId), eq(leagueSeasons.label, blueprint.label)))
+      .limit(1);
+  }
 
-  const year = new Date().getUTCFullYear();
-  const [created] = await db
-    .insert(leagueSeasons)
-    .values({
-      leagueId,
-      label: `${year} Season`,
-      year,
-      startsAt: new Date(Date.UTC(year, 0, 1)),
-      endsAt: new Date(Date.UTC(year, 11, 31, 23, 59, 59)),
-      isCurrent: true,
-    })
-    .returning();
+  if (existing) {
+    const needsUpdate = (
+      existing.label !== blueprint.label
+      || existing.year !== blueprint.year
+      || existing.externalId !== blueprint.externalId
+      || existing.startsAt?.getTime?.() !== blueprint.startsAt.getTime()
+      || existing.endsAt?.getTime?.() !== blueprint.endsAt.getTime()
+      || existing.isCurrent !== blueprint.isCurrent
+    );
 
-  return created;
+    if (needsUpdate) {
+      const [updated] = await db
+        .update(leagueSeasons)
+        .set({
+          label: blueprint.label,
+          year: blueprint.year,
+          externalId: blueprint.externalId,
+          startsAt: blueprint.startsAt,
+          endsAt: blueprint.endsAt,
+          isCurrent: blueprint.isCurrent,
+          updatedAt: new Date(),
+        })
+        .where(eq(leagueSeasons.id, existing.id))
+        .returning();
+      existing = updated;
+    }
+  } else {
+    const [created] = await db
+      .insert(leagueSeasons)
+      .values({
+        leagueId,
+        label: blueprint.label,
+        year: blueprint.year,
+        externalId: blueprint.externalId,
+        startsAt: blueprint.startsAt,
+        endsAt: blueprint.endsAt,
+        isCurrent: blueprint.isCurrent,
+      })
+      .returning();
+    existing = created;
+  }
+
+  if (existing.isCurrent) {
+    await db
+      .update(leagueSeasons)
+      .set({ isCurrent: false, updatedAt: new Date() })
+      .where(and(
+        eq(leagueSeasons.leagueId, leagueId),
+        ne(leagueSeasons.id, existing.id),
+        eq(leagueSeasons.isCurrent, true),
+      ));
+  }
+
+  return existing;
+}
+
+export async function ensureCurrentSeason(leagueId: string) {
+  return ensureSeasonForDate(leagueId, new Date());
 }
 
 export async function computeTeamStandings(leagueId: string, seasonId?: string | null) {
@@ -240,7 +391,33 @@ export async function getLatestLeagueStandings(leagueId: string, seasonId?: stri
     .orderBy(desc(standingsSnapshots.generatedAt))
     .limit(1);
 
-  const ensured = snapshot || (await refreshLeagueStandingsSnapshot(leagueId, seasonId)).snapshot;
+  const [latestFinishedMatch] = await db
+    .select({
+      updatedAt: matches.updatedAt,
+      lastSyncedAt: matches.lastSyncedAt,
+      matchDateUtc: matches.matchDateUtc,
+    })
+    .from(matches)
+    .where(and(
+      eq(matches.leagueId, leagueId),
+      eq(matches.eventFormat, 'HEAD_TO_HEAD'),
+      eq(matches.status, 'FINISHED'),
+      ...(seasonId ? [eq(matches.seasonId, seasonId)] : []),
+    ))
+    .orderBy(desc(matches.updatedAt))
+    .limit(1);
+
+  const latestFinishedMatchTimestamp = latestFinishedMatch
+    ? Math.max(
+      latestFinishedMatch.updatedAt?.getTime?.() || 0,
+      latestFinishedMatch.lastSyncedAt?.getTime?.() || 0,
+      latestFinishedMatch.matchDateUtc?.getTime?.() || 0,
+    )
+    : 0;
+  const snapshotTimestamp = snapshot?.generatedAt?.getTime?.() || 0;
+  const shouldRefresh = !snapshot || latestFinishedMatchTimestamp > snapshotTimestamp;
+
+  const ensured = shouldRefresh ? (await refreshLeagueStandingsSnapshot(leagueId, seasonId)).snapshot : snapshot;
   const rows = await db
     .select({
       row: standingsRows,

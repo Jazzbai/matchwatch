@@ -272,7 +272,7 @@ export const readNotificationsSchema = z.object({
 export const presignedUploadSchema = z.object({
     filename: z.string().min(1),
     contentType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif']),
-    purpose: z.enum(['avatar', 'venue_cover', 'venue_gallery', 'menu_item', 'post']),
+    purpose: z.enum(['avatar', 'venue_cover', 'venue_gallery', 'menu_item', 'post', 'entity_primary', 'entity_hero']),
     fileSize: z.coerce.number().int().positive().max(4 * 1024 * 1024),
 });
 

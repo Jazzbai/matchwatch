@@ -3,7 +3,14 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { nanoid } from 'nanoid';
 import { logger } from './logger';
 
-export type StorageUploadPurpose = 'avatar' | 'venue_cover' | 'venue_gallery' | 'menu_item' | 'post';
+export type StorageUploadPurpose =
+    | 'avatar'
+    | 'venue_cover'
+    | 'venue_gallery'
+    | 'menu_item'
+    | 'post'
+    | 'entity_primary'
+    | 'entity_hero';
 
 export const STORAGE_MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 

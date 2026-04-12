@@ -2,9 +2,11 @@ import { Queue, Worker } from 'bullmq';
 import { redis } from '../lib/redis';
 import { db } from '../db/client';
 import { sports, leagues, matches, teams, syncHistory } from '../db/schema';
-import { and, eq, inArray, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
-import { generateUniqueSlug } from '../lib/utils';
+import { allocateCanonicalSlug } from '../lib/entitySlugs';
+import { ensureSeasonForDate, refreshLeagueStandingsSnapshot } from '../lib/standings';
+import { buildTeamIdentityCandidates, normalizeTeamIdentity, scoreTeamIdentityRecord } from '../lib/teamIdentity';
 
 const QUEUE_NAME = 'matchSync';
 const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
@@ -62,7 +64,7 @@ const ESPN_SCOREBOARD_PATHS: Record<string, { sport: string; league: string }> =
 type MatchSyncProvider = 'FOOTBALL_DATA' | 'API_FOOTBALL' | 'THE_SPORTS_DB' | 'ESPN';
 type MatchStatus = 'SCHEDULED' | 'TIMED' | 'IN_PLAY' | 'PAUSED' | 'FINISHED' | 'POSTPONED' | 'CANCELLED' | 'SUSPENDED';
 type LeagueRow = typeof leagues.$inferSelect;
-type SyncMode = 'UPCOMING' | 'LIVE';
+type SyncMode = 'UPCOMING' | 'LIVE' | 'BACKFILL';
 
 type SyncResult = {
     fetched: number;
@@ -76,6 +78,7 @@ type SyncResult = {
 type MatchSyncRunOptions = {
     providerOverride?: MatchSyncProvider;
     sportSlug?: string;
+    mode?: SyncMode;
     writeHistory?: boolean;
 };
 
@@ -296,30 +299,78 @@ function teamCacheKey(externalId: string) {
 async function getTeamIdByExternalId(externalId: string) {
     const key = teamCacheKey(externalId);
     if (teamLookupCache.has(key)) return teamLookupCache.get(key) ?? null;
-    const [row] = await db.select({ id: teams.id }).from(teams).where(eq(teams.externalId, key)).limit(1);
+    const [row] = await db.select({ id: teams.id }).from(teams)
+        .where(and(eq(teams.externalId, key), eq(teams.isActive, true)))
+        .limit(1);
     const id = row?.id ?? null;
     teamLookupCache.set(key, id);
     return id;
 }
 
 async function getTeamIdByLeagueAndName(leagueId: string, teamName: string) {
-    const [row] = await db.select({ id: teams.id })
+    const directName = teamName.trim();
+    if (!directName) return null;
+
+    const normalizedInputName = normalizeTeamIdentity(directName);
+    if (!normalizedInputName) return null;
+
+    const rows = await db.select({
+        id: teams.id,
+        name: teams.name,
+        shortName: teams.shortName,
+        aliases: teams.aliases,
+        externalId: teams.externalId,
+        crestUrl: teams.crestUrl,
+        heroImageUrl: teams.heroImageUrl,
+        shortDescription: teams.shortDescription,
+        description: teams.description,
+    })
         .from(teams)
         .where(and(
             eq(teams.leagueId, leagueId),
-            sql`lower(${teams.name}) = lower(${teamName})`,
-        ))
-        .limit(1);
-    return row?.id ?? null;
+            eq(teams.isActive, true),
+        ));
+
+    const exactNameMatch = rows.find((row) => row.name.trim().toLowerCase() === directName.toLowerCase());
+    if (exactNameMatch) return exactNameMatch.id;
+
+    const matchedRows = rows
+        .map((row) => {
+            const candidates = buildTeamIdentityCandidates(row);
+            if (!candidates.has(normalizedInputName)) return null;
+            let score = scoreTeamIdentityRecord(row);
+            if (normalizeTeamIdentity(row.name) === normalizedInputName) score += 10;
+            if (normalizeTeamIdentity(row.shortName) === normalizedInputName) score += 4;
+            if ((row.aliases || []).some((alias) => normalizeTeamIdentity(alias) === normalizedInputName)) score += 2;
+            return { id: row.id, score };
+        })
+        .filter((row): row is { id: string; score: number } => Boolean(row))
+        .sort((left, right) => right.score - left.score);
+
+    return matchedRows[0]?.id ?? null;
 }
 
-async function applyTeamMetadata(teamId: string, input: { shortName?: string | null; crestUrl?: string | null }) {
-    const updates: Record<string, string> = {};
+async function applyTeamMetadata(teamId: string, input: { name?: string | null; shortName?: string | null; crestUrl?: string | null }) {
+    const [current] = await db.select({
+        id: teams.id,
+        aliases: teams.aliases,
+        shortName: teams.shortName,
+        crestUrl: teams.crestUrl,
+    }).from(teams).where(eq(teams.id, teamId)).limit(1);
+    if (!current) return;
+
+    const updates: Record<string, unknown> = {};
     const safeShortName = trimText(input.shortName || '', 30);
     const safeCrestUrl = trimText(input.crestUrl || '', 1000);
+    const mergedAliases = Array.from(new Set([
+        ...(current.aliases || []),
+        trimText(input.name || '', 120) || '',
+        safeShortName || '',
+    ].map((value) => value.trim()).filter(Boolean)));
 
-    if (safeShortName) updates.shortName = safeShortName;
-    if (safeCrestUrl) updates.crestUrl = safeCrestUrl;
+    if (safeShortName && safeShortName !== current.shortName) updates.shortName = safeShortName;
+    if (safeCrestUrl && safeCrestUrl !== current.crestUrl) updates.crestUrl = safeCrestUrl;
+    if (mergedAliases.length !== (current.aliases || []).length) updates.aliases = mergedAliases;
     if (Object.keys(updates).length === 0) return;
 
     await db.update(teams).set(updates).where(eq(teams.id, teamId));
@@ -474,7 +525,6 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
         result.skipped = true;
         return result;
     }
-
     try {
         const { season, logoUrl } = await fetchTheSportsDbSeason(sourceLeagueId);
         if (logoUrl && league.logoUrl !== logoUrl) {
@@ -505,10 +555,14 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
         const now = Date.now();
         const minTs = mode === 'LIVE'
             ? now - 6 * 60 * 60 * 1000
-            : now - 14 * 24 * 60 * 60 * 1000;
+            : mode === 'BACKFILL'
+                ? now - 400 * 24 * 60 * 60 * 1000
+                : now - 14 * 24 * 60 * 60 * 1000;
         const maxTs = mode === 'LIVE'
             ? now + 8 * 60 * 60 * 1000
-            : now + (isSingleEvent ? 365 : 60) * 24 * 60 * 60 * 1000;
+            : mode === 'BACKFILL'
+                ? now + (isSingleEvent ? 365 : 60) * 24 * 60 * 60 * 1000
+                : now + (isSingleEvent ? 365 : 60) * 24 * 60 * 60 * 1000;
 
         for (const event of events) {
             try {
@@ -518,12 +572,14 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
 
                 const eventTs = matchDate.getTime();
                 if (eventTs < minTs || eventTs > maxTs) continue;
+                const season = await ensureSeasonForDate(league.id, matchDate);
 
                 if (isSingleEvent) {
                     if (!isUnitedStatesCountry(event.strCountry)) continue;
 
                     await upsertMatchRecord({
                         leagueId: league.id,
+                        seasonId: season.id,
                         externalMatchId: `TSD-${sourceLeagueId}-${event.idEvent}`,
                         homeTeamId: null,
                         awayTeamId: null,
@@ -573,6 +629,7 @@ async function syncLeagueFromTheSportsDb(league: LeagueRow, mode: SyncMode = 'UP
 
                     await upsertMatchRecord({
                         leagueId: league.id,
+                        seasonId: season.id,
                         externalMatchId: `TSD-${sourceLeagueId}-${event.idEvent}`,
                         homeTeamId: home.id,
                         awayTeamId: away.id,
@@ -667,7 +724,7 @@ async function upsertTeamRecord(input: {
 
     const inserted = await db.insert(teams).values({
         name: trimText(input.name, 150),
-        slug: generateUniqueSlug(trimText(input.name, 150)),
+        slug: await allocateCanonicalSlug('team', trimText(input.name, 150), { shortName: trimText(input.shortName || input.name, 30) }),
         shortName: trimText(input.shortName || input.name, 30),
         externalId: safeExternalId,
         crestUrl: trimText(input.crestUrl || '', 1000) || null,
@@ -681,6 +738,7 @@ async function upsertTeamRecord(input: {
 
 async function upsertMatchRecord(input: {
     leagueId: string;
+    seasonId?: string | null;
     externalMatchId: string;
     homeTeamId: string | null;
     awayTeamId: string | null;
@@ -704,6 +762,7 @@ async function upsertMatchRecord(input: {
 
     const payload = {
         leagueId: input.leagueId,
+        seasonId: input.seasonId || null,
         externalMatchId: safeExternalMatchId,
         homeTeamId: input.homeTeamId || undefined,
         awayTeamId: input.awayTeamId || undefined,
@@ -768,10 +827,12 @@ async function syncLeagueFromEspn(league: LeagueRow, mode: SyncMode = 'UPCOMING'
 
     const now = new Date();
     const start = new Date(now);
-    start.setUTCDate(start.getUTCDate() + (mode === 'LIVE' ? -1 : 0));
+    start.setUTCDate(start.getUTCDate() + (mode === 'LIVE' ? -1 : mode === 'BACKFILL' ? -365 : 0));
     const end = new Date(now);
     const lookaheadDays = mode === 'LIVE'
         ? 1
+        : mode === 'BACKFILL'
+            ? 30
         : externalCode === 'MLS' || externalCode === 'LMX'
             ? 30
             : 14;
@@ -804,6 +865,7 @@ async function syncLeagueFromEspn(league: LeagueRow, mode: SyncMode = 'UPCOMING'
 
             const matchDate = new Date(event.date || competition.date || '');
             if (Number.isNaN(matchDate.getTime())) continue;
+            const season = await ensureSeasonForDate(league.id, matchDate);
 
             const home = await upsertTeamRecord({
                 leagueId: league.id,
@@ -825,6 +887,7 @@ async function syncLeagueFromEspn(league: LeagueRow, mode: SyncMode = 'UPCOMING'
 
             await upsertMatchRecord({
                 leagueId: league.id,
+                seasonId: season.id,
                 externalMatchId: `ESPN-${event.id}`,
                 homeTeamId: home.id,
                 awayTeamId: away.id,
@@ -1011,12 +1074,11 @@ async function syncLeagueFromFootballData(
         result.skipped = true;
         return result;
     }
-
     try {
         const apiMatches = await fetchFootballDataMatches(
             code,
             apiKey,
-            mode === 'LIVE' ? 1 : 0,
+            mode === 'LIVE' ? 1 : mode === 'BACKFILL' ? 365 : 0,
             mode === 'LIVE' ? 1 : 30,
         );
         result.fetched = apiMatches.length;
@@ -1040,9 +1102,12 @@ async function syncLeagueFromFootballData(
 
                 if (home.created) result.teamsUpserted += 1;
                 if (away.created) result.teamsUpserted += 1;
+                const matchDate = new Date(row.utcDate);
+                const season = await ensureSeasonForDate(league.id, matchDate);
 
                 await upsertMatchRecord({
                     leagueId: league.id,
+                    seasonId: season.id,
                     externalMatchId: String(row.id),
                     homeTeamId: home.id,
                     awayTeamId: away.id,
@@ -1050,7 +1115,7 @@ async function syncLeagueFromFootballData(
                     awayTeamName: row.awayTeam.name,
                     homeTeamCrestUrl: row.homeTeam.crest,
                     awayTeamCrestUrl: row.awayTeam.crest,
-                    matchDateUtc: new Date(row.utcDate),
+                    matchDateUtc: matchDate,
                     status: mapFootballDataStatus(row.status),
                     matchDay: row.matchday ?? null,
                     stage: row.stage || null,
@@ -1090,18 +1155,19 @@ async function syncLeagueFromApiFootball(
         result.skipped = true;
         return result;
     }
-
     if (resolved.logoUrl && league.logoUrl !== resolved.logoUrl) {
         await db.update(leagues).set({ logoUrl: resolved.logoUrl }).where(eq(leagues.id, league.id));
     }
 
     const now = new Date();
     const dateFrom = new Date(
-        now.getTime() - (mode === 'LIVE' ? 24 : 0) * 24 * 60 * 60 * 1000,
+        now.getTime() - (mode === 'LIVE' ? 24 : mode === 'BACKFILL' ? 365 : 0) * 24 * 60 * 60 * 1000,
     ).toISOString().split('T')[0];
     const externalCode = (league.externalId || '').trim().toUpperCase();
     const lookaheadDays = mode === 'LIVE'
         ? 1
+        : mode === 'BACKFILL'
+            ? 30
         : externalCode === 'INTL' ? 90 : FOOTBALL_DATA_SUPPORTED_CODES.has(externalCode) ? 30 : 14;
     const dateTo = new Date(now.getTime() + lookaheadDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const seasonCandidates = buildApiFootballSeasonCandidates(externalCode, resolved.season, dateFrom, dateTo);
@@ -1155,9 +1221,12 @@ async function syncLeagueFromApiFootball(
 
             if (home.created) result.teamsUpserted += 1;
             if (away.created) result.teamsUpserted += 1;
+            const matchDate = new Date(fixture.fixture.date);
+            const season = await ensureSeasonForDate(league.id, matchDate);
 
             await upsertMatchRecord({
                 leagueId: league.id,
+                seasonId: season.id,
                 externalMatchId: `AF-${fixture.fixture.id}`,
                 homeTeamId: home.id,
                 awayTeamId: away.id,
@@ -1165,7 +1234,7 @@ async function syncLeagueFromApiFootball(
                 awayTeamName: fixture.teams.away.name,
                 homeTeamCrestUrl: fixture.teams.home.logo || null,
                 awayTeamCrestUrl: fixture.teams.away.logo || null,
-                matchDateUtc: new Date(fixture.fixture.date),
+                matchDateUtc: matchDate,
                 status: mapApiFootballStatus(fixture.fixture.status.short),
                 matchDay: parseMatchDay(fixture.league.round),
                 stage: fixture.league.round || null,
@@ -1196,8 +1265,8 @@ async function syncLeagueFromJolpicaF1(league: LeagueRow): Promise<SyncResult> {
     const result: SyncResult = { fetched: 0, upserted: 0, errors: 0, teamsUpserted: 0 };
 
     try {
-        const season = new Date().getUTCFullYear();
-        const races = await fetchJolpicaRaces(season);
+        const seasonYear = new Date().getUTCFullYear();
+        const races = await fetchJolpicaRaces(seasonYear);
         const usRaces = races.filter((race) => isUnitedStatesCountry(race.Circuit.Location.country));
         result.fetched = usRaces.length;
 
@@ -1205,10 +1274,12 @@ async function syncLeagueFromJolpicaF1(league: LeagueRow): Promise<SyncResult> {
             try {
                 const matchDate = new Date(`${race.date}T${race.time || '00:00:00Z'}`);
                 if (Number.isNaN(matchDate.getTime())) continue;
+                const seasonRow = await ensureSeasonForDate(league.id, matchDate);
 
                 await upsertMatchRecord({
                     leagueId: league.id,
-                    externalMatchId: `JOLPICA-F1-${season}-${race.round}`,
+                    seasonId: seasonRow.id,
+                    externalMatchId: `JOLPICA-F1-${seasonYear}-${race.round}`,
                     homeTeamId: null,
                     awayTeamId: null,
                     homeTeamName: null,
@@ -1352,8 +1423,8 @@ export async function runLiveStatusRefreshOnce() {
         .innerJoin(leagues, eq(matches.leagueId, leagues.id))
         .where(and(
             inArray(matches.status, ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED']),
-            sql`${matches.matchDateUtc} >= ${windowStart}`,
-            sql`${matches.matchDateUtc} <= ${windowEnd}`,
+            gte(matches.matchDateUtc, windowStart),
+            lte(matches.matchDateUtc, windowEnd),
             eq(leagues.isActive, true),
         ))
         .groupBy(matches.leagueId);
@@ -1422,13 +1493,14 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
     const apiFootballApiKey = process.env.API_FOOTBALL_API_KEY;
     const footballDataApiKey = process.env.FOOTBALL_DATA_API_KEY;
     const sportSlug = options.sportSlug || 'soccer';
+    const mode = options.mode || 'UPCOMING';
     const writeHistory = options.writeHistory ?? true;
 
     if (options.providerOverride && !apiKey && provider !== 'THE_SPORTS_DB') {
         throw new Error(`${provider === 'API_FOOTBALL' ? 'API_FOOTBALL_API_KEY' : 'FOOTBALL_DATA_API_KEY'} not set`);
     }
 
-    logger.info({ provider, sportSlug }, 'Starting direct match sync run');
+    logger.info({ provider, sportSlug, mode }, 'Starting direct match sync run');
 
     const leagueQuery = db.select({ league: leagues, sportSlug: sports.slug })
         .from(leagues)
@@ -1451,7 +1523,7 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
             provider,
             apiFootballApiKey,
             footballDataApiKey,
-            'UPCOMING',
+            mode,
         );
 
         const durationMs = Date.now() - startedAt;
@@ -1468,6 +1540,14 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
                 status: result.errors > 0 ? 'PARTIAL' : 'SUCCESS',
                 durationMs,
             });
+        }
+
+        if (mode === 'BACKFILL' && row.sportSlug === 'soccer') {
+            try {
+                await refreshLeagueStandingsSnapshot(league.id);
+            } catch (err) {
+                logger.error({ leagueId: league.id, leagueName: league.name, err }, 'Failed refreshing league standings after backfill sync');
+            }
         }
 
         await sleep(

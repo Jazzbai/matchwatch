@@ -234,31 +234,77 @@ CREATE TABLE IF NOT EXISTS "match_predictions" (
     CONSTRAINT "match_predictions_match_unique" UNIQUE("match_id")
 );
 
-ALTER TABLE "matches"
-    ADD CONSTRAINT IF NOT EXISTS "matches_season_id_league_seasons_id_fk" FOREIGN KEY ("season_id") REFERENCES "public"."league_seasons"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "players"
-    ADD CONSTRAINT IF NOT EXISTS "players_sport_id_sports_id_fk" FOREIGN KEY ("sport_id") REFERENCES "public"."sports"("id") ON DELETE no action ON UPDATE no action,
-    ADD CONSTRAINT IF NOT EXISTS "players_league_id_leagues_id_fk" FOREIGN KEY ("league_id") REFERENCES "public"."leagues"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "league_seasons"
-    ADD CONSTRAINT IF NOT EXISTS "league_seasons_league_id_leagues_id_fk" FOREIGN KEY ("league_id") REFERENCES "public"."leagues"("id") ON DELETE cascade ON UPDATE no action;
-ALTER TABLE "match_participants"
-    ADD CONSTRAINT IF NOT EXISTS "match_participants_match_id_matches_id_fk" FOREIGN KEY ("match_id") REFERENCES "public"."matches"("id") ON DELETE cascade ON UPDATE no action,
-    ADD CONSTRAINT IF NOT EXISTS "match_participants_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE no action ON UPDATE no action,
-    ADD CONSTRAINT IF NOT EXISTS "match_participants_player_id_players_id_fk" FOREIGN KEY ("player_id") REFERENCES "public"."players"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "standings_snapshots"
-    ADD CONSTRAINT IF NOT EXISTS "standings_snapshots_league_id_leagues_id_fk" FOREIGN KEY ("league_id") REFERENCES "public"."leagues"("id") ON DELETE cascade ON UPDATE no action,
-    ADD CONSTRAINT IF NOT EXISTS "standings_snapshots_season_id_league_seasons_id_fk" FOREIGN KEY ("season_id") REFERENCES "public"."league_seasons"("id") ON DELETE set null ON UPDATE no action;
-ALTER TABLE "standings_rows"
-    ADD CONSTRAINT IF NOT EXISTS "standings_rows_snapshot_id_standings_snapshots_id_fk" FOREIGN KEY ("snapshot_id") REFERENCES "public"."standings_snapshots"("id") ON DELETE cascade ON UPDATE no action,
-    ADD CONSTRAINT IF NOT EXISTS "standings_rows_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE no action ON UPDATE no action,
-    ADD CONSTRAINT IF NOT EXISTS "standings_rows_player_id_players_id_fk" FOREIGN KEY ("player_id") REFERENCES "public"."players"("id") ON DELETE no action ON UPDATE no action,
-    ADD CONSTRAINT IF NOT EXISTS "standings_rows_driver_id_drivers_id_fk" FOREIGN KEY ("driver_id") REFERENCES "public"."drivers"("id") ON DELETE no action ON UPDATE no action,
-    ADD CONSTRAINT IF NOT EXISTS "standings_rows_entrant_id_entrants_id_fk" FOREIGN KEY ("entrant_id") REFERENCES "public"."entrants"("id") ON DELETE no action ON UPDATE no action,
-    ADD CONSTRAINT IF NOT EXISTS "standings_rows_manufacturer_id_manufacturers_id_fk" FOREIGN KEY ("manufacturer_id") REFERENCES "public"."manufacturers"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "static_pages"
-    ADD CONSTRAINT IF NOT EXISTS "static_pages_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "match_predictions"
-    ADD CONSTRAINT IF NOT EXISTS "match_predictions_match_id_matches_id_fk" FOREIGN KEY ("match_id") REFERENCES "public"."matches"("id") ON DELETE cascade ON UPDATE no action;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'matches_season_id_league_seasons_id_fk') THEN
+        ALTER TABLE "matches"
+            ADD CONSTRAINT "matches_season_id_league_seasons_id_fk" FOREIGN KEY ("season_id") REFERENCES "public"."league_seasons"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'players_sport_id_sports_id_fk') THEN
+        ALTER TABLE "players"
+            ADD CONSTRAINT "players_sport_id_sports_id_fk" FOREIGN KEY ("sport_id") REFERENCES "public"."sports"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'players_league_id_leagues_id_fk') THEN
+        ALTER TABLE "players"
+            ADD CONSTRAINT "players_league_id_leagues_id_fk" FOREIGN KEY ("league_id") REFERENCES "public"."leagues"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'league_seasons_league_id_leagues_id_fk') THEN
+        ALTER TABLE "league_seasons"
+            ADD CONSTRAINT "league_seasons_league_id_leagues_id_fk" FOREIGN KEY ("league_id") REFERENCES "public"."leagues"("id") ON DELETE cascade ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'match_participants_match_id_matches_id_fk') THEN
+        ALTER TABLE "match_participants"
+            ADD CONSTRAINT "match_participants_match_id_matches_id_fk" FOREIGN KEY ("match_id") REFERENCES "public"."matches"("id") ON DELETE cascade ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'match_participants_team_id_teams_id_fk') THEN
+        ALTER TABLE "match_participants"
+            ADD CONSTRAINT "match_participants_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'match_participants_player_id_players_id_fk') THEN
+        ALTER TABLE "match_participants"
+            ADD CONSTRAINT "match_participants_player_id_players_id_fk" FOREIGN KEY ("player_id") REFERENCES "public"."players"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'standings_snapshots_league_id_leagues_id_fk') THEN
+        ALTER TABLE "standings_snapshots"
+            ADD CONSTRAINT "standings_snapshots_league_id_leagues_id_fk" FOREIGN KEY ("league_id") REFERENCES "public"."leagues"("id") ON DELETE cascade ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'standings_snapshots_season_id_league_seasons_id_fk') THEN
+        ALTER TABLE "standings_snapshots"
+            ADD CONSTRAINT "standings_snapshots_season_id_league_seasons_id_fk" FOREIGN KEY ("season_id") REFERENCES "public"."league_seasons"("id") ON DELETE set null ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'standings_rows_snapshot_id_standings_snapshots_id_fk') THEN
+        ALTER TABLE "standings_rows"
+            ADD CONSTRAINT "standings_rows_snapshot_id_standings_snapshots_id_fk" FOREIGN KEY ("snapshot_id") REFERENCES "public"."standings_snapshots"("id") ON DELETE cascade ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'standings_rows_team_id_teams_id_fk') THEN
+        ALTER TABLE "standings_rows"
+            ADD CONSTRAINT "standings_rows_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'standings_rows_player_id_players_id_fk') THEN
+        ALTER TABLE "standings_rows"
+            ADD CONSTRAINT "standings_rows_player_id_players_id_fk" FOREIGN KEY ("player_id") REFERENCES "public"."players"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'standings_rows_driver_id_drivers_id_fk') THEN
+        ALTER TABLE "standings_rows"
+            ADD CONSTRAINT "standings_rows_driver_id_drivers_id_fk" FOREIGN KEY ("driver_id") REFERENCES "public"."drivers"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'standings_rows_entrant_id_entrants_id_fk') THEN
+        ALTER TABLE "standings_rows"
+            ADD CONSTRAINT "standings_rows_entrant_id_entrants_id_fk" FOREIGN KEY ("entrant_id") REFERENCES "public"."entrants"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'standings_rows_manufacturer_id_manufacturers_id_fk') THEN
+        ALTER TABLE "standings_rows"
+            ADD CONSTRAINT "standings_rows_manufacturer_id_manufacturers_id_fk" FOREIGN KEY ("manufacturer_id") REFERENCES "public"."manufacturers"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'static_pages_updated_by_users_id_fk') THEN
+        ALTER TABLE "static_pages"
+            ADD CONSTRAINT "static_pages_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'match_predictions_match_id_matches_id_fk') THEN
+        ALTER TABLE "match_predictions"
+            ADD CONSTRAINT "match_predictions_match_id_matches_id_fk" FOREIGN KEY ("match_id") REFERENCES "public"."matches"("id") ON DELETE cascade ON UPDATE no action;
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS "players_sport_idx" ON "players" ("sport_id");
 CREATE INDEX IF NOT EXISTS "players_league_idx" ON "players" ("league_id");

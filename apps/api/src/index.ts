@@ -1,4 +1,4 @@
-import { serve } from '@hono/node-server';
+﻿import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import 'dotenv/config';
 
@@ -23,6 +23,7 @@ import blogRoutes from './routes/blog';
 import placeRoutes from './routes/places';
 import leagueRoutes from './routes/leagues';
 import teamRoutes from './routes/teams';
+import stadiumRoutes from './routes/stadiums';
 import playerRoutes from './routes/players';
 import driverRoutes from './routes/drivers';
 import motorsportTeamRoutes from './routes/motorsportTeams';
@@ -32,6 +33,7 @@ import predictionsRoutes from './routes/predictions';
 import checkinsRoutes from './routes/checkins';
 import sponsorInquiryRoutes from './routes/sponsorInquiry';
 import { logger } from './lib/logger';
+import { normalizeEntitySlugs } from './lib/entitySlugs';
 import { scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
 
 // Create App
@@ -55,6 +57,7 @@ v1.route('/auth', authRoutes);
 v1.route('/matches', matchRoutes);
 v1.route('/leagues', leagueRoutes);
 v1.route('/teams', teamRoutes);
+v1.route('/stadiums', stadiumRoutes);
 v1.route('/players', playerRoutes);
 v1.route('/drivers', driverRoutes);
 v1.route('/motorsport/teams', motorsportTeamRoutes);
@@ -120,6 +123,15 @@ async function start() {
         }
     } else {
         logger.warn('Startup auto-seed disabled via RUN_STARTUP_SEED=false');
+    }
+
+    try {
+        await normalizeEntitySlugs();
+    } catch (err) {
+        logger.error({ err }, 'Entity slug normalization failed');
+        if (process.env.NODE_ENV === 'production') {
+            process.exit(1);
+        }
     }
 
     serve(

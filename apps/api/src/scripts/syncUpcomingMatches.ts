@@ -6,6 +6,7 @@ import { leagues, matches, sports } from '../db/schema';
 import { resolveMatchSyncProvider, runMatchSyncOnce } from '../workers/matchSync';
 
 type Provider = 'API_FOOTBALL' | 'FOOTBALL_DATA' | 'THE_SPORTS_DB' | 'ESPN';
+type SyncMode = 'UPCOMING' | 'LIVE' | 'BACKFILL';
 
 function parseArgs(argv: string[]) {
     const args = new Map<string, string | boolean>();
@@ -24,6 +25,15 @@ function asProvider(value: string | boolean | undefined): Provider | undefined {
         return normalized;
     }
     throw new Error(`Unsupported provider override: ${value}`);
+}
+
+function asSyncMode(value: string | boolean | undefined): SyncMode | undefined {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toUpperCase().replace('-', '_');
+    if (normalized === 'UPCOMING' || normalized === 'LIVE' || normalized === 'BACKFILL') {
+        return normalized;
+    }
+    throw new Error(`Unsupported sync mode: ${value}`);
 }
 
 async function getActiveSportsAndLeagues(sportSlug: string) {
@@ -78,6 +88,7 @@ async function main() {
     const args = parseArgs(process.argv.slice(2));
     const sportSlug = typeof args.get('sport') === 'string' ? String(args.get('sport')).trim() : 'soccer';
     const providerOverride = asProvider(args.get('provider'));
+    const mode = asSyncMode(args.get('mode')) || 'UPCOMING';
     const listOnly = args.has('list-only');
 
     const provider = providerOverride || resolveMatchSyncProvider();
@@ -95,6 +106,7 @@ async function main() {
             hasApiFootball,
             hasFootballData,
         },
+        mode,
         database: {
             sports: inventory.sports,
             leagues: inventory.leagues,
@@ -115,6 +127,7 @@ async function main() {
     const syncResults = await runMatchSyncOnce({
         providerOverride,
         sportSlug,
+        mode,
         writeHistory: true,
     });
     const after = await getUpcomingCounts();

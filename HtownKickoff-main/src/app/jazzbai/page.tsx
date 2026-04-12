@@ -2,14 +2,16 @@
 
 import * as React from "react";
 import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
+import { MotorsportEntitiesAdminPanel } from "../../components/admin/MotorsportEntitiesAdminPanel";
 import { PlayersAdminPanel } from "../../components/admin/PlayersAdminPanel";
 import { PredictionsAdminPanel } from "../../components/admin/PredictionsAdminPanel";
 import { StandingsAdminPanel } from "../../components/admin/StandingsAdminPanel";
 import { StaticPagesAdminPanel } from "../../components/admin/StaticPagesAdminPanel";
 import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import type { GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../lib/api";
+import { uploadSuperAdminImage } from "../../lib/superAdminUploads";
 
-type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "players" | "events" | "customEvents" | "sports" | "leagues" | "standings" | "imports" | "matches" | "predictions" | "motorsportEntries" | "pages" | "blog";
+type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "stadiums" | "players" | "motorsportEntities" | "events" | "customEvents" | "sports" | "leagues" | "standings" | "imports" | "matches" | "predictions" | "motorsportEntries" | "pages" | "blog";
 
 type ApiListMeta = {
   page: number;
@@ -98,6 +100,7 @@ type LookupMatch = {
 type LookupLeague = { id: string; sportId: string | null; name: string; shortName: string | null; externalId?: string | null };
 type LookupSport = { id: string; name: string; slug: string; shortName: string | null };
 type LookupTeam = { id: string; leagueId?: string | null; name: string; shortName?: string | null; crestUrl?: string | null };
+type LookupPlayer = { id: string; leagueId?: string | null; name: string; slug?: string | null; shortName?: string | null; headshotUrl?: string | null };
 type LookupStadium = { id: string; name: string; city?: string | null; country?: string | null };
 type LookupOwner = { id: string; email: string; name: string; role: UserRow["role"] };
 type VenueAttributeType = "AMENITY" | "VIBE" | "CUISINE";
@@ -161,11 +164,15 @@ type AdminLeagueRow = {
   sportId: string;
   sportName?: string | null;
   sportSlug?: string | null;
+  slug: string;
   name: string;
   shortName?: string | null;
   logoUrl?: string | null;
   externalId?: string | null;
   country?: string | null;
+  enrichedAt?: string | null;
+  enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  enrichmentError?: string | null;
   sortOrder: number;
   isActive: boolean;
   createdAt: string;
@@ -377,12 +384,35 @@ type TeamAdminRow = {
   id: string;
   leagueId?: string | null;
   leagueName?: string | null;
+  slug: string;
   name: string;
-  slug?: string | null;
   shortName?: string | null;
   crestUrl?: string | null;
+  heroImageUrl?: string | null;
+  website?: string | null;
+  country?: string | null;
+  aliases?: string[] | null;
+  shortDescription?: string | null;
+  description?: string | null;
   externalId?: string | null;
+  enrichedAt?: string | null;
+  enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  enrichmentError?: string | null;
+  primaryStadiumId?: string | null;
+  primaryStadiumName?: string | null;
   fanPlaces?: FanVenueSummary[];
+  secondaryStadiums?: Array<{ id: string; name: string }>;
+  rosterMembers?: Array<{
+    playerId: string;
+    playerName: string;
+    playerSlug?: string | null;
+    headshotUrl?: string | null;
+    shirtNumber?: string | null;
+    position?: string | null;
+    isCaptain?: boolean;
+    sortOrder?: number | null;
+    isActive?: boolean;
+  }>;
   isActive: boolean;
   createdAt: string;
 };
@@ -392,9 +422,139 @@ type TeamAdminDraft = {
   name?: string;
   shortName?: string | null;
   crestUrl?: string | null;
+  heroImageUrl?: string | null;
+  website?: string | null;
+  country?: string | null;
+  aliases?: string;
+  shortDescription?: string | null;
+  description?: string | null;
   externalId?: string | null;
   fanVenueIds?: string[];
+  primaryStadiumId?: string | null;
+  secondaryStadiumIds?: string[];
+  rosterMembers?: Array<{
+    playerId: string;
+    shirtNumber?: string | null;
+    position?: string | null;
+    isCaptain?: boolean;
+    sortOrder?: number;
+    isActive?: boolean;
+  }>;
   isActive?: boolean;
+};
+
+type StadiumAdminRow = {
+  id: string;
+  slug: string;
+  name: string;
+  shortName?: string | null;
+  imageUrl?: string | null;
+  heroImageUrl?: string | null;
+  shortDescription?: string | null;
+  description?: string | null;
+  website?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  stateProvince?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  lat?: string | number | null;
+  lng?: string | number | null;
+  capacity?: number | null;
+  openedYear?: number | null;
+  surface?: string | null;
+  aliases?: string[] | null;
+  googlePlaceId?: string | null;
+  googleSourceSnapshot?: GooglePlaceSnapshot | null;
+  googleLastSyncedAt?: string | null;
+  googleSyncStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  googleSyncError?: string | null;
+  enrichedAt?: string | null;
+  enrichmentStatus?: "NEVER_SYNCED" | "SYNCED" | "ERROR";
+  enrichmentError?: string | null;
+  linkedTeams?: Array<{ id: string; name: string; slug: string; isPrimary?: boolean }>;
+  teamCount?: number;
+  externalId?: string | null;
+  fanPlaces?: FanVenueSummary[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+type StadiumAdminDraft = {
+  name?: string;
+  shortName?: string | null;
+  imageUrl?: string | null;
+  heroImageUrl?: string | null;
+  shortDescription?: string | null;
+  description?: string | null;
+  website?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  stateProvince?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  lat?: string | number | null;
+  lng?: string | number | null;
+  capacity?: string | number | null;
+  openedYear?: string | number | null;
+  surface?: string | null;
+  aliases?: string;
+  googlePlaceId?: string | null;
+  googleSourceSnapshot?: GooglePlaceSnapshot | null;
+  externalId?: string | null;
+  isActive?: boolean;
+};
+
+type TeamDuplicateInfo = {
+  groupKey: string;
+  suggestedTargetId: string;
+  suggestedTargetLabel: string;
+  duplicateCount: number;
+  options: Array<{
+    id: string;
+    label: string;
+    isSuggestedTarget: boolean;
+  }>;
+};
+
+type StadiumDuplicateInfo = {
+  groupKey: string;
+  suggestedTargetId: string;
+  suggestedTargetLabel: string;
+  duplicateCount: number;
+  options: Array<{
+    id: string;
+    label: string;
+    isSuggestedTarget: boolean;
+  }>;
+};
+
+type RecommendationItem = {
+  id: string;
+  name: string;
+  shortName?: string | null;
+  leagueId?: string | null;
+  leagueLabel?: string | null;
+  sourceType: "catalog" | "provider" | "existing-db" | "external";
+  confidence: "high" | "medium" | "low";
+  website?: string | null;
+  aliases?: string[];
+  alreadyExists?: { id: string; slug?: string | null; name: string } | null;
+};
+
+type RecommendationPreview = {
+  recommendation: RecommendationItem;
+  prefill: {
+    name: string;
+    shortName?: string;
+    website?: string;
+    aliases?: string[];
+    externalId?: string;
+    imageCandidates?: string[];
+    shortDescription?: string;
+    description?: string;
+  };
 };
 
 type MatchEventRow = {
@@ -757,6 +917,20 @@ function formatDateTime(value?: string | null) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatEnrichmentStatus(value?: "NEVER_SYNCED" | "SYNCED" | "ERROR" | null) {
+  if (!value) return "Never synced";
+  if (value === "NEVER_SYNCED") return "Never synced";
+  if (value === "SYNCED") return "Synced";
+  return "Error";
+}
+
+function recommendationSourceLabel(value: RecommendationItem["sourceType"]) {
+  if (value === "catalog") return "Catalog";
+  if (value === "existing-db") return "Existing";
+  if (value === "provider") return "Provider";
+  return "External";
 }
 
 function dedupeById<T extends { id: string }>(rows: T[]) {
@@ -1135,6 +1309,23 @@ async function uploadSuperAdminVenueImage(file: File, purpose: "venue_cover" | "
   };
 }
 
+function normalizeDuplicateTeamName(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function normalizeDuplicateStadiumKey(name: string, city?: string | null, country?: string | null) {
+  const normalizedName = normalizeDuplicateTeamName(name || "");
+  if (!normalizedName) return "";
+  const normalizedCity = normalizeDuplicateTeamName(city || "");
+  const normalizedCountry = normalizeDuplicateTeamName(country || "");
+  return `${normalizedName}::${normalizedCity || "none"}::${normalizedCountry || "none"}`;
+}
+
 const MATCH_STATUSES: Array<MatchRow["status"]> = [
   "SCHEDULED",
   "TIMED",
@@ -1176,6 +1367,7 @@ export default function JazzbaiSuperAdminPage() {
   const [lookupLeagues, setLookupLeagues] = React.useState<LookupLeague[]>([]);
   const [lookupSports, setLookupSports] = React.useState<LookupSport[]>([]);
   const [lookupTeams, setLookupTeams] = React.useState<LookupTeam[]>([]);
+  const [lookupPlayers, setLookupPlayers] = React.useState<LookupPlayer[]>([]);
   const [lookupStadiums, setLookupStadiums] = React.useState<LookupStadium[]>([]);
   const [lookupOwners, setLookupOwners] = React.useState<LookupOwner[]>([]);
   const [lookupAttributes, setLookupAttributes] = React.useState<LookupAttribute[]>([]);
@@ -1332,13 +1524,51 @@ export default function JazzbaiSuperAdminPage() {
   const [teamsLoading, setTeamsLoading] = React.useState(false);
   const [teamDrafts, setTeamDrafts] = React.useState<Record<string, TeamAdminDraft>>({});
   const [teamVenueSearch, setTeamVenueSearch] = React.useState<Record<string, string>>({});
+  const [teamMergeTargets, setTeamMergeTargets] = React.useState<Record<string, string>>({});
   const [newAdminTeam, setNewAdminTeam] = React.useState({
     leagueId: "",
+    primaryStadiumId: "",
     name: "",
     shortName: "",
     crestUrl: "",
     externalId: "",
     fanVenueIds: [] as string[],
+    isActive: true,
+  });
+  const [newTeamRecommendations, setNewTeamRecommendations] = React.useState<RecommendationItem[]>([]);
+  const [newTeamRecommendationsLoading, setNewTeamRecommendationsLoading] = React.useState(false);
+  const [newTeamRecommendationsError, setNewTeamRecommendationsError] = React.useState<string | null>(null);
+  const [uploadingNewTeamCrest, setUploadingNewTeamCrest] = React.useState(false);
+  const [uploadingTeamCrestId, setUploadingTeamCrestId] = React.useState<string | null>(null);
+
+  const [stadiumsRows, setStadiumsRows] = React.useState<StadiumAdminRow[]>([]);
+  const [stadiumsMeta, setStadiumsMeta] = React.useState<ApiListMeta | null>(null);
+  const [stadiumsSearch, setStadiumsSearch] = React.useState("");
+  const [stadiumsLoading, setStadiumsLoading] = React.useState(false);
+  const [stadiumDrafts, setStadiumDrafts] = React.useState<Record<string, StadiumAdminDraft>>({});
+  const [stadiumMergeTargets, setStadiumMergeTargets] = React.useState<Record<string, string>>({});
+  const [newStadium, setNewStadium] = React.useState<StadiumAdminDraft>({
+    name: "",
+    shortName: "",
+    imageUrl: "",
+    heroImageUrl: "",
+    shortDescription: "",
+    description: "",
+    website: "",
+    addressLine1: "",
+    city: "",
+    stateProvince: "",
+    country: "",
+    postalCode: "",
+    lat: "",
+    lng: "",
+    capacity: "",
+    openedYear: "",
+    surface: "",
+    aliases: "",
+    googlePlaceId: "",
+    googleSourceSnapshot: null,
+    externalId: "",
     isActive: true,
   });
 
@@ -1441,6 +1671,8 @@ export default function JazzbaiSuperAdminPage() {
     sortOrder: "0",
     isActive: true,
   });
+  const [uploadingNewLeagueLogo, setUploadingNewLeagueLogo] = React.useState(false);
+  const [uploadingLeagueLogoId, setUploadingLeagueLogoId] = React.useState<string | null>(null);
 
   const [csvImportText, setCsvImportText] = React.useState("");
   const [csvImportDryRun, setCsvImportDryRun] = React.useState(true);
@@ -1467,6 +1699,7 @@ export default function JazzbaiSuperAdminPage() {
         leagues: LookupLeague[];
         sports: LookupSport[];
         teams: LookupTeam[];
+        players: LookupPlayer[];
         stadiums: LookupStadium[];
         owners: LookupOwner[];
         attributes: LookupAttribute[];
@@ -1476,6 +1709,7 @@ export default function JazzbaiSuperAdminPage() {
       setLookupLeagues(data.leagues || []);
       setLookupSports(data.sports || []);
       setLookupTeams(data.teams || []);
+      setLookupPlayers(data.players || []);
       setLookupStadiums(data.stadiums || []);
       setLookupOwners(data.owners || []);
       setLookupAttributes(data.attributes || []);
@@ -1603,6 +1837,27 @@ export default function JazzbaiSuperAdminPage() {
       setTeamsLoading(false);
     }
   }, [teamsSearch]);
+
+  const loadStadiumsAdmin = React.useCallback(async () => {
+    setStadiumsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "50",
+        includeInactive: "true",
+      });
+      if (stadiumsSearch.trim()) params.set("search", stadiumsSearch.trim());
+      const response = await fetch(`/api/v1/super-admin/stadiums?${params.toString()}`, {
+        credentials: "include",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load stadiums"));
+      setStadiumsRows(payload.data || []);
+      setStadiumsMeta(payload.meta || null);
+    } finally {
+      setStadiumsLoading(false);
+    }
+  }, [stadiumsSearch]);
 
   const loadCustomEvents = React.useCallback(async () => {
     setCustomEventsLoading(true);
@@ -1751,7 +2006,11 @@ export default function JazzbaiSuperAdminPage() {
       await Promise.all([loadTeamsAdmin(), loadLookups()]);
       return;
     }
-    if (tab === "players" || tab === "standings" || tab === "predictions" || tab === "pages") {
+    if (tab === "stadiums") {
+      await Promise.all([loadStadiumsAdmin(), loadLookups()]);
+      return;
+    }
+    if (tab === "players" || tab === "motorsportEntities" || tab === "standings" || tab === "predictions" || tab === "pages") {
       return;
     }
     if (tab === "events") {
@@ -1782,7 +2041,7 @@ export default function JazzbaiSuperAdminPage() {
       return;
     }
     await Promise.all([loadMatches(), loadLookups()]);
-  }, [loadApprovalQueues, loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadMotorsportEntries, loadOverview, loadSportsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
+  }, [loadApprovalQueues, loadAttributes, loadCustomEvents, loadEvents, loadLeaguesAdmin, loadLookups, loadMatches, loadMotorsportEntries, loadOverview, loadSportsAdmin, loadStadiumsAdmin, loadTeamsAdmin, loadUsers, loadVenues]);
 
   React.useEffect(() => {
     async function checkSession() {
@@ -1810,6 +2069,50 @@ export default function JazzbaiSuperAdminPage() {
     if (newLeague.sportId || lookupSports.length === 0) return;
     setNewLeague((prev) => ({ ...prev, sportId: lookupSports[0].id }));
   }, [lookupSports, newLeague.sportId]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadTeamRecommendations() {
+      setNewTeamRecommendationsError(null);
+      if (!authenticated) return;
+      if (!newAdminTeam.leagueId) {
+        setNewTeamRecommendations([]);
+        return;
+      }
+
+      try {
+        setNewTeamRecommendationsLoading(true);
+        const params = new URLSearchParams({
+          entityType: "team",
+          leagueId: newAdminTeam.leagueId,
+        });
+        if (newAdminTeam.name.trim()) params.set("q", newAdminTeam.name.trim());
+        const response = await fetch(`/api/v1/super-admin/recommendations?${params.toString()}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.error || "Recommendations unavailable. Manual entry is still available.");
+        }
+        const data = await response.json() as { data?: RecommendationItem[] };
+        if (!cancelled) setNewTeamRecommendations(data.data || []);
+      } catch (err) {
+        if (!cancelled) {
+          setNewTeamRecommendations([]);
+          setNewTeamRecommendationsError(err instanceof Error ? err.message : "Recommendations unavailable. Manual entry is still available.");
+        }
+      } finally {
+        if (!cancelled) setNewTeamRecommendationsLoading(false);
+      }
+    }
+
+    void loadTeamRecommendations();
+    return () => {
+      cancelled = true;
+    };
+  }, [authenticated, newAdminTeam.leagueId, newAdminTeam.name]);
 
   React.useEffect(() => {
     if (motorsportLookupMatches.length === 0) return;
@@ -1875,6 +2178,37 @@ export default function JazzbaiSuperAdminPage() {
       setError(err instanceof Error ? err.message : "Action failed");
     } finally {
       setSubmittingAction(null);
+    }
+  };
+
+  const applyNewTeamRecommendation = async (recommendation: RecommendationItem) => {
+    setError(null);
+    setNewTeamRecommendationsError(null);
+    try {
+      const preview = await superAdminFetch<RecommendationPreview>("/recommendations/preview", {
+        method: "POST",
+        body: JSON.stringify({
+          entityType: "team",
+          leagueId: newAdminTeam.leagueId || undefined,
+          q: newAdminTeam.name || undefined,
+          recommendationId: recommendation.id,
+        }),
+      });
+
+      if (preview.recommendation.alreadyExists?.id) {
+        setError(`${preview.recommendation.name} already exists. Open the existing team from the Teams table instead of creating a duplicate.`);
+        return;
+      }
+
+      setNewAdminTeam((prev) => ({
+        ...prev,
+        name: preview.prefill.name || prev.name,
+        shortName: preview.prefill.shortName || prev.shortName,
+        crestUrl: preview.prefill.imageCandidates?.[0] || prev.crestUrl,
+        externalId: preview.prefill.externalId || prev.externalId,
+      }));
+    } catch (err) {
+      setNewTeamRecommendationsError(err instanceof Error ? err.message : "Failed to preview recommendation. Manual entry is still available.");
     }
   };
 
@@ -1966,6 +2300,66 @@ export default function JazzbaiSuperAdminPage() {
           googleSourceSnapshot: defaults,
           resolvedCoverImageUrl: imagePreviews.coverImageUrl || draft.resolvedCoverImageUrl,
           resolvedGalleryImageUrls: imagePreviews.galleryImageUrls.length ? imagePreviews.galleryImageUrls : draft.resolvedGalleryImageUrls,
+        },
+      };
+    });
+  }, []);
+
+  const applyGoogleDetailsToNewStadium = React.useCallback((details: GooglePlaceDetailsResponse) => {
+    const defaults = details.defaults;
+    const imagePreviews = getGoogleImagePreviewState(defaults);
+    const placeId = details.googlePlaceId || defaults.placeId;
+    const displayName = defaults.displayName || (defaults as GooglePlaceSnapshot & { name?: string }).name;
+    const addressLine1 = defaults.addressLine1
+      || defaults.formattedAddress
+      || (defaults as GooglePlaceSnapshot & { formattedAddress?: string | null }).formattedAddress;
+    setNewStadium((prev) => ({
+      ...prev,
+      googlePlaceId: placeId || prev.googlePlaceId,
+      name: displayName || prev.name,
+      addressLine1: addressLine1 || prev.addressLine1,
+      city: defaults.city || prev.city,
+      stateProvince: defaults.stateProvince || prev.stateProvince,
+      country: defaults.country || prev.country,
+      postalCode: defaults.postalCode || prev.postalCode,
+      lat: defaults.lat == null ? prev.lat : String(defaults.lat),
+      lng: defaults.lng == null ? prev.lng : String(defaults.lng),
+      website: defaults.website || prev.website,
+      shortDescription: defaults.editorialSummary || prev.shortDescription,
+      googleSourceSnapshot: defaults,
+      imageUrl: imagePreviews.coverImageUrl || prev.imageUrl,
+      heroImageUrl: imagePreviews.galleryImageUrls[0] || imagePreviews.coverImageUrl || prev.heroImageUrl,
+    }));
+  }, []);
+
+  const applyGoogleDetailsToStadiumDraft = React.useCallback((stadiumId: string, details: GooglePlaceDetailsResponse) => {
+    const defaults = details.defaults;
+    const imagePreviews = getGoogleImagePreviewState(defaults);
+    const placeId = details.googlePlaceId || defaults.placeId;
+    const displayName = defaults.displayName || (defaults as GooglePlaceSnapshot & { name?: string }).name;
+    const addressLine1 = defaults.addressLine1
+      || defaults.formattedAddress
+      || (defaults as GooglePlaceSnapshot & { formattedAddress?: string | null }).formattedAddress;
+    setStadiumDrafts((prev) => {
+      const draft = prev[stadiumId] || {};
+      return {
+        ...prev,
+        [stadiumId]: {
+          ...draft,
+          googlePlaceId: placeId || draft.googlePlaceId,
+          name: displayName || draft.name,
+          addressLine1: addressLine1 || draft.addressLine1,
+          city: defaults.city || draft.city,
+          stateProvince: defaults.stateProvince || draft.stateProvince,
+          country: defaults.country || draft.country,
+          postalCode: defaults.postalCode || draft.postalCode,
+          lat: defaults.lat == null ? draft.lat : String(defaults.lat),
+          lng: defaults.lng == null ? draft.lng : String(defaults.lng),
+          website: defaults.website || draft.website,
+          shortDescription: defaults.editorialSummary || draft.shortDescription,
+          googleSourceSnapshot: defaults,
+          imageUrl: imagePreviews.coverImageUrl || draft.imageUrl,
+          heroImageUrl: imagePreviews.galleryImageUrls[0] || imagePreviews.coverImageUrl || draft.heroImageUrl,
         },
       };
     });
@@ -2138,10 +2532,107 @@ export default function JazzbaiSuperAdminPage() {
   const customEventsCount = customEventsMeta?.total ?? customEvents.length;
   const attributesCount = attributesRows.length;
   const teamsCount = teamsMeta?.total ?? teamsRows.length;
+  const stadiumsCount = stadiumsMeta?.total ?? stadiumsRows.length;
   const sportsCount = sportsMeta?.total ?? sportsRows.length;
   const leaguesCount = adminLeaguesMeta?.total ?? adminLeagues.length;
   const matchesCount = matchesMeta?.total ?? matches.length;
   const motorsportEntriesCount = motorsportEntriesMeta?.total ?? motorsportEntries.length;
+  const teamDuplicateInfoById = (() => {
+    const groups = new Map<string, TeamAdminRow[]>();
+    for (const row of teamsRows) {
+      const normalizedName = normalizeDuplicateTeamName(row.name || "");
+      if (!normalizedName) continue;
+      const key = `${row.leagueId || "none"}::${normalizedName}`;
+      const existing = groups.get(key) || [];
+      existing.push(row);
+      groups.set(key, existing);
+    }
+
+    const info = new Map<string, TeamDuplicateInfo>();
+    for (const [groupKey, rows] of groups.entries()) {
+      if (rows.length < 2) continue;
+      const ranked = [...rows].sort((a, b) => {
+        const score = (row: TeamAdminRow) =>
+          (row.isActive ? 100 : 0)
+          + (row.enrichmentStatus === "SYNCED" ? 30 : row.enrichmentStatus === "ERROR" ? -5 : 0)
+          + (row.website ? 10 : 0)
+          + (row.heroImageUrl ? 8 : 0)
+          + (row.description ? 6 : 0)
+          + (row.shortDescription ? 4 : 0)
+          + (row.crestUrl ? 4 : 0)
+          + (row.externalId ? 2 : 0);
+        const diff = score(b) - score(a);
+        if (diff !== 0) return diff;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      const suggestedTargetId = ranked[0]?.id;
+      if (!suggestedTargetId) continue;
+      const options = ranked.map((row) => ({
+        id: row.id,
+        label: `${row.name} ${row.externalId ? `(${row.externalId})` : "(no external ID)"}${row.enrichmentStatus === "SYNCED" ? " • synced" : ""}`,
+        isSuggestedTarget: row.id === suggestedTargetId,
+      }));
+      for (const row of rows) {
+        info.set(row.id, {
+          groupKey,
+          suggestedTargetId,
+          suggestedTargetLabel: options.find((option) => option.id === suggestedTargetId)?.label || ranked[0].name,
+          duplicateCount: rows.length,
+          options: options.filter((option) => option.id !== row.id),
+        });
+      }
+    }
+    return info;
+  })();
+  const stadiumDuplicateInfoById = (() => {
+    const groups = new Map<string, StadiumAdminRow[]>();
+    for (const row of stadiumsRows) {
+      const key = normalizeDuplicateStadiumKey(row.name || "", row.city, row.country);
+      if (!key) continue;
+      const existing = groups.get(key) || [];
+      existing.push(row);
+      groups.set(key, existing);
+    }
+
+    const info = new Map<string, StadiumDuplicateInfo>();
+    for (const [groupKey, rows] of groups.entries()) {
+      if (rows.length < 2) continue;
+      const ranked = [...rows].sort((a, b) => {
+        const score = (row: StadiumAdminRow) =>
+          (row.isActive ? 100 : 0)
+          + (row.googlePlaceId ? 30 : 0)
+          + (row.googleSyncStatus === "SYNCED" ? 20 : row.googleSyncStatus === "ERROR" ? -5 : 0)
+          + (row.enrichmentStatus === "SYNCED" ? 16 : row.enrichmentStatus === "ERROR" ? -4 : 0)
+          + Math.min(Number(row.teamCount || 0), 10) * 3
+          + (row.website ? 8 : 0)
+          + (row.heroImageUrl ? 6 : 0)
+          + (row.imageUrl ? 4 : 0)
+          + (row.description ? 4 : 0)
+          + (row.shortDescription ? 2 : 0)
+          + (row.externalId ? 2 : 0);
+        const diff = score(b) - score(a);
+        if (diff !== 0) return diff;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      const suggestedTargetId = ranked[0]?.id;
+      if (!suggestedTargetId) continue;
+      const options = ranked.map((row) => ({
+        id: row.id,
+        label: `${row.name}${row.city ? ` (${row.city})` : ""}${row.googlePlaceId ? " • linked" : ""}${row.enrichmentStatus === "SYNCED" ? " • synced" : ""}`,
+        isSuggestedTarget: row.id === suggestedTargetId,
+      }));
+      for (const row of rows) {
+        info.set(row.id, {
+          groupKey,
+          suggestedTargetId,
+          suggestedTargetLabel: options.find((option) => option.id === suggestedTargetId)?.label || ranked[0].name,
+          duplicateCount: rows.length,
+          options: options.filter((option) => option.id !== row.id),
+        });
+      }
+    }
+    return info;
+  })();
   const leagueById = new Map(
     lookupLeagues.map((league) => [league.id, league]),
   );
@@ -2229,6 +2720,55 @@ export default function JazzbaiSuperAdminPage() {
 
   const toCsvList = (values?: string[] | null) => (values || []).join(", ");
   const parseCsvList = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+  const buildTeamDraft = (row: TeamAdminRow): TeamAdminDraft => ({
+    leagueId: row.leagueId || "",
+    name: row.name,
+    shortName: row.shortName || "",
+    crestUrl: row.crestUrl || "",
+    heroImageUrl: row.heroImageUrl || "",
+    website: row.website || "",
+    country: row.country || "",
+    aliases: toCsvList(row.aliases),
+    shortDescription: row.shortDescription || "",
+    description: row.description || "",
+    externalId: row.externalId || "",
+    primaryStadiumId: row.primaryStadiumId || "",
+    fanVenueIds: (row.fanPlaces || []).map((venue) => venue.id),
+    secondaryStadiumIds: (row.secondaryStadiums || []).map((stadium) => stadium.id),
+    rosterMembers: (row.rosterMembers || []).map((member, index) => ({
+      playerId: member.playerId,
+      shirtNumber: member.shirtNumber || "",
+      position: member.position || "",
+      isCaptain: Boolean(member.isCaptain),
+      sortOrder: member.sortOrder ?? index,
+      isActive: member.isActive ?? true,
+    })),
+    isActive: row.isActive,
+  });
+  const buildStadiumDraft = (row: StadiumAdminRow): StadiumAdminDraft => ({
+    name: row.name,
+    shortName: row.shortName || "",
+    imageUrl: row.imageUrl || "",
+    heroImageUrl: row.heroImageUrl || "",
+    shortDescription: row.shortDescription || "",
+    description: row.description || "",
+    website: row.website || "",
+    addressLine1: row.addressLine1 || "",
+    city: row.city || "",
+    stateProvince: row.stateProvince || "",
+    country: row.country || "",
+    postalCode: row.postalCode || "",
+    lat: row.lat ?? "",
+    lng: row.lng ?? "",
+    capacity: row.capacity ?? "",
+    openedYear: row.openedYear ?? "",
+    surface: row.surface || "",
+    aliases: toCsvList(row.aliases),
+    googlePlaceId: row.googlePlaceId || "",
+    googleSourceSnapshot: row.googleSourceSnapshot || null,
+    externalId: row.externalId || "",
+    isActive: row.isActive,
+  });
   const ensureAttributeValues = (type: VenueAttributeType, values: string[] = []) => {
     const options = [...(attributeOptionsByType.get(type) || [])];
     for (const value of values) {
@@ -2318,6 +2858,77 @@ export default function JazzbaiSuperAdminPage() {
     clearLocalImagePreviews([item.key]);
     const nextItems = items.filter((_, index) => index !== idx);
     setNewVenue((prev) => ({ ...prev, ...galleryFieldsFromItems(nextItems) }));
+  };
+
+  const uploadNewAdminTeamCrest = async (file: File) => {
+    setUploadingNewTeamCrest(true);
+    setError(null);
+    try {
+      const uploaded = await uploadSuperAdminImage(file, "entity_primary");
+      setNewAdminTeam((prev) => ({ ...prev, crestUrl: uploaded.url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Team crest upload failed");
+    } finally {
+      setUploadingNewTeamCrest(false);
+    }
+  };
+
+  const uploadTeamDraftCrest = async (teamId: string, file: File) => {
+    const row = teamsRows.find((item) => item.id === teamId);
+    if (!row) return;
+    setUploadingTeamCrestId(teamId);
+    setError(null);
+    try {
+      const uploaded = await uploadSuperAdminImage(file, "entity_primary");
+      setTeamDrafts((prev) => {
+        const baseDraft = prev[teamId] ?? buildTeamDraft(row);
+        return { ...prev, [teamId]: { ...baseDraft, crestUrl: uploaded.url } };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Team crest upload failed");
+    } finally {
+      setUploadingTeamCrestId(null);
+    }
+  };
+
+  const uploadNewLeagueLogo = async (file: File) => {
+    setUploadingNewLeagueLogo(true);
+    setError(null);
+    try {
+      const uploaded = await uploadSuperAdminImage(file, "entity_primary");
+      setNewLeague((prev) => ({ ...prev, logoUrl: uploaded.url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "League logo upload failed");
+    } finally {
+      setUploadingNewLeagueLogo(false);
+    }
+  };
+
+  const uploadLeagueDraftLogo = async (leagueId: string, file: File) => {
+    const row = adminLeagues.find((item) => item.id === leagueId);
+    if (!row) return;
+    setUploadingLeagueLogoId(leagueId);
+    setError(null);
+    try {
+      const uploaded = await uploadSuperAdminImage(file, "entity_primary");
+      setLeagueDrafts((prev) => {
+        const baseDraft = prev[leagueId] ?? {
+          sportId: row.sportId,
+          name: row.name,
+          shortName: row.shortName || "",
+          logoUrl: row.logoUrl || "",
+          externalId: row.externalId || "",
+          country: row.country || "",
+          sortOrder: row.sortOrder,
+          isActive: row.isActive,
+        };
+        return { ...prev, [leagueId]: { ...baseDraft, logoUrl: uploaded.url } };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "League logo upload failed");
+    } finally {
+      setUploadingLeagueLogoId(null);
+    }
   };
 
   const uploadVenueDraftCover = async (venueId: string, file: File) => {
@@ -2490,7 +3101,9 @@ export default function JazzbaiSuperAdminPage() {
             ["venues", "Venues"],
             ["attributes", "Attributes"],
             ["teams", "Teams"],
+            ["stadiums", "Stadiums"],
             ["players", "Players"],
+            ["motorsportEntities", "Motorsport Catalog"],
             ["events", "Match Events"],
             ["customEvents", "Custom Events"],
             ["sports", "Sports"],
@@ -2499,7 +3112,7 @@ export default function JazzbaiSuperAdminPage() {
             ["imports", "CSV Import"],
             ["matches", "Matches"],
             ["predictions", "Predictions"],
-            ["motorsportEntries", "Motorsport Entries"],
+            ["motorsportEntries", "Race Entries"],
             ["pages", "Static Pages"],
             ["blog", "Blog"],
           ] as Array<[TabId, string]>).map(([id, label]) => (
@@ -3689,16 +4302,72 @@ export default function JazzbaiSuperAdminPage() {
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Team</h2>
               </div>
-              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1.6fr 1.2fr 2fr 1.2fr 0.8fr auto" }}>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.2fr 1.2fr 1.6fr 1.2fr 2fr 1.1fr 0.8fr auto" }}>
                 <select style={inputStyle} value={newAdminTeam.leagueId} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, leagueId: e.target.value }))}>
                   <option value="">No league</option>
                   {lookupLeagues.map((league) => (
                     <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
                   ))}
                 </select>
-                <input style={inputStyle} placeholder="Team name" value={newAdminTeam.name} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, name: e.target.value }))} />
+                <select style={inputStyle} value={newAdminTeam.primaryStadiumId} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, primaryStadiumId: e.target.value }))}>
+                  <option value="">Primary stadium</option>
+                  {lookupStadiums.map((stadium) => (
+                    <option key={stadium.id} value={stadium.id}>{stadium.name}{stadium.city ? ` (${stadium.city})` : ""}</option>
+                  ))}
+                </select>
+                <div style={{ display: "grid", gap: 6 }}>
+                  <input style={inputStyle} placeholder="Team name" value={newAdminTeam.name} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, name: e.target.value }))} />
+                  <div style={{ display: "grid", gap: 6, padding: 10, borderRadius: 12, border: "1px solid var(--border)", background: "rgba(255,255,255,0.02)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                        {newAdminTeam.leagueId ? "Recommended teams for the selected league." : "Select a league to load recommended team names."}
+                      </div>
+                      {newTeamRecommendationsLoading ? <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Loading…</div> : null}
+                    </div>
+                    {newTeamRecommendationsError ? <div style={{ fontSize: 12, color: "#f59e0b" }}>{newTeamRecommendationsError}</div> : null}
+                    {newAdminTeam.leagueId && !newTeamRecommendationsLoading && newTeamRecommendations.length === 0 && !newTeamRecommendationsError ? (
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No verified suggestions. Manual entry is still available.</div>
+                    ) : null}
+                    {newTeamRecommendations.slice(0, 6).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        style={{ ...smallBtn("outline"), textAlign: "left" }}
+                        onClick={() => void applyNewTeamRecommendation(item)}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                          <span>{item.name}</span>
+                          <span style={{ fontSize: 11, opacity: 0.8 }}>{recommendationSourceLabel(item.sourceType)} | {item.confidence}</span>
+                        </div>
+                        <div style={{ fontSize: 11, opacity: 0.75, marginTop: 4 }}>
+                          {item.leagueLabel || "League recommendation"}
+                          {item.alreadyExists ? ` | already exists as ${item.alreadyExists.name}` : ""}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <input style={inputStyle} placeholder="Short name" value={newAdminTeam.shortName} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, shortName: e.target.value }))} />
-                <input style={inputStyle} placeholder="Crest URL" value={newAdminTeam.crestUrl} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, crestUrl: e.target.value }))} />
+                <div style={{ display: "grid", gap: 6 }}>
+                  <input style={inputStyle} placeholder="Crest URL" value={newAdminTeam.crestUrl} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, crestUrl: e.target.value }))} />
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <button type="button" style={smallBtn("outline", uploadingNewTeamCrest)} disabled={uploadingNewTeamCrest} onClick={() => document.getElementById("new-team-crest-upload")?.click()}>
+                      {uploadingNewTeamCrest ? "Uploading..." : "Upload Crest"}
+                    </button>
+                    <input
+                      id="new-team-crest-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void uploadNewAdminTeamCrest(file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                    {newAdminTeam.crestUrl ? <img src={newAdminTeam.crestUrl} alt="New team crest preview" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /> : null}
+                  </div>
+                </div>
                 <input style={inputStyle} placeholder="External ID" value={newAdminTeam.externalId} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, externalId: e.target.value }))} />
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                   <input type="checkbox" checked={newAdminTeam.isActive} onChange={(e) => setNewAdminTeam((prev) => ({ ...prev, isActive: e.target.checked }))} />
@@ -3732,16 +4401,19 @@ export default function JazzbaiSuperAdminPage() {
                     await superAdminFetch("/teams", {
                       method: "POST",
                       body: JSON.stringify({
-                      leagueId: newAdminTeam.leagueId || null,
-                      name: newAdminTeam.name,
-                      shortName: newAdminTeam.shortName || null,
-                      crestUrl: newAdminTeam.crestUrl || null,
-                      externalId: newAdminTeam.externalId || null,
-                      isActive: newAdminTeam.isActive,
-                      fanVenueIds: newAdminTeam.fanVenueIds,
-                    }),
-                  });
-                    setNewAdminTeam({ leagueId: "", name: "", shortName: "", crestUrl: "", externalId: "", isActive: true, fanVenueIds: [] });
+                        leagueId: newAdminTeam.leagueId || null,
+                        primaryStadiumId: newAdminTeam.primaryStadiumId || null,
+                        name: newAdminTeam.name,
+                        shortName: newAdminTeam.shortName || null,
+                        crestUrl: newAdminTeam.crestUrl || null,
+                        externalId: newAdminTeam.externalId || null,
+                        fanVenueIds: newAdminTeam.fanVenueIds,
+                        isActive: newAdminTeam.isActive,
+                      }),
+                    });
+                    setNewAdminTeam({ leagueId: "", primaryStadiumId: "", name: "", shortName: "", crestUrl: "", externalId: "", fanVenueIds: [], isActive: true });
+                    setNewTeamRecommendations([]);
+                    setNewTeamRecommendationsError(null);
                     await Promise.all([loadTeamsAdmin(), loadLookups()]);
                   })}
                 >
@@ -3768,6 +4440,7 @@ export default function JazzbaiSuperAdminPage() {
                       <th style={thStyle}>Short</th>
                       <th style={thStyle}>Crest URL</th>
                       <th style={thStyle}>External</th>
+                      <th style={thStyle}>Enrichment</th>
                       <th style={thStyle}>Active</th>
                       <th style={thStyle}>Fan Places</th>
                       <th style={thStyle}>Created</th>
@@ -3776,84 +4449,691 @@ export default function JazzbaiSuperAdminPage() {
                   </thead>
                   <tbody>
                     {teamsRows.map((row) => {
-                      const draft = teamDrafts[row.id] ?? buildTeamAdminDraft(row);
+                      const draft = teamDrafts[row.id] ?? buildTeamDraft(row);
+                      const duplicateInfo = teamDuplicateInfoById.get(row.id);
+                      const mergeTargetId = duplicateInfo
+                        ? (teamMergeTargets[row.id] || duplicateInfo.suggestedTargetId)
+                        : "";
+                      const isSuggestedTarget = duplicateInfo ? duplicateInfo.suggestedTargetId === row.id : false;
                       return (
-                        <tr key={row.id}>
-                          <td style={tdStyle}>{row.id}</td>
-                          <td style={tdStyle}>
-                            <select style={inputStyle} value={String(draft.leagueId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, leagueId: e.target.value } }))}>
-                              <option value="">No league</option>
-                              {lookupLeagues.map((league) => (
-                                <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} /></td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.crestUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, crestUrl: e.target.value } }))} /></td>
-                          <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
-                          <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
-                          <td style={{ ...tdStyle, minWidth: 280 }}>
-                            <LinkChecklist
-                              title="Fan Places"
-                              searchPlaceholder="Search venues to link"
-                              searchValue={teamVenueSearch[row.id] || ""}
-                              onSearchChange={(value) => setTeamVenueSearch((prev) => ({ ...prev, [row.id]: value }))}
-                              allOptions={lookupVenues}
-                              options={filterBySearch(lookupVenues, teamVenueSearch[row.id] || "", (venue) => `${venue.name} ${venue.city}`)}
-                              selectedIds={draft.fanVenueIds || []}
-                              onToggle={(venueId, checked) =>
-                                setTeamDrafts((prev) => ({
-                                  ...prev,
-                                  [row.id]: {
-                                    ...draft,
-                                    fanVenueIds: checked
-                                      ? Array.from(new Set([...(draft.fanVenueIds || []), venueId]))
-                                      : (draft.fanVenueIds || []).filter((id) => id !== venueId),
-                                  },
-                                }))
-                              }
-                              renderLabel={(venue) => `${venue.name}${venue.city ? ` (${venue.city})` : ""}`}
-                              emptyText="No venues match this search."
-                            />
-                          </td>
-                          <td style={tdStyle}>{formatDateTime(row.createdAt)}</td>
-                          <td style={tdStyle}>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <button
-                                style={smallBtn("primary", submittingAction === `save-team-${row.id}`)}
-                                disabled={submittingAction === `save-team-${row.id}`}
-                                onClick={() => void runAction(`save-team-${row.id}`, async () => {
-                                  await superAdminFetch(`/teams/${row.id}`, {
-                                    method: "PATCH",
-                                    body: JSON.stringify({
-                                      leagueId: draft.leagueId || null,
-                                      name: draft.name,
-                                      shortName: draft.shortName || null,
-                                      crestUrl: draft.crestUrl || null,
-                                      externalId: draft.externalId || null,
-                                      isActive: draft.isActive,
-                                      fanVenueIds: draft.fanVenueIds || [],
-                                    }),
-                                  });
-                                  await Promise.all([loadTeamsAdmin(), loadLookups()]);
-                                })}
-                              >
-                                Save
-                              </button>
-                              <button
-                                style={smallBtn("danger", submittingAction === `archive-team-${row.id}`)}
-                                disabled={submittingAction === `archive-team-${row.id}`}
-                                onClick={() => void runAction(`archive-team-${row.id}`, async () => {
-                                  await superAdminFetch(`/teams/${row.id}`, { method: "DELETE" });
-                                  await Promise.all([loadTeamsAdmin(), loadLookups()]);
-                                })}
-                              >
-                                Archive
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                        <React.Fragment key={row.id}>
+                          <tr>
+                            <td style={tdStyle}>{row.id}</td>
+                            <td style={tdStyle}>
+                              <select style={inputStyle} value={String(draft.leagueId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, leagueId: e.target.value } }))}>
+                                <option value="">No league</option>
+                                {lookupLeagues.map((league) => (
+                                  <option key={league.id} value={league.id}>{league.shortName || league.name}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td style={tdStyle}><input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} /></td>
+                            <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
+                            <td style={tdStyle}>
+                              <div style={{ display: "grid", gap: 6 }}>
+                                <input style={inputStyle} value={String(draft.crestUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, crestUrl: e.target.value } }))} />
+                                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                  <button
+                                    type="button"
+                                    style={smallBtn("outline", uploadingTeamCrestId === row.id)}
+                                    disabled={uploadingTeamCrestId === row.id}
+                                    onClick={() => document.getElementById(`team-crest-upload-${row.id}`)?.click()}
+                                  >
+                                    {uploadingTeamCrestId === row.id ? "Uploading..." : "Upload Crest"}
+                                  </button>
+                                  <input
+                                    id={`team-crest-upload-${row.id}`}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/gif"
+                                    style={{ display: "none" }}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) void uploadTeamDraftCrest(row.id, file);
+                                      e.currentTarget.value = "";
+                                    }}
+                                  />
+                                  {draft.crestUrl ? <img src={String(draft.crestUrl)} alt={`${row.name} crest preview`} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /> : null}
+                                </div>
+                              </div>
+                            </td>
+                            <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
+                            <td style={tdStyle}>
+                              <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{row.enrichedAt ? formatDateTime(row.enrichedAt) : "Not run"}</div>
+                            </td>
+                            <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
+                            <td style={{ ...tdStyle, minWidth: 280 }}>
+                              <LinkChecklist
+                                title="Fan Places"
+                                searchPlaceholder="Search venues to link"
+                                searchValue={teamVenueSearch[row.id] || ""}
+                                onSearchChange={(value) => setTeamVenueSearch((prev) => ({ ...prev, [row.id]: value }))}
+                                allOptions={lookupVenues}
+                                options={filterBySearch(lookupVenues, teamVenueSearch[row.id] || "", (venue) => `${venue.name} ${venue.city}`)}
+                                selectedIds={draft.fanVenueIds || []}
+                                onToggle={(venueId, checked) =>
+                                  setTeamDrafts((prev) => ({
+                                    ...prev,
+                                    [row.id]: {
+                                      ...draft,
+                                      fanVenueIds: checked
+                                        ? Array.from(new Set([...(draft.fanVenueIds || []), venueId]))
+                                        : (draft.fanVenueIds || []).filter((id) => id !== venueId),
+                                    },
+                                  }))
+                                }
+                                renderLabel={(venue) => `${venue.name}${venue.city ? ` (${venue.city})` : ""}`}
+                                emptyText="No venues match this search."
+                              />
+                            </td>
+                            <td style={tdStyle}>{formatDateTime(row.createdAt)}</td>
+                            <td style={tdStyle}>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                <button
+                                  style={smallBtn("primary", submittingAction === `save-team-${row.id}`)}
+                                  disabled={submittingAction === `save-team-${row.id}`}
+                                  onClick={() => void runAction(`save-team-${row.id}`, async () => {
+                                    await superAdminFetch(`/teams/${row.id}`, {
+                                      method: "PATCH",
+                                      body: JSON.stringify({
+                                        leagueId: draft.leagueId || null,
+                                        name: draft.name,
+                                        shortName: draft.shortName || null,
+                                        crestUrl: draft.crestUrl || null,
+                                        heroImageUrl: draft.heroImageUrl || null,
+                                        website: draft.website || null,
+                                        country: draft.country || null,
+                                        aliases: parseCsvList(String(draft.aliases || "")),
+                                        shortDescription: draft.shortDescription || null,
+                                        description: draft.description || null,
+                                        externalId: draft.externalId || null,
+                                        primaryStadiumId: draft.primaryStadiumId || null,
+                                        fanVenueIds: draft.fanVenueIds || [],
+                                        secondaryStadiumIds: Array.isArray(draft.secondaryStadiumIds) ? draft.secondaryStadiumIds : [],
+                                        rosterMembers: (draft.rosterMembers || []).filter((member) => member.playerId).map((member, index) => ({
+                                          playerId: member.playerId,
+                                          shirtNumber: member.shirtNumber || null,
+                                          position: member.position || null,
+                                          isCaptain: Boolean(member.isCaptain),
+                                          sortOrder: member.sortOrder ?? index,
+                                          isActive: member.isActive ?? true,
+                                        })),
+                                        isActive: draft.isActive,
+                                      }),
+                                    });
+                                    await Promise.all([loadTeamsAdmin(), loadLookups()]);
+                                  })}
+                                >
+                                  Save
+                                </button>
+                                <a href={`/teams/${row.slug}`} target="_blank" rel="noreferrer" style={{ ...smallBtn("outline"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                                  Open Page
+                                </a>
+                                <button
+                                  style={smallBtn("outline", submittingAction === `refresh-team-enrichment-${row.id}`)}
+                                  disabled={submittingAction === `refresh-team-enrichment-${row.id}`}
+                                  onClick={() => void runAction(`refresh-team-enrichment-${row.id}`, async () => {
+                                    await superAdminFetch(`/enrichment/team/${row.id}/refresh`, { method: "POST" });
+                                    await loadTeamsAdmin();
+                                  })}
+                                >
+                                  Autofill From Search
+                                </button>
+                                <button
+                                  style={smallBtn("outline", submittingAction === `seed-team-roster-${row.id}`)}
+                                  disabled={submittingAction === `seed-team-roster-${row.id}`}
+                                  onClick={() => {
+                                    if (!window.confirm("Seed this roster from existing match participants? This adds missing players based on historical matches.")) return;
+                                    void runAction(`seed-team-roster-${row.id}`, async () => {
+                                      await superAdminFetch(`/teams/${row.id}/seed-roster`, {
+                                        method: "POST",
+                                        body: JSON.stringify({ mode: "merge" }),
+                                      });
+                                      await loadTeamsAdmin();
+                                    });
+                                  }}
+                                >
+                                  Seed Roster
+                                </button>
+                                <button
+                                  style={smallBtn("danger", submittingAction === `archive-team-${row.id}`)}
+                                  disabled={submittingAction === `archive-team-${row.id}`}
+                                  onClick={() => void runAction(`archive-team-${row.id}`, async () => {
+                                    await superAdminFetch(`/teams/${row.id}`, { method: "DELETE" });
+                                    await Promise.all([loadTeamsAdmin(), loadLookups()]);
+                                  })}
+                                >
+                                  Archive
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ ...tdStyle, background: "color-mix(in oklch, var(--secondary) 92%, transparent)" }} colSpan={11}>
+                              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                                {duplicateInfo ? (
+                                  <div
+                                    style={{
+                                      gridColumn: "1 / -1",
+                                      display: "grid",
+                                      gap: 10,
+                                      padding: 12,
+                                      borderRadius: 10,
+                                      border: "1px solid rgba(245, 158, 11, 0.28)",
+                                      background: "rgba(245, 158, 11, 0.08)",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                                      <div>
+                                        <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>
+                                          Potential duplicate team record
+                                        </div>
+                                        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>
+                                          {duplicateInfo.duplicateCount} active rows in this league share the same normalized team name.
+                                          {isSuggestedTarget ? " This row is the recommended keeper." : " Merge this row into the preferred keeper or another duplicate below."}
+                                        </div>
+                                      </div>
+                                      {!isSuggestedTarget && duplicateInfo.options.length > 0 ? (
+                                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                          <select
+                                            style={{ ...inputStyle, minWidth: 260 }}
+                                            value={mergeTargetId}
+                                            onChange={(e) => setTeamMergeTargets((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                                          >
+                                            {duplicateInfo.options.map((option) => (
+                                              <option key={option.id} value={option.id}>
+                                                {option.label}{option.isSuggestedTarget ? " [recommended]" : ""}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <button
+                                            style={smallBtn("danger", submittingAction === `merge-team-${row.id}`)}
+                                            disabled={submittingAction === `merge-team-${row.id}` || !mergeTargetId}
+                                            onClick={() => {
+                                              if (!mergeTargetId) return;
+                                              if (!window.confirm("Merge this duplicate into the selected team? This moves matches, standings, and followers to the target record and archives the source row.")) return;
+                                              void runAction(`merge-team-${row.id}`, async () => {
+                                                await superAdminFetch(`/teams/${row.id}/merge`, {
+                                                  method: "POST",
+                                                  body: JSON.stringify({ targetTeamId: mergeTargetId }),
+                                                });
+                                                setTeamMergeTargets((prev) => {
+                                                  const next = { ...prev };
+                                                  delete next[row.id];
+                                                  return next;
+                                                });
+                                                await Promise.all([loadTeamsAdmin(), loadLookups()]);
+                                              });
+                                            }}
+                                          >
+                                            Merge Into Selected
+                                          </button>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                                      Suggested keeper: {duplicateInfo.suggestedTargetLabel}
+                                    </div>
+                                  </div>
+                                ) : null}
+                                <input style={inputStyle} value={String(draft.website ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, website: e.target.value } }))} placeholder="Website" />
+                                <input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} placeholder="Country" />
+                                <select
+                                  style={inputStyle}
+                                  value={String(draft.primaryStadiumId ?? "")}
+                                  onChange={(e) => setTeamDrafts((prev) => ({
+                                    ...prev,
+                                    [row.id]: {
+                                      ...draft,
+                                      primaryStadiumId: e.target.value,
+                                      secondaryStadiumIds: (draft.secondaryStadiumIds || []).filter((stadiumId) => stadiumId !== e.target.value),
+                                    },
+                                  }))}
+                                >
+                                  <option value="">Primary stadium</option>
+                                  {lookupStadiums.map((stadium) => (
+                                    <option key={stadium.id} value={stadium.id}>{stadium.name}{stadium.city ? ` (${stadium.city})` : ""}</option>
+                                  ))}
+                                </select>
+                                <label style={{ display: "grid", gap: 6 }}>
+                                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Secondary stadiums</span>
+                                  <select
+                                    multiple
+                                    style={multiSelectStyle}
+                                    value={draft.secondaryStadiumIds || []}
+                                    onChange={(e) => {
+                                      const secondaryStadiumIds = getMultiSelectValues(e.currentTarget).filter((stadiumId) => stadiumId !== draft.primaryStadiumId);
+                                      setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, secondaryStadiumIds } }));
+                                    }}
+                                  >
+                                    {lookupStadiums.filter((stadium) => stadium.id !== draft.primaryStadiumId).map((stadium) => (
+                                      <option key={stadium.id} value={stadium.id}>{stadium.name}{stadium.city ? ` (${stadium.city})` : ""}</option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <input style={{ ...inputStyle, gridColumn: "1 / -1" }} value={String(draft.heroImageUrl ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, heroImageUrl: e.target.value } }))} placeholder="Hero image URL" />
+                                <input style={{ ...inputStyle, gridColumn: "1 / -1" }} value={String(draft.aliases ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, aliases: e.target.value } }))} placeholder="Aliases (comma separated)" />
+                                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 72 }} value={String(draft.shortDescription ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortDescription: e.target.value } }))} placeholder="Short description" />
+                                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 120 }} value={String(draft.description ?? "")} onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [row.id]: { ...draft, description: e.target.value } }))} placeholder="Description" />
+                                <div style={{ gridColumn: "1 / -1", display: "grid", gap: 10, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                                    <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>Roster</div>
+                                    <button
+                                      type="button"
+                                      style={smallBtn("outline")}
+                                      onClick={() => setTeamDrafts((prev) => ({
+                                        ...prev,
+                                        [row.id]: {
+                                          ...draft,
+                                          rosterMembers: [...(draft.rosterMembers || []), { playerId: "", shirtNumber: "", position: "", isCaptain: false, sortOrder: (draft.rosterMembers || []).length, isActive: true }],
+                                        },
+                                      }))}
+                                    >
+                                      Add Player
+                                    </button>
+                                  </div>
+                                  {(draft.rosterMembers || []).length === 0 ? (
+                                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No roster members assigned.</div>
+                                  ) : (
+                                    <div style={{ display: "grid", gap: 8 }}>
+                                      {(draft.rosterMembers || []).map((member, index) => {
+                                        const eligiblePlayers = lookupPlayers.filter((player) => !draft.leagueId || !player.leagueId || player.leagueId === draft.leagueId);
+                                        return (
+                                          <div key={`${row.id}-roster-${index}`} style={{ display: "grid", gap: 8, gridTemplateColumns: "minmax(0, 2fr) 0.8fr 1fr auto auto", alignItems: "center" }}>
+                                            <select
+                                              style={inputStyle}
+                                              value={member.playerId}
+                                              onChange={(e) => setTeamDrafts((prev) => ({
+                                                ...prev,
+                                                [row.id]: {
+                                                  ...draft,
+                                                  rosterMembers: (draft.rosterMembers || []).map((item, itemIndex) => itemIndex === index ? { ...item, playerId: e.target.value } : item),
+                                                },
+                                              }))}
+                                            >
+                                              <option value="">Select player</option>
+                                              {eligiblePlayers.map((player) => (
+                                                <option key={player.id} value={player.id}>{player.name}{player.shortName ? ` (${player.shortName})` : ""}</option>
+                                              ))}
+                                            </select>
+                                            <input
+                                              style={inputStyle}
+                                              placeholder="#"
+                                              value={String(member.shirtNumber ?? "")}
+                                              onChange={(e) => setTeamDrafts((prev) => ({
+                                                ...prev,
+                                                [row.id]: {
+                                                  ...draft,
+                                                  rosterMembers: (draft.rosterMembers || []).map((item, itemIndex) => itemIndex === index ? { ...item, shirtNumber: e.target.value } : item),
+                                                },
+                                              }))}
+                                            />
+                                            <input
+                                              style={inputStyle}
+                                              placeholder="Position"
+                                              value={String(member.position ?? "")}
+                                              onChange={(e) => setTeamDrafts((prev) => ({
+                                                ...prev,
+                                                [row.id]: {
+                                                  ...draft,
+                                                  rosterMembers: (draft.rosterMembers || []).map((item, itemIndex) => itemIndex === index ? { ...item, position: e.target.value } : item),
+                                                },
+                                              }))}
+                                            />
+                                            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
+                                              <input
+                                                type="checkbox"
+                                                checked={Boolean(member.isCaptain)}
+                                                onChange={(e) => setTeamDrafts((prev) => ({
+                                                  ...prev,
+                                                  [row.id]: {
+                                                    ...draft,
+                                                    rosterMembers: (draft.rosterMembers || []).map((item, itemIndex) => itemIndex === index ? { ...item, isCaptain: e.target.checked } : item),
+                                                  },
+                                                }))}
+                                              />
+                                              Captain
+                                            </label>
+                                            <button
+                                              type="button"
+                                              style={smallBtn("danger")}
+                                              onClick={() => setTeamDrafts((prev) => ({
+                                                ...prev,
+                                                [row.id]: {
+                                                  ...draft,
+                                                  rosterMembers: (draft.rosterMembers || []).filter((_, itemIndex) => itemIndex !== index).map((item, itemIndex) => ({ ...item, sortOrder: itemIndex })),
+                                                },
+                                              }))}
+                                            >
+                                              Remove
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "stadiums" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Stadium</h2>
+              </div>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1fr 1fr 1fr auto" }}>
+                <input style={inputStyle} placeholder="Stadium name" value={String(newStadium.name ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, name: e.target.value }))} />
+                <input style={inputStyle} placeholder="Short name" value={String(newStadium.shortName ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, shortName: e.target.value }))} />
+                <input style={inputStyle} placeholder="City" value={String(newStadium.city ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, city: e.target.value }))} />
+                <input style={inputStyle} placeholder="Country" value={String(newStadium.country ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, country: e.target.value }))} />
+                <button
+                  style={smallBtn("primary", submittingAction === "create-stadium")}
+                  disabled={submittingAction === "create-stadium"}
+                  onClick={() => void runAction("create-stadium", async () => {
+                    await superAdminFetch("/stadiums", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        name: newStadium.name,
+                        shortName: newStadium.shortName || null,
+                        imageUrl: newStadium.imageUrl || null,
+                        heroImageUrl: newStadium.heroImageUrl || null,
+                        shortDescription: newStadium.shortDescription || null,
+                        description: newStadium.description || null,
+                        website: newStadium.website || null,
+                        addressLine1: newStadium.addressLine1 || null,
+                        city: newStadium.city || null,
+                        stateProvince: newStadium.stateProvince || null,
+                        country: newStadium.country || null,
+                        postalCode: newStadium.postalCode || null,
+                        lat: parseOptionalNumber(newStadium.lat as string | number | null | undefined),
+                        lng: parseOptionalNumber(newStadium.lng as string | number | null | undefined),
+                        capacity: parseOptionalNumber(newStadium.capacity as string | number | null | undefined),
+                        openedYear: parseOptionalNumber(newStadium.openedYear as string | number | null | undefined),
+                        surface: newStadium.surface || null,
+                        aliases: parseCsvList(String(newStadium.aliases || "")),
+                        googlePlaceId: newStadium.googlePlaceId || null,
+                        googleSourceSnapshot: newStadium.googleSourceSnapshot || undefined,
+                        externalId: newStadium.externalId || null,
+                        isActive: newStadium.isActive,
+                      }),
+                    });
+                    setNewStadium({
+                      name: "",
+                      shortName: "",
+                      imageUrl: "",
+                      heroImageUrl: "",
+                      shortDescription: "",
+                      description: "",
+                      website: "",
+                      addressLine1: "",
+                      city: "",
+                      stateProvince: "",
+                      country: "",
+                      postalCode: "",
+                      lat: "",
+                      lng: "",
+                      capacity: "",
+                      openedYear: "",
+                      surface: "",
+                      aliases: "",
+                      googlePlaceId: "",
+                      googleSourceSnapshot: null,
+                      externalId: "",
+                      isActive: true,
+                    });
+                    await Promise.all([loadStadiumsAdmin(), loadLookups()]);
+                  })}
+                >
+                  Create
+                </button>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <GooglePlacePicker initialPlaceId={String(newStadium.googlePlaceId ?? "")} onPlaceResolved={applyGoogleDetailsToNewStadium} />
+                </div>
+                <input style={inputStyle} placeholder="Website" value={String(newStadium.website ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, website: e.target.value }))} />
+                <input style={inputStyle} placeholder="Address" value={String(newStadium.addressLine1 ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, addressLine1: e.target.value }))} />
+                <input style={inputStyle} placeholder="State / Province" value={String(newStadium.stateProvince ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, stateProvince: e.target.value }))} />
+                <input style={inputStyle} placeholder="Postal code" value={String(newStadium.postalCode ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, postalCode: e.target.value }))} />
+                <input style={inputStyle} placeholder="External ID" value={String(newStadium.externalId ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, externalId: e.target.value }))} />
+                <input style={inputStyle} placeholder="Image URL" value={String(newStadium.imageUrl ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, imageUrl: e.target.value }))} />
+                <input style={inputStyle} placeholder="Hero image URL" value={String(newStadium.heroImageUrl ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, heroImageUrl: e.target.value }))} />
+                <input style={inputStyle} placeholder="Capacity" value={String(newStadium.capacity ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, capacity: e.target.value }))} />
+                <input style={inputStyle} placeholder="Opened year" value={String(newStadium.openedYear ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, openedYear: e.target.value }))} />
+                <input style={inputStyle} placeholder="Surface" value={String(newStadium.surface ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, surface: e.target.value }))} />
+                <input style={inputStyle} placeholder="Latitude" value={String(newStadium.lat ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, lat: e.target.value }))} />
+                <input style={inputStyle} placeholder="Longitude" value={String(newStadium.lng ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, lng: e.target.value }))} />
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <input type="checkbox" checked={Boolean(newStadium.isActive)} onChange={(e) => setNewStadium((prev) => ({ ...prev, isActive: e.target.checked }))} />
+                  Active
+                </label>
+                <input style={{ ...inputStyle, gridColumn: "1 / -1" }} placeholder="Aliases (comma separated)" value={String(newStadium.aliases ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, aliases: e.target.value }))} />
+                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 70 }} placeholder="Short description" value={String(newStadium.shortDescription ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, shortDescription: e.target.value }))} />
+                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 120 }} placeholder="Description" value={String(newStadium.description ?? "")} onChange={(e) => setNewStadium((prev) => ({ ...prev, description: e.target.value }))} />
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={sectionHeadStyle}>
+                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Stadiums ({stadiumsCount})</h2>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={stadiumsSearch} onChange={(e) => setStadiumsSearch(e.target.value)} placeholder="Search stadiums" style={{ ...inputStyle, minWidth: 220 }} />
+                  <button style={smallBtn("outline", stadiumsLoading)} onClick={() => void loadStadiumsAdmin()} disabled={stadiumsLoading}>Search</button>
+                </div>
+              </div>
+              <div style={tableWrapStyle}>
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Location</th>
+                      <th style={thStyle}>Website</th>
+                      <th style={thStyle}>Linked Teams</th>
+                      <th style={thStyle}>Google</th>
+                      <th style={thStyle}>Enrichment</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stadiumsRows.map((row) => {
+                      const draft = stadiumDrafts[row.id] ?? buildStadiumDraft(row);
+                      const duplicateInfo = stadiumDuplicateInfoById.get(row.id);
+                      const mergeTargetId = duplicateInfo
+                        ? (stadiumMergeTargets[row.id] || duplicateInfo.suggestedTargetId)
+                        : "";
+                      const isSuggestedTarget = duplicateInfo ? duplicateInfo.suggestedTargetId === row.id : false;
+                      return (
+                        <React.Fragment key={row.id}>
+                          <tr>
+                            <td style={tdStyle}>
+                              <div style={{ fontWeight: 800 }}>{row.name}</div>
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>{row.slug}</div>
+                            </td>
+                            <td style={tdStyle}>{[row.city, row.country].filter(Boolean).join(", ") || "-"}</td>
+                            <td style={tdStyle}>{row.website ? row.website.replace(/^https?:\/\//, "") : "-"}</td>
+                            <td style={tdStyle}>{row.teamCount || 0}</td>
+                            <td style={tdStyle}>
+                              <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.googleSyncStatus as "NEVER_SYNCED" | "SYNCED" | "ERROR" | undefined)}</div>
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{row.googleLastSyncedAt ? formatDateTime(row.googleLastSyncedAt) : "Not linked"}</div>
+                            </td>
+                            <td style={tdStyle}>
+                              <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
+                              <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{row.enrichedAt ? formatDateTime(row.enrichedAt) : "Not run"}</div>
+                            </td>
+                            <td style={tdStyle}>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                <button
+                                  style={smallBtn("primary", submittingAction === `save-stadium-${row.id}`)}
+                                  disabled={submittingAction === `save-stadium-${row.id}`}
+                                  onClick={() => void runAction(`save-stadium-${row.id}`, async () => {
+                                    await superAdminFetch(`/stadiums/${row.id}`, {
+                                      method: "PATCH",
+                                      body: JSON.stringify({
+                                        name: draft.name,
+                                        shortName: draft.shortName || null,
+                                        imageUrl: draft.imageUrl || null,
+                                        heroImageUrl: draft.heroImageUrl || null,
+                                        shortDescription: draft.shortDescription || null,
+                                        description: draft.description || null,
+                                        website: draft.website || null,
+                                        addressLine1: draft.addressLine1 || null,
+                                        city: draft.city || null,
+                                        stateProvince: draft.stateProvince || null,
+                                        country: draft.country || null,
+                                        postalCode: draft.postalCode || null,
+                                        lat: parseOptionalNumber(draft.lat as string | number | null | undefined),
+                                        lng: parseOptionalNumber(draft.lng as string | number | null | undefined),
+                                        capacity: parseOptionalNumber(draft.capacity as string | number | null | undefined),
+                                        openedYear: parseOptionalNumber(draft.openedYear as string | number | null | undefined),
+                                        surface: draft.surface || null,
+                                        aliases: parseCsvList(String(draft.aliases || "")),
+                                        googlePlaceId: draft.googlePlaceId || null,
+                                        googleSourceSnapshot: draft.googleSourceSnapshot || undefined,
+                                        externalId: draft.externalId || null,
+                                        isActive: draft.isActive,
+                                      }),
+                                    });
+                                    await Promise.all([loadStadiumsAdmin(), loadLookups()]);
+                                  })}
+                                >
+                                  Save
+                                </button>
+                                <a href={`/stadiums/${row.slug}`} target="_blank" rel="noreferrer" style={{ ...smallBtn("outline"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                                  Open Page
+                                </a>
+                                <button
+                                  style={smallBtn("outline", submittingAction === `refresh-stadium-enrichment-${row.id}`)}
+                                  disabled={submittingAction === `refresh-stadium-enrichment-${row.id}`}
+                                  onClick={() => void runAction(`refresh-stadium-enrichment-${row.id}`, async () => {
+                                    await superAdminFetch(`/enrichment/stadium/${row.id}/refresh`, { method: "POST" });
+                                    await loadStadiumsAdmin();
+                                  })}
+                                >
+                                  Autofill From Search
+                                </button>
+                                <button
+                                  style={smallBtn("danger", submittingAction === `archive-stadium-${row.id}`)}
+                                  disabled={submittingAction === `archive-stadium-${row.id}`}
+                                  onClick={() => void runAction(`archive-stadium-${row.id}`, async () => {
+                                    await superAdminFetch(`/stadiums/${row.id}`, { method: "DELETE" });
+                                    await Promise.all([loadStadiumsAdmin(), loadLookups()]);
+                                  })}
+                                >
+                                  Archive
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ ...tdStyle, background: "color-mix(in oklch, var(--secondary) 92%, transparent)" }} colSpan={7}>
+                              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                                {duplicateInfo ? (
+                                  <div
+                                    style={{
+                                      gridColumn: "1 / -1",
+                                      display: "grid",
+                                      gap: 10,
+                                      padding: 12,
+                                      borderRadius: 10,
+                                      border: "1px solid rgba(245, 158, 11, 0.28)",
+                                      background: "rgba(245, 158, 11, 0.08)",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                                      <div>
+                                        <div style={{ fontSize: 12, fontWeight: 800, color: "var(--foreground)" }}>
+                                          Potential duplicate stadium record
+                                        </div>
+                                        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>
+                                          {duplicateInfo.duplicateCount} active rows share the same normalized stadium name and location.
+                                          {isSuggestedTarget ? " This row is the recommended keeper." : " Merge this row into the preferred keeper or another duplicate below."}
+                                        </div>
+                                      </div>
+                                      {!isSuggestedTarget && duplicateInfo.options.length > 0 ? (
+                                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                          <select
+                                            style={{ ...inputStyle, minWidth: 260 }}
+                                            value={mergeTargetId}
+                                            onChange={(e) => setStadiumMergeTargets((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                                          >
+                                            {duplicateInfo.options.map((option) => (
+                                              <option key={option.id} value={option.id}>
+                                                {option.label}{option.isSuggestedTarget ? " [recommended]" : ""}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <button
+                                            style={smallBtn("danger", submittingAction === `merge-stadium-${row.id}`)}
+                                            disabled={submittingAction === `merge-stadium-${row.id}` || !mergeTargetId}
+                                            onClick={() => {
+                                              if (!mergeTargetId) return;
+                                              if (!window.confirm("Merge this duplicate stadium into the selected record? This moves historical matches and team links to the target and archives the source row.")) return;
+                                              void runAction(`merge-stadium-${row.id}`, async () => {
+                                                await superAdminFetch(`/stadiums/${row.id}/merge`, {
+                                                  method: "POST",
+                                                  body: JSON.stringify({ targetStadiumId: mergeTargetId }),
+                                                });
+                                                setStadiumMergeTargets((prev) => {
+                                                  const next = { ...prev };
+                                                  delete next[row.id];
+                                                  return next;
+                                                });
+                                                await Promise.all([loadStadiumsAdmin(), loadTeamsAdmin(), loadLookups()]);
+                                              });
+                                            }}
+                                          >
+                                            Merge Into Selected
+                                          </button>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                                      Suggested keeper: {duplicateInfo.suggestedTargetLabel}
+                                    </div>
+                                  </div>
+                                ) : null}
+                                <div style={{ gridColumn: "1 / -1" }}>
+                                  <GooglePlacePicker initialPlaceId={String(draft.googlePlaceId ?? "")} onPlaceResolved={(details) => applyGoogleDetailsToStadiumDraft(row.id, details)} />
+                                </div>
+                                <input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} placeholder="Name" />
+                                <input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} placeholder="Short name" />
+                                <input style={inputStyle} value={String(draft.website ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, website: e.target.value } }))} placeholder="Website" />
+                                <input style={inputStyle} value={String(draft.addressLine1 ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, addressLine1: e.target.value } }))} placeholder="Address" />
+                                <input style={inputStyle} value={String(draft.city ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, city: e.target.value } }))} placeholder="City" />
+                                <input style={inputStyle} value={String(draft.stateProvince ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, stateProvince: e.target.value } }))} placeholder="State / Province" />
+                                <input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} placeholder="Country" />
+                                <input style={inputStyle} value={String(draft.postalCode ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, postalCode: e.target.value } }))} placeholder="Postal code" />
+                                <input style={inputStyle} value={String(draft.imageUrl ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, imageUrl: e.target.value } }))} placeholder="Image URL" />
+                                <input style={inputStyle} value={String(draft.heroImageUrl ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, heroImageUrl: e.target.value } }))} placeholder="Hero image URL" />
+                                <input style={inputStyle} value={String(draft.capacity ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, capacity: e.target.value } }))} placeholder="Capacity" />
+                                <input style={inputStyle} value={String(draft.openedYear ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, openedYear: e.target.value } }))} placeholder="Opened year" />
+                                <input style={inputStyle} value={String(draft.surface ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, surface: e.target.value } }))} placeholder="Surface" />
+                                <input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} placeholder="External ID" />
+                                <input style={inputStyle} value={String(draft.lat ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, lat: e.target.value } }))} placeholder="Latitude" />
+                                <input style={inputStyle} value={String(draft.lng ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, lng: e.target.value } }))} placeholder="Longitude" />
+                                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                                  <input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} />
+                                  Active
+                                </label>
+                                <input style={{ ...inputStyle, gridColumn: "1 / -1" }} value={String(draft.aliases ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, aliases: e.target.value } }))} placeholder="Aliases (comma separated)" />
+                                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 72 }} value={String(draft.shortDescription ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortDescription: e.target.value } }))} placeholder="Short description" />
+                                <textarea style={{ ...textareaStyle, gridColumn: "1 / -1", minHeight: 120 }} value={String(draft.description ?? "")} onChange={(e) => setStadiumDrafts((prev) => ({ ...prev, [row.id]: { ...draft, description: e.target.value } }))} placeholder="Description" />
+                                <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--muted-foreground)" }}>
+                                  Linked teams: {(row.linkedTeams || []).length > 0 ? row.linkedTeams!.map((team) => `${team.name}${team.isPrimary ? " [primary]" : ""}`).join(", ") : "None"}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -4273,7 +5553,7 @@ export default function JazzbaiSuperAdminPage() {
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create League</h2>
               </div>
-              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.5fr 2fr 1.2fr 1.2fr 1.2fr 1fr auto" }}>
+              <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "1.3fr 1.8fr 1.1fr 1.8fr 1.1fr 1.1fr 0.9fr auto" }}>
                 <select style={inputStyle} value={newLeague.sportId} onChange={(e) => setNewLeague((prev) => ({ ...prev, sportId: e.target.value }))}>
                   <option value="">Sport</option>
                   {lookupSports.map((sport) => (
@@ -4282,6 +5562,26 @@ export default function JazzbaiSuperAdminPage() {
                 </select>
                 <input style={inputStyle} placeholder="League name" value={newLeague.name} onChange={(e) => setNewLeague((prev) => ({ ...prev, name: e.target.value }))} />
                 <input style={inputStyle} placeholder="Short name" value={newLeague.shortName} onChange={(e) => setNewLeague((prev) => ({ ...prev, shortName: e.target.value }))} />
+                <div style={{ display: "grid", gap: 6 }}>
+                  <input style={inputStyle} placeholder="Logo URL" value={newLeague.logoUrl} onChange={(e) => setNewLeague((prev) => ({ ...prev, logoUrl: e.target.value }))} />
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <button type="button" style={smallBtn("outline", uploadingNewLeagueLogo)} disabled={uploadingNewLeagueLogo} onClick={() => document.getElementById("new-league-logo-upload")?.click()}>
+                      {uploadingNewLeagueLogo ? "Uploading..." : "Upload Logo"}
+                    </button>
+                    <input
+                      id="new-league-logo-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void uploadNewLeagueLogo(file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                    {newLeague.logoUrl ? <img src={newLeague.logoUrl} alt="New league logo preview" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /> : null}
+                  </div>
+                </div>
                 <input style={inputStyle} placeholder="External ID" value={newLeague.externalId} onChange={(e) => setNewLeague((prev) => ({ ...prev, externalId: e.target.value }))} />
                 <input style={inputStyle} placeholder="Country" value={newLeague.country} onChange={(e) => setNewLeague((prev) => ({ ...prev, country: e.target.value }))} />
                 <input style={inputStyle} type="number" placeholder="Sort" value={newLeague.sortOrder} onChange={(e) => setNewLeague((prev) => ({ ...prev, sortOrder: e.target.value }))} />
@@ -4335,8 +5635,10 @@ export default function JazzbaiSuperAdminPage() {
                       <th style={thStyle}>Sport</th>
                       <th style={thStyle}>Name</th>
                       <th style={thStyle}>Short</th>
+                      <th style={thStyle}>Logo</th>
                       <th style={thStyle}>External ID</th>
                       <th style={thStyle}>Country</th>
+                      <th style={thStyle}>Enrichment</th>
                       <th style={thStyle}>Sort</th>
                       <th style={thStyle}>Active</th>
                       <th style={thStyle}>Actions</th>
@@ -4348,6 +5650,7 @@ export default function JazzbaiSuperAdminPage() {
                         sportId: row.sportId,
                         name: row.name,
                         shortName: row.shortName || "",
+                        logoUrl: row.logoUrl || "",
                         externalId: row.externalId || "",
                         country: row.country || "",
                         sortOrder: row.sortOrder,
@@ -4365,8 +5668,39 @@ export default function JazzbaiSuperAdminPage() {
                           </td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.name ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} /></td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.shortName ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, shortName: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <input style={inputStyle} value={String((draft as any).logoUrl ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, logoUrl: e.target.value } }))} />
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  style={smallBtn("outline", uploadingLeagueLogoId === row.id)}
+                                  disabled={uploadingLeagueLogoId === row.id}
+                                  onClick={() => document.getElementById(`league-logo-upload-${row.id}`)?.click()}
+                                >
+                                  {uploadingLeagueLogoId === row.id ? "Uploading..." : "Upload Logo"}
+                                </button>
+                                <input
+                                  id={`league-logo-upload-${row.id}`}
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp,image/gif"
+                                  style={{ display: "none" }}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) void uploadLeagueDraftLogo(row.id, file);
+                                    e.currentTarget.value = "";
+                                  }}
+                                />
+                                {(draft as any).logoUrl ? <img src={String((draft as any).logoUrl)} alt={`${row.name} logo preview`} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /> : null}
+                              </div>
+                            </div>
+                          </td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.externalId ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, externalId: e.target.value } }))} /></td>
                           <td style={tdStyle}><input style={inputStyle} value={String(draft.country ?? "")} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, country: e.target.value } }))} /></td>
+                          <td style={tdStyle}>
+                            <div style={{ fontSize: 12, color: "var(--foreground)" }}>{formatEnrichmentStatus(row.enrichmentStatus)}</div>
+                            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{row.enrichedAt ? formatDateTime(row.enrichedAt) : "Not run"}</div>
+                          </td>
                           <td style={tdStyle}><input style={inputStyle} type="number" value={String(draft.sortOrder ?? 0)} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, sortOrder: Number(e.target.value || 0) } }))} /></td>
                           <td style={tdStyle}><input type="checkbox" checked={Boolean(draft.isActive)} onChange={(e) => setLeagueDrafts((prev) => ({ ...prev, [row.id]: { ...draft, isActive: e.target.checked } }))} /></td>
                           <td style={tdStyle}>
@@ -4381,6 +5715,7 @@ export default function JazzbaiSuperAdminPage() {
                                       sportId: draft.sportId,
                                       name: draft.name,
                                       shortName: draft.shortName || null,
+                                      logoUrl: (draft as any).logoUrl || null,
                                       externalId: draft.externalId || null,
                                       country: draft.country || null,
                                       sortOrder: Number(draft.sortOrder || 0),
@@ -4391,6 +5726,38 @@ export default function JazzbaiSuperAdminPage() {
                                 })}
                               >
                                 Save
+                              </button>
+                              <a href={`/leagues/${row.slug}`} target="_blank" rel="noreferrer" style={{ ...smallBtn("outline"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                                Open Page
+                              </a>
+                              <button
+                                style={smallBtn("outline", submittingAction === `refresh-league-enrichment-${row.id}`)}
+                                disabled={submittingAction === `refresh-league-enrichment-${row.id}`}
+                                onClick={() => void runAction(`refresh-league-enrichment-${row.id}`, async () => {
+                                  await superAdminFetch(`/enrichment/league/${row.id}/refresh`, { method: "POST" });
+                                  await loadLeaguesAdmin();
+                                })}
+                              >
+                                Autofill From Search
+                              </button>
+                              <button
+                                style={smallBtn("outline", submittingAction === `batch-league-enrichment-${row.id}`)}
+                                disabled={submittingAction === `batch-league-enrichment-${row.id}`}
+                                onClick={() => void runAction(`batch-league-enrichment-${row.id}`, async () => {
+                                  await superAdminFetch(`/enrichment/league/${row.id}/batch`, {
+                                    method: "POST",
+                                    body: JSON.stringify({
+                                      includeLeague: true,
+                                      includeTeams: true,
+                                      includePlayers: true,
+                                      includeEntrants: true,
+                                      includeManufacturers: true,
+                                    }),
+                                  });
+                                  await Promise.all([loadLeaguesAdmin(), loadTeamsAdmin()]);
+                                })}
+                              >
+                                Run League Batch
                               </button>
                               <button
                                 style={smallBtn("danger", submittingAction === `archive-league-${row.id}`)}
@@ -4900,7 +6267,12 @@ export default function JazzbaiSuperAdminPage() {
           <section style={{ display: "grid", gap: 14 }}>
             <div style={{ ...cardStyle, overflow: "visible", position: "relative", zIndex: 20 }}>
               <div style={sectionHeadStyle}>
-                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Motorsport Entry</h2>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Create Race Entry</h2>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                    Use entries for event-specific participation and results. Drivers, teams, and manufacturers live in Motorsport Catalog.
+                  </div>
+                </div>
               </div>
               <div style={{ padding: 14, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                 <select style={inputStyle} value={newMotorsportEntry.matchId} onChange={(e) => setNewMotorsportEntry((prev) => ({ ...prev, matchId: e.target.value }))}>
@@ -4985,7 +6357,12 @@ export default function JazzbaiSuperAdminPage() {
 
             <div style={cardStyle}>
               <div style={sectionHeadStyle}>
-                <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Motorsport Entries ({motorsportEntriesCount})</h2>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Race Entries ({motorsportEntriesCount})</h2>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                    Entry rows are per event. Edit grid, start, finish, status, and points here.
+                  </div>
+                </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <select style={{ ...inputStyle, minWidth: 240 }} value={motorsportEntriesMatchId} onChange={(e) => setMotorsportEntriesMatchId(e.target.value)}>
                     <option value="">All motorsport events</option>
@@ -5159,6 +6536,12 @@ export default function JazzbaiSuperAdminPage() {
         {activeTab === "players" && (
           <section style={{ display: "grid", gap: 14 }}>
             <PlayersAdminPanel />
+          </section>
+        )}
+
+        {activeTab === "motorsportEntities" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <MotorsportEntitiesAdminPanel />
           </section>
         )}
 

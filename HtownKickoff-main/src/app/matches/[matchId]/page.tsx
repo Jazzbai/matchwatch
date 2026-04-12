@@ -69,6 +69,27 @@ type MatchPrediction = {
     }>;
 };
 
+function formatStageLabel(stage?: string | null, matchDay?: number | string | null) {
+    const safeStage = typeof stage === "string" ? stage.trim() : "";
+    const safeMatchDay = matchDay == null || matchDay === "" ? null : String(matchDay).trim();
+
+    if (!safeStage && !safeMatchDay) return null;
+    if (!safeStage) return safeMatchDay ? `Matchday ${safeMatchDay}` : null;
+
+    const normalizedStage = safeStage
+        .toLowerCase()
+        .replace(/_/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    if (normalizedStage === "regular season") {
+        return safeMatchDay ? `Matchday ${safeMatchDay}` : "Regular Season";
+    }
+
+    const prettyStage = normalizedStage.replace(/\b\w/g, (char) => char.toUpperCase());
+    return safeMatchDay ? `${prettyStage} - Matchday ${safeMatchDay}` : prettyStage;
+}
+
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MATCH DETAIL â€” Single page template
    Fully informative: teams, scores, lineups, stats,
@@ -348,6 +369,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
     const eventTitle = getSingleEventTitle(match, league);
     const eventSubtitle = getSingleEventSubtitle(match, league);
     const leagueVisual = getLeagueVisual(league);
+    const stageLabel = formatStageLabel(match?.stage, match?.matchDay);
 
     const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
     const isFinished = match.status === "FINISHED";
@@ -383,13 +405,17 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                 <div style={{ position: "relative", zIndex: 10, maxWidth: 700, margin: "0 auto" }}>
                     {/* League badge */}
                     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 32 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 99, backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)", fontSize: 12, fontWeight: 700, border: "1px solid var(--border)" }}>
+                        <Link
+                            href={`/leagues/${league.id}`}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 99, backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)", fontSize: 12, fontWeight: 700, border: "1px solid var(--border)", textDecoration: "none" }}
+                            aria-label={`View ${league.name}`}
+                        >
                             {league.image ? <img src={league.image} alt="" style={{ width: 20, height: 20, objectFit: "contain" }} /> : <span style={{ fontSize: 16 }}>{league.logo}</span>}
                             {league.shortName}
-                        </span>
-                        {(match?.stage || match?.matchDay) ? (
+                        </Link>
+                        {stageLabel ? (
                             <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, backgroundColor: "color-mix(in oklch, var(--background) 50%, transparent)", padding: "4px 8px", borderRadius: 99, border: "1px solid var(--border)" }}>
-                                {[match?.stage, match?.matchDay].filter(Boolean).join(" Â· ")}
+                                {stageLabel}
                             </span>
                         ) : null}
                     </div>

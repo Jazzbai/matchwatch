@@ -175,18 +175,51 @@ export const teams = pgTable('teams', {
     heroImageSource: googleFieldSourceEnum('hero_image_source').default('NONE').notNull(),
     websiteSource: googleFieldSourceEnum('website_source').default('NONE').notNull(),
     leagueId: uuid('league_id').references(() => leagues.id),
+    primaryStadiumId: uuid('primary_stadium_id').references(() => stadiums.id),
     externalId: varchar('external_id', { length: 20 }).unique(),
     isActive: boolean('is_active').default(true).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
     index('teams_league_idx').on(table.leagueId),
+    index('teams_primary_stadium_idx').on(table.primaryStadiumId),
 ]);
 
 export const stadiums = pgTable('stadiums', {
     id: uuid('id').primaryKey().defaultRandom(),
     name: varchar('name', { length: 200 }).notNull(),
+    slug: varchar('slug', { length: 180 }).notNull().unique(),
+    shortName: varchar('short_name', { length: 80 }),
+    imageUrl: varchar('image_url'),
+    heroImageUrl: varchar('hero_image_url'),
+    shortDescription: varchar('short_description', { length: 280 }),
+    description: text('description'),
+    website: varchar('website', { length: 255 }),
+    addressLine1: varchar('address_line1', { length: 255 }),
     city: varchar('city', { length: 100 }),
+    stateProvince: varchar('state_province', { length: 100 }),
     country: varchar('country', { length: 100 }),
+    postalCode: varchar('postal_code', { length: 20 }),
+    lat: decimal('lat', { precision: 10, scale: 8 }),
+    lng: decimal('lng', { precision: 11, scale: 8 }),
+    capacity: integer('capacity'),
+    openedYear: integer('opened_year'),
+    surface: varchar('surface', { length: 80 }),
+    aliases: text('aliases').array().default([]),
+    socialLinks: jsonb('social_links').default([]),
+    enrichmentSnapshot: jsonb('enrichment_snapshot').default({}),
+    enrichedAt: timestamp('enriched_at'),
+    enrichmentStatus: enrichmentStatusEnum('enrichment_status').default('NEVER_SYNCED').notNull(),
+    enrichmentError: text('enrichment_error'),
+    shortDescriptionSource: googleFieldSourceEnum('short_description_source').default('NONE').notNull(),
+    descriptionSource: googleFieldSourceEnum('description_source').default('NONE').notNull(),
+    imageSource: googleFieldSourceEnum('image_source').default('NONE').notNull(),
+    heroImageSource: googleFieldSourceEnum('hero_image_source').default('NONE').notNull(),
+    websiteSource: googleFieldSourceEnum('website_source').default('NONE').notNull(),
+    googlePlaceId: varchar('google_place_id', { length: 255 }),
+    googleSourceSnapshot: jsonb('google_source_snapshot').default({}),
+    googleLastSyncedAt: timestamp('google_last_synced_at'),
+    googleSyncStatus: googleSyncStatusEnum('google_sync_status').default('NEVER_SYNCED').notNull(),
+    googleSyncError: text('google_sync_error'),
     externalId: varchar('external_id', { length: 50 }).unique(),
     isActive: boolean('is_active').default(true).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -194,6 +227,39 @@ export const stadiums = pgTable('stadiums', {
 }, (table) => [
     index('stadiums_name_idx').on(table.name),
     index('stadiums_city_idx').on(table.city),
+    uniqueIndex('stadiums_google_place_id_unique').on(table.googlePlaceId),
+]);
+
+export const teamStadiumLinks = pgTable('team_stadium_links', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+    stadiumId: uuid('stadium_id').notNull().references(() => stadiums.id, { onDelete: 'cascade' }),
+    isPrimary: boolean('is_primary').default(false).notNull(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('team_stadium_links_team_stadium_unique').on(table.teamId, table.stadiumId),
+    index('team_stadium_links_team_idx').on(table.teamId),
+    index('team_stadium_links_stadium_idx').on(table.stadiumId),
+]);
+
+export const teamRosterMembers = pgTable('team_roster_members', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+    playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+    shirtNumber: varchar('shirt_number', { length: 12 }),
+    position: varchar('position', { length: 60 }),
+    isCaptain: boolean('is_captain').default(false).notNull(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('team_roster_members_team_player_unique').on(table.teamId, table.playerId),
+    index('team_roster_members_team_idx').on(table.teamId),
+    index('team_roster_members_player_idx').on(table.playerId),
 ]);
 
 // ─── Matches ────────────────────────────────────
@@ -253,7 +319,7 @@ export const drivers = pgTable('drivers', {
     enrichmentError: text('enrichment_error'),
     shortDescriptionSource: googleFieldSourceEnum('short_description_source').default('NONE').notNull(),
     descriptionSource: googleFieldSourceEnum('description_source').default('NONE').notNull(),
-    headshotSource: googleFieldSourceEnum('logo_source').default('NONE').notNull(),
+    headshotSource: googleFieldSourceEnum('headshot_source').default('NONE').notNull(),
     heroImageSource: googleFieldSourceEnum('hero_image_source').default('NONE').notNull(),
     websiteSource: googleFieldSourceEnum('website_source').default('NONE').notNull(),
     isActive: boolean('is_active').default(true).notNull(),
@@ -326,6 +392,18 @@ export const manufacturers = pgTable('manufacturers', {
     index('manufacturers_name_idx').on(table.name),
 ]);
 
+export const entitySlugRedirects = pgTable('entity_slug_redirects', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    entityType: varchar('entity_type', { length: 40 }).notNull(),
+    entityId: uuid('entity_id').notNull(),
+    slug: varchar('slug', { length: 180 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('entity_slug_redirects_type_slug_unique').on(table.entityType, table.slug),
+    index('entity_slug_redirects_entity_idx').on(table.entityType, table.entityId),
+]);
+
 export const eventEntries = pgTable('event_entries', {
     id: uuid('id').primaryKey().defaultRandom(),
     matchId: uuid('match_id').notNull().references(() => matches.id, { onDelete: 'cascade' }),
@@ -373,7 +451,7 @@ export const players = pgTable('players', {
     enrichmentError: text('enrichment_error'),
     shortDescriptionSource: googleFieldSourceEnum('short_description_source').default('NONE').notNull(),
     descriptionSource: googleFieldSourceEnum('description_source').default('NONE').notNull(),
-    headshotSource: googleFieldSourceEnum('logo_source').default('NONE').notNull(),
+    headshotSource: googleFieldSourceEnum('headshot_source').default('NONE').notNull(),
     heroImageSource: googleFieldSourceEnum('hero_image_source').default('NONE').notNull(),
     websiteSource: googleFieldSourceEnum('website_source').default('NONE').notNull(),
     isActive: boolean('is_active').default(true).notNull(),
@@ -1027,9 +1105,12 @@ export const leaguesRelations = relations(leagues, ({ one, many }) => ({
 
 export const teamsRelations = relations(teams, ({ one, many }) => ({
     league: one(leagues, { fields: [teams.leagueId], references: [leagues.id] }),
+    primaryStadium: one(stadiums, { fields: [teams.primaryStadiumId], references: [stadiums.id], relationName: 'teamPrimaryStadium' }),
     standingsRows: many(standingsRows),
     matchParticipants: many(matchParticipants),
     fanVenueLinks: many(teamFanVenues),
+    stadiumLinks: many(teamStadiumLinks),
+    rosterMembers: many(teamRosterMembers),
 }));
 
 export const teamFanVenuesRelations = relations(teamFanVenues, ({ one }) => ({
@@ -1063,6 +1144,8 @@ export const eventEntriesRelations = relations(eventEntries, ({ one }) => ({
 
 export const stadiumsRelations = relations(stadiums, ({ many }) => ({
     matches: many(matches),
+    primaryTeams: many(teams, { relationName: 'teamPrimaryStadium' }),
+    teamLinks: many(teamStadiumLinks),
 }));
 
 export const playersRelations = relations(players, ({ one, many }) => ({
@@ -1070,6 +1153,17 @@ export const playersRelations = relations(players, ({ one, many }) => ({
     league: one(leagues, { fields: [players.leagueId], references: [leagues.id] }),
     standingsRows: many(standingsRows),
     matchParticipants: many(matchParticipants),
+    rosterMemberships: many(teamRosterMembers),
+}));
+
+export const teamStadiumLinksRelations = relations(teamStadiumLinks, ({ one }) => ({
+    team: one(teams, { fields: [teamStadiumLinks.teamId], references: [teams.id] }),
+    stadium: one(stadiums, { fields: [teamStadiumLinks.stadiumId], references: [stadiums.id] }),
+}));
+
+export const teamRosterMembersRelations = relations(teamRosterMembers, ({ one }) => ({
+    team: one(teams, { fields: [teamRosterMembers.teamId], references: [teams.id] }),
+    player: one(players, { fields: [teamRosterMembers.playerId], references: [players.id] }),
 }));
 
 export const leagueSeasonsRelations = relations(leagueSeasons, ({ one, many }) => ({
