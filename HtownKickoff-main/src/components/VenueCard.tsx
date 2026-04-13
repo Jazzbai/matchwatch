@@ -24,6 +24,14 @@ export interface VenueCardProps {
     isVerified?: boolean;
     isFeatured?: boolean;
     nextEvent?: string;
+    fanTeams?: Array<{
+        teamId: string;
+        teamName: string;
+        teamShortName?: string | null;
+        teamSlug: string;
+        teamCrestUrl?: string | null;
+        leagueName?: string | null;
+    }>;
     onClick?: () => void;
     onBookNow?: () => void;
 }
@@ -77,6 +85,7 @@ export function VenueCard({
     isVerified,
     isFeatured,
     nextEvent,
+    fanTeams,
     onClick,
     onBookNow,
 }: VenueCardProps) {
@@ -255,6 +264,47 @@ export function VenueCard({
                         </span>
                     ))}
                 </div>
+
+                {/* Fan team badge */}
+                {fanTeams && fanTeams.length > 0 && (
+                    <div style={{
+                        display: "flex", alignItems: "center", gap: 7,
+                        marginTop: 10, paddingTop: 10,
+                        borderTop: "1px solid var(--border)",
+                        flexWrap: "wrap",
+                    }}>
+                        {fanTeams.slice(0, 2).map((ft) => (
+                            <div key={ft.teamId} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                {ft.teamCrestUrl && (
+                                    <img
+                                        src={ft.teamCrestUrl}
+                                        alt={ft.teamName}
+                                        style={{ width: 18, height: 18, objectFit: "contain", flexShrink: 0 }}
+                                    />
+                                )}
+                                <span style={{
+                                    fontSize: 10, fontWeight: 700,
+                                    color: "var(--primary)",
+                                    whiteSpace: "nowrap",
+                                }}>
+                                    {ft.teamShortName ?? ft.teamName}
+                                </span>
+                            </div>
+                        ))}
+                        {fanTeams.length > 2 && (
+                            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--muted-foreground)" }}>
+                                +{fanTeams.length - 2} more
+                            </span>
+                        )}
+                        <span style={{
+                            fontSize: 10, fontWeight: 600,
+                            color: "var(--muted-foreground)",
+                            marginLeft: 2,
+                        }}>
+                            Watch Party
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Footer */}

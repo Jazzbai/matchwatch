@@ -238,6 +238,14 @@ export interface Venue {
     descriptionSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
     shortDescriptionSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
     priceRangeSource?: "NONE" | "GOOGLE" | "MANUAL" | null;
+    fanTeams?: Array<{
+        teamId: string;
+        teamName: string;
+        teamShortName?: string | null;
+        teamSlug: string;
+        teamCrestUrl?: string | null;
+        leagueName?: string | null;
+    }>;
 }
 
 export const AMENITY_LABELS: Record<string, { icon: string; label: string }> = {

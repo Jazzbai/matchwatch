@@ -3320,73 +3320,153 @@ superAdminRoutes.get('/venues', async (c) => {
             ilike(venues.name, `%${search}%`),
             ilike(venues.city, `%${search}%`),
             ilike(venues.addressLine1, `%${search}%`),
+            ilike(venues.slug, `%${search}%`),
         )
         : undefined;
 
-    const [rows, [totalResult]] = await Promise.all([
-        db.select({
-            id: venues.id,
-            ownerId: venues.ownerId,
-            ownerEmail: users.email,
-            ownerName: users.name,
-            name: venues.name,
-            slug: venues.slug,
-            description: venues.description,
-            descriptionSource: venues.descriptionSource,
-            shortDescription: venues.shortDescription,
-            shortDescriptionSource: venues.shortDescriptionSource,
-            addressLine1: venues.addressLine1,
-            addressLine2: venues.addressLine2,
-            city: venues.city,
-            stateProvince: venues.stateProvince,
-            country: venues.country,
-            postalCode: venues.postalCode,
-            lat: venues.lat,
-            lng: venues.lng,
-            timezone: venues.timezone,
-            coverImageUrl: venues.coverImageUrl,
-            coverImageS3Key: venues.coverImageS3Key,
-            galleryS3Keys: venues.galleryS3Keys,
-            phone: venues.phone,
-            website: venues.website,
-            instagramHandle: venues.instagramHandle,
-            googleMapsUrl: venues.googleMapsUrl,
-            googlePlaceId: venues.googlePlaceId,
-            approvalStatus: venues.approvalStatus,
-            approvalNotes: venues.approvalNotes,
-            menuSource: venues.menuSource,
-            capacity: venues.capacity,
-            amenities: venues.amenities,
-            vibes: venues.vibes,
-            cuisineTags: venues.cuisineTags,
-            priceRange: venues.priceRange,
-            priceRangeSource: venues.priceRangeSource,
-            ratingOverride: venues.ratingOverride,
-            reviewCountOverride: venues.reviewCountOverride,
-            googleSourceSnapshot: venues.googleSourceSnapshot,
-            metadata: venues.metadata,
-            isActive: venues.isActive,
-            isVerified: venues.isVerified,
-            isFeatured: venues.isFeatured,
-            createdAt: venues.createdAt,
-            updatedAt: venues.updatedAt,
-        })
-            .from(venues)
-            .leftJoin(users, eq(venues.ownerId, users.id))
-            .where(where)
-            .orderBy(desc(venues.createdAt))
-            .limit(limit)
-            .offset(offset),
-        db.select({ count: count() }).from(venues).where(where),
-    ]);
+    try {
+        const [rows, [totalResult]] = await Promise.all([
+            db.select({
+                id: venues.id,
+                ownerId: venues.ownerId,
+                ownerEmail: users.email,
+                ownerName: users.name,
+                name: venues.name,
+                slug: venues.slug,
+                description: venues.description,
+                descriptionSource: venues.descriptionSource,
+                shortDescription: venues.shortDescription,
+                shortDescriptionSource: venues.shortDescriptionSource,
+                addressLine1: venues.addressLine1,
+                addressLine2: venues.addressLine2,
+                city: venues.city,
+                stateProvince: venues.stateProvince,
+                country: venues.country,
+                postalCode: venues.postalCode,
+                lat: venues.lat,
+                lng: venues.lng,
+                timezone: venues.timezone,
+                coverImageUrl: venues.coverImageUrl,
+                coverImageS3Key: venues.coverImageS3Key,
+                galleryS3Keys: venues.galleryS3Keys,
+                phone: venues.phone,
+                website: venues.website,
+                instagramHandle: venues.instagramHandle,
+                googleMapsUrl: venues.googleMapsUrl,
+                googlePlaceId: venues.googlePlaceId,
+                approvalStatus: venues.approvalStatus,
+                approvalNotes: venues.approvalNotes,
+                menuSource: venues.menuSource,
+                capacity: venues.capacity,
+                amenities: venues.amenities,
+                vibes: venues.vibes,
+                cuisineTags: venues.cuisineTags,
+                priceRange: venues.priceRange,
+                priceRangeSource: venues.priceRangeSource,
+                ratingOverride: venues.ratingOverride,
+                reviewCountOverride: venues.reviewCountOverride,
+                googleSourceSnapshot: venues.googleSourceSnapshot,
+                metadata: venues.metadata,
+                isActive: venues.isActive,
+                isVerified: venues.isVerified,
+                isFeatured: venues.isFeatured,
+                createdAt: venues.createdAt,
+                updatedAt: venues.updatedAt,
+            })
+                .from(venues)
+                .leftJoin(users, eq(venues.ownerId, users.id))
+                .where(where)
+                .orderBy(desc(venues.createdAt))
+                .limit(limit)
+                .offset(offset),
+            db.select({ count: count() }).from(venues).where(where),
+        ]);
 
-    const mapped = rows.map(mapVenueRow);
-    const fanTeamsByVenueId = await loadFanTeamsForVenues(mapped.map((row) => row.id));
+        const mapped = rows.map(mapVenueRow);
+        let fanTeamsByVenueId = new Map<string, AdminFanTeamSummary[]>();
+        try {
+            fanTeamsByVenueId = await loadFanTeamsForVenues(mapped.map((row) => row.id));
+        } catch {
+            // team_fan_venues table may not exist yet — migrations pending
+        }
 
-    return c.json(apiResponse(mapped.map((row) => ({
-        ...row,
-        fanTeams: fanTeamsByVenueId.get(row.id) || [],
-    })), paginationMeta(page, limit, Number(totalResult?.count || 0))));
+        return c.json(apiResponse(mapped.map((row) => ({
+            ...row,
+            fanTeams: fanTeamsByVenueId.get(row.id) || [],
+        })), paginationMeta(page, limit, Number(totalResult?.count || 0))));
+    } catch (err: unknown) {
+        // If the query fails (e.g. a pending migration added a new column not yet in DB),
+        // fall back to a minimal query so the list still loads.
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const isColumnError = errMsg.includes('column') || errMsg.includes('does not exist') || errMsg.includes('relation');
+        if (!isColumnError) throw err;
+
+        const [fallbackRows, [fallbackTotal]] = await Promise.all([
+            db.select({
+                id: venues.id,
+                ownerId: venues.ownerId,
+                ownerEmail: users.email,
+                ownerName: users.name,
+                name: venues.name,
+                slug: venues.slug,
+                description: venues.description,
+                shortDescription: venues.shortDescription,
+                addressLine1: venues.addressLine1,
+                addressLine2: venues.addressLine2,
+                city: venues.city,
+                stateProvince: venues.stateProvince,
+                country: venues.country,
+                postalCode: venues.postalCode,
+                lat: venues.lat,
+                lng: venues.lng,
+                timezone: venues.timezone,
+                coverImageUrl: venues.coverImageUrl,
+                coverImageS3Key: venues.coverImageS3Key,
+                galleryS3Keys: venues.galleryS3Keys,
+                phone: venues.phone,
+                website: venues.website,
+                instagramHandle: venues.instagramHandle,
+                googleMapsUrl: venues.googleMapsUrl,
+                googlePlaceId: venues.googlePlaceId,
+                approvalStatus: venues.approvalStatus,
+                approvalNotes: venues.approvalNotes,
+                capacity: venues.capacity,
+                amenities: venues.amenities,
+                cuisineTags: venues.cuisineTags,
+                priceRange: venues.priceRange,
+                metadata: venues.metadata,
+                isActive: venues.isActive,
+                isVerified: venues.isVerified,
+                isFeatured: venues.isFeatured,
+                createdAt: venues.createdAt,
+                updatedAt: venues.updatedAt,
+            })
+                .from(venues)
+                .leftJoin(users, eq(venues.ownerId, users.id))
+                .where(where)
+                .orderBy(desc(venues.createdAt))
+                .limit(limit)
+                .offset(offset),
+            db.select({ count: count() }).from(venues).where(where),
+        ]);
+
+        const mapped = fallbackRows.map((row) => mapVenueRow({
+            ...row,
+            descriptionSource: null,
+            shortDescriptionSource: null,
+            priceRangeSource: null,
+            menuSource: null,
+            ratingOverride: null,
+            reviewCountOverride: null,
+            googleSourceSnapshot: null,
+            vibes: [],
+        }));
+
+        return c.json(apiResponse(mapped.map((row) => ({
+            ...row,
+            fanTeams: [],
+        })), paginationMeta(page, limit, Number(fallbackTotal?.count || 0))));
+    }
 });
 
 superAdminRoutes.post('/venues', async (c) => {

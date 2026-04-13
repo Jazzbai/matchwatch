@@ -244,6 +244,29 @@ venueRoutes.get('/', async (c) => {
         : [];
     const eventCountMap = new Map(eventCounts.map(e => [e.venueId, Number(e.cnt)]));
 
+    // Batch-fetch fan teams for all venues in one query
+    const fanTeamRows = venueIds.length > 0
+        ? await db.select({
+            venueId: teamFanVenues.venueId,
+            teamId: teams.id,
+            teamName: teams.name,
+            teamShortName: teams.shortName,
+            teamSlug: teams.slug,
+            teamCrestUrl: teams.crestUrl,
+            leagueName: leagues.shortName,
+        })
+            .from(teamFanVenues)
+            .innerJoin(teams, eq(teamFanVenues.teamId, teams.id))
+            .leftJoin(leagues, eq(teams.leagueId, leagues.id))
+            .where(inArray(teamFanVenues.venueId, venueIds))
+        : [];
+    const fanTeamsByVenue = new Map<string, typeof fanTeamRows>();
+    for (const row of fanTeamRows) {
+        const existing = fanTeamsByVenue.get(row.venueId) ?? [];
+        existing.push(row);
+        fanTeamsByVenue.set(row.venueId, existing);
+    }
+
     const results = rows.map((v) => {
         const distance = lat && lng
             ? haversineDistance(lat, lng, Number(v.lat), Number(v.lng))
@@ -279,6 +302,14 @@ venueRoutes.get('/', async (c) => {
             capacity: v.capacity,
             upcomingEventsCount: eventCountMap.get(v.id) ?? 0,
             distance: distance ? `${distance.toFixed(1)} km` : null,
+            fanTeams: (fanTeamsByVenue.get(v.id) ?? []).map(ft => ({
+                teamId: ft.teamId,
+                teamName: ft.teamName,
+                teamShortName: ft.teamShortName,
+                teamSlug: ft.teamSlug,
+                teamCrestUrl: ft.teamCrestUrl,
+                leagueName: ft.leagueName,
+            })),
         };
     });
 

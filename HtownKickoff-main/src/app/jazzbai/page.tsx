@@ -1392,6 +1392,7 @@ export default function JazzbaiSuperAdminPage() {
   const [venuesMeta, setVenuesMeta] = React.useState<ApiListMeta | null>(null);
   const [venuesSearch, setVenuesSearch] = React.useState("");
   const [venuesLoading, setVenuesLoading] = React.useState(false);
+  const [venuesError, setVenuesError] = React.useState<string | null>(null);
   const [venueDrafts, setVenueDrafts] = React.useState<Record<string, VenueEditorDraft>>({});
   const [venueTeamSearch, setVenueTeamSearch] = React.useState<Record<string, string>>({});
   const [businessApprovals, setBusinessApprovals] = React.useState<BusinessApprovalRow[]>([]);
@@ -1735,6 +1736,7 @@ export default function JazzbaiSuperAdminPage() {
 
   const loadVenues = React.useCallback(async () => {
     setVenuesLoading(true);
+    setVenuesError(null);
     try {
       const response = await fetch(`/api/v1/super-admin/venues?page=1&limit=100&search=${encodeURIComponent(venuesSearch.trim())}`, {
         credentials: "include",
@@ -1743,6 +1745,9 @@ export default function JazzbaiSuperAdminPage() {
       if (!response.ok || !payload?.success) throw new Error(formatApiErrorMessage(payload, "Failed to load venues"));
       setVenues(payload.data || []);
       setVenuesMeta(payload.meta || null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to load venues";
+      setVenuesError(msg);
     } finally {
       setVenuesLoading(false);
     }
@@ -3816,10 +3821,21 @@ export default function JazzbaiSuperAdminPage() {
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Venues ({venuesCount})</h2>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <input value={venuesSearch} onChange={(e) => setVenuesSearch(e.target.value)} placeholder="Search venues" style={{ ...inputStyle, minWidth: 220 }} />
+                  <input
+                    value={venuesSearch}
+                    onChange={(e) => setVenuesSearch(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") void loadVenues(); }}
+                    placeholder="Search venues"
+                    style={{ ...inputStyle, minWidth: 220 }}
+                  />
                   <button style={smallBtn("outline", venuesLoading)} onClick={() => void loadVenues()} disabled={venuesLoading}>Search</button>
                 </div>
               </div>
+              {venuesError && (
+                <div style={{ padding: "10px 14px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, margin: "0 14px", fontSize: 12, color: "#ef4444" }}>
+                  Error loading venues: {venuesError}
+                </div>
+              )}
               <div style={{ padding: 14, display: "grid", gap: 12 }}>
                 {venues.map((row) => {
                   const draft = venueDrafts[row.id] ?? buildVenueEditorDraft(row);

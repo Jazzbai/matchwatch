@@ -813,6 +813,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             descriptionSource: null,
             shortDescriptionSource: null,
             priceRangeSource: null,
+            fanTeams: Array.isArray((v as any).fanTeams) ? (v as any).fanTeams : [],
         } satisfies Venue);
         });
 
@@ -898,6 +899,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 descriptionSource: detail?.descriptionSource ?? row.venue.descriptionSource ?? null,
                 shortDescriptionSource: detail?.shortDescriptionSource ?? row.venue.shortDescriptionSource ?? null,
                 priceRangeSource: detail?.priceRangeSource ?? row.venue.priceRangeSource ?? null,
+                fanTeams: row.venue.fanTeams ?? [],
             });
 
             for (const ev of events) {

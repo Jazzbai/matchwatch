@@ -613,6 +613,7 @@ function VenuesPageContent() {
                             isFeatured: venue.isFeatured,
                             spotsRemaining: null,
                             nextEvent: `${venue.upcomingEventsCount} upcoming events`,
+                            fanTeams: venue.fanTeams ?? [],
                         }))}
                         onVenueClick={(index) => {
                             const venue = paginatedVenues[index];
