@@ -200,6 +200,37 @@ venueRoutes.get('/:slugOrId/google-photo', async (c) => {
         return c.json(apiError('SERVICE_UNAVAILABLE', message), 503);
     }
 });
+// ─── GET /cities ─────────────────────────────────────────────────────────────
+// Returns distinct city names for AJAX city filter search.
+// Query params: q (search), states[] (abbreviation or full name, optional)
+venueRoutes.get('/cities', async (c) => {
+    const q = (c.req.query('q') || '').trim();
+    const statesRaw = c.req.queries('states[]') ?? [];
+
+    const conditions = [
+        eq(venues.isActive, true),
+        eq(venues.approvalStatus, 'APPROVED'),
+        sql`${venues.city} IS NOT NULL AND ${venues.city} != ''`,
+    ];
+
+    if (q) {
+        conditions.push(ilike(venues.city, `%${q}%`));
+    }
+
+    if (statesRaw.length > 0) {
+        conditions.push(inArray(venues.stateProvince, statesRaw));
+    }
+
+    const rows = await db
+        .selectDistinct({ city: venues.city })
+        .from(venues)
+        .where(and(...conditions))
+        .orderBy(asc(venues.city))
+        .limit(50);
+
+    return c.json({ success: true, data: rows.map((r) => r.city).filter(Boolean) });
+});
+
 venueRoutes.get('/', async (c) => {
     const query = venueQuerySchema.safeParse(c.req.query());
     if (!query.success) {

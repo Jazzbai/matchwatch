@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, Search } from "lucide-react";
@@ -10,6 +10,30 @@ import { PaginationControls } from "../../components/PaginationControls";
 import { AMENITY_LABELS } from "../../lib/data";
 import { useData, type PriceRange, type Venue } from "../../lib/data-provider";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
+
+// US state full name → 2-letter abbreviation
+const STATE_ABBREV: Record<string, string> = {
+    "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
+    "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA",
+    "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA",
+    "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
+    "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS",
+    "Missouri": "MO", "Montana": "MT", "Nebraska": "NE", "Nevada": "NV",
+    "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY",
+    "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH", "Oklahoma": "OK",
+    "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
+    "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT",
+    "Vermont": "VT", "Virginia": "VA", "Washington": "WA", "West Virginia": "WV",
+    "Wisconsin": "WI", "Wyoming": "WY", "District of Columbia": "DC",
+};
+
+function normalizeStateToAbbrev(state: string): string {
+    const trimmed = state.trim();
+    if (!trimmed) return "";
+    // Already an abbreviation (1-2 uppercase letters)
+    if (/^[A-Z]{2}$/.test(trimmed)) return trimmed;
+    return STATE_ABBREV[trimmed] ?? trimmed.toUpperCase().slice(0, 2);
+}
 
 const PRICE_OPTIONS: Array<{ value: PriceRange; label: string }> = [
     { value: "BUDGET", label: "Budget" },
@@ -254,14 +278,16 @@ function VenuesPageContent() {
 
     const activeVenues = useMemo(() => VENUES.filter((venue) => venue.isActive), [VENUES]);
     const stateOptions = useMemo(
-        () => Array.from(new Set(activeVenues.map((venue) => normalizeFilterValue(venue.state)).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+        () => Array.from(new Set(
+            activeVenues.map((venue) => normalizeStateToAbbrev(normalizeFilterValue(venue.state))).filter(Boolean)
+        )).sort((a, b) => a.localeCompare(b)),
         [activeVenues],
     );
-    const cityOptions = useMemo(() => {
-        if (selectedStates.length === 0) return [];
-        const narrowedVenues = activeVenues.filter((venue) => selectedStates.includes(normalizeFilterValue(venue.state)));
-        return Array.from(new Set(narrowedVenues.map((venue) => normalizeFilterValue(venue.city)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-    }, [activeVenues, selectedStates]);
+
+    // AJAX city search state
+    const [ajaxCities, setAjaxCities] = useState<string[]>([]);
+    const [ajaxCitiesLoading, setAjaxCitiesLoading] = useState(false);
+    const cityFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const amenityOptions = useMemo(
         () => Object.entries(AMENITY_LABELS)
             .filter(([key]) => activeVenues.some((venue) => venue.amenities.includes(key)))
@@ -273,11 +299,38 @@ function VenuesPageContent() {
         if (!query) return stateOptions;
         return stateOptions.filter((state) => state.toLowerCase().includes(query));
     }, [stateOptions, stateSearchQuery]);
-    const filteredCityOptions = useMemo(() => {
-        const query = citySearchQuery.trim().toLowerCase();
-        if (!query) return cityOptions;
-        return cityOptions.filter((city) => city.toLowerCase().includes(query));
-    }, [cityOptions, citySearchQuery]);
+
+    // Fetch cities from API (debounced, AJAX)
+    const fetchCities = useCallback((query: string, states: string[]) => {
+        if (cityFetchTimer.current) clearTimeout(cityFetchTimer.current);
+        cityFetchTimer.current = setTimeout(async () => {
+            setAjaxCitiesLoading(true);
+            try {
+                const params = new URLSearchParams();
+                if (query) params.set("q", query);
+                // Send raw state values (both abbrevs and full) so backend can match
+                for (const abbrev of states) {
+                    // Find full names that map to this abbreviation to cast a wide net
+                    const fullNames = Object.entries(STATE_ABBREV)
+                        .filter(([, v]) => v === abbrev)
+                        .map(([k]) => k);
+                    params.append("states[]", abbrev);
+                    for (const full of fullNames) params.append("states[]", full);
+                }
+                const res = await fetch(`/api/v1/venues/cities?${params.toString()}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    setAjaxCities(Array.isArray(json.data) ? json.data : []);
+                }
+            } catch {
+                // silently ignore
+            } finally {
+                setAjaxCitiesLoading(false);
+            }
+        }, 250);
+    }, []);
+
+    const filteredCityOptions = ajaxCities;
     const filteredAmenityOptions = useMemo(() => {
         const query = amenitySearchQuery.trim().toLowerCase();
         if (!query) return amenityOptions;
@@ -304,9 +357,19 @@ function VenuesPageContent() {
         router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
     };
 
+    // Trigger AJAX city fetch when city dropdown opens or search query changes
     useEffect(() => {
-        setSelectedCities((current) => current.filter((city) => cityOptions.includes(city)));
-    }, [cityOptions]);
+        if (openDropdown === "city") {
+            fetchCities(citySearchQuery, selectedStates);
+        }
+    }, [openDropdown, citySearchQuery, selectedStates, fetchCities]);
+
+    // When city dropdown closes, clear results (will reload fresh on next open)
+    useEffect(() => {
+        if (openDropdown !== "city") {
+            setAjaxCities([]);
+        }
+    }, [openDropdown]);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -360,7 +423,7 @@ function VenuesPageContent() {
                     return;
                 }
 
-                const nextState = normalizeFilterValue(nearestVenue.state);
+                const nextState = normalizeStateToAbbrev(normalizeFilterValue(nearestVenue.state));
                 const nextCity = normalizeFilterValue(nearestVenue.city);
                 setSelectedStates(nextState ? [nextState] : []);
                 setSelectedCities(nextCity ? [nextCity] : []);
@@ -385,7 +448,7 @@ function VenuesPageContent() {
                 || venue.city.toLowerCase().includes(searchTerm)
                 || venue.state.toLowerCase().includes(searchTerm);
             const priceOK = selectedPrices.length === 0 || selectedPrices.includes(venue.priceRange);
-            const normalizedState = normalizeFilterValue(venue.state);
+            const normalizedState = normalizeStateToAbbrev(normalizeFilterValue(venue.state));
             const normalizedCity = normalizeFilterValue(venue.city);
             const stateOK = selectedStates.length === 0 || selectedStates.includes(normalizedState);
             const cityOK = selectedCities.length === 0 || selectedCities.includes(normalizedCity);
@@ -430,7 +493,7 @@ function VenuesPageContent() {
 
     const priceSummary = selectedPrices.length > 0 ? `${selectedPrices.length} selected` : "Any price";
     const stateSummary = selectedStates.length > 0 ? `${selectedStates.length} selected` : "All states";
-    const citySummary = selectedCities.length > 0 ? `${selectedCities.length} selected` : selectedStates.length > 0 ? "All cities" : "Select state first";
+    const citySummary = selectedCities.length > 0 ? `${selectedCities.length} selected` : "All cities";
     const amenitySummary = selectedAmenities.length > 0 ? `${selectedAmenities.length} selected` : "Any amenity";
     const hasActiveFilters = searchQuery.trim().length > 0 || selectedPrices.length > 0 || selectedStates.length > 0 || selectedCities.length > 0 || selectedAmenities.length > 0;
 
@@ -548,8 +611,8 @@ function VenuesPageContent() {
                             isMobile={isMobile}
                             searchValue={citySearchQuery}
                             onSearchChange={setCitySearchQuery}
-                            searchPlaceholder={selectedStates.length > 0 ? "Search cities in selected states..." : "Select state(s) first"}
-                            emptyState={selectedStates.length > 0 ? "No cities match the selected states or search." : "Select one or more states to load cities."}
+                            searchPlaceholder="Type to search cities..."
+                            emptyState={ajaxCitiesLoading ? "Loading cities..." : "No cities found. Try a different search."}
                         >
                             {filteredCityOptions.map((city) => (
                                 <FilterCheckbox key={city} checked={selectedCities.includes(city)} label={city} onChange={() => setSelectedCities((current) => toggleSelection(current, city))} />
