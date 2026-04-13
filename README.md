@@ -40,6 +40,7 @@ This repository is a monorepo with:
 - AWS S3 for uploads
 - Resend for email delivery
 - Google Places API for venue lookup and venue data enrichment
+- Provider-based entity autofill with deterministic fallback and optional SERP integration
 - Google reCAPTCHA for signup/login abuse protection
 
 ## Monorepo Layout
@@ -129,6 +130,12 @@ Key variables from `.env.example`:
 - `NEXT_PUBLIC_API_URL`
 - `API_PROXY_TARGET`
 - `GOOGLE_PLACES_API_KEY`
+- `GOOGLE_PLACES_BASE_URL`
+- `ENTITY_ENRICHMENT_PROVIDER`
+- `SERPAPI_API_KEY`
+- `SERPAPI_LOCATION`
+- `GOOGLE_SEARCH_API_KEY`
+- `GOOGLE_SEARCH_ENGINE_ID`
 - `RECAPTCHA_SECRET_KEY`
 - `FOOTBALL_DATA_API_KEY`
 - `API_FOOTBALL_API_KEY`
@@ -190,6 +197,75 @@ Purpose:
 Purpose:
 
 - single-event and motorsport-style events with drivers, teams, and manufacturer entries
+
+## Google API Setup
+
+There are two separate Google integrations in this repo.
+
+### Venue Enrichment
+
+Used for:
+
+- venue lookup
+- venue details
+- venue photos
+- venue Google sync
+
+Required env:
+
+- `GOOGLE_PLACES_API_KEY`
+- optional `GOOGLE_PLACES_BASE_URL` (defaults to `https://places.googleapis.com/v1`)
+
+### Sports Entity Autofill
+
+Used for:
+
+- league autofill
+- team autofill
+- player autofill
+- driver autofill
+- motorsport team / manufacturer autofill
+
+Required env:
+
+- `ENTITY_ENRICHMENT_PROVIDER=generated` for internal fallback-only autofill
+
+Optional external provider env:
+
+- `ENTITY_ENRICHMENT_PROVIDER=serpapi`
+- `SERPAPI_API_KEY`
+- optional `SERPAPI_LOCATION`
+
+Legacy compatibility only:
+
+- `ENTITY_ENRICHMENT_PROVIDER=google-legacy`
+- `GOOGLE_SEARCH_API_KEY`
+- `GOOGLE_SEARCH_ENGINE_ID`
+
+Notes:
+
+- Generated fallback is the default and requires no external provider.
+- When `SERPAPI_API_KEY` is configured, autofill can use normalized web and image search results.
+- Legacy Google Custom Search env vars are only used when `ENTITY_ENRICHMENT_PROVIDER=google-legacy` is explicitly set.
+- `docker-compose.yml` now passes all enrichment env vars into the API container.
+
+### Deployment Checklist
+
+Add these to the server `.env` before rebuilding:
+
+```env
+GOOGLE_PLACES_API_KEY=your_places_key
+ENTITY_ENRICHMENT_PROVIDER=generated
+SERPAPI_API_KEY=
+SERPAPI_LOCATION=
+```
+
+Then redeploy:
+
+```bash
+docker compose build api frontend
+docker compose up -d api frontend
+```
 
 ### Venues and Venue Operations
 

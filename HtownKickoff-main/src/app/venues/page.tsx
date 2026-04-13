@@ -462,7 +462,6 @@ function VenuesPageContent() {
             </AppShell>
         );
     }
-
     return (
         <AppShell>
             <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 20px" }}>

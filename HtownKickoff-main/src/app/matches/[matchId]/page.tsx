@@ -54,6 +54,42 @@ type MotorsportEntry = {
     } | null;
 };
 
+type MatchPrediction = {
+    homeWinProbability: number;
+    drawProbability: number | null;
+    awayWinProbability: number;
+    confidence: number;
+    generatedAt: string;
+    explanationFacts: Array<{
+        key: string;
+        label: string;
+        value?: number;
+        home?: number;
+        away?: number;
+    }>;
+};
+
+function formatStageLabel(stage?: string | null, matchDay?: number | string | null) {
+    const safeStage = typeof stage === "string" ? stage.trim() : "";
+    const safeMatchDay = matchDay == null || matchDay === "" ? null : String(matchDay).trim();
+
+    if (!safeStage && !safeMatchDay) return null;
+    if (!safeStage) return safeMatchDay ? `Matchday ${safeMatchDay}` : null;
+
+    const normalizedStage = safeStage
+        .toLowerCase()
+        .replace(/_/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    if (normalizedStage === "regular season") {
+        return safeMatchDay ? `Matchday ${safeMatchDay}` : "Regular Season";
+    }
+
+    const prettyStage = normalizedStage.replace(/\b\w/g, (char) => char.toUpperCase());
+    return safeMatchDay ? `${prettyStage} - Matchday ${safeMatchDay}` : prettyStage;
+}
+
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MATCH DETAIL â€” Single page template
    Fully informative: teams, scores, lineups, stats,
@@ -207,6 +243,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
     const [motorsportEntries, setMotorsportEntries] = useState<MotorsportEntry[]>([]);
     const [motorsportEntriesLoading, setMotorsportEntriesLoading] = useState(false);
     const [motorsportEntriesError, setMotorsportEntriesError] = useState<string | null>(null);
+    const [prediction, setPrediction] = useState<MatchPrediction | null>(null);
+    const [predictionLoading, setPredictionLoading] = useState(false);
 
     useEffect(() => {
         void refetch();
@@ -256,6 +294,39 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
         };
     }, [isSingleEvent, match]);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadPrediction() {
+            if (!match || isSingleEvent) {
+                setPrediction(null);
+                setPredictionLoading(false);
+                return;
+            }
+
+            setPredictionLoading(true);
+            try {
+                const response = await api.get<MatchPrediction>(`/matches/${match.id}/prediction`);
+                if (!cancelled) {
+                    setPrediction(response.data || null);
+                }
+            } catch {
+                if (!cancelled) {
+                    setPrediction(null);
+                }
+            } finally {
+                if (!cancelled) {
+                    setPredictionLoading(false);
+                }
+            }
+        }
+
+        void loadPrediction();
+        return () => {
+            cancelled = true;
+        };
+    }, [isSingleEvent, match]);
+
     if (isLoading && !match) {
         return (
             <AppShell>
@@ -298,6 +369,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
     const eventTitle = getSingleEventTitle(match, league);
     const eventSubtitle = getSingleEventSubtitle(match, league);
     const leagueVisual = getLeagueVisual(league);
+    const stageLabel = formatStageLabel(match?.stage, match?.matchDay);
 
     const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
     const isFinished = match.status === "FINISHED";
@@ -333,13 +405,17 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                 <div style={{ position: "relative", zIndex: 10, maxWidth: 700, margin: "0 auto" }}>
                     {/* League badge */}
                     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 32 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 99, backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)", fontSize: 12, fontWeight: 700, border: "1px solid var(--border)" }}>
+                        <Link
+                            href={`/leagues/${league.id}`}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 99, backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)", fontSize: 12, fontWeight: 700, border: "1px solid var(--border)", textDecoration: "none" }}
+                            aria-label={`View ${league.name}`}
+                        >
                             {league.image ? <img src={league.image} alt="" style={{ width: 20, height: 20, objectFit: "contain" }} /> : <span style={{ fontSize: 16 }}>{league.logo}</span>}
                             {league.shortName}
-                        </span>
-                        {(match?.stage || match?.matchDay) ? (
+                        </Link>
+                        {stageLabel ? (
                             <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, backgroundColor: "color-mix(in oklch, var(--background) 50%, transparent)", padding: "4px 8px", borderRadius: 99, border: "1px solid var(--border)" }}>
-                                {[match?.stage, match?.matchDay].filter(Boolean).join(" Â· ")}
+                                {stageLabel}
                             </span>
                         ) : null}
                     </div>
@@ -441,6 +517,64 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                     </div>
                 </div>
             </section>
+
+            {!isSingleEvent && (
+                <section style={{ padding: "0 20px 20px" }}>
+                    <div style={{ backgroundColor: "var(--card)", borderRadius: 16, border: "1px solid var(--border)", overflow: "hidden" }}>
+                        <div style={{ padding: 16, borderBottom: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)" }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 8 }}>
+                                Match Prediction
+                            </div>
+                            <div style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.6 }}>
+                                Based on recent form, league standings, head-to-head results, and home advantage.
+                            </div>
+                        </div>
+                        <div style={{ padding: 16 }}>
+                            {predictionLoading ? (
+                                <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>Computing prediction...</p>
+                            ) : !prediction ? (
+                                <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>Prediction is not available for this match yet.</p>
+                            ) : (
+                                <>
+                                    <div style={{ display: "grid", gridTemplateColumns: prediction.drawProbability == null ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                                        {[
+                                            { label: match.homeTeamName || "Home win", value: prediction.homeWinProbability, tone: "var(--primary)" },
+                                            ...(prediction.drawProbability == null ? [] : [{ label: "Draw", value: prediction.drawProbability, tone: "#f59e0b" }]),
+                                            { label: match.awayTeamName || "Away win", value: prediction.awayWinProbability, tone: "#3b82f6" },
+                                        ].map((item) => (
+                                            <div key={item.label} style={{ borderRadius: 14, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", padding: 14 }}>
+                                                <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 10 }}>{item.label}</div>
+                                                <div style={{ fontSize: 28, fontWeight: 900, color: "var(--foreground)", marginBottom: 10 }}>
+                                                    {Math.round(item.value * 100)}%
+                                                </div>
+                                                <div style={{ height: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                                                    <div style={{ width: `${Math.max(6, Math.round(item.value * 100))}%`, height: "100%", backgroundColor: item.tone }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {prediction.explanationFacts.length > 0 && (
+                                        <div style={{ marginTop: 16, display: "grid", gap: 8 }}>
+                                            {prediction.explanationFacts.map((fact) => (
+                                                <div key={fact.key} style={{ fontSize: 12, color: "var(--muted-foreground)", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                                                    <span style={{ color: "var(--foreground)", fontWeight: 600 }}>{fact.label}</span>
+                                                    <span>
+                                                        {fact.home !== undefined && fact.away !== undefined
+                                                            ? `${fact.home} vs ${fact.away}`
+                                                            : fact.value !== undefined
+                                                                ? fact.value
+                                                                : "-"}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {/* Map Section */}
             <section style={{ padding: 20 }}>

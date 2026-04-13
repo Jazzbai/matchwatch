@@ -57,16 +57,14 @@ async function migrate() {
         console.log(`  → Applying ${hash}...`);
 
         // Drizzle SQL files are separated by `--> statement-breakpoint`.
-        // Fallback to a semicolon split for non-Drizzle files.
+        // For plain SQL files, execute the full file as a single batch so
+        // dollar-quoted blocks like `DO $$ ... $$;` are preserved.
         const statements = migrationSql.includes('--> statement-breakpoint')
             ? migrationSql
                 .split('--> statement-breakpoint')
                 .map((s) => s.trim())
                 .filter((s) => s.length > 0)
-            : migrationSql
-                .split(/;\s*\n/g)
-                .map((s) => s.trim())
-                .filter((s) => s.length > 0 && !s.startsWith('--'));
+            : [migrationSql.trim()].filter((s) => s.length > 0);
 
         for (const stmt of statements) {
             try {

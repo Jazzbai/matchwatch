@@ -50,6 +50,7 @@ export async function ensureLeaguesSeeded() {
         }
         return {
             name: league.name,
+            slug: generateUniqueSlug(league.name),
             shortName: league.shortName,
             externalId: league.externalId,
             country: league.country,
@@ -113,7 +114,10 @@ export async function seedDatabase() {
         { name: 'LAFC', shortName: 'LAFC', externalId: 'LAFC', leagueId: leagueMap.get('MLS') },
     ];
 
-    const insertedTeams = await db.insert(teams).values(teamData).onConflictDoNothing().returning();
+    const insertedTeams = await db.insert(teams).values(teamData.map((team) => ({
+        ...team,
+        slug: generateUniqueSlug(team.name),
+    }))).onConflictDoNothing().returning();
     console.log(`  OK: ${insertedTeams.length} teams inserted\n`);
 
     // Get all teams for match creation

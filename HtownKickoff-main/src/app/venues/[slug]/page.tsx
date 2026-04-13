@@ -38,6 +38,21 @@ type VenueCustomEvent = {
     bookingNotes?: string | null;
 };
 
+type VenueFanTeam = {
+    id: string;
+    slug: string;
+    name: string;
+    shortName?: string | null;
+    crestUrl?: string | null;
+    shortDescription?: string | null;
+    league?: {
+        id: string;
+        slug: string;
+        name: string;
+        shortName?: string | null;
+    } | null;
+};
+
 type ActiveTab = "overview" | "menu" | "google-reviews" | "reviews" | "posts";
 
 function normalizeImage(value?: string | null) {
@@ -120,6 +135,7 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
     const [actionError, setActionError] = useState<string | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followerCount, setFollowerCount] = useState(0);
+    const [fanTeams, setFanTeams] = useState<VenueFanTeam[]>([]);
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
     const reviews = venue ? getVenueReviews(venue.id) : [];
@@ -160,9 +176,10 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
             setMenu([]);
             setCustomEvents([]);
             setLocalMatchEvents([]);
+            setFanTeams([]);
 
             const [venueResult, menuResult, customResult, eventsResult] = await Promise.allSettled([
-                api.get<{ followerCount: number; isFollowing: boolean; upcomingEvents?: any[] }>(`/venues/${venue.slug}`),
+                api.get<{ followerCount: number; isFollowing: boolean; fanTeams?: VenueFanTeam[] }>(`/venues/${venue.slug}`),
                 api.get<VenueMenuCategory[]>(`/venues/${venue.slug}/menu`),
                 api.get<VenueCustomEvent[]>(`/venues/${venue.slug}/custom-events`),
                 api.get<any[]>(`/venues/${venue.slug}/events?limit=20`),
@@ -173,6 +190,7 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
             if (venueResult.status === "fulfilled") {
                 setFollowerCount(Number(venueResult.value.data.followerCount || venue.followerCount || 0));
                 setIsFollowing(Boolean(venueResult.value.data.isFollowing));
+                setFanTeams(Array.isArray(venueResult.value.data.fanTeams) ? venueResult.value.data.fanTeams : []);
             }
 
             if (menuResult.status === "fulfilled") {
@@ -744,6 +762,39 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
                                     <p className={styles.panelSubtle}>No active events available for booking.</p>
                                 )}
                             </div>
+
+                            {fanTeams.length > 0 && (
+                                <div className={styles.panel}>
+                                    <h2 className={styles.panelTitle}>This Is a Place for Fans Of</h2>
+                                    <p className={styles.panelSubtle}>
+                                        {fanTeams.length === 1
+                                            ? `This venue welcomes supporters of ${fanTeams[0].name}.`
+                                            : "This venue is a strong matchday spot for supporters of these teams."}
+                                    </p>
+                                    <div className={styles.fanTeamRail}>
+                                        {fanTeams.map((team) => (
+                                            <Link key={team.id} href={`/teams/${team.slug}`} className={styles.fanTeamCard}>
+                                                <div className={styles.fanTeamHeader}>
+                                                    <TeamCrest
+                                                        src={team.crestUrl || undefined}
+                                                        fallback={(team.shortName || team.name).slice(0, 1)}
+                                                        alt={team.name}
+                                                    />
+                                                    <div className={styles.fanTeamText}>
+                                                        <strong>{team.name}</strong>
+                                                        {team.league ? (
+                                                            <span className={styles.fanTeamLeague}>{team.league.shortName || team.league.name}</span>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+                                                {team.shortDescription ? (
+                                                    <p className={styles.fanTeamDescription}>{team.shortDescription}</p>
+                                                ) : null}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className={styles.panel}>
                                 <h2 className={styles.panelTitle}>Upcoming at This Venue</h2>

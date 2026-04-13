@@ -5,6 +5,7 @@ import { eq, and, gte, lte, desc, asc, count, inArray, or, sql } from 'drizzle-o
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { matchQuerySchema, matchVenueQuerySchema } from '@matchwatch/shared';
 import { optionalAuthMiddleware } from '../middleware';
+import { getMatchPrediction } from '../lib/predictions';
 
 const matchRoutes = new Hono();
 
@@ -411,6 +412,21 @@ matchRoutes.get('/:matchId', async (c) => {
         awayTeam,
         venueCount: Number(venueCountResult?.count ?? 0),
     }));
+});
+
+matchRoutes.get('/:matchId/prediction', async (c) => {
+    const matchId = c.req.param('matchId');
+    const [existing] = await db.select({ id: matches.id }).from(matches).where(eq(matches.id, matchId)).limit(1);
+    if (!existing) {
+        return c.json(apiError('NOT_FOUND', 'Match not found'), 404);
+    }
+
+    const prediction = await getMatchPrediction(matchId);
+    if (!prediction) {
+        return c.json(apiError('NOT_AVAILABLE', 'Prediction is not available for this match yet'), 404);
+    }
+
+    return c.json(apiResponse(prediction));
 });
 
 // ─── GET /:matchId/venues ───────────────────────
