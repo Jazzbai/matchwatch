@@ -23,19 +23,19 @@ const VN_CSS = `
 body{background:var(--vn-bg)!important;color:var(--vn-fg)!important;}
 .vn-wrap{min-height:100vh;background:radial-gradient(1200px 600px at 20% -10%,rgba(255,120,60,0.08),transparent 60%),radial-gradient(900px 500px at 100% 10%,rgba(80,180,255,0.05),transparent 60%),var(--vn-bg);}
 /* topbar */
-.vn-topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 28px;background:rgba(10,11,13,.8);backdrop-filter:blur(14px);border-bottom:1px solid var(--vn-line);}
-.vn-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;text-decoration:none;color:var(--vn-fg);}
-.vn-brand-mark{width:22px;height:22px;background:var(--vn-fg);position:relative;border-radius:2px;mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);-webkit-mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);}
-.vn-brand-mark::after{content:"";position:absolute;inset:4px;background:var(--vn-accent);border-radius:1px;}
-.vn-brand em{font-style:normal;color:var(--vn-accent);}
-.vn-nav{display:flex;gap:28px;justify-content:center;}
-.vn-nav a{font-size:13px;color:var(--vn-fg-dim);letter-spacing:.04em;text-transform:uppercase;position:relative;padding:6px 0;text-decoration:none;}
-.vn-nav a.active,.vn-nav a:hover{color:var(--vn-fg);}
-.vn-nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:-15px;height:2px;background:var(--vn-accent);}
-.vn-top-right{display:flex;gap:14px;justify-content:flex-end;align-items:center;}
-.vn-iconbtn{width:36px;height:36px;border:1px solid var(--vn-line);display:grid;place-items:center;color:var(--vn-fg-dim);background:none;cursor:pointer;}
-.vn-iconbtn:hover{color:var(--vn-fg);border-color:var(--vn-line-2);}
-.vn-avatar{width:32px;height:32px;background:linear-gradient(135deg,#5a4a3a,#a07a52);display:grid;place-items:center;font-weight:600;font-size:12px;color:#1a1108;}
+.vn-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;}
+.vn-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:920px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,0.8);box-shadow:0 2px 20px rgba(0,0,0,0.25);}
+.vn-brand{display:flex;flex-direction:column;align-items:flex-start;text-decoration:none;color:var(--vn-fg);}
+.vn-brand-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:900;font-size:18px;letter-spacing:-0.02em;line-height:1.1;}
+.vn-brand-name em{font-style:normal;color:var(--vn-accent);}
+.vn-brand-tag{font-family:monospace;font-size:9px;letter-spacing:0.22em;color:var(--vn-accent);font-weight:700;text-transform:uppercase;margin-top:1px;opacity:0.8;}
+.vn-nav{display:flex;align-items:center;gap:2px;}
+.vn-nav a{padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--vn-fg-dim);transition:all .18s;text-decoration:none;}
+.vn-nav a.active,.vn-nav a:hover{background:rgba(255,255,255,0.07);color:var(--vn-fg);}
+.vn-top-right{display:flex;gap:10px;align-items:center;}
+.vn-btn-pill{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;background:var(--vn-accent);color:var(--vn-accent-ink);transition:all .18s;}
+.vn-btn-pill:hover{opacity:0.88;transform:translateY(-1px);}
+.vn-btn-pill.ghost{background:rgba(255,255,255,0.07);color:var(--vn-fg);}
 /* crumb */
 .vn-crumb{padding:14px 32px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--vn-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--vn-line);}
 .vn-crumb a:hover{color:var(--vn-fg);}.vn-crumb .sep{margin:0 8px;color:var(--vn-line-2);}.vn-crumb b{color:var(--vn-fg-dim);font-weight:500;}
@@ -153,7 +153,8 @@ body{background:var(--vn-bg)!important;color:var(--vn-fg)!important;}
 .vn-load-more{padding:18px;border:1px dashed var(--vn-line);text-align:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;letter-spacing:.08em;color:var(--vn-fg-dim);text-transform:uppercase;margin-top:12px;cursor:pointer;background:none;width:100%;}
 .vn-load-more:hover{color:var(--vn-fg);border-color:var(--vn-line-2);}
 @media(max-width:1100px){.vn-page{grid-template-columns:1fr;}.vn-map-wrap{display:none;}.vn-band-grid{grid-template-columns:1fr;}}
-@media(max-width:768px){.vn-h1{font-size:36px;}.vn-search{grid-template-columns:auto 1fr auto;}}
+@media(max-width:900px){.vn-nav{display:none;}}
+@media(max-width:768px){.vn-topbar{padding:8px 12px;}.vn-topbar-inner{padding:8px 14px;}.vn-h1{font-size:32px;}.vn-band{padding:24px 16px 36px;}.vn-search-wrap{padding:0 16px;}.vn-chips{padding:16px 16px 0;}.vn-list{padding:16px 16px 60px;}.vn-search{grid-template-columns:auto 1fr auto;}.vn-crumb{padding:10px 16px;}}
 `;
 
 const STATE_ABBREV: Record<string, string> = {
@@ -264,24 +265,27 @@ function VenuesPageContent() {
 
             {/* Topbar */}
             <header className="vn-topbar">
-                <Link href="/" className="vn-brand">
-                    <span className="vn-brand-mark" />
-                    match<em>watch</em>
-                </Link>
-                <nav className="vn-nav">
-                    <Link href="/">Home</Link>
-                    <Link href="/matches">Matches</Link>
-                    <Link href="/venues" className="active">Venues</Link>
-                    {user ? <Link href="/dashboard">Dashboard</Link> : <Link href="/register-venue">List venue</Link>}
-                </nav>
-                <div className="vn-top-right">
-                    <button className="vn-iconbtn" aria-label="Search">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                    </button>
-                    {user
-                        ? <Link href="/dashboard"><div className="vn-avatar">{initials}</div></Link>
-                        : <Link href="/login" className="vn-btn" style={{ padding: "8px 14px", fontSize: 11 }}>Sign in</Link>
-                    }
+                <div className="vn-topbar-inner">
+                    <Link href="/" className="vn-brand">
+                        <div className="vn-brand-name">match<em>watch</em></div>
+                        <div className="vn-brand-tag">Watchparty Hub</div>
+                    </Link>
+                    <nav className="vn-nav">
+                        <Link href="/">Home</Link>
+                        <Link href="/matches">Matches</Link>
+                        <Link href="/venues" className="active">Venues</Link>
+                        <Link href="/blog">Blog</Link>
+                        {user && <Link href="/dashboard">My bookings</Link>}
+                    </nav>
+                    <div className="vn-top-right">
+                        {user
+                            ? <Link href="/dashboard" className="vn-btn-pill ghost">{initials}</Link>
+                            : <>
+                                <Link href="/register-venue" className="vn-btn-pill ghost">List venue</Link>
+                                <Link href="/login" className="vn-btn-pill">Log in</Link>
+                              </>
+                        }
+                    </div>
                 </div>
             </header>
 

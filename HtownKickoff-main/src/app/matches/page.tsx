@@ -23,19 +23,19 @@ const MT_CSS = `
 body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 .mt-wrap{min-height:100vh;background:radial-gradient(1200px 600px at 20% -10%,rgba(255,120,60,0.08),transparent 60%),radial-gradient(900px 500px at 100% 10%,rgba(80,180,255,0.05),transparent 60%),var(--mt-bg);}
 /* topbar */
-.mt-topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 28px;background:rgba(10,11,13,.8);backdrop-filter:blur(14px);border-bottom:1px solid var(--mt-line);}
-.mt-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;text-decoration:none;color:var(--mt-fg);}
-.mt-brand-mark{width:22px;height:22px;background:var(--mt-fg);position:relative;border-radius:2px;mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);-webkit-mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);}
-.mt-brand-mark::after{content:"";position:absolute;inset:4px;background:var(--mt-accent);border-radius:1px;}
-.mt-brand em{font-style:normal;color:var(--mt-accent);}
-.mt-nav{display:flex;gap:28px;justify-content:center;}
-.mt-nav a{font-size:13px;color:var(--mt-fg-dim);letter-spacing:.04em;text-transform:uppercase;position:relative;padding:6px 0;text-decoration:none;}
-.mt-nav a.active,.mt-nav a:hover{color:var(--mt-fg);}
-.mt-nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:-15px;height:2px;background:var(--mt-accent);}
-.mt-top-right{display:flex;gap:14px;justify-content:flex-end;align-items:center;}
-.mt-iconbtn{width:36px;height:36px;border:1px solid var(--mt-line);display:grid;place-items:center;color:var(--mt-fg-dim);background:none;cursor:pointer;}
-.mt-iconbtn:hover{color:var(--mt-fg);border-color:var(--mt-line-2);}
-.mt-avatar{width:32px;height:32px;background:linear-gradient(135deg,#5a4a3a,#a07a52);display:grid;place-items:center;font-weight:600;font-size:12px;color:#1a1108;}
+.mt-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;}
+.mt-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:920px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,0.8);box-shadow:0 2px 20px rgba(0,0,0,0.25);}
+.mt-brand{display:flex;flex-direction:column;align-items:flex-start;text-decoration:none;color:var(--mt-fg);}
+.mt-brand-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:900;font-size:18px;letter-spacing:-0.02em;line-height:1.1;}
+.mt-brand-name em{font-style:normal;color:var(--mt-accent);}
+.mt-brand-tag{font-family:monospace;font-size:9px;letter-spacing:0.22em;color:var(--mt-accent);font-weight:700;text-transform:uppercase;margin-top:1px;opacity:0.8;}
+.mt-nav{display:flex;align-items:center;gap:2px;}
+.mt-nav a{padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--mt-fg-dim);transition:all .18s;text-decoration:none;}
+.mt-nav a.active,.mt-nav a:hover{background:rgba(255,255,255,0.07);color:var(--mt-fg);}
+.mt-top-right{display:flex;gap:10px;align-items:center;}
+.mt-btn-pill{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;background:var(--mt-accent);color:var(--mt-accent-ink);transition:all .18s;}
+.mt-btn-pill:hover{opacity:0.88;transform:translateY(-1px);}
+.mt-btn-pill.ghost{background:rgba(255,255,255,0.07);color:var(--mt-fg);}
 /* crumb */
 .mt-crumb{padding:14px 32px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--mt-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--mt-line);}
 .mt-crumb a:hover{color:var(--mt-fg);}.mt-crumb .sep{margin:0 8px;color:var(--mt-line-2);}.mt-crumb b{color:var(--mt-fg-dim);font-weight:500;}
@@ -135,8 +135,8 @@ body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 .mt-load-more{padding:18px;border:1px dashed var(--mt-line);text-align:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;letter-spacing:.08em;color:var(--mt-fg-dim);text-transform:uppercase;margin-top:20px;display:block;cursor:pointer;}
 .mt-empty{text-align:center;padding:60px 20px;border:1px dashed var(--mt-line);font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;color:var(--mt-fg-mute);letter-spacing:.08em;text-transform:uppercase;}
 @media(max-width:1100px){.mt-page{grid-template-columns:1fr;}.mt-rail{display:none;}.mt-band-grid{grid-template-columns:1fr;}}
-@media(max-width:900px){.mt-match{grid-template-columns:80px 1fr 80px 1fr;}.mt-venue,.mt-act{display:none;}}
-@media(max-width:640px){.mt-match{grid-template-columns:64px 1fr 64px 1fr;}.mt-h1{font-size:36px;}}
+@media(max-width:900px){.mt-nav{display:none;}.mt-match{grid-template-columns:80px 1fr 80px 1fr;}.mt-venue,.mt-act{display:none;}}
+@media(max-width:640px){.mt-topbar{padding:8px 12px;}.mt-topbar-inner{padding:8px 14px;}.mt-match{grid-template-columns:64px 1fr 64px 1fr;}.mt-h1{font-size:32px;}.mt-band{padding:20px 16px;}.mt-dates{padding:0 12px;}.mt-toolbar{padding:12px 16px;}.mt-list{padding:16px 16px 60px;}.mt-crumb{padding:10px 16px;}}
 `;
 
 /* ── Helpers ── */
@@ -411,20 +411,27 @@ function MatchesPageContent() {
 
             {/* Topbar */}
             <header className="mt-topbar">
-                <Link href="/" className="mt-brand">
-                    <span className="mt-brand-mark" />
-                    match<em>watch</em>
-                </Link>
-                <nav className="mt-nav">
-                    <Link href="/">Home</Link>
-                    <Link href="/matches" className="active">Matches</Link>
-                    <Link href="/venues">Venues</Link>
-                    {user ? <Link href="/dashboard">Dashboard</Link> : <Link href="/register-venue">List venue</Link>}
-                </nav>
-                <div className="mt-top-right">
-                    <button className="mt-iconbtn" aria-label="Search">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                    </button>
+                <div className="mt-topbar-inner">
+                    <Link href="/" className="mt-brand">
+                        <div className="mt-brand-name">match<em>watch</em></div>
+                        <div className="mt-brand-tag">Watchparty Hub</div>
+                    </Link>
+                    <nav className="mt-nav">
+                        <Link href="/">Home</Link>
+                        <Link href="/matches" className="active">Matches</Link>
+                        <Link href="/venues">Venues</Link>
+                        <Link href="/blog">Blog</Link>
+                        {user && <Link href="/dashboard">My bookings</Link>}
+                    </nav>
+                    <div className="mt-top-right">
+                        {user
+                            ? <Link href="/dashboard" className="mt-btn-pill ghost">{user.name?.split(" ")[0]}</Link>
+                            : <>
+                                <Link href="/register-venue" className="mt-btn-pill ghost">List venue</Link>
+                                <Link href="/login" className="mt-btn-pill">Log in</Link>
+                              </>
+                        }
+                    </div>
                 </div>
             </header>
 

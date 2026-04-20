@@ -105,18 +105,22 @@ const CSS = `
   .mw-ribbon .left{display:flex;gap:14px;align-items:center;}
   .mw-ribbon b{color:var(--mw-accent);font-weight:600;}
   .mw-ribbon-ticker{display:flex;gap:18px;color:var(--mw-fg-mute);}
-  .mw-topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 28px;background:rgba(10,11,13,0.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--mw-line);}
-  .mw-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;text-decoration:none;color:var(--mw-fg);}
-  .mw-brand em{font-style:normal;color:var(--mw-accent);}
-  .mw-brand-mark{width:22px;height:22px;position:relative;background:var(--mw-fg);mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);-webkit-mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);border-radius:2px;}
-  .mw-brand-mark::after{content:"";position:absolute;inset:4px;background:var(--mw-accent);border-radius:1px;}
-  .mw-nav{display:flex;gap:28px;justify-content:center;}
-  .mw-nav a{font-size:13px;color:var(--mw-fg-dim);letter-spacing:0.04em;text-transform:uppercase;position:relative;padding:6px 0;text-decoration:none;transition:color .12s;}
-  .mw-nav a.active,.mw-nav a:hover{color:var(--mw-fg);}
-  .mw-nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:-15px;height:2px;background:var(--mw-accent);}
-  .mw-top-right{display:flex;gap:14px;justify-content:flex-end;align-items:center;}
+  .mw-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;}
+  .mw-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:920px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,0.8);box-shadow:0 2px 20px rgba(0,0,0,0.25);}
+  .mw-brand{display:flex;flex-direction:column;align-items:flex-start;text-decoration:none;color:var(--mw-fg);}
+  .mw-brand-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:900;font-size:18px;letter-spacing:-0.02em;line-height:1.1;}
+  .mw-brand-name em{font-style:normal;color:var(--mw-accent);}
+  .mw-brand-tag{font-family:monospace;font-size:9px;letter-spacing:0.22em;color:var(--mw-accent);font-weight:700;text-transform:uppercase;margin-top:1px;opacity:0.8;}
+  .mw-nav{display:flex;align-items:center;gap:2px;}
+  .mw-nav a{padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--mw-fg-dim);transition:all .18s;text-decoration:none;}
+  .mw-nav a.active,.mw-nav a:hover{background:rgba(255,255,255,0.07);color:var(--mw-fg);}
+  .mw-top-right{display:flex;gap:10px;align-items:center;}
+  .mw-btn-pill{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;background:var(--mw-accent);color:#0a0b0d;transition:all .18s;}
+  .mw-btn-pill:hover{opacity:0.88;transform:translateY(-1px);}
+  .mw-btn-pill.ghost{background:rgba(255,255,255,0.07);color:var(--mw-fg);}
   @media (max-width:1200px){.mw-page{grid-template-columns:1fr;}.mw-side,.mw-rail{display:none;}.mw-fixtures{grid-template-columns:repeat(2,1fr);}}
-  @media (max-width:768px){.mw-fixtures{grid-template-columns:1fr;}.mw-match-grid{grid-template-columns:1fr;}.mw-hero-inner{grid-template-columns:1fr;}.mw-hero-right{display:none;}}
+  @media (max-width:900px){.mw-nav{display:none;}}
+  @media (max-width:768px){.mw-topbar{padding:8px 12px;}.mw-topbar-inner{padding:8px 14px;}.mw-main{padding:16px 16px 60px;}.mw-fixtures{grid-template-columns:1fr;}.mw-match-grid{grid-template-columns:1fr;}.mw-hero-inner{grid-template-columns:1fr;}.mw-hero-right{display:none;}.mw-ribbon{padding:8px 16px;font-size:10px;flex-wrap:wrap;gap:6px;}.mw-hero-left{padding:20px 16px;}.mw-sec-head{padding:14px 16px;}.mw-section{margin-bottom:24px;}}
 `;
 
 const MW_VARS = `
@@ -297,32 +301,28 @@ export default function HomePage() {
 
       {/* Topbar */}
       <header className="mw-topbar">
-        <Link href="/" className="mw-brand">
-          <span className="mw-brand-mark" />
-          match<em>watch</em>
-        </Link>
-        <nav className="mw-nav">
-          <Link href="/" className="active">Home</Link>
-          <Link href="/venues">Venues</Link>
-          <Link href="/matches">Matches</Link>
-          <Link href="/blog">Blog</Link>
-          {user ? <Link href="/dashboard">My bookings</Link> : <Link href="/register-venue">List your venue</Link>}
-        </nav>
-        <div className="mw-top-right">
-          <div className="mw-ticker-pill">
-            <span className="dot" />
-            <span>{utcTime}</span> UTC
+        <div className="mw-topbar-inner">
+          <Link href="/" className="mw-brand">
+            <div className="mw-brand-name">match<em>watch</em></div>
+            <div className="mw-brand-tag">Watchparty Hub</div>
+          </Link>
+          <nav className="mw-nav">
+            <Link href="/" className="active">Home</Link>
+            <Link href="/venues">Venues</Link>
+            <Link href="/matches">Matches</Link>
+            <Link href="/blog">Blog</Link>
+            {user && <Link href="/dashboard">My bookings</Link>}
+          </nav>
+          <div className="mw-top-right">
+            {user ? (
+              <Link href="/dashboard" className="mw-btn-pill ghost">{initials}</Link>
+            ) : (
+              <>
+                <Link href="/register-venue" className="mw-btn-pill ghost">List venue</Link>
+                <Link href="/login" className="mw-btn-pill">Log in</Link>
+              </>
+            )}
           </div>
-          <button className="mw-iconbtn" aria-label="Search">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          </button>
-          {user ? (
-            <Link href="/dashboard">
-              <div className="mw-avatar">{initials}</div>
-            </Link>
-          ) : (
-            <Link href="/login" className="mw-btn" style={{ padding: "8px 14px", fontSize: 11 }}>Sign in</Link>
-          )}
         </div>
       </header>
 
@@ -496,7 +496,7 @@ export default function HomePage() {
                 <span className="trophy">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3h14v3a3 3 0 0 1-3 3h-1v4a3 3 0 0 1-3 3h0a3 3 0 0 1-3-3V9H8a3 3 0 0 1-3-3V3zm2 2v1a1 1 0 0 0 1 1h1V5H7zm8 0v2h1a1 1 0 0 0 1-1V5h-2zM9 18h6v3H9v-3z" /></svg>
                 </span>
-                Find a bar <em>· Watch with fans near you</em>
+                Venues <em>· Watch with fans near you</em>
               </div>
               <div className="mw-tabs">
                 <Link href="/venues" className="mw-tab on">Browse all</Link>
