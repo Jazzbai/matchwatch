@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useData } from "../lib/data-provider";
 import { useAuth } from "../lib/auth-context";
@@ -246,19 +246,6 @@ export default function HomePage() {
   const { user } = useAuth();
   const [utcTime, setUtcTime] = useState("");
   const [sportFilter, setSportFilter] = useState("all");
-  const styleRef = useRef(false);
-
-  useEffect(() => {
-    if (styleRef.current) return;
-    styleRef.current = true;
-    const s1 = document.createElement("style");
-    s1.textContent = MW_VARS;
-    document.head.appendChild(s1);
-    const s2 = document.createElement("style");
-    s2.textContent = CSS;
-    document.head.appendChild(s2);
-    return () => { s1.remove(); s2.remove(); };
-  }, []);
 
   useEffect(() => {
     const tick = () => {
@@ -287,6 +274,7 @@ export default function HomePage() {
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: MW_VARS + CSS + `body{background:var(--mw-bg)!important;color:var(--mw-fg)!important;}` }} />
       {/* Ribbon */}
       <div className="mw-ribbon">
         <div className="left">

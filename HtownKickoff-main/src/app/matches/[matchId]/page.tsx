@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, use, useEffect, useRef } from "react";
+import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "../../../lib/auth-context";
 import { api } from "../../../lib/api";
@@ -181,15 +181,6 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
     const [chatInput, setChatInput] = useState("");
     const [msgs, setMsgs] = useState(DEMO_MSGS);
     const [venueFilter, setVenueFilter] = useState("Near me");
-    const styleRef = useRef(false);
-
-    useEffect(() => {
-        if (styleRef.current) return;
-        styleRef.current = true;
-        const s1 = document.createElement("style"); s1.textContent = MD_VARS; document.head.appendChild(s1);
-        const s2 = document.createElement("style"); s2.textContent = MD_CSS; document.head.appendChild(s2);
-        return () => { s1.remove(); s2.remove(); };
-    }, []);
 
     useEffect(() => { void refetch(); }, [refetch, matchId]);
 
@@ -245,6 +236,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
 
     return (
         <>
+            <style dangerouslySetInnerHTML={{ __html: MD_VARS + MD_CSS + `body{background:var(--md-bg)!important;color:var(--md-fg)!important;}` }} />
             {/* Topbar */}
             <header className="md-topbar">
                 <Link href="/" className="md-brand">

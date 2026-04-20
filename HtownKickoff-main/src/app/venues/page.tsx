@@ -1,715 +1,600 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, Search } from "lucide-react";
-import { AppShell } from "../../components/AppShell";
-import { MapListToggle } from "../../components/MapListToggle";
-import { PaginationControls } from "../../components/PaginationControls";
+import { useData, type Venue } from "../../lib/data-provider";
+import { useAuth } from "../../lib/auth-context";
 import { AMENITY_LABELS } from "../../lib/data";
-import { useData, type PriceRange, type Venue } from "../../lib/data-provider";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
 
-// US state full name → 2-letter abbreviation
+/* ── CSS ── */
+const VN_VARS = `
+:root{
+  --vn-bg:#0a0b0d;--vn-bg-1:#101217;--vn-bg-2:#14171d;--vn-bg-3:#1b1f26;
+  --vn-line:#23272f;--vn-line-2:#2f3540;
+  --vn-fg:#f1ece4;--vn-fg-dim:#a8a59d;--vn-fg-mute:#6c6a64;
+  --vn-accent:oklch(0.72 0.19 28);--vn-accent-ink:#0a0b0d;
+  --vn-live:oklch(0.78 0.14 200);
+}
+`;
+
+const VN_CSS = `
+body{background:var(--vn-bg)!important;color:var(--vn-fg)!important;}
+.vn-wrap{min-height:100vh;background:radial-gradient(1200px 600px at 20% -10%,rgba(255,120,60,0.08),transparent 60%),radial-gradient(900px 500px at 100% 10%,rgba(80,180,255,0.05),transparent 60%),var(--vn-bg);}
+/* topbar */
+.vn-topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 28px;background:rgba(10,11,13,.8);backdrop-filter:blur(14px);border-bottom:1px solid var(--vn-line);}
+.vn-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;text-decoration:none;color:var(--vn-fg);}
+.vn-brand-mark{width:22px;height:22px;background:var(--vn-fg);position:relative;border-radius:2px;mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);-webkit-mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);}
+.vn-brand-mark::after{content:"";position:absolute;inset:4px;background:var(--vn-accent);border-radius:1px;}
+.vn-brand em{font-style:normal;color:var(--vn-accent);}
+.vn-nav{display:flex;gap:28px;justify-content:center;}
+.vn-nav a{font-size:13px;color:var(--vn-fg-dim);letter-spacing:.04em;text-transform:uppercase;position:relative;padding:6px 0;text-decoration:none;}
+.vn-nav a.active,.vn-nav a:hover{color:var(--vn-fg);}
+.vn-nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:-15px;height:2px;background:var(--vn-accent);}
+.vn-top-right{display:flex;gap:14px;justify-content:flex-end;align-items:center;}
+.vn-iconbtn{width:36px;height:36px;border:1px solid var(--vn-line);display:grid;place-items:center;color:var(--vn-fg-dim);background:none;cursor:pointer;}
+.vn-iconbtn:hover{color:var(--vn-fg);border-color:var(--vn-line-2);}
+.vn-avatar{width:32px;height:32px;background:linear-gradient(135deg,#5a4a3a,#a07a52);display:grid;place-items:center;font-weight:600;font-size:12px;color:#1a1108;}
+/* crumb */
+.vn-crumb{padding:14px 32px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--vn-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--vn-line);}
+.vn-crumb a:hover{color:var(--vn-fg);}.vn-crumb .sep{margin:0 8px;color:var(--vn-line-2);}.vn-crumb b{color:var(--vn-fg-dim);font-weight:500;}
+/* band */
+.vn-band{padding:36px 32px 48px;border-bottom:1px solid var(--vn-line);position:relative;overflow:hidden;}
+.vn-band::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;}
+.vn-band-grid{display:grid;grid-template-columns:1.3fr .9fr;gap:48px;align-items:end;position:relative;z-index:1;}
+.vn-kicker{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.16em;color:var(--vn-fg-mute);text-transform:uppercase;margin-bottom:14px;}
+.vn-h1{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:54px;line-height:.95;letter-spacing:-0.025em;margin:0;}
+.vn-h1 em{font-style:normal;color:var(--vn-accent);}
+.vn-sub{max-width:520px;margin-top:18px;font-size:15px;color:var(--vn-fg-dim);line-height:1.5;}
+.vn-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--vn-line);padding-top:18px;}
+.vn-metric .lbl{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.14em;color:var(--vn-fg-mute);text-transform:uppercase;margin-bottom:6px;}
+.vn-metric .v{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:30px;color:var(--vn-fg);line-height:1;}
+.vn-metric .v em{font-style:normal;color:var(--vn-accent);}
+/* search bar */
+.vn-search-wrap{padding:0 32px;margin-top:-28px;position:relative;z-index:2;}
+.vn-search{background:var(--vn-bg-2);border:1px solid var(--vn-line-2);padding:8px;display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;box-shadow:0 12px 40px rgba(0,0,0,.35);}
+.vn-search .ic{padding:0 12px;color:var(--vn-fg-mute);}
+.vn-search input{background:transparent;border:0;color:var(--vn-fg);font-family:'Space Grotesk',var(--font-space),sans-serif;font-size:16px;padding:12px 4px;outline:0;width:100%;}
+.vn-search input::placeholder{color:var(--vn-fg-mute);}
+.vn-search-sep{width:1px;background:var(--vn-line);align-self:stretch;}
+.vn-search-go{padding:12px 18px;background:var(--vn-accent);color:var(--vn-accent-ink);font-family:'JetBrains Mono',var(--font-mono),monospace;font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:12px;display:inline-flex;gap:8px;align-items:center;border:none;cursor:pointer;}
+/* chips */
+.vn-chips{padding:20px 32px 0;display:flex;gap:8px;flex-wrap:wrap;}
+.vn-chip{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:8px 12px;border:1px solid var(--vn-line);color:var(--vn-fg-dim);cursor:pointer;background:none;}
+.vn-chip:hover{color:var(--vn-fg);border-color:var(--vn-line-2);}
+.vn-chip.on{background:var(--vn-fg);color:var(--vn-bg);border-color:var(--vn-fg);}
+.vn-chip .n{color:var(--vn-fg-mute);margin-left:6px;}
+.vn-chip.on .n{color:rgba(10,11,13,.55);}
+/* layout */
+.vn-page{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:20px;}
+.vn-list{padding:20px 32px 60px;min-width:0;}
+.vn-map-wrap{position:sticky;top:61px;height:calc(100vh - 61px);padding:20px 20px 20px 0;}
+/* list head */
+.vn-list-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
+.vn-list-head .count{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:20px;}
+.vn-list-head .count em{color:var(--vn-fg-mute);font-weight:400;font-style:normal;}
+.vn-sort{display:flex;gap:6px;}
+.vn-sort button{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--vn-fg-dim);padding:6px 10px;border:1px solid var(--vn-line);background:none;cursor:pointer;}
+.vn-sort button.on{color:var(--vn-accent-ink);background:var(--vn-accent);border-color:var(--vn-accent);}
+/* venue card */
+.vn-card{border:1px solid var(--vn-line);background:var(--vn-bg-1);display:grid;grid-template-columns:150px 1fr;gap:16px;padding:14px;margin-bottom:12px;position:relative;cursor:pointer;transition:border-color .14s;text-decoration:none;color:inherit;}
+.vn-card:hover{border-color:var(--vn-line-2);}
+.vn-card.sel{border-color:var(--vn-accent);box-shadow:0 0 0 1px var(--vn-accent);}
+.vn-img{aspect-ratio:4/3;background:linear-gradient(135deg,#2a1d14,#0d0f14);position:relative;overflow:hidden;}
+.vn-img .tag{position:absolute;top:8px;left:8px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);padding:3px 6px;color:#fff;}
+.vn-img .glyph{position:absolute;inset:0;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:36px;color:rgba(255,255,255,.15);letter-spacing:-0.03em;}
+.vn-img img{width:100%;height:100%;object-fit:cover;}
+.vn-body{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.vn-top{display:flex;justify-content:space-between;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--vn-fg-mute);}
+.vn-top .occ{color:var(--vn-accent);font-weight:600;}
+.vn-top .open{color:var(--vn-live);}
+.vn-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:20px;line-height:1.1;letter-spacing:-0.01em;}
+.vn-desc{font-size:12.5px;color:var(--vn-fg-dim);line-height:1.45;}
+.vn-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
+.vn-tagmini{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:3px 6px;border:1px solid var(--vn-line);color:var(--vn-fg-dim);}
+.vn-tagmini.hot{color:var(--vn-accent);border-color:var(--vn-accent);}
+.vn-foot{margin-top:auto;padding-top:8px;border-top:1px dashed var(--vn-line);display:flex;justify-content:space-between;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--vn-fg-mute);}
+.vn-foot .res{color:var(--vn-accent);font-weight:600;}
+/* map */
+.vn-map-panel{height:100%;border:1px solid var(--vn-line);position:relative;overflow:hidden;background:radial-gradient(circle at 32% 48%,rgba(255,120,60,0.1),transparent 24%),radial-gradient(circle at 62% 38%,rgba(80,180,255,0.07),transparent 30%),linear-gradient(180deg,#0e1116,#0a0b0d);}
+.vn-map-panel::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.035) 1px,transparent 1px);background-size:48px 48px;}
+.vn-road{position:absolute;background:rgba(255,255,255,0.06);}
+.vn-road.h{height:2px;left:0;right:0;}
+.vn-road.v{width:2px;top:0;bottom:0;}
+.vn-blob{position:absolute;border-radius:50%;filter:blur(24px);pointer-events:none;}
+.vn-pin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;}
+.vn-pin .marker{width:32px;height:32px;background:var(--vn-bg-2);border:1.5px solid var(--vn-line-2);color:var(--vn-fg);display:grid;place-items:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-weight:700;font-size:12px;border-radius:50%;position:relative;}
+.vn-pin .marker::after{content:"";position:absolute;bottom:-7px;left:50%;transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:var(--vn-bg-2);border-right:1.5px solid var(--vn-line-2);border-bottom:1.5px solid var(--vn-line-2);}
+.vn-pin.hot .marker{background:var(--vn-accent);color:var(--vn-accent-ink);border-color:var(--vn-accent);}
+.vn-pin.hot .marker::after{background:var(--vn-accent);border-color:var(--vn-accent);}
+.vn-pin.active .marker{transform:scale(1.25);box-shadow:0 0 0 4px rgba(255,95,45,0.18);}
+.vn-pin.me .marker{background:var(--vn-live);border-color:var(--vn-live);color:var(--vn-bg);}
+.vn-pin.me .marker::after{background:var(--vn-live);border-color:var(--vn-live);}
+.vn-maplabel{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:rgba(10,11,13,.85);padding:2px 5px;color:var(--vn-fg);white-space:nowrap;}
+.vn-map-ctrl{position:absolute;display:flex;flex-direction:column;gap:4px;}
+.vn-map-ctrl.tl{top:12px;left:12px;right:12px;flex-direction:row;justify-content:space-between;align-items:center;}
+.vn-legend{display:flex;gap:10px;background:rgba(10,11,13,.7);backdrop-filter:blur(8px);padding:8px 10px;border:1px solid var(--vn-line);font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;}
+.vn-legend .dot{width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;display:inline-block;}
+.vn-legend .hot{background:var(--vn-accent);}.vn-legend .nrm{background:var(--vn-fg-mute);}.vn-legend .you{background:var(--vn-live);}
+.vn-map-ctrl.br{top:auto;bottom:12px;right:12px;}
+.vn-mapbtn{width:32px;height:32px;background:var(--vn-bg-2);border:1px solid var(--vn-line-2);display:grid;place-items:center;color:var(--vn-fg-dim);font-family:'JetBrains Mono',var(--font-mono),monospace;font-weight:600;cursor:pointer;}
+/* drawer */
+.vn-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;opacity:0;pointer-events:none;transition:opacity .18s;}
+.vn-backdrop.open{opacity:1;pointer-events:auto;}
+.vn-drawer{position:fixed;top:0;right:0;bottom:0;width:480px;background:var(--vn-bg-1);border-left:1px solid var(--vn-line);z-index:40;transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.8,.2,1);box-shadow:-20px 0 60px rgba(0,0,0,.5);overflow-y:auto;}
+.vn-drawer.open{transform:translateX(0);}
+.vn-drawer-img{aspect-ratio:21/10;background:linear-gradient(135deg,#2a1d14,#0d0f14);position:relative;overflow:hidden;}
+.vn-drawer-img .stripes{position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent 0 18px,rgba(255,255,255,.02) 18px 19px);}
+.vn-drawer-img .glyph{position:absolute;left:24px;bottom:14px;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:84px;line-height:.8;letter-spacing:-0.03em;color:rgba(255,255,255,.85);}
+.vn-drawer-img .dtag{position:absolute;top:14px;left:14px;background:var(--vn-accent);color:var(--vn-accent-ink);font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;font-weight:600;padding:4px 8px;letter-spacing:.1em;text-transform:uppercase;}
+.vn-drawer-close{position:absolute;top:12px;right:12px;width:32px;height:32px;background:rgba(10,11,13,.6);backdrop-filter:blur(6px);border:1px solid var(--vn-line-2);color:var(--vn-fg);display:grid;place-items:center;cursor:pointer;font-size:18px;}
+.vn-drawer-body{padding:22px 24px 40px;}
+.vn-dh-row{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;}
+.vn-d-title{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:28px;line-height:1;letter-spacing:-0.02em;}
+.vn-d-addr{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;color:var(--vn-fg-mute);letter-spacing:.08em;text-transform:uppercase;margin-top:6px;}
+.vn-d-rating{text-align:right;flex-shrink:0;}
+.vn-d-rating .v{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:26px;}
+.vn-d-rating .v small{color:var(--vn-fg-mute);font-weight:400;font-size:13px;}
+.vn-d-rating .r{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.08em;color:var(--vn-fg-mute);text-transform:uppercase;}
+.vn-d-ctas{display:flex;gap:8px;margin:20px 0 24px;}
+.vn-btn{display:inline-flex;align-items:center;gap:10px;padding:12px 18px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--vn-line-2);color:var(--vn-fg);text-decoration:none;cursor:pointer;background:none;}
+.vn-btn.primary{background:var(--vn-accent);color:var(--vn-accent-ink);border-color:var(--vn-accent);font-weight:600;flex:1;justify-content:center;}
+.vn-btn.ghost{flex:1;justify-content:center;}
+.vn-d-facts{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--vn-line);border-bottom:1px solid var(--vn-line);}
+.vn-fact{padding:12px 14px;border-right:1px solid var(--vn-line);}
+.vn-fact:nth-child(2n){border-right:0;}
+.vn-fact:nth-child(n+3){border-top:1px solid var(--vn-line);}
+.vn-fact .k{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.12em;color:var(--vn-fg-mute);text-transform:uppercase;margin-bottom:4px;}
+.vn-fact .vv{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:14px;}
+.vn-d-sub{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.14em;color:var(--vn-fg-mute);text-transform:uppercase;margin:22px 0 10px;}
+.vn-tags-wrap{display:flex;flex-wrap:wrap;gap:6px;}
+.vn-tags-wrap .t{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border:1px solid var(--vn-line);color:var(--vn-fg-dim);}
+.vn-load-more{padding:18px;border:1px dashed var(--vn-line);text-align:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;letter-spacing:.08em;color:var(--vn-fg-dim);text-transform:uppercase;margin-top:12px;cursor:pointer;background:none;width:100%;}
+.vn-load-more:hover{color:var(--vn-fg);border-color:var(--vn-line-2);}
+@media(max-width:1100px){.vn-page{grid-template-columns:1fr;}.vn-map-wrap{display:none;}.vn-band-grid{grid-template-columns:1fr;}}
+@media(max-width:768px){.vn-h1{font-size:36px;}.vn-search{grid-template-columns:auto 1fr auto;}}
+`;
+
 const STATE_ABBREV: Record<string, string> = {
-    "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
-    "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA",
-    "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA",
-    "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
-    "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS",
-    "Missouri": "MO", "Montana": "MT", "Nebraska": "NE", "Nevada": "NV",
-    "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY",
-    "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH", "Oklahoma": "OK",
-    "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
-    "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT",
-    "Vermont": "VT", "Virginia": "VA", "Washington": "WA", "West Virginia": "WV",
-    "Wisconsin": "WI", "Wyoming": "WY", "District of Columbia": "DC",
+    "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA",
+    "Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA",
+    "Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA",
+    "Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD",
+    "Massachusetts":"MA","Michigan":"MI","Minnesota":"MN","Mississippi":"MS",
+    "Missouri":"MO","Montana":"MT","Nebraska":"NE","Nevada":"NV",
+    "New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM","New York":"NY",
+    "North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK",
+    "Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC",
+    "South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT",
+    "Vermont":"VT","Virginia":"VA","Washington":"WA","West Virginia":"WV",
+    "Wisconsin":"WI","Wyoming":"WY","District of Columbia":"DC",
 };
 
-function normalizeStateToAbbrev(state: string): string {
-    const trimmed = state.trim();
-    if (!trimmed) return "";
-    // Already an abbreviation (1-2 uppercase letters)
-    if (/^[A-Z]{2}$/.test(trimmed)) return trimmed;
-    return STATE_ABBREV[trimmed] ?? trimmed.toUpperCase().slice(0, 2);
+function normalizeState(s: string): string {
+    const t = s.trim();
+    if (/^[A-Z]{2}$/.test(t)) return t;
+    return STATE_ABBREV[t] ?? t.toUpperCase().slice(0, 2);
 }
-
-const PRICE_OPTIONS: Array<{ value: PriceRange; label: string }> = [
-    { value: "BUDGET", label: "Budget" },
-    { value: "MID", label: "Mid-range" },
-    { value: "UPSCALE", label: "Upscale" },
-    { value: "LUXURY", label: "Luxury" },
-];
-const PAGE_SIZE_OPTIONS = [12, 24, 48] as const;
-const LOCATION_SESSION_KEY = "venues-location-session-v1";
 
 type SortOption = "rating" | "reviews" | "name";
-type BrowserPermissionState = "idle" | "requesting" | "applied" | "unsupported" | "error";
 
-type DropdownKey = "price" | "state" | "city" | "amenity" | null;
-
-function normalizeFilterValue(value: string | null | undefined) {
-    return (value || "").trim();
-}
-
-function parsePageSizeParam(value: string | null | undefined) {
-    if (!value) return 12;
-    const parsed = Number.parseInt(value, 10);
-    return PAGE_SIZE_OPTIONS.includes(parsed as (typeof PAGE_SIZE_OPTIONS)[number]) ? parsed : 12;
-}
-
-function toggleSelection(values: string[], value: string) {
-    return values.includes(value)
-        ? values.filter((item) => item !== value)
-        : [...values, value];
-}
-
-function haversineDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
-    const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-    const earthRadiusKm = 6371;
-    const dLat = toRadians(lat2 - lat1);
-    const dLng = toRadians(lng2 - lng1);
-    const a = Math.sin(dLat / 2) ** 2
-        + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return earthRadiusKm * c;
-}
-
-function nearestVenueByCoordinates(venues: Venue[], latitude: number, longitude: number) {
-    const candidates = venues.filter((venue) => Number.isFinite(venue.lat) && Number.isFinite(venue.lng) && venue.isActive);
-    if (candidates.length === 0) return null;
-
-    return candidates.reduce((closest, venue) => {
-        const venueDistance = haversineDistanceKm(latitude, longitude, venue.lat, venue.lng);
-        if (!closest) return { venue, distance: venueDistance };
-        return venueDistance < closest.distance ? { venue, distance: venueDistance } : closest;
-    }, null as { venue: Venue; distance: number } | null)?.venue ?? null;
-}
-
-function FilterCheckbox({
-    checked,
-    label,
-    onChange,
-}: {
-    checked: boolean;
-    label: string;
-    onChange: () => void;
-}) {
-    return (
-        <label
-            style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 10,
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: 12,
-                border: checked ? "1px solid var(--primary)" : "1px solid var(--border)",
-                backgroundColor: checked ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "var(--secondary)",
-                color: checked ? "var(--foreground)" : "var(--muted-foreground)",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                minHeight: 42,
-                userSelect: "none",
-            }}
-        >
-            <input
-                type="checkbox"
-                checked={checked}
-                onChange={onChange}
-                style={{ width: 16, height: 16, accentColor: "var(--primary)", flexShrink: 0 }}
-            />
-            <span>{label}</span>
-        </label>
-
-    );
-}
-
-function FilterDropdown({
-    title,
-    summary,
-    isOpen,
-    onToggle,
-    onClear,
-    isMobile,
-    searchValue,
-    onSearchChange,
-    searchPlaceholder,
-    emptyState,
-    children,
-}: {
-    title: string;
-    summary: string;
-    isOpen: boolean;
-    onToggle: () => void;
-    onClear?: () => void;
-    isMobile: boolean;
-    searchValue?: string;
-    onSearchChange?: (value: string) => void;
-    searchPlaceholder?: string;
-    emptyState?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div style={{ position: "relative", minWidth: isMobile ? "100%" : 180, flex: isMobile ? "1 1 100%" : "0 1 220px" }}>
-            <button
-                type="button"
-                onClick={onToggle}
-                style={{
-                    width: "100%",
-                    minHeight: 44,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    padding: "10px 14px",
-                    borderRadius: 12,
-                    border: "1px solid var(--border)",
-                    backgroundColor: "var(--secondary)",
-                    color: "var(--foreground)",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    textAlign: "left",
-                }}
-            >
-                <span style={{ display: "grid", gap: 2 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>{title}</span>
-                    <span>{summary}</span>
-                </span>
-                <ChevronDown size={16} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }} />
-            </button>
-            {isOpen ? (
-                <div
-                    style={{
-                        position: "absolute",
-                        top: "calc(100% + 8px)",
-                        left: 0,
-                        zIndex: 20,
-                        width: isMobile ? "100%" : 320,
-                        maxWidth: "min(92vw, 360px)",
-                        maxHeight: 320,
-                        overflowY: "auto",
-                        display: "grid",
-                        gap: 12,
-                        padding: 14,
-                        borderRadius: 16,
-                        border: "1px solid var(--border)",
-                        backgroundColor: "var(--card)",
-                        boxShadow: "0 18px 40px rgba(0, 0, 0, 0.14)",
-                    }}
-                >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--foreground)" }}>{title}</span>
-                        {onClear ? (
-                            <button
-                                type="button"
-                                onClick={onClear}
-                                style={{ border: "none", background: "transparent", color: "var(--primary)", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}
-                            >
-                                Clear
-                            </button>
-                        ) : null}
-                    </div>
-                    {onSearchChange ? (
-                        <div style={{ position: "relative" }}>
-                            <input
-                                type="text"
-                                value={searchValue || ""}
-                                onChange={(event) => onSearchChange(event.target.value)}
-                                placeholder={searchPlaceholder || `Search ${title.toLowerCase()}...`}
-                                style={{
-                                    width: "100%",
-                                    minHeight: 40,
-                                    padding: "10px 12px 10px 38px",
-                                    borderRadius: 12,
-                                    border: "1px solid var(--border)",
-                                    backgroundColor: "var(--secondary)",
-                                    color: "var(--foreground)",
-                                    fontFamily: "inherit",
-                                    fontSize: 13,
-                                    fontWeight: 500,
-                                    outline: "none",
-                                }}
-                            />
-                            <Search style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--muted-foreground)" }} />
-                        </div>
-                    ) : null}
-                    {React.Children.count(children) > 0 ? (
-                        <div style={{ display: "grid", gap: 10, gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(132px, 1fr))" }}>
-                            {children}
-                        </div>
-                    ) : (
-                        <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{emptyState || `No ${title.toLowerCase()} match your search.`}</span>
-                    )}
-                </div>
-            ) : null}
-        </div>
-    );
-}
+const PIN_POSITIONS = [
+    { left: "32%", top: "40%" }, { left: "62%", top: "30%" }, { left: "42%", top: "78%" },
+    { left: "72%", top: "58%" }, { left: "22%", top: "70%" }, { left: "80%", top: "42%" },
+    { left: "55%", top: "55%" }, { left: "38%", top: "25%" }, { left: "68%", top: "75%" },
+];
 
 function VenuesPageContent() {
+    const { venues: VENUES, isLoading } = useData();
+    const { user } = useAuth();
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { venues: VENUES } = useData();
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedPrices, setSelectedPrices] = useState<PriceRange[]>([]);
-    const [selectedStates, setSelectedStates] = useState<string[]>([]);
-    const [selectedCities, setSelectedCities] = useState<string[]>([]);
     const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
     const [sortBy, setSortBy] = useState<SortOption>("rating");
-    const [locationPermissionState, setLocationPermissionState] = useState<BrowserPermissionState>("idle");
-    const [locationMessage, setLocationMessage] = useState<string | null>(null);
-    const [isMobile, setIsMobile] = useState(false);
-    const [openDropdown, setOpenDropdown] = useState<DropdownKey>(null);
-    const [stateSearchQuery, setStateSearchQuery] = useState("");
-    const [citySearchQuery, setCitySearchQuery] = useState("");
-    const [amenitySearchQuery, setAmenitySearchQuery] = useState("");
+    const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(12);
 
     const requestedPage = parsePageParam(searchParams.get("page"));
-    const pageSize = parsePageSizeParam(searchParams.get("pageSize"));
-    const syncArchivePageRef = useRef<(nextPage: number, nextPageSize?: number) => void>(() => {});
-    const hasInitializedPageReset = useRef(false);
-    const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+    const syncPageRef = useRef<(n: number) => void>(() => {});
 
-    const activeVenues = useMemo(() => VENUES.filter((venue) => venue.isActive), [VENUES]);
-    const stateOptions = useMemo(
-        () => Array.from(new Set(
-            activeVenues.map((venue) => normalizeStateToAbbrev(normalizeFilterValue(venue.state))).filter(Boolean)
-        )).sort((a, b) => a.localeCompare(b)),
-        [activeVenues],
+    const activeVenues = useMemo(() => VENUES.filter(v => v.isActive), [VENUES]);
+
+    const amenityOptions = useMemo(() =>
+        Object.entries(AMENITY_LABELS)
+            .filter(([key]) => activeVenues.some(v => v.amenities.includes(key)))
+            .sort((a, b) => a[1].label.localeCompare(b[1].label))
+            .slice(0, 8),
+        [activeVenues]
     );
 
-    // AJAX city search state
-    const [ajaxCities, setAjaxCities] = useState<string[]>([]);
-    const [ajaxCitiesLoading, setAjaxCitiesLoading] = useState(false);
-    const cityFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const amenityOptions = useMemo(
-        () => Object.entries(AMENITY_LABELS)
-            .filter(([key]) => activeVenues.some((venue) => venue.amenities.includes(key)))
-            .sort((a, b) => a[1].label.localeCompare(b[1].label)),
-        [activeVenues],
-    );
-    const filteredStateOptions = useMemo(() => {
-        const query = stateSearchQuery.trim().toLowerCase();
-        if (!query) return stateOptions;
-        return stateOptions.filter((state) => state.toLowerCase().includes(query));
-    }, [stateOptions, stateSearchQuery]);
-
-    // Fetch cities from API (debounced, AJAX)
-    const fetchCities = useCallback((query: string, states: string[]) => {
-        if (cityFetchTimer.current) clearTimeout(cityFetchTimer.current);
-        cityFetchTimer.current = setTimeout(async () => {
-            setAjaxCitiesLoading(true);
-            try {
-                const params = new URLSearchParams();
-                if (query) params.set("q", query);
-                // Send raw state values (both abbrevs and full) so backend can match
-                for (const abbrev of states) {
-                    // Find full names that map to this abbreviation to cast a wide net
-                    const fullNames = Object.entries(STATE_ABBREV)
-                        .filter(([, v]) => v === abbrev)
-                        .map(([k]) => k);
-                    params.append("states[]", abbrev);
-                    for (const full of fullNames) params.append("states[]", full);
-                }
-                const res = await fetch(`/api/v1/venues/cities?${params.toString()}`);
-                if (res.ok) {
-                    const json = await res.json();
-                    setAjaxCities(Array.isArray(json.data) ? json.data : []);
-                }
-            } catch {
-                // silently ignore
-            } finally {
-                setAjaxCitiesLoading(false);
-            }
-        }, 250);
-    }, []);
-
-    const filteredCityOptions = ajaxCities;
-    const filteredAmenityOptions = useMemo(() => {
-        const query = amenitySearchQuery.trim().toLowerCase();
-        if (!query) return amenityOptions;
-        return amenityOptions.filter(([key, value]) => {
-            const label = value.label.toLowerCase();
-            return label.includes(query) || key.toLowerCase().includes(query);
-        });
-    }, [amenityOptions, amenitySearchQuery]);
-
-    syncArchivePageRef.current = (nextPage: number, nextPageSize?: number) => {
-        const params = new URLSearchParams(searchParams.toString());
-        const resolvedPageSize = nextPageSize ?? pageSize;
-        if (nextPage <= 1) {
-            params.delete("page");
-        } else {
-            params.set("page", String(nextPage));
-        }
-        if (resolvedPageSize === 12) {
-            params.delete("pageSize");
-        } else {
-            params.set("pageSize", String(resolvedPageSize));
-        }
-        const nextQuery = params.toString();
-        router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    syncPageRef.current = (n: number) => {
+        const p = new URLSearchParams(searchParams.toString());
+        if (n <= 1) p.delete("page"); else p.set("page", String(n));
+        const q = p.toString();
+        router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
     };
 
-    // Trigger AJAX city fetch when city dropdown opens or search query changes
-    useEffect(() => {
-        if (openDropdown === "city") {
-            fetchCities(citySearchQuery, selectedStates);
-        }
-    }, [openDropdown, citySearchQuery, selectedStates, fetchCities]);
-
-    // When city dropdown closes, clear results (will reload fresh on next open)
-    useEffect(() => {
-        if (openDropdown !== "city") {
-            setAjaxCities([]);
-        }
-    }, [openDropdown]);
-
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        const media = window.matchMedia("(max-width: 767px)");
-        const update = () => setIsMobile(media.matches);
-        update();
-        media.addEventListener("change", update);
-        return () => media.removeEventListener("change", update);
-    }, []);
-
-    useEffect(() => {
-        function handleOutsideClick(event: MouseEvent) {
-            if (!dropdownContainerRef.current?.contains(event.target as Node)) {
-                setOpenDropdown(null);
-            }
-        }
-
-        document.addEventListener("mousedown", handleOutsideClick);
-        return () => document.removeEventListener("mousedown", handleOutsideClick);
-    }, []);
-
-    useEffect(() => {
-        if (openDropdown !== "state") {
-            setStateSearchQuery("");
-        }
-        if (openDropdown !== "city") {
-            setCitySearchQuery("");
-        }
-        if (openDropdown !== "amenity") {
-            setAmenitySearchQuery("");
-        }
-    }, [openDropdown]);
-
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        if (window.sessionStorage.getItem(LOCATION_SESSION_KEY) === "done") return;
-        window.sessionStorage.setItem(LOCATION_SESSION_KEY, "done");
-
-        if (!("geolocation" in navigator)) {
-            setLocationPermissionState("unsupported");
-            return;
-        }
-
-        setLocationPermissionState("requesting");
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const nearestVenue = nearestVenueByCoordinates(activeVenues, position.coords.latitude, position.coords.longitude);
-                if (!nearestVenue) {
-                    setLocationPermissionState("error");
-                    setLocationMessage("No venue coordinates are available yet for location matching.");
-                    return;
-                }
-
-                const nextState = normalizeStateToAbbrev(normalizeFilterValue(nearestVenue.state));
-                const nextCity = normalizeFilterValue(nearestVenue.city);
-                setSelectedStates(nextState ? [nextState] : []);
-                setSelectedCities(nextCity ? [nextCity] : []);
-                setLocationPermissionState("applied");
-                setLocationMessage(nextCity ? `Showing venues in ${nextCity}${nextState ? `, ${nextState}` : ""}.` : "Showing venues closest to your current area.");
-            },
-            () => {
-                setLocationPermissionState("error");
-                setLocationMessage("Location access was not granted. You can still filter manually.");
-            },
-            { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
-        );
-    }, [activeVenues]);
-
-    const filtered = useMemo(() => activeVenues
-        .filter((venue) => {
-            const searchTerm = searchQuery.trim().toLowerCase();
-            const searchOK = !searchTerm
-                || venue.name.toLowerCase().includes(searchTerm)
-                || venue.cuisineTags.some((tag) => tag.toLowerCase().includes(searchTerm))
-                || venue.addressLine1.toLowerCase().includes(searchTerm)
-                || venue.city.toLowerCase().includes(searchTerm)
-                || venue.state.toLowerCase().includes(searchTerm);
-            const priceOK = selectedPrices.length === 0 || selectedPrices.includes(venue.priceRange);
-            const normalizedState = normalizeStateToAbbrev(normalizeFilterValue(venue.state));
-            const normalizedCity = normalizeFilterValue(venue.city);
-            const stateOK = selectedStates.length === 0 || selectedStates.includes(normalizedState);
-            const cityOK = selectedCities.length === 0 || selectedCities.includes(normalizedCity);
-            const amenityOK = selectedAmenities.length === 0 || selectedAmenities.some((amenity) => venue.amenities.includes(amenity));
-            return searchOK && priceOK && stateOK && cityOK && amenityOK;
-
-        })
-        .sort((a, b) => {
-            if (sortBy === "rating") return b.rating - a.rating;
-            if (sortBy === "reviews") return b.reviewCount - a.reviewCount;
-            return a.name.localeCompare(b.name);
-        }), [activeVenues, searchQuery, selectedPrices, selectedStates, selectedCities, selectedAmenities, sortBy]);
-
-    const { currentPage, totalPages, pageItems: paginatedVenues } = useMemo(
-        () => paginateItems(filtered, requestedPage, pageSize),
-        [filtered, requestedPage, pageSize],
+    const filtered = useMemo(() =>
+        activeVenues
+            .filter(v => {
+                const sq = searchQuery.trim().toLowerCase();
+                const sOK = !sq || v.name.toLowerCase().includes(sq) || v.city.toLowerCase().includes(sq) || v.addressLine1.toLowerCase().includes(sq);
+                const aOK = selectedAmenities.length === 0 || selectedAmenities.some(a => v.amenities.includes(a));
+                return sOK && aOK;
+            })
+            .sort((a, b) => {
+                if (sortBy === "rating") return b.rating - a.rating;
+                if (sortBy === "reviews") return b.reviewCount - a.reviewCount;
+                return a.name.localeCompare(b.name);
+            }),
+        [activeVenues, searchQuery, selectedAmenities, sortBy]
     );
 
-    useEffect(() => {
-        if (requestedPage !== currentPage) {
-            syncArchivePageRef.current(currentPage);
-        }
-    }, [requestedPage, currentPage]);
+    const displayedVenues = filtered.slice(0, visibleCount);
+    const hasMore = filtered.length > visibleCount;
+
+    const openDrawer = (v: Venue) => { setSelectedVenue(v); setDrawerOpen(true); };
+    const closeDrawer = () => setDrawerOpen(false);
 
     useEffect(() => {
-        if (!hasInitializedPageReset.current) {
-            hasInitializedPageReset.current = true;
-            return;
-        }
-        syncArchivePageRef.current(1);
-    }, [searchQuery, selectedPrices, selectedStates, selectedCities, selectedAmenities, sortBy]);
+        const handler = (e: KeyboardEvent) => { if (e.key === "Escape") closeDrawer(); };
+        document.addEventListener("keydown", handler);
+        return () => document.removeEventListener("keydown", handler);
+    }, []);
 
-    const clearAllFilters = () => {
-        setSearchQuery("");
-        setSelectedPrices([]);
-        setSelectedStates([]);
-        setSelectedCities([]);
-        setSelectedAmenities([]);
-        setSortBy("rating");
-        setLocationMessage(null);
-    };
+    const toggleAmenity = (key: string) =>
+        setSelectedAmenities(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
 
-    const priceSummary = selectedPrices.length > 0 ? `${selectedPrices.length} selected` : "Any price";
-    const stateSummary = selectedStates.length > 0 ? `${selectedStates.length} selected` : "All states";
-    const citySummary = selectedCities.length > 0 ? `${selectedCities.length} selected` : "All cities";
-    const amenitySummary = selectedAmenities.length > 0 ? `${selectedAmenities.length} selected` : "Any amenity";
-    const hasActiveFilters = searchQuery.trim().length > 0 || selectedPrices.length > 0 || selectedStates.length > 0 || selectedCities.length > 0 || selectedAmenities.length > 0;
+    const initials = user?.name
+        ? user.name.split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase()
+        : "MW";
 
-    if (VENUES.length === 0) {
-        return (
-            <AppShell>
-                <style>{`@keyframes shimmer{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
-                <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 20px" }}>
-                    <div style={{ height: 14, width: 80, borderRadius: 6, background: "var(--secondary)", marginBottom: 10, animation: "shimmer 1.5s ease-in-out infinite" }} />
-                    <div style={{ height: 40, width: 200, borderRadius: 10, background: "var(--secondary)", marginBottom: 10, animation: "shimmer 1.5s ease-in-out infinite" }} />
-                    <div style={{ height: 16, width: 320, borderRadius: 6, background: "var(--secondary)", animation: "shimmer 1.5s ease-in-out infinite" }} />
-                </section>
-                <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 48px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
-                        {Array.from({ length: 9 }).map((_, i) => (
-                            <div key={i} style={{ borderRadius: 16, overflow: "hidden", background: "var(--card)", border: "1px solid var(--border)" }}>
-                                <div style={{ height: 180, background: "var(--secondary)", animation: "shimmer 1.5s ease-in-out infinite" }} />
-                                <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                                    <div style={{ height: 18, width: "70%", borderRadius: 6, background: "var(--secondary)", animation: "shimmer 1.5s ease-in-out infinite" }} />
-                                    <div style={{ height: 13, width: "50%", borderRadius: 6, background: "var(--secondary)", animation: "shimmer 1.5s ease-in-out infinite" }} />
-                                    <div style={{ display: "flex", gap: 6 }}>
-                                        {[1,2,3].map(j => <div key={j} style={{ height: 24, width: 60, borderRadius: 99, background: "var(--secondary)", animation: "shimmer 1.5s ease-in-out infinite" }} />)}
-                                    </div>
+    const d = selectedVenue;
+    const dGlyph = d ? d.name.split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase() : "";
+    const dTag = d ? (d.fanTeams?.[0]?.teamName || d.cuisineTags?.[0] || "WATCH PARTY VENUE") : "";
+
+    return (
+        <div className="vn-wrap">
+            <style dangerouslySetInnerHTML={{ __html: VN_VARS + VN_CSS }} />
+
+            {/* Topbar */}
+            <header className="vn-topbar">
+                <Link href="/" className="vn-brand">
+                    <span className="vn-brand-mark" />
+                    match<em>watch</em>
+                </Link>
+                <nav className="vn-nav">
+                    <Link href="/">Home</Link>
+                    <Link href="/matches">Matches</Link>
+                    <Link href="/venues" className="active">Venues</Link>
+                    {user ? <Link href="/dashboard">Dashboard</Link> : <Link href="/register-venue">List venue</Link>}
+                </nav>
+                <div className="vn-top-right">
+                    <button className="vn-iconbtn" aria-label="Search">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                    </button>
+                    {user
+                        ? <Link href="/dashboard"><div className="vn-avatar">{initials}</div></Link>
+                        : <Link href="/login" className="vn-btn" style={{ padding: "8px 14px", fontSize: 11 }}>Sign in</Link>
+                    }
+                </div>
+            </header>
+
+            {/* Breadcrumb */}
+            <div className="vn-crumb">
+                <Link href="/">Home</Link>
+                <span className="sep">/</span>
+                <b>Venues</b>
+            </div>
+
+            {/* Band */}
+            <section className="vn-band">
+                <div className="vn-band-grid">
+                    <div>
+                        <div className="vn-kicker">
+                            {activeVenues.length} Bars · Houston &amp; surrounding areas · Updated live
+                        </div>
+                        <h1 className="vn-h1">Where to watch. <em>Tonight.</em></h1>
+                        <p className="vn-sub">Every bar showing a live match, ranked by vibe and distance. Reserve tables, see how full it is right now, and join the supporter section that fits you.</p>
+                    </div>
+                    <div className="vn-metrics">
+                        <div className="vn-metric">
+                            <div className="lbl">Bars showing matches</div>
+                            <div className="v">{activeVenues.length || 312}</div>
+                        </div>
+                        <div className="vn-metric">
+                            <div className="lbl">Watch parties live</div>
+                            <div className="v"><em>{activeVenues.filter(v => (v.upcomingEventsCount || 0) > 0).length || 42}</em></div>
+                        </div>
+                        <div className="vn-metric">
+                            <div className="lbl">Tables open</div>
+                            <div className="v">84</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Search bar */}
+            <div className="vn-search-wrap">
+                <div className="vn-search">
+                    <span className="ic">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                    </span>
+                    <input
+                        placeholder="Search bars, neighborhoods, city…"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                    />
+                    <span className="vn-search-sep" />
+                    <button className="vn-search-go">Find bars →</button>
+                </div>
+            </div>
+
+            {/* Filter chips */}
+            <div className="vn-chips">
+                <button
+                    className={`vn-chip${selectedAmenities.length === 0 ? " on" : ""}`}
+                    onClick={() => setSelectedAmenities([])}
+                >
+                    All venues <span className="n">{activeVenues.length}</span>
+                </button>
+                {amenityOptions.map(([key, val]) => (
+                    <button
+                        key={key}
+                        className={`vn-chip${selectedAmenities.includes(key) ? " on" : ""}`}
+                        onClick={() => toggleAmenity(key)}
+                    >
+                        {val.label}
+                        <span className="n">{activeVenues.filter(v => v.amenities.includes(key)).length}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Main 2-col layout */}
+            <main className="vn-page">
+                {/* Venue list */}
+                <section className="vn-list">
+                    <div className="vn-list-head">
+                        <div className="count">
+                            Showing <em>· {displayedVenues.length} of {filtered.length}</em>
+                        </div>
+                        <div className="vn-sort">
+                            {(["rating", "reviews", "name"] as SortOption[]).map(s => (
+                                <button key={s} className={sortBy === s ? "on" : ""} onClick={() => setSortBy(s)}>
+                                    {s === "rating" ? "Nearest" : s === "reviews" ? "Vibe" : "Name"}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {isLoading && activeVenues.length === 0 ? (
+                        Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="vn-card" style={{ opacity: 0.4, pointerEvents: "none" }}>
+                                <div className="vn-img" />
+                                <div className="vn-body">
+                                    <div style={{ height: 10, width: "60%", background: "var(--vn-line-2)", marginBottom: 8 }} />
+                                    <div style={{ height: 20, width: "80%", background: "var(--vn-line-2)" }} />
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        ))
+                    ) : filtered.length === 0 ? (
+                        <div style={{ padding: "40px 0", textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--vn-fg-mute)", letterSpacing: ".08em", textTransform: "uppercase" }}>
+                            No venues match your filters
+                        </div>
+                    ) : (
+                        displayedVenues.map((v, i) => {
+                            const pct = v.upcomingEventsCount ? Math.min(87, 30 + i * 13) : 0;
+                            const isHot = pct >= 80;
+                            const isOpen = !v.upcomingEventsCount || pct < 40;
+                            return (
+                                <div
+                                    key={v.id}
+                                    className={`vn-card${selectedVenue?.id === v.id ? " sel" : ""}`}
+                                    onClick={() => openDrawer(v)}
+                                >
+                                    <div className="vn-img">
+                                        {v.coverImageUrl
+                                            ? <img src={v.coverImageUrl} alt={v.name} />
+                                            : <div className="glyph">{v.name.split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase()}</div>
+                                        }
+                                        {v.fanTeams?.[0] && (
+                                            <span className="tag">{v.fanTeams[0].teamName.toUpperCase().substring(0, 16)}</span>
+                                        )}
+                                    </div>
+                                    <div className="vn-body">
+                                        <div className="vn-top">
+                                            <span>{v.city}{v.state ? `, ${normalizeState(v.state)}` : ""}</span>
+                                            {isOpen
+                                                ? <span className="open">TABLES OPEN</span>
+                                                : <span className={isHot ? "occ" : ""}>{pct}% FULL</span>
+                                            }
+                                        </div>
+                                        <div className="vn-name">{v.name}</div>
+                                        <div className="vn-desc">
+                                            {v.shortDescription || v.amenities.slice(0, 4).map(a => AMENITY_LABELS[a]?.label || a).join(" · ") || "Sports bar · Watch parties welcome"}
+                                        </div>
+                                        <div className="vn-tags">
+                                            {(v.upcomingEventsCount || 0) > 0 && (
+                                                <span className="vn-tagmini hot">LIVE · {v.upcomingEventsCount} EVENTS</span>
+                                            )}
+                                            {v.amenities.slice(0, 3).map(a => (
+                                                <span key={a} className="vn-tagmini">{AMENITY_LABELS[a]?.label || a}</span>
+                                            ))}
+                                        </div>
+                                        <div className="vn-foot">
+                                            <span>⭐ {v.rating?.toFixed(1) || "4.5"} · {v.reviewCount || 0} reviews</span>
+                                            <span className="res">RESERVE →</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+
+                    {hasMore && (
+                        <button className="vn-load-more" onClick={() => setVisibleCount(c => c + 12)}>
+                            Load {Math.min(12, filtered.length - visibleCount)} more bars →
+                        </button>
+                    )}
                 </section>
-            </AppShell>
-        );
-    }
-    return (
-        <AppShell>
-            <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 20px" }}>
-                <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--primary)" }}>EXPLORE</div>
-                <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 36, fontWeight: 900, color: "var(--foreground)", marginBottom: 8, letterSpacing: "-0.02em" }}>Venues</h1>
-                <p style={{ fontSize: 15, color: "var(--muted-foreground)", maxWidth: 640, lineHeight: 1.6, fontWeight: 500 }}>
-                    Discover bars, lounges, and restaurants hosting major match watch parties and daily sports viewing. Filters support multi-select combinations, including state-first location browsing.
-                </p>
-            </section>
 
-            <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 20px" }}>
-                <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: isMobile ? "16px" : "20px 24px", display: "grid", gap: 16 }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, flexDirection: isMobile ? "column" : "row" }}>
-                        <div style={{ position: "relative", flex: "1 1 320px", maxWidth: isMobile ? "100%" : 420, width: "100%" }}>
-                            <input
-                                type="text"
-                                placeholder="Search venues, cuisine, neighborhoods, city, or state..."
-                                value={searchQuery}
-                                onChange={(event) => setSearchQuery(event.target.value)}
-                                style={{ width: "100%", padding: "12px 16px 12px 40px", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", color: "var(--foreground)", fontFamily: "inherit", fontSize: 13, fontWeight: 500, outline: "none" }}
-                            />
-                            <Search style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", width: 16, height: 16, color: "var(--muted-foreground)" }} />
+                {/* Map panel */}
+                <aside className="vn-map-wrap">
+                    <div className="vn-map-panel">
+                        <div className="vn-road h" style={{ top: "22%" }} />
+                        <div className="vn-road h" style={{ top: "48%" }} />
+                        <div className="vn-road h" style={{ top: "72%" }} />
+                        <div className="vn-road v" style={{ left: "28%" }} />
+                        <div className="vn-road v" style={{ left: "58%" }} />
+                        <div className="vn-road v" style={{ left: "82%" }} />
+                        <div className="vn-blob" style={{ background: "rgba(255,120,60,0.2)", width: 220, height: 220, left: "20%", top: "28%" }} />
+                        <div className="vn-blob" style={{ background: "rgba(80,180,255,0.12)", width: 180, height: 180, left: "60%", top: "50%" }} />
+
+                        {/* Legend */}
+                        <div className="vn-map-ctrl tl">
+                            <div className="vn-legend">
+                                <span><span className="dot hot" />LIVE NOW</span>
+                                <span><span className="dot nrm" />SHOWING LATER</span>
+                                <span><span className="dot you" />YOU</span>
+                            </div>
                         </div>
 
-                        <div style={{ display: "grid", gap: 12, width: isMobile ? "100%" : "auto", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, max-content)" }}>
-                            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "var(--muted-foreground)", justifyContent: isMobile ? "space-between" : "flex-start" }}>
-                                Sort
-                                <select value={sortBy} onChange={(event) => setSortBy(event.target.value as SortOption)} style={{ minHeight: 40, borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", color: "var(--foreground)", padding: "0 12px", fontFamily: "inherit", fontSize: 13, fontWeight: 600, width: isMobile ? "100%" : "auto" }}>
-                                    <option value="rating">Top Rating</option>
-                                    <option value="reviews">Most Reviews</option>
-                                    <option value="name">Name A-Z</option>
-                                </select>
-                            </label>
+                        {/* User location pin */}
+                        <div className="vn-pin me" style={{ left: "46%", top: "62%" }}>
+                            <div className="marker">◉</div>
+                            <div className="vn-maplabel">YOU</div>
+                        </div>
 
-                            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "var(--muted-foreground)", justifyContent: isMobile ? "space-between" : "flex-start" }}>
-                                Per Page
-                                <select value={pageSize} onChange={(event) => syncArchivePageRef.current(1, Number(event.target.value))} style={{ minHeight: 40, borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", color: "var(--foreground)", padding: "0 12px", fontFamily: "inherit", fontSize: 13, fontWeight: 600, width: isMobile ? "100%" : "auto" }}>
-                                    {PAGE_SIZE_OPTIONS.map((size) => (
-                                        <option key={size} value={size}>{size}</option>
-                                    ))}
-                                </select>
-                            </label>
+                        {/* Venue pins */}
+                        {displayedVenues.slice(0, 9).map((v, i) => {
+                            const pos = PIN_POSITIONS[i] || { left: `${20 + i * 8}%`, top: `${30 + i * 8}%` };
+                            const isHot = (v.upcomingEventsCount || 0) > 0;
+                            const isActive = selectedVenue?.id === v.id;
+                            const label = v.name.toUpperCase().substring(0, 14);
+                            return (
+                                <div
+                                    key={v.id}
+                                    className={`vn-pin${isHot ? " hot" : ""}${isActive ? " active" : ""}`}
+                                    style={{ left: pos.left, top: pos.top }}
+                                    onClick={() => openDrawer(v)}
+                                >
+                                    <div className="marker">{i + 1}</div>
+                                    <div className="vn-maplabel">{label}</div>
+                                </div>
+                            );
+                        })}
 
+                        {/* Map controls */}
+                        <div className="vn-map-ctrl br">
+                            <button className="vn-mapbtn">+</button>
+                            <button className="vn-mapbtn">−</button>
                         </div>
                     </div>
+                </aside>
+            </main>
 
-                    {locationMessage ? <div style={{ fontSize: 13, fontWeight: 600, color: locationPermissionState === "error" ? "var(--muted-foreground)" : "var(--primary)" }}>{locationMessage}</div> : null}
+            {/* Backdrop */}
+            <div className={`vn-backdrop${drawerOpen ? " open" : ""}`} onClick={closeDrawer} />
 
-                    <div ref={dropdownContainerRef} style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                        <FilterDropdown title="Price" summary={priceSummary} isOpen={openDropdown === "price"} onToggle={() => setOpenDropdown((current) => current === "price" ? null : "price")} onClear={selectedPrices.length > 0 ? () => setSelectedPrices([]) : undefined} isMobile={isMobile}>
-                            {PRICE_OPTIONS.map((option) => (
-                                <FilterCheckbox
-                                    key={option.value}
-                                    checked={selectedPrices.includes(option.value)}
-                                    label={option.label}
-                                    onChange={() => setSelectedPrices((current) => toggleSelection(current, option.value) as PriceRange[])}
-                                />
-                            ))}
-                        </FilterDropdown>
+            {/* Drawer */}
+            <aside className={`vn-drawer${drawerOpen ? " open" : ""}`}>
+                {d && (
+                    <>
+                        <div style={{ position: "relative" }}>
+                            <div className="vn-drawer-img">
+                                <div className="stripes" />
+                                <div className="dtag">{dTag.toUpperCase()}</div>
+                                <div className="glyph">{dGlyph}</div>
+                            </div>
+                            <button className="vn-drawer-close" onClick={closeDrawer}>✕</button>
+                        </div>
+                        <div className="vn-drawer-body">
+                            <div className="vn-dh-row">
+                                <div>
+                                    <div className="vn-d-title">{d.name}</div>
+                                    <div className="vn-d-addr">{d.addressLine1}{d.city ? ` · ${d.city}` : ""}{d.state ? `, ${normalizeState(d.state)}` : ""}</div>
+                                </div>
+                                <div className="vn-d-rating">
+                                    <div className="v">{d.rating?.toFixed(1) || "4.5"}<small>/5</small></div>
+                                    <div className="r">{d.reviewCount || 0} reviews</div>
+                                </div>
+                            </div>
 
-                        <FilterDropdown
-                            title="State"
-                            summary={stateSummary}
-                            isOpen={openDropdown === "state"}
-                            onToggle={() => setOpenDropdown((current) => current === "state" ? null : "state")}
-                            onClear={selectedStates.length > 0 ? () => setSelectedStates([]) : undefined}
-                            isMobile={isMobile}
-                            searchValue={stateSearchQuery}
-                            onSearchChange={setStateSearchQuery}
-                            searchPlaceholder="Search states..."
-                            emptyState="No states match your search."
-                        >
-                            {filteredStateOptions.map((state) => (
-                                <FilterCheckbox key={state} checked={selectedStates.includes(state)} label={state} onChange={() => setSelectedStates((current) => toggleSelection(current, state))} />
-                            ))}
-                        </FilterDropdown>
+                            <div className="vn-d-ctas">
+                                <Link href={`/venues/${d.slug || d.id}`} className="vn-btn primary">View venue →</Link>
+                                <a href={`https://maps.google.com/?q=${encodeURIComponent(d.addressLine1 + " " + d.city)}`} target="_blank" rel="noreferrer" className="vn-btn ghost">Directions</a>
+                            </div>
 
-                        <FilterDropdown
-                            title="City"
-                            summary={citySummary}
-                            isOpen={openDropdown === "city"}
-                            onToggle={() => setOpenDropdown((current) => current === "city" ? null : "city")}
-                            onClear={selectedCities.length > 0 ? () => setSelectedCities([]) : undefined}
-                            isMobile={isMobile}
-                            searchValue={citySearchQuery}
-                            onSearchChange={setCitySearchQuery}
-                            searchPlaceholder="Type to search cities..."
-                            emptyState={ajaxCitiesLoading ? "Loading cities..." : "No cities found. Try a different search."}
-                        >
-                            {filteredCityOptions.map((city) => (
-                                <FilterCheckbox key={city} checked={selectedCities.includes(city)} label={city} onChange={() => setSelectedCities((current) => toggleSelection(current, city))} />
-                            ))}
-                        </FilterDropdown>
+                            <div className="vn-d-facts">
+                                <div className="vn-fact">
+                                    <div className="k">Upcoming events</div>
+                                    <div className="vv" style={{ color: "var(--vn-accent)" }}>{d.upcomingEventsCount || 0} events</div>
+                                </div>
+                                <div className="vn-fact">
+                                    <div className="k">Capacity</div>
+                                    <div className="vv">{d.capacity || "—"}</div>
+                                </div>
+                                <div className="vn-fact">
+                                    <div className="k">Price range</div>
+                                    <div className="vv">{d.priceRange || "MID"}</div>
+                                </div>
+                                <div className="vn-fact">
+                                    <div className="k">Verified</div>
+                                    <div className="vv">{d.isVerified ? "✓ Verified" : "Pending"}</div>
+                                </div>
+                            </div>
 
-                        <FilterDropdown
-                            title="Amenities"
-                            summary={amenitySummary}
-                            isOpen={openDropdown === "amenity"}
-                            onToggle={() => setOpenDropdown((current) => current === "amenity" ? null : "amenity")}
-                            onClear={selectedAmenities.length > 0 ? () => setSelectedAmenities([]) : undefined}
-                            isMobile={isMobile}
-                            searchValue={amenitySearchQuery}
-                            onSearchChange={setAmenitySearchQuery}
-                            searchPlaceholder="Search amenities..."
-                            emptyState="No amenities match your search."
-                        >
-                            {filteredAmenityOptions.map(([key, value]) => (
-                                <FilterCheckbox key={key} checked={selectedAmenities.includes(key)} label={value.label} onChange={() => setSelectedAmenities((current) => toggleSelection(current, key))} />
-                            ))}
-                        </FilterDropdown>
-                    </div>
+                            {d.amenities.length > 0 && (
+                                <>
+                                    <div className="vn-d-sub">Vibe &amp; amenities</div>
+                                    <div className="vn-tags-wrap">
+                                        {d.amenities.map(a => (
+                                            <span key={a} className="t">{AMENITY_LABELS[a]?.label || a}</span>
+                                        ))}
+                                        {d.cuisineTags.map(c => (
+                                            <span key={c} className="t">{c}</span>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
 
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                        <span style={{ fontSize: 13, color: "var(--muted-foreground)", fontWeight: 600 }}>
-                            Showing {paginatedVenues.length} on this page, {filtered.length} venue{filtered.length !== 1 ? "s" : ""} total
-                        </span>
-                        {hasActiveFilters ? (
-                            <button type="button" onClick={clearAllFilters} style={{ padding: "10px 14px", borderRadius: 999, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                                Clear all filters
-                            </button>
-                        ) : null}
-                    </div>
-                </div>
-            </section>
+                            {d.fanTeams && d.fanTeams.length > 0 && (
+                                <>
+                                    <div className="vn-d-sub">Supporter clubs</div>
+                                    <div className="vn-tags-wrap">
+                                        {d.fanTeams.map(t => (
+                                            <span key={t.teamId} className="t">{t.teamName}</span>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
 
-            <section style={{ maxWidth: 1400, margin: "0 auto", padding: "20px 24px 48px" }}>
-                {filtered.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "80px 20px", borderRadius: 24, border: "1px dashed var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)" }}>
-                        <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 20, fontWeight: 800, color: "var(--foreground)", marginBottom: 8 }}>NO VENUES FOUND</h3>
-                        <p style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Try adjusting your search or filter selections.</p>
-                    </div>
-                ) : (
-                    <MapListToggle
-                        venues={paginatedVenues.map((venue) => ({
-                            id: venue.id,
-                            slug: venue.slug,
-                            lat: venue.lat,
-                            lng: venue.lng,
-                            name: venue.name,
-                            coverImage: venue.coverImageUrl || "/venue-hero.webp",
-                            city: venue.city,
-                            address: venue.addressLine1,
-                            rating: venue.rating,
-                            reviewCount: venue.reviewCount,
-                            amenities: venue.amenities,
-                            cuisineTags: venue.cuisineTags,
-                            priceRange: venue.priceRange,
-                            isVerified: venue.isVerified,
-                            isFeatured: venue.isFeatured,
-                            spotsRemaining: null,
-                            nextEvent: `${venue.upcomingEventsCount} upcoming events`,
-                            fanTeams: venue.fanTeams ?? [],
-                        }))}
-                        onVenueClick={(index) => {
-                            const venue = paginatedVenues[index];
-                            if (venue) window.location.href = `/venues/${venue.slug}`;
-                        }}
-                        onBookNow={(index) => {
-                            const venue = paginatedVenues[index];
-                            if (venue) window.location.href = `/venues/${venue.slug}`;
-                        }}
-                    />
+                            {d.shortDescription && (
+                                <>
+                                    <div className="vn-d-sub">About</div>
+                                    <p style={{ fontSize: 13, color: "var(--vn-fg-dim)", lineHeight: 1.6, margin: 0 }}>{d.shortDescription}</p>
+                                </>
+                            )}
+                        </div>
+                    </>
                 )}
-                <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={(page) => syncArchivePageRef.current(page)} />
-            </section>
-
-            <section style={{ padding: "48px 24px", backgroundColor: "var(--secondary)", borderTop: "1px solid var(--border)" }}>
-                <div style={{ maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--primary)", marginBottom: 8 }}>OWN A VENUE?</div>
-                    <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 28, fontWeight: 900, color: "var(--foreground)", marginBottom: 12 }}>LIST YOUR VENUE FOR FREE</h2>
-                    <p style={{ fontSize: 15, color: "var(--muted-foreground)", marginBottom: 24, lineHeight: 1.6 }}>
-                        Join {activeVenues.length}+ venues on MatchWatch. Get discovered by fans looking for the right watch-party spot in their city.
-                    </p>
-                    <Link href="/for-venues" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 32px", borderRadius: 99, fontWeight: 700, fontSize: 14, backgroundColor: "var(--primary)", color: "var(--primary-foreground)", textDecoration: "none", transition: "all 0.2s" }}>
-                        Register Your Venue
-                    </Link>
-                </div>
-            </section>
-        </AppShell>
+            </aside>
+        </div>
     );
 }
 
 export default function VenuesPage() {
     return (
-        <React.Suspense fallback={<AppShell><section style={{ minHeight: "50vh" }} /></AppShell>}>
+        <React.Suspense fallback={
+            <div style={{ background: "#0a0b0d", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#6c6a64", fontFamily: "monospace", fontSize: 13 }}>
+                Loading venues…
+            </div>
+        }>
             <VenuesPageContent />
         </React.Suspense>
     );
