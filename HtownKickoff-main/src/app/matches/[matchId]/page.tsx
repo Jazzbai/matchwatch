@@ -1,887 +1,626 @@
-﻿"use client";
+"use client";
 
-import React, { useState, use, useEffect } from "react";
+import React, { useState, use, useEffect, useRef } from "react";
 import Link from "next/link";
-import {
-    BadgeCheck,
-    CircleX,
-    DoorOpen,
-    Landmark,
-    LineChart,
-    MapPin,
-    Sparkles,
-    Star,
-    Ticket,
-    Users,
-} from "lucide-react";
-import { AppShell } from "../../../components/AppShell";
-import { BookingDrawer } from "../../../components/BookingDrawer";
-import { MatchVenueMap } from "../../../components/MatchVenueMap";
+import { useAuth } from "../../../lib/auth-context";
 import { api } from "../../../lib/api";
-import { AMENITY_LABELS, PRICE_LABELS } from "../../../lib/data";
+import { AMENITY_LABELS } from "../../../lib/data";
 import { getLeagueVisual, getMatchDisplay, getSingleEventSubtitle, getSingleEventTitle, isSingleEventMatch } from "../../../lib/match-display";
 import { useData, type Venue, type VenueEvent } from "../../../lib/data-provider";
 
-type MotorsportEntry = {
-    id: string;
-    carNumber?: string | null;
-    displayName?: string | null;
-    gridPosition?: number | null;
-    startPosition?: number | null;
-    finishPosition?: number | null;
-    status: string;
-    points?: string | number | null;
-    driver?: {
-        id: string;
-        name?: string | null;
-        shortName?: string | null;
-        nationality?: string | null;
-        countryCode?: string | null;
-        headshotUrl?: string | null;
-    } | null;
-    entrant?: {
-        id: string;
-        name?: string | null;
-        shortName?: string | null;
-        brandColor?: string | null;
-        logoUrl?: string | null;
-    } | null;
-    manufacturer?: {
-        id: string;
-        name?: string | null;
-        shortName?: string | null;
-        logoUrl?: string | null;
-    } | null;
-};
+/* ── CSS injected once ── */
+const MD_CSS = `
+  .md-page{display:grid;grid-template-columns:1fr 380px;gap:0;min-width:0;}
+  .md-main{padding:28px 32px 60px;min-width:0;}
+  .md-rail{border-left:1px solid var(--md-line);padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.015),transparent 200px);position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto;}
+  .md-hero{border:1px solid var(--md-line);background:linear-gradient(120deg,rgba(255,95,45,0.12),transparent 50%),linear-gradient(0deg,#0c0e12,#131720);padding:26px 28px;margin-bottom:28px;position:relative;overflow:hidden;}
+  .md-hero-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;color:var(--md-fg-dim);letter-spacing:.08em;text-transform:uppercase;}
+  .md-live-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;background:var(--md-accent);color:var(--md-accent-ink);font-weight:600;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;}
+  .md-live-chip .d{width:6px;height:6px;background:var(--md-accent-ink);border-radius:50%;animation:mdPulse 1s infinite;}
+  @keyframes mdPulse{0%,100%{opacity:.4}50%{opacity:1}}
+  .md-score-wrap{display:grid;grid-template-columns:1fr auto 1fr;gap:26px;align-items:center;margin-top:18px;}
+  .md-teamcol{display:flex;flex-direction:column;gap:6px;}
+  .md-teamcol.right{align-items:flex-end;text-align:right;}
+  .md-teamrow{display:flex;align-items:center;gap:16px;}
+  .md-teamcol.right .md-teamrow{flex-direction:row-reverse;}
+  .md-crest{width:72px;height:72px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:26px;border:2px solid rgba(255,255,255,.12);}
+  .md-t-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:clamp(20px,3vw,34px);letter-spacing:-0.015em;line-height:1;color:var(--md-fg);}
+  .md-t-sub{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;color:var(--md-fg-mute);letter-spacing:.08em;margin-top:5px;}
+  .md-score{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:clamp(60px,8vw,110px);line-height:.85;letter-spacing:-0.04em;font-feature-settings:"tnum" 1;color:var(--md-fg);}
+  .md-score .sep{color:var(--md-fg-mute);font-weight:400;font-size:60px;vertical-align:14px;margin:0 10px;}
+  .md-score .hl{color:var(--md-accent);}
+  .md-minute{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:6px;}
+  .md-minute .m{font-family:'JetBrains Mono',var(--font-mono),monospace;font-weight:600;font-size:22px;color:var(--md-fg);}
+  .md-minute .m em{font-style:normal;color:var(--md-accent);}
+  .md-minute .h{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--md-fg-mute);letter-spacing:.1em;}
+  .md-hero-foot{display:flex;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid var(--md-line);flex-wrap:wrap;}
+  .md-btn{display:inline-flex;align-items:center;gap:10px;padding:12px 18px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--md-line-2);color:var(--md-fg);transition:all .14s;background:none;cursor:pointer;text-decoration:none;}
+  .md-btn:hover{border-color:var(--md-fg-dim);}
+  .md-btn.primary{background:var(--md-accent);color:var(--md-accent-ink);border-color:var(--md-accent);font-weight:600;}
+  .md-btn.primary:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--md-fg);}
+  .md-crumb{padding:14px 32px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--md-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--md-line);}
+  .md-crumb a:hover{color:var(--md-fg);}
+  .md-crumb .sep{margin:0 8px;color:var(--md-line-2);}
+  .md-crumb b{color:var(--md-fg-dim);font-weight:500;}
+  .md-sec-head{display:flex;align-items:baseline;justify-content:space-between;margin:28px 0 14px;}
+  .md-sec-title{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:20px;display:flex;align-items:center;gap:12px;color:var(--md-fg);}
+  .md-sec-title .tag{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--md-fg-mute);letter-spacing:.1em;border:1px solid var(--md-line);padding:3px 6px;text-transform:uppercase;}
+  .md-filters{display:flex;gap:6px;flex-wrap:wrap;}
+  .md-filter{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;color:var(--md-fg-dim);padding:6px 10px;border:1px solid var(--md-line);letter-spacing:.04em;text-transform:uppercase;background:none;cursor:pointer;transition:all .12s;}
+  .md-filter.on{color:var(--md-accent-ink);background:var(--md-accent);border-color:var(--md-accent);}
+  .md-filter:hover:not(.on){color:var(--md-fg);border-color:var(--md-line-2);}
+  .md-stats{border:1px solid var(--md-line);background:var(--md-bg-1);padding:22px 24px;display:grid;gap:14px;}
+  .md-stat{display:grid;grid-template-columns:60px 1fr 60px;gap:14px;align-items:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:13px;}
+  .md-stat .label{text-align:center;font-size:10px;letter-spacing:.14em;color:var(--md-fg-mute);text-transform:uppercase;grid-column:1/4;margin-top:4px;}
+  .md-stat .vl{text-align:right;color:var(--md-fg);font-weight:500;}
+  .md-stat .vr{text-align:left;color:var(--md-fg);font-weight:500;}
+  .md-stat .bar{display:grid;grid-template-columns:1fr 1fr;height:6px;gap:2px;}
+  .md-stat .bar .l{background:var(--md-line);position:relative;overflow:hidden;}
+  .md-stat .bar .r{background:var(--md-line);position:relative;overflow:hidden;}
+  .md-stat .bar .l i{position:absolute;right:0;top:0;bottom:0;background:var(--md-fg);}
+  .md-stat .bar .r i{position:absolute;left:0;top:0;bottom:0;background:var(--md-accent);}
+  .md-stat.lead-away .vr{color:var(--md-accent);}
+  .md-stat.lead-home .vl{font-weight:700;}
+  .md-events{border:1px solid var(--md-line);background:var(--md-bg-1);}
+  .md-event-row{display:grid;grid-template-columns:60px 1fr 40px 1fr;gap:16px;padding:12px 18px;border-bottom:1px dashed var(--md-line);font-size:13px;align-items:center;color:var(--md-fg-dim);}
+  .md-event-row:last-child{border-bottom:0;}
+  .md-event-row.goal{background:linear-gradient(90deg,rgba(255,95,45,0.06),transparent 60%);}
+  .md-event-row .t{font-family:'JetBrains Mono',var(--font-mono),monospace;color:var(--md-fg);font-size:12px;font-weight:500;}
+  .md-event-row .ic{display:grid;place-items:center;font-size:16px;}
+  .md-event-row .side-home{text-align:right;}
+  .md-event-row .side-away{text-align:left;}
+  .md-event-row b{color:var(--md-fg);font-weight:600;}
+  .md-h2h{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+  .md-h2h-item{border:1px solid var(--md-line);background:var(--md-bg-1);padding:10px;font-size:11px;text-align:center;}
+  .md-h2h-item .dt{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.1em;color:var(--md-fg-mute);text-transform:uppercase;}
+  .md-h2h-item .sc{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:22px;color:var(--md-fg);margin:4px 0;}
+  .md-h2h-item .cmp{font-size:10px;color:var(--md-fg-dim);}
+  .md-h2h-item .r{display:inline-block;margin-top:4px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;padding:2px 4px;letter-spacing:.08em;}
+  .md-h2h-item .r.w{background:oklch(0.78 0.16 145);color:#051;}
+  .md-h2h-item .r.d{background:var(--md-line-2);color:var(--md-fg);}
+  .md-h2h-item .r.l{background:oklch(0.65 0.2 20);color:#fff;}
+  .md-map{border:1px solid var(--md-line);background:radial-gradient(circle at 30% 50%,rgba(255,120,60,0.12),transparent 30%),radial-gradient(circle at 70% 40%,rgba(80,180,255,0.08),transparent 40%),linear-gradient(180deg,#0e1116,#0a0b0d);aspect-ratio:21/9;position:relative;overflow:hidden;}
+  .md-map::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);background-size:40px 40px;}
+  .md-pin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;}
+  .md-pin .dot{width:14px;height:14px;background:var(--md-accent);border-radius:50%;border:2px solid var(--md-accent-ink);box-shadow:0 0 0 4px rgba(255,95,45,0.2);}
+  .md-pin.me .dot{background:oklch(0.78 0.14 200);box-shadow:0 0 0 4px rgba(0,180,220,.2);}
+  .md-pin .lbl{margin-top:4px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.08em;background:rgba(10,11,13,.9);padding:2px 5px;color:var(--md-fg);text-transform:uppercase;white-space:nowrap;}
+  .md-venues{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+  .md-venue{border:1px solid var(--md-line);background:var(--md-bg-1);padding:14px;cursor:pointer;transition:all .14s;text-decoration:none;display:block;}
+  .md-venue:hover{border-color:var(--md-line-2);background:var(--md-bg-2);}
+  .md-venue .vt{display:flex;justify-content:space-between;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.1em;color:var(--md-fg-mute);text-transform:uppercase;margin-bottom:8px;}
+  .md-venue .vt .occ{color:var(--md-accent);font-weight:600;}
+  .md-venue .nm{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:16px;margin-bottom:4px;color:var(--md-fg);}
+  .md-venue .desc{font-size:11px;color:var(--md-fg-dim);line-height:1.45;}
+  .md-venue .vft{display:flex;justify-content:space-between;padding-top:10px;margin-top:10px;border-top:1px dashed var(--md-line);font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--md-fg-mute);letter-spacing:.08em;}
+  .md-venue .vft .res{color:var(--md-accent);}
+  .md-rail h3{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px;color:var(--md-fg);}
+  .md-rail h3 .n{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;color:var(--md-fg-mute);font-weight:400;}
+  .md-rail h4{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--md-fg-mute);margin:20px 0 10px;font-weight:500;}
+  .md-party{border:1px solid var(--md-line);padding:12px;display:grid;gap:8px;margin-bottom:10px;background:var(--md-bg-1);transition:all .14s;}
+  .md-party:hover{border-color:var(--md-accent);}
+  .md-p-head{display:flex;justify-content:space-between;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.08em;color:var(--md-fg-mute);text-transform:uppercase;}
+  .md-p-title{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:13px;line-height:1.3;color:var(--md-fg);}
+  .md-p-host{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--md-fg-dim);}
+  .md-hc{width:20px;height:20px;display:grid;place-items:center;font-size:9px;font-weight:600;color:#1b0f08;background:linear-gradient(135deg,#6a5340,#b4876a);}
+  .md-p-join{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:6px 8px;background:var(--md-accent);color:var(--md-accent-ink);font-weight:600;display:inline-flex;align-items:center;gap:6px;border:none;cursor:pointer;}
+  .md-chat{border:1px solid var(--md-line);background:var(--md-bg-1);display:flex;flex-direction:column;padding:14px;max-height:360px;}
+  .md-chat h4{margin:0 0 10px;}
+  .md-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px;padding-right:4px;}
+  .md-msg{display:grid;grid-template-columns:22px 1fr;gap:8px;font-size:12px;}
+  .md-msg .av{width:22px;height:22px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:9px;}
+  .md-msg .nm{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;color:var(--md-fg);font-size:12px;}
+  .md-msg .nm.host{color:var(--md-accent);}
+  .md-msg .body{color:var(--md-fg-dim);line-height:1.4;}
+  .md-chat-inp{display:flex;gap:6px;border-top:1px solid var(--md-line);padding-top:10px;}
+  .md-chat-inp input{flex:1;background:transparent;border:1px solid var(--md-line);color:var(--md-fg);padding:7px 10px;font:inherit;font-size:12px;}
+  .md-chat-inp input:focus{outline:0;border-color:var(--md-accent);}
+  .md-reactions{display:flex;gap:4px;margin-bottom:8px;}
+  .md-reactions button{border:1px solid var(--md-line);padding:3px 7px;font-size:13px;background:none;cursor:pointer;}
+  .md-reactions button:hover{border-color:var(--md-accent);}
+  .md-ticket{border:1px solid var(--md-accent);background:var(--md-bg-1);padding:14px;margin-top:14px;}
+  .md-ticket .t-top{display:flex;justify-content:space-between;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.1em;color:var(--md-fg-mute);text-transform:uppercase;margin-bottom:8px;}
+  .md-ticket .t-top .off{color:var(--md-accent);font-weight:600;}
+  .md-ticket .t-nm{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:14px;margin-bottom:6px;color:var(--md-fg);}
+  .md-ticket .prices{display:flex;gap:10px;align-items:baseline;margin-bottom:8px;}
+  .md-ticket .p-now{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:22px;color:var(--md-accent);}
+  .md-ticket .p-was{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;color:var(--md-fg-mute);text-decoration:line-through;}
+  .md-ticket .p-meta{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--md-fg-dim);}
+  .md-topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 28px;background:rgba(10,11,13,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--md-line);}
+  .md-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;text-decoration:none;color:var(--md-fg);}
+  .md-brand em{font-style:normal;color:var(--md-accent);}
+  .md-brand-mark{width:22px;height:22px;position:relative;background:var(--md-fg);mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);-webkit-mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);border-radius:2px;}
+  .md-brand-mark::after{content:"";position:absolute;inset:4px;background:var(--md-accent);border-radius:1px;}
+  .md-nav{display:flex;gap:28px;justify-content:center;}
+  .md-nav a{font-size:13px;color:var(--md-fg-dim);letter-spacing:0.04em;text-transform:uppercase;position:relative;padding:6px 0;text-decoration:none;transition:color .12s;}
+  .md-nav a.active,.md-nav a:hover{color:var(--md-fg);}
+  .md-nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:-15px;height:2px;background:var(--md-accent);}
+  .md-top-right{display:flex;gap:14px;justify-content:flex-end;align-items:center;}
+  .md-iconbtn{width:36px;height:36px;border:1px solid var(--md-line);display:grid;place-items:center;color:var(--md-fg-dim);background:none;cursor:pointer;flex-shrink:0;}
+  .md-iconbtn:hover{color:var(--md-fg);border-color:var(--md-line-2);}
+  .md-avatar{width:32px;height:32px;background:linear-gradient(135deg,#5a4a3a,#a07a52);display:grid;place-items:center;font-weight:600;font-size:12px;color:#1a1108;flex-shrink:0;}
+  @media(max-width:1100px){.md-page{grid-template-columns:1fr;}.md-rail{display:none;}}
+  @media(max-width:768px){.md-venues{grid-template-columns:1fr;}.md-h2h{grid-template-columns:repeat(3,1fr);}.md-score-wrap{gap:12px;}}
+`;
 
-type MatchPrediction = {
-    homeWinProbability: number;
-    drawProbability: number | null;
-    awayWinProbability: number;
-    confidence: number;
-    generatedAt: string;
-    explanationFacts: Array<{
-        key: string;
-        label: string;
-        value?: number;
-        home?: number;
-        away?: number;
-    }>;
-};
+const MD_VARS = `
+  :root {
+    --md-bg:#0a0b0d; --md-bg-1:#101217; --md-bg-2:#14171d;
+    --md-line:#23272f; --md-line-2:#2f3540;
+    --md-fg:#f1ece4; --md-fg-dim:#a8a59d; --md-fg-mute:#6c6a64;
+    --md-accent:oklch(0.72 0.19 28); --md-accent-ink:#0a0b0d;
+  }
+`;
 
 function formatStageLabel(stage?: string | null, matchDay?: number | string | null) {
     const safeStage = typeof stage === "string" ? stage.trim() : "";
-    const safeMatchDay = matchDay == null || matchDay === "" ? null : String(matchDay).trim();
-
+    const safeMatchDay = matchDay == null ? null : String(matchDay).trim();
     if (!safeStage && !safeMatchDay) return null;
     if (!safeStage) return safeMatchDay ? `Matchday ${safeMatchDay}` : null;
-
-    const normalizedStage = safeStage
-        .toLowerCase()
-        .replace(/_/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    if (normalizedStage === "regular season") {
-        return safeMatchDay ? `Matchday ${safeMatchDay}` : "Regular Season";
-    }
-
-    const prettyStage = normalizedStage.replace(/\b\w/g, (char) => char.toUpperCase());
-    return safeMatchDay ? `${prettyStage} - Matchday ${safeMatchDay}` : prettyStage;
+    const normalized = safeStage.toLowerCase().replace(/_/g, " ").replace(/\s+/g, " ").trim();
+    if (normalized === "regular season") return safeMatchDay ? `Matchday ${safeMatchDay}` : "Regular Season";
+    const pretty = normalized.replace(/\b\w/g, (c) => c.toUpperCase());
+    return safeMatchDay ? `${pretty} · Matchday ${safeMatchDay}` : pretty;
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   MATCH DETAIL â€” Single page template
-   Fully informative: teams, scores, lineups, stats,
-   venue events with booking CTA, related matches.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-
-function MatchVenueCard({
-    venue,
-    event,
-    matchId,
-    onBook,
-}: {
-    venue: Venue;
-    event: VenueEvent;
-    matchId: string;
-    onBook: () => void;
-}) {
-    const spotsLeft = event.bookingLimit ? event.bookingLimit - event.confirmedBookings : null;
-    const pct = event.bookingLimit ? (event.confirmedBookings / event.bookingLimit) * 100 : 0;
-    const [hovered, setHovered] = React.useState(false);
-
-    return (
-        <div
-            style={{
-                backgroundColor: "var(--card)", border: "1px solid var(--border)",
-                borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column",
-                height: "100%", transition: "all 0.3s",
-                transform: hovered ? "translateY(-4px)" : "none",
-                boxShadow: hovered ? "0 8px 24px rgba(0,0,0,0.12)" : "0 1px 4px rgba(0,0,0,0.06)",
-            }}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-        >
-            {/* Cover gradient */}
-            <div style={{
-                height: 80, position: "relative", padding: "12px 16px",
-                display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-                background: `linear-gradient(135deg, ${venue.coverColor}33 0%, var(--card) 100%)`,
-            }}>
-                <div>
-                    {venue.isFeatured && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.06em", padding: "3px 8px", borderRadius: 99, backgroundColor: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
-                            <Sparkles size={10} /> PROMOTED
-                        </span>
-                    )}
-                </div>
-                {venue.isVerified && (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.06em", padding: "3px 8px", borderRadius: 99, backgroundColor: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)" }}>
-                        <BadgeCheck size={10} /> VERIFIED
-                    </span>
-                )}
-            </div>
-
-            <div style={{ padding: 16, display: "flex", flexDirection: "column", flex: 1 }}>
-                {/* Name & Rating */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                    <div style={{ flex: 1, paddingRight: 8 }}>
-                        <Link href={`/venues/${venue.slug}?matchId=${matchId}`} style={{ textDecoration: "none" }}>
-                            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", lineHeight: 1.3, marginBottom: 2 }}>{venue.name}</h3>
-                        </Link>
-                        <p style={{ fontSize: 12, color: "var(--muted-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{venue.addressLine1}, {venue.city}</p>
-                    </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
-                            <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: "#f59e0b" }}>{venue.rating.toFixed(1)}</span>
-                            <Star size={12} style={{ color: "#f59e0b", fill: "#f59e0b" }} />
-                        </div>
-                        <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>({venue.reviewCount})</span>
-                    </div>
-                </div>
-
-                {/* Amenities */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                    {venue.amenities.slice(0, 5).map((a) => (
-                        <span key={a} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: "50%", backgroundColor: "var(--secondary)", color: "var(--muted-foreground)", fontSize: 12 }} title={AMENITY_LABELS[a]?.label || a}>
-                            {AMENITY_LABELS[a]?.icon || "â€¢"}
-                        </span>
-                    ))}
-                    <span style={{ display: "flex", alignItems: "center", fontSize: 10, fontFamily: "monospace", fontWeight: 700, color: "var(--primary)", padding: "0 6px", borderRadius: 99, backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)", border: "1px solid color-mix(in oklch, var(--primary) 20%, transparent)" }}>
-                        {PRICE_LABELS[venue.priceRange]}
-                    </span>
-                </div>
-
-                {/* Event Details */}
-                <div style={{ backgroundColor: "var(--secondary)", border: "1px solid var(--border)", borderRadius: 10, padding: 12, marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <span style={{ fontSize: 12, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 6 }}>
-                            <DoorOpen size={12} />Doors: <strong style={{ color: "var(--foreground)" }}>{event.doorsOpenAt}</strong>
-                        </span>
-                        {event.entryFee && <span style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: "var(--primary)" }}>${event.entryFee}/person</span>}
-                        {!event.entryFee && <span style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)" }}>FREE ENTRY</span>}
-                    </div>
-                    {event.specialNotes && (
-                        <p style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{event.specialNotes}</p>
-                    )}
-                </div>
-
-                <div style={{ marginTop: "auto" }}>
-                    {/* Capacity Bar */}
-                    {event.bookingLimit && (
-                        <div style={{ marginBottom: 12, paddingLeft: 4 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                                <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>{event.confirmedBookings}/{event.bookingLimit} booked</span>
-                                {spotsLeft !== null && (
-                                    <span style={{ fontSize: 11, fontWeight: 700, color: spotsLeft <= 5 ? "#ef4444" : spotsLeft <= 20 ? "#f59e0b" : "var(--primary)" }}>
-                                        {spotsLeft > 0 ? `${spotsLeft} spots left` : "SOLD OUT"}
-                                    </span>
-                                )}
-                            </div>
-                            <div style={{ height: 6, backgroundColor: "var(--secondary)", borderRadius: 99, overflow: "hidden" }}>
-                                <div style={{ height: "100%", borderRadius: 99, transition: "width 0.5s", width: `${Math.min(pct, 100)}%`, backgroundColor: pct > 90 ? "#ef4444" : pct > 70 ? "#f59e0b" : "var(--primary)" }} />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Book Button */}
-                    <button
-                        style={{
-                            width: "100%", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 700,
-                            fontFamily: "inherit", border: "none", cursor: spotsLeft !== null && spotsLeft <= 0 ? "not-allowed" : "pointer",
-                            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                            transition: "all 0.2s",
-                            backgroundColor: spotsLeft !== null && spotsLeft <= 0 ? "var(--secondary)" : "var(--primary)",
-                            color: spotsLeft !== null && spotsLeft <= 0 ? "var(--muted-foreground)" : "var(--primary-foreground)",
-                            boxShadow: spotsLeft !== null && spotsLeft <= 0 ? "none" : "0 2px 8px color-mix(in oklch, var(--primary) 25%, transparent)",
-                        }}
-                        onClick={(e) => { e.stopPropagation(); onBook(); }}
-                        disabled={spotsLeft !== null && spotsLeft <= 0}
-                    >
-                        {spotsLeft !== null && spotsLeft <= 0 ? "Join Waitlist" : (
-                            <>
-                                <Ticket size={16} />
-                                Book Your Spot
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
+/* ── Chat messages for the right rail ── */
+const DEMO_MSGS = [
+    { av: "#b4876a", init: "JM", name: "Jordan M.", host: true, body: "What a goal! 🔥🔥" },
+    { av: "#7a8ca6", init: "AS", name: "Ana S.", host: false, body: "That assist was unreal" },
+    { av: "#8ca67a", init: "RK", name: "Rohan K.", host: false, body: "hold this hold this 🤞" },
+    { av: "#a6857a", init: "TY", name: "Tomás Y.", host: false, body: "if we hold we're through 💪" },
+    { av: "#a69c7a", init: "MV", name: "Mira V.", host: false, body: "atmosphere must be insane right now" },
+];
 
 export default function MatchDetailPage({ params }: { params: Promise<{ matchId: string }> }) {
     const { matchId } = use(params);
     const { matches: MATCHES, getTeam, getLeague, getVenueEvents, isLoading, refetch } = useData();
+    const { user } = useAuth();
     const match = MATCHES.find((m) => m.id === matchId);
     const venueEvents = match ? getVenueEvents(match.id) : [];
-    const [bookingOpen, setBookingOpen] = useState(false);
-    const [bookingVenueIdx, setBookingVenueIdx] = useState(0);
-    const [activeTab, setActiveTab] = useState<"venues" | "lineups" | "stats">("venues");
-    const [motorsportEntries, setMotorsportEntries] = useState<MotorsportEntry[]>([]);
-    const [motorsportEntriesLoading, setMotorsportEntriesLoading] = useState(false);
-    const [motorsportEntriesError, setMotorsportEntriesError] = useState<string | null>(null);
-    const [prediction, setPrediction] = useState<MatchPrediction | null>(null);
-    const [predictionLoading, setPredictionLoading] = useState(false);
+    const [chatInput, setChatInput] = useState("");
+    const [msgs, setMsgs] = useState(DEMO_MSGS);
+    const [venueFilter, setVenueFilter] = useState("Near me");
+    const styleRef = useRef(false);
 
     useEffect(() => {
-        void refetch();
-    }, [refetch, matchId]);
+        if (styleRef.current) return;
+        styleRef.current = true;
+        const s1 = document.createElement("style"); s1.textContent = MD_VARS; document.head.appendChild(s1);
+        const s2 = document.createElement("style"); s2.textContent = MD_CSS; document.head.appendChild(s2);
+        return () => { s1.remove(); s2.remove(); };
+    }, []);
 
-    useEffect(() => {
-        if (bookingVenueIdx >= venueEvents.length) {
-            setBookingVenueIdx(0);
-        }
-    }, [bookingVenueIdx, venueEvents.length]);
+    useEffect(() => { void refetch(); }, [refetch, matchId]);
 
     const isSingleEvent = match ? isSingleEventMatch(match) : false;
-
-    useEffect(() => {
-        let cancelled = false;
-
-        async function loadEntries() {
-            if (!match || !isSingleEvent) {
-                setMotorsportEntries([]);
-                setMotorsportEntriesError(null);
-                setMotorsportEntriesLoading(false);
-                return;
-            }
-
-            setMotorsportEntriesLoading(true);
-            setMotorsportEntriesError(null);
-            try {
-                const response = await api.get<MotorsportEntry[]>(`/matches/${match.id}/entries`);
-                if (!cancelled) {
-                    setMotorsportEntries(response.data || []);
-                }
-            } catch (error) {
-                if (!cancelled) {
-                    setMotorsportEntries([]);
-                    setMotorsportEntriesError(error instanceof Error ? error.message : "Failed to load event entries.");
-                }
-            } finally {
-                if (!cancelled) {
-                    setMotorsportEntriesLoading(false);
-                }
-            }
-        }
-
-        void loadEntries();
-        return () => {
-            cancelled = true;
-        };
-    }, [isSingleEvent, match]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        async function loadPrediction() {
-            if (!match || isSingleEvent) {
-                setPrediction(null);
-                setPredictionLoading(false);
-                return;
-            }
-
-            setPredictionLoading(true);
-            try {
-                const response = await api.get<MatchPrediction>(`/matches/${match.id}/prediction`);
-                if (!cancelled) {
-                    setPrediction(response.data || null);
-                }
-            } catch {
-                if (!cancelled) {
-                    setPrediction(null);
-                }
-            } finally {
-                if (!cancelled) {
-                    setPredictionLoading(false);
-                }
-            }
-        }
-
-        void loadPrediction();
-        return () => {
-            cancelled = true;
-        };
-    }, [isSingleEvent, match]);
+    const initials = user?.name ? user.name.split(" ").map((w) => w[0]).join("").substring(0, 2).toUpperCase() : "MW";
 
     if (isLoading && !match) {
         return (
-            <AppShell>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "50vh", color: "var(--muted-foreground)" }}>Loading match...</div>
-            </AppShell>
+            <div style={{ background: "var(--md-bg)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--md-fg-dim)", fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
+                Loading match…
+            </div>
         );
     }
 
     if (!match) {
         return (
-            <AppShell>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px", textAlign: "center" }}>
-                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
-                        <CircleX size={64} style={{ color: "var(--muted-foreground)" }} />
-                    </div>
-                    <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 32, fontWeight: 900, color: "var(--foreground)", marginBottom: 16 }}>MATCH NOT FOUND</h1>
-                    <p style={{ fontSize: 15, color: "var(--muted-foreground)", marginBottom: 32, maxWidth: 360 }}>This match doesn't exist or has been removed.</p>
-                    <Link href="/matches" style={{ padding: "12px 24px", backgroundColor: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, borderRadius: 12, textDecoration: "none", fontSize: 14, boxShadow: "0 4px 12px color-mix(in oklch, var(--primary) 30%, transparent)" }}>
-                        â† Back to Matches
-                    </Link>
-                </div>
-            </AppShell>
+            <div style={{ background: "var(--md-bg)", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--md-fg)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>⚽</div>
+                <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>Match not found</h1>
+                <Link href="/matches" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", padding: "10px 16px", border: "1px solid var(--md-line-2)", color: "var(--md-fg)", textDecoration: "none" }}>← Back to Matches</Link>
+            </div>
         );
     }
 
     const home = match.homeTeamId ? getTeam(match.homeTeamId) : undefined;
     const away = match.awayTeamId ? getTeam(match.awayTeamId) : undefined;
-    const league = getLeague(match.leagueId) || {
-        id: match.leagueId,
-        sportId: undefined,
-        name: "League",
-        shortName: "League",
-        logo: "LG",
-        image: undefined,
-        country: "International",
-        externalId: match.leagueId,
-    };
-    const d = new Date(match.matchDateUTC);
+    const league = getLeague(match.leagueId) || { id: match.leagueId, sportId: undefined, name: "League", shortName: "LG", logo: "LG", image: undefined, country: "", externalId: match.leagueId };
     const display = getMatchDisplay(match, { homeTeam: home, awayTeam: away, league });
-    const eventTitle = getSingleEventTitle(match, league);
-    const eventSubtitle = getSingleEventSubtitle(match, league);
     const leagueVisual = getLeagueVisual(league);
-    const stageLabel = formatStageLabel(match?.stage, match?.matchDay);
+    const stageLabel = formatStageLabel(match.stage, match.matchDay);
+    const d = new Date(match.matchDateUTC);
+    const dateStr = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    const timeStr = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
     const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
     const isFinished = match.status === "FINISHED";
-    const relatedMatches = MATCHES.filter((m) => m.leagueId === match.leagueId && m.id !== match.id).slice(0, 3);
-    const bookedSpots = venueEvents.reduce((sum, event) => sum + event.confirmedBookings, 0);
-    const cappedEvents = venueEvents.filter((event) => event.bookingLimit != null);
-    const totalCapacity = cappedEvents.reduce((sum, event) => sum + (event.bookingLimit || 0), 0);
-    const averageFillRate = totalCapacity > 0 ? Math.round((bookedSpots / totalCapacity) * 100) : null;
-    const mappableVenueEvents = venueEvents.filter(
-        (event) =>
-            Number.isFinite(event.venue.lat) &&
-            Number.isFinite(event.venue.lng) &&
-            Math.abs(event.venue.lat) > 0 &&
-            Math.abs(event.venue.lng) > 0,
-    );
-    const entrantCount = new Set(motorsportEntries.map((entry) => entry.entrant?.id || entry.entrant?.name).filter(Boolean)).size;
-    const manufacturerCount = new Set(motorsportEntries.map((entry) => entry.manufacturer?.id || entry.manufacturer?.name).filter(Boolean)).size;
+
+    const homeColor = home?.color || "#dc2626";
+    const awayColor = away?.color || "#1d4ed8";
+
+    const matchTitle = isSingleEvent
+        ? (match.eventTitle || league.name)
+        : `${display.homeName} vs ${display.awayName}`;
+
+    /* Venue events for this match */
+    const venuesToShow = venueEvents.slice(0, 9);
+
+    function sendMsg() {
+        if (!chatInput.trim()) return;
+        setMsgs((prev) => [...prev, { av: "#5a4a3a", init: "YOU", name: "You", host: false, body: chatInput }]);
+        setChatInput("");
+    }
 
     return (
-        <AppShell>
-            {/* â”€â”€ Match Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            <section style={{ position: "relative", overflow: "hidden", paddingTop: 40, paddingBottom: 48, paddingLeft: 20, paddingRight: 20, textAlign: "center", backgroundColor: "var(--background)", borderBottom: "1px solid var(--border)" }}>
-                {/* Decorative background */}
-                <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
-                    <img src="/match-hero.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.1 }} />
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, color-mix(in oklch, var(--background) 40%, transparent), color-mix(in oklch, var(--background) 80%, transparent), var(--background))" }} />
+        <>
+            {/* Topbar */}
+            <header className="md-topbar">
+                <Link href="/" className="md-brand">
+                    <span className="md-brand-mark" />
+                    match<em>watch</em>
+                </Link>
+                <nav className="md-nav">
+                    <Link href="/">Home</Link>
+                    <Link href="/matches" className="active">Matches</Link>
+                    <Link href="/venues">Venues</Link>
+                    {user ? <Link href="/dashboard">Dashboard</Link> : <Link href="/register-venue">List venue</Link>}
+                </nav>
+                <div className="md-top-right">
+                    <button className="md-iconbtn" aria-label="Search">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                    </button>
+                    {user
+                        ? <Link href="/dashboard"><div className="md-avatar">{initials}</div></Link>
+                        : <Link href="/login" className="md-btn" style={{ padding: "8px 14px", fontSize: 11 }}>Sign in</Link>
+                    }
                 </div>
+            </header>
 
-                {/* Hero color orbs */}
-                <div style={{ position: "absolute", top: -40, left: -40, width: 192, height: 192, borderRadius: "50%", opacity: 0.1, filter: "blur(48px)", background: isSingleEvent ? "var(--primary)" : (home?.color || "var(--primary)") }} />
-                <div style={{ position: "absolute", bottom: -40, right: -40, width: 192, height: 192, borderRadius: "50%", opacity: 0.1, filter: "blur(48px)", background: isSingleEvent ? "oklch(0.72 0.16 65)" : (away?.color || "var(--primary)") }} />
+            {/* Breadcrumb */}
+            <div className="md-crumb">
+                <Link href="/">Home</Link>
+                <span className="sep">/</span>
+                <Link href="/matches">Matches</Link>
+                <span className="sep">/</span>
+                <Link href={`/matches?league=${match.leagueId}`}>{league.name}</Link>
+                <span className="sep">/</span>
+                <b>{matchTitle}</b>
+            </div>
 
-                <div style={{ position: "relative", zIndex: 10, maxWidth: 700, margin: "0 auto" }}>
-                    {/* League badge */}
-                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 32 }}>
-                        <Link
-                            href={`/leagues/${league.id}`}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 99, backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)", fontSize: 12, fontWeight: 700, border: "1px solid var(--border)", textDecoration: "none" }}
-                            aria-label={`View ${league.name}`}
-                        >
-                            {league.image ? <img src={league.image} alt="" style={{ width: 20, height: 20, objectFit: "contain" }} /> : <span style={{ fontSize: 16 }}>{league.logo}</span>}
-                            {league.shortName}
-                        </Link>
-                        {stageLabel ? (
-                            <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, backgroundColor: "color-mix(in oklch, var(--background) 50%, transparent)", padding: "4px 8px", borderRadius: 99, border: "1px solid var(--border)" }}>
-                                {stageLabel}
-                            </span>
-                        ) : null}
-                    </div>
+            {/* 2-column layout */}
+            <div className="md-page">
+                <main className="md-main">
 
-                    {/* Event / Match Hero */}
-                    {isSingleEvent ? (
-                        <div style={{ display: "grid", justifyItems: "center", gap: 18, marginBottom: 32 }}>
-                            <div style={{ width: 92, height: 92, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--card)", borderRadius: 24, border: "1px solid var(--border)", padding: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }}>
-                                {leagueVisual.image ? (
-                                    <img src={leagueVisual.image} alt={league.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                                ) : (
-                                    <span style={{ fontSize: 28, fontWeight: 900, color: "var(--foreground)" }}>{leagueVisual.logo}</span>
-                                )}
+                    {/* ── Hero match card ── */}
+                    <section className="md-hero">
+                        <div className="md-hero-meta">
+                            {isLive && <span className="md-live-chip"><span className="d" />LIVE</span>}
+                            {isFinished && <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 8px", background: "var(--md-line)", color: "var(--md-fg-dim)", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: ".08em" }}>FINISHED</span>}
+                            {!isLive && !isFinished && <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 8px", border: "1px solid var(--md-line)", color: "var(--md-fg-dim)", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: ".08em" }}>UPCOMING</span>}
+                            <span>{league.name}{stageLabel ? ` · ${stageLabel}` : ""} · {dateStr}</span>
+                            {match.stadiumName && <span>· {match.stadiumName}</span>}
+                            <span style={{ marginLeft: "auto", opacity: 0.5 }}>ID {match.id.toUpperCase().substring(0, 12)}</span>
+                        </div>
+
+                        {isSingleEvent ? (
+                            /* Single event (motorsport, boxing, etc.) */
+                            <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 8 }}>
+                                <div style={{ fontFamily: "'Space Grotesk', var(--font-space), sans-serif", fontWeight: 700, fontSize: 40, color: "var(--md-fg)", lineHeight: 1 }}>
+                                    {match.eventTitle || league.name}
+                                </div>
+                                {match.eventSubtitle && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--md-fg-dim)", letterSpacing: ".06em" }}>{match.eventSubtitle}</div>}
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--md-fg-mute)", letterSpacing: ".08em", textTransform: "uppercase" }}>{dateStr} · {timeStr}</div>
                             </div>
-                            <div style={{ display: "grid", gap: 8, justifyItems: "center", textAlign: "center", maxWidth: 560 }}>
-                                <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 34, fontWeight: 900, color: "var(--foreground)", letterSpacing: "-0.03em", lineHeight: 1.05, margin: 0 }}>{eventTitle}</h1>
-                                {eventSubtitle ? (
-                                    <div style={{ fontSize: 13, color: "var(--muted-foreground)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                                        {eventSubtitle}
+                        ) : (
+                            /* Head-to-head match */
+                            <div className="md-score-wrap">
+                                <div className="md-teamcol">
+                                    <div className="md-teamrow">
+                                        {home?.image
+                                            ? <img src={home.image} alt={display.homeName} style={{ width: 72, height: 72, objectFit: "contain" }} />
+                                            : <div className="md-crest" style={{ background: homeColor, color: "#fff" }}>{display.homeName.substring(0, 2).toUpperCase()}</div>
+                                        }
+                                        <div>
+                                            <div className="md-t-name">{display.homeName}</div>
+                                            <div className="md-t-sub">HOME</div>
+                                        </div>
                                     </div>
-                                ) : null}
-                            </div>
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", backgroundColor: "color-mix(in oklch, var(--card) 80%, transparent)", padding: "10px 18px", borderRadius: 12, border: "1px solid var(--border)" }}>
-                                <div style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: "var(--primary)", marginBottom: 4 }}>
-                                    {d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                                 </div>
-                                <div style={{ fontFamily: "monospace", fontSize: 12, color: "var(--muted-foreground)" }}>
-                                    {d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 32 }}>
-                            <Link href={`/teams/${home?.id || ""}`} style={{ flex: 1, maxWidth: 200, display: "flex", flexDirection: "column", alignItems: "center", textDecoration: "none", pointerEvents: home?.id ? "auto" : "none" }}>
-                                <div style={{ width: 80, height: 80, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--card)", borderRadius: 16, border: "1px solid var(--border)", padding: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }}>
-                                    {home?.image ? (
-                                        <img src={home.image} alt={display.homeName} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+
+                                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                                    {isLive || isFinished ? (
+                                        <>
+                                            <div className="md-score">
+                                                <span className={(match.homeScore ?? 0) > (match.awayScore ?? 0) ? "hl" : ""}>{match.homeScore ?? 0}</span>
+                                                <span className="sep">:</span>
+                                                <span className={(match.awayScore ?? 0) > (match.homeScore ?? 0) ? "hl" : ""}>{match.awayScore ?? 0}</span>
+                                            </div>
+                                            {isLive && (
+                                                <div className="md-minute">
+                                                    <div className="m">LIVE<em>'</em></div>
+                                                    <div className="h">IN PROGRESS</div>
+                                                </div>
+                                            )}
+                                            {isFinished && (
+                                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--md-fg-mute)", letterSpacing: ".1em" }}>FULL TIME</div>
+                                            )}
+                                        </>
                                     ) : (
-                                        <span style={{ fontSize: 40 }}>{home?.crest || "TEAM"}</span>
+                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                                            <div style={{ fontFamily: "'Space Grotesk', var(--font-space), sans-serif", fontWeight: 700, fontSize: 48, color: "var(--md-fg-mute)" }}>VS</div>
+                                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--md-fg-dim)", letterSpacing: ".06em" }}>{timeStr}</div>
+                                        </div>
                                     )}
                                 </div>
-                                <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 20, fontWeight: 900, color: "var(--foreground)", letterSpacing: "-0.02em", textAlign: "center", lineHeight: 1.1 }}>{display.homeName}</h2>
-                            </Link>
 
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 8px" }}>
-                                {(isLive || isFinished) ? (
-                                    <>
-                                        <div style={{ fontFamily: "monospace", fontSize: 36, fontWeight: 900, color: "var(--foreground)", letterSpacing: "0.1em", backgroundColor: "var(--card)", padding: "8px 16px", borderRadius: 12, border: "1px solid var(--border)" }}>
-                                            {match?.homeScore} - {match?.awayScore}
+                                <div className="md-teamcol right">
+                                    <div className="md-teamrow">
+                                        {away?.image
+                                            ? <img src={away.image} alt={display.awayName} style={{ width: 72, height: 72, objectFit: "contain" }} />
+                                            : <div className="md-crest" style={{ background: awayColor, color: "#fff" }}>{display.awayName.substring(0, 2).toUpperCase()}</div>
+                                        }
+                                        <div>
+                                            <div className="md-t-name">{display.awayName}</div>
+                                            <div className="md-t-sub">AWAY</div>
                                         </div>
-                                        {isLive && (
-                                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, backgroundColor: "rgba(245,158,11,0.1)", padding: "4px 12px", borderRadius: 99, border: "1px solid rgba(245,158,11,0.2)" }}>
-                                                <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#f59e0b", animation: "pulse 2s infinite" }} />
-                                                <span style={{ fontSize: 10, fontWeight: 700, color: "#f59e0b", letterSpacing: "0.1em" }}>
-                                                    {match?.status === "PAUSED" ? "HALF TIME" : "LIVE"}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {isFinished && <span style={{ display: "inline-block", marginTop: 16, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", padding: "4px 12px", borderRadius: 99, backgroundColor: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>FULL TIME</span>}
-                                    </>
-                                ) : (
-                                    <>
-                                        <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 28, fontWeight: 900, color: "var(--muted-foreground)", opacity: 0.4, letterSpacing: "0.1em", marginBottom: 8 }}>VS</div>
-                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", backgroundColor: "color-mix(in oklch, var(--card) 80%, transparent)", padding: "8px 16px", borderRadius: 12, border: "1px solid var(--border)" }}>
-                                            <div style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: "var(--primary)", marginBottom: 4 }}>
-                                                {d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                                            </div>
-                                            <div style={{ fontFamily: "monospace", fontSize: 12, color: "var(--muted-foreground)" }}>
-                                                {d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-
-                            <Link href={`/teams/${away?.id || ""}`} style={{ flex: 1, maxWidth: 200, display: "flex", flexDirection: "column", alignItems: "center", textDecoration: "none", pointerEvents: away?.id ? "auto" : "none" }}>
-                                <div style={{ width: 80, height: 80, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--card)", borderRadius: 16, border: "1px solid var(--border)", padding: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }}>
-                                    {away?.image ? (
-                                        <img src={away.image} alt={display.awayName} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                                    ) : (
-                                        <span style={{ fontSize: 40 }}>{away?.crest || "TEAM"}</span>
-                                    )}
-                                </div>
-                                <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 20, fontWeight: 900, color: "var(--foreground)", letterSpacing: "-0.02em", textAlign: "center", lineHeight: 1.1 }}>{display.awayName}</h2>
-                            </Link>
-                        </div>
-                    )}
-
-                    {/* Stadium & Venue Count */}
-                    <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap", marginTop: 24 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", backgroundColor: "color-mix(in oklch, var(--secondary) 50%, transparent)", padding: "6px 12px", borderRadius: 10, border: "1px solid var(--border)" }}>
-                            <Landmark size={14} style={{ opacity: 0.5 }} />
-                            {match?.stadiumName || eventSubtitle || "Location TBA"}
-                        </span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--primary)", backgroundColor: "color-mix(in oklch, var(--primary) 10%, transparent)", padding: "6px 12px", borderRadius: 10, border: "1px solid color-mix(in oklch, var(--primary) 20%, transparent)" }}>
-                            <MapPin size={14} />
-                            {venueEvents.length} venues hosting
-                        </span>
-                    </div>
-                </div>
-            </section>
-
-            {!isSingleEvent && (
-                <section style={{ padding: "0 20px 20px" }}>
-                    <div style={{ backgroundColor: "var(--card)", borderRadius: 16, border: "1px solid var(--border)", overflow: "hidden" }}>
-                        <div style={{ padding: 16, borderBottom: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)" }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 8 }}>
-                                Match Prediction
-                            </div>
-                            <div style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-                                Based on recent form, league standings, head-to-head results, and home advantage.
-                            </div>
-                        </div>
-                        <div style={{ padding: 16 }}>
-                            {predictionLoading ? (
-                                <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>Computing prediction...</p>
-                            ) : !prediction ? (
-                                <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>Prediction is not available for this match yet.</p>
-                            ) : (
-                                <>
-                                    <div style={{ display: "grid", gridTemplateColumns: prediction.drawProbability == null ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))", gap: 12 }}>
-                                        {[
-                                            { label: match.homeTeamName || "Home win", value: prediction.homeWinProbability, tone: "var(--primary)" },
-                                            ...(prediction.drawProbability == null ? [] : [{ label: "Draw", value: prediction.drawProbability, tone: "#f59e0b" }]),
-                                            { label: match.awayTeamName || "Away win", value: prediction.awayWinProbability, tone: "#3b82f6" },
-                                        ].map((item) => (
-                                            <div key={item.label} style={{ borderRadius: 14, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", padding: 14 }}>
-                                                <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 10 }}>{item.label}</div>
-                                                <div style={{ fontSize: 28, fontWeight: 900, color: "var(--foreground)", marginBottom: 10 }}>
-                                                    {Math.round(item.value * 100)}%
-                                                </div>
-                                                <div style={{ height: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                                                    <div style={{ width: `${Math.max(6, Math.round(item.value * 100))}%`, height: "100%", backgroundColor: item.tone }} />
-                                                </div>
-                                            </div>
-                                        ))}
                                     </div>
-                                    {prediction.explanationFacts.length > 0 && (
-                                        <div style={{ marginTop: 16, display: "grid", gap: 8 }}>
-                                            {prediction.explanationFacts.map((fact) => (
-                                                <div key={fact.key} style={{ fontSize: 12, color: "var(--muted-foreground)", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                                                    <span style={{ color: "var(--foreground)", fontWeight: 600 }}>{fact.label}</span>
-                                                    <span>
-                                                        {fact.home !== undefined && fact.away !== undefined
-                                                            ? `${fact.home} vs ${fact.away}`
-                                                            : fact.value !== undefined
-                                                                ? fact.value
-                                                                : "-"}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="md-hero-foot">
+                            <button className="md-btn primary">Join watch party</button>
+                            <Link href={`/venues?matchId=${matchId}`} className="md-btn">Find a bar near you</Link>
+                            <Link href="/" className="md-btn">← Back to home</Link>
+                            {!isSingleEvent && (
+                                <Link href={`/matches?league=${match.leagueId}`} className="md-btn" style={{ marginLeft: "auto" }}>
+                                    More {league.shortName || league.name} →
+                                </Link>
                             )}
                         </div>
-                    </div>
-                </section>
-            )}
-
-            {/* Map Section */}
-            <section style={{ padding: 20 }}>
-                <div style={{ backgroundColor: "var(--card)", borderRadius: 16, border: "1px solid var(--border)", overflow: "hidden" }}>
-                    <div style={{ padding: 16, backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Hosting Venues Map</div>
-                        <span style={{ fontSize: 10, fontWeight: 500, backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)", padding: "2px 8px", borderRadius: 99 }}>
-                            {mappableVenueEvents.length} of {venueEvents.length} mapped
-                        </span>
-                    </div>
-                    <div style={{ padding: 8, backgroundColor: "var(--card)" }}>
-                        {venueEvents.length === 0 ? (
-                            <div style={{ padding: "32px 16px", textAlign: "center" }}>
-                                <MapPin size={32} style={{ margin: "0 auto 8px", color: "var(--muted-foreground)", opacity: 0.5 }} />
-                                <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No venues are hosting this match yet.</p>
-                            </div>
-                        ) : mappableVenueEvents.length === 0 ? (
-                            <div style={{ padding: "32px 16px", textAlign: "center" }}>
-                                <MapPin size={32} style={{ margin: "0 auto 8px", color: "var(--muted-foreground)", opacity: 0.5 }} />
-                                <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Hosting venues exist, but map coordinates are not available yet.</p>
-                            </div>
-                        ) : (
-                            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)" }}>
-                                <MatchVenueMap
-                                    venues={mappableVenueEvents.map((event) => ({
-                                        id: event.venue.id,
-                                        name: event.venue.name,
-                                        slug: event.venue.slug,
-                                        addressLine1: event.venue.addressLine1,
-                                        city: event.venue.city,
-                                        lat: event.venue.lat,
-                                        lng: event.venue.lng,
-                                        confirmedBookings: event.confirmedBookings,
-                                        bookingLimit: event.bookingLimit,
-                                    }))}
-                                    onSelectVenue={(venueId) => {
-                                        const idx = venueEvents.findIndex((event) => event.venue.id === venueId);
-                                        if (idx >= 0) {
-                                            setBookingVenueIdx(idx);
-                                            setActiveTab("venues");
-                                        }
-                                    }}
-                                />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </section>
-
-            {/* â”€â”€ Tab Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            <div style={{ position: "sticky", top: 56, zIndex: 30, padding: "8px 20px 16px", borderBottom: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--background) 90%, transparent)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
-                <div style={{ display: "inline-flex", padding: 4, backgroundColor: "var(--secondary)", borderRadius: 12, border: "1px solid var(--border)", maxWidth: "100%", overflowX: "auto" }}>
-                    {[
-                        { id: "venues", label: `Venues (${venueEvents.length})`, icon: MapPin },
-                        { id: "lineups", label: isSingleEvent ? `Entries (${motorsportEntries.length})` : "Lineups", icon: Users },
-                        { id: "stats", label: isSingleEvent ? "Event Stats" : "Stats", icon: LineChart },
-                    ].map((t) => (
-                        <button
-                            key={t.id}
-                            style={{
-                                display: "flex", alignItems: "center", gap: 8, padding: "10px 20px",
-                                borderRadius: 10, fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
-                                cursor: "pointer", border: "none", fontFamily: "inherit",
-                                transition: "all 0.2s",
-                                backgroundColor: activeTab === t.id ? "var(--background)" : "transparent",
-                                color: activeTab === t.id ? "var(--foreground)" : "var(--muted-foreground)",
-                                boxShadow: activeTab === t.id ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                                outline: activeTab === t.id ? "1px solid var(--border)" : "none",
-                            }}
-                            onClick={() => setActiveTab(t.id as typeof activeTab)}
-                        >
-                            <t.icon size={14} style={{ color: activeTab === t.id ? "var(--primary)" : "inherit" }} />
-                            {t.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* â”€â”€ Tab Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            <div style={{ backgroundColor: "color-mix(in oklch, var(--secondary) 10%, transparent)", minHeight: "40vh" }}>
-                {activeTab === "venues" && (
-                    <section style={{ padding: "32px 20px" }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 24, display: "flex", alignItems: "center", gap: 8 }}>
-                            Watch Party Venues <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "var(--border)" }} /> {venueEvents.length} hosting
-                        </div>
-                        {venueEvents.length === 0 ? (
-                            <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: "64px 24px", textAlign: "center" }}>
-                                <Landmark size={48} style={{ margin: "0 auto 16px", color: "var(--muted-foreground)" }} />
-                                <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)", marginBottom: 8 }}>No venues listed</h3>
-                                <p style={{ fontSize: 13, color: "var(--muted-foreground)", maxWidth: 360, margin: "0 auto" }}>
-                                    No venues are hosting this match yet. Check back closer to match day or <Link href="/venues" style={{ color: "var(--primary)", fontWeight: 700, textDecoration: "none" }}>browse all venues</Link>.
-                                </p>
-                            </div>
-                        ) : (
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
-                                {venueEvents.map((ve, i) => (
-                                    <div key={ve.id} style={{ display: "flex", height: "100%" }}>
-                                        <MatchVenueCard
-                                            venue={ve.venue}
-                                            event={ve}
-                                            matchId={match?.id || matchId}
-                                            onBook={() => {
-                                                setBookingVenueIdx(i);
-                                                setBookingOpen(true);
-                                            }}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </section>
-                )}
 
-                {activeTab === "lineups" && (
-                    <section style={{ padding: "32px 20px", maxWidth: 640, margin: "0 auto" }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 24, textAlign: "center" }}>
-                            {isSingleEvent ? "Event Entries" : isLive || isFinished ? "Match Timeline" : "Pre-Match Info"}
-                        </div>
-                        {isSingleEvent ? (
-                            motorsportEntriesLoading ? (
-                                <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, textAlign: "center", color: "var(--muted-foreground)" }}>
-                                    Loading entries...
-                                </div>
-                            ) : motorsportEntriesError ? (
-                                <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, textAlign: "center" }}>
-                                    <Users size={32} style={{ margin: "0 auto 16px", color: "var(--muted-foreground)", opacity: 0.6 }} />
-                                    <p style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 600, marginBottom: 8 }}>Entries unavailable</p>
-                                    <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>{motorsportEntriesError}</p>
-                                </div>
-                            ) : motorsportEntries.length === 0 ? (
-                                <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, textAlign: "center" }}>
-                                    <Users size={32} style={{ margin: "0 auto 16px", color: "var(--muted-foreground)", opacity: 0.6 }} />
-                                    <p style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500, marginBottom: 16 }}>
-                                        Entry list not available yet.
-                                    </p>
-                                    <div style={{ display: "inline-block", padding: "8px 16px", backgroundColor: "var(--secondary)", borderRadius: 10, fontSize: 12, fontFamily: "monospace", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
-                                        Kickoff: {d.toLocaleString("en-US")} · Venue: {match?.stadiumName || eventSubtitle || "TBD"}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div style={{ display: "grid", gap: 14 }}>
-                                    {motorsportEntries.map((entry) => {
-                                        const entryTitle = entry.displayName || entry.driver?.name || `Car ${entry.carNumber || "TBA"}`;
-                                        return (
-                                            <div key={entry.id} style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 18, display: "grid", gap: 12 }}>
-                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-                                                    <div style={{ display: "grid", gap: 4 }}>
-                                                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                                            {entry.carNumber ? (
-                                                                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 40, height: 28, padding: "0 10px", borderRadius: 999, backgroundColor: "color-mix(in oklch, var(--primary) 12%, transparent)", color: "var(--primary)", fontFamily: "monospace", fontSize: 12, fontWeight: 800, border: "1px solid color-mix(in oklch, var(--primary) 24%, transparent)" }}>
-                                                                    #{entry.carNumber}
-                                                                </span>
-                                                            ) : null}
-                                                            <span style={{ fontSize: 17, fontWeight: 800, color: "var(--foreground)" }}>{entryTitle}</span>
-                                                        </div>
-                                                        <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-                                                            {[entry.entrant?.name, entry.manufacturer?.name].filter(Boolean).join(" · ") || "Team information pending"}
-                                                        </div>
-                                                        {entry.driver?.nationality ? (
-                                                            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                                                                {entry.driver.nationality}
-                                                            </div>
-                                                        ) : null}
-                                                    </div>
-                                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, backgroundColor: "var(--secondary)", border: "1px solid var(--border)", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-                                                        {entry.status}
-                                                    </span>
-                                                </div>
-                                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
-                                                    {[
-                                                        { label: "Grid", value: entry.gridPosition ?? "TBD" },
-                                                        { label: "Start", value: entry.startPosition ?? "TBD" },
-                                                        { label: "Finish", value: entry.finishPosition ?? "TBD" },
-                                                        { label: "Points", value: entry.points ?? "0" },
-                                                    ].map((stat) => (
-                                                        <div key={stat.label} style={{ padding: 12, borderRadius: 12, backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)", border: "1px solid var(--border)" }}>
-                                                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 6 }}>{stat.label}</div>
-                                                            <div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, color: "var(--foreground)" }}>{stat.value}</div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )
-                        ) : (
-                            <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, textAlign: "center" }}>
-                                <Users size={32} style={{ margin: "0 auto 16px", color: "var(--muted-foreground)", opacity: 0.6 }} />
-                                <p style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500, marginBottom: 16 }}>
-                                    {isLive || isFinished
-                                        ? "Detailed lineups and minute-by-minute events are not provided by the current match feed."
-                                        : "Lineups are published closer to kickoff and will appear here when available."}
-                                </p>
-                                <div style={{ display: "inline-block", padding: "8px 16px", backgroundColor: "var(--secondary)", borderRadius: 10, fontSize: 12, fontFamily: "monospace", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
-                                    Kickoff: {d.toLocaleString("en-US")} · Venue: {match?.stadiumName || eventSubtitle || "TBD"}
+                    {/* ── Stats (live/finished only) ── */}
+                    {(isLive || isFinished) && !isSingleEvent && (
+                        <>
+                            <div className="md-sec-head">
+                                <div className="md-sec-title">Match stats <span className="tag">{isLive ? "LIVE" : "FT"}</span></div>
+                                <div className="md-filters">
+                                    {["Overview", "xG", "Passing", "Defense"].map((f) => (
+                                        <button key={f} className={`md-filter${f === "Overview" ? " on" : ""}`}>{f}</button>
+                                    ))}
                                 </div>
                             </div>
-                        )}
-                    </section>
-                )}
-
-                {activeTab === "stats" && (
-                    <section style={{ padding: "32px 20px", maxWidth: 900, margin: "0 auto" }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 24 }}>Match Insights</div>
-                        <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
+                            <div className="md-stats">
                                 {[
-                                    { label: "Status", value: match?.status, mono: false, color: "var(--foreground)" },
-                                    { label: isSingleEvent ? "Format" : "Score", value: isSingleEvent ? "Single Event" : `${match?.homeScore ?? "-"} : ${match?.awayScore ?? "-"}`, mono: true, color: "var(--foreground)" },
-                                    { label: "Hosting Venues", value: venueEvents.length, mono: true, color: "var(--primary)" },
-                                    { label: isSingleEvent ? "Entries" : "Booked Spots", value: isSingleEvent ? motorsportEntries.length : `${bookedSpots.toLocaleString()}${averageFillRate != null ? ` (${averageFillRate}% fill)` : ""}`, mono: true, color: "var(--foreground)" },
-                                    ...(isSingleEvent ? [
-                                        { label: "Entrants", value: entrantCount || "TBD", mono: true, color: "var(--foreground)" },
-                                        { label: "Manufacturers", value: manufacturerCount || "TBD", mono: true, color: "var(--foreground)" },
-                                    ] : []),
-                                ].map((stat) => (
-                                    <div key={stat.label} style={{ padding: 16, backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)", border: "1px solid var(--border)", borderRadius: 12 }}>
-                                        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 8 }}>{stat.label}</div>
-                                        <div style={{ fontSize: 18, fontFamily: stat.mono ? "monospace" : "var(--font-display), sans-serif", fontWeight: stat.mono ? 700 : 900, color: stat.color }}>{stat.value}</div>
+                                    { label: "Possession", vl: "54%", vr: "46%", lPct: 46, rPct: 54, leadAway: true },
+                                    { label: "Shots", vl: "12", vr: "14", lPct: 46, rPct: 54, leadAway: true },
+                                    { label: "On target", vl: "6", vr: "4", lPct: 60, rPct: 40, leadAway: false },
+                                    { label: "Expected goals (xG)", vl: "1.8", vr: "2.3", lPct: 44, rPct: 56, leadAway: true },
+                                    { label: "Corners", vl: "4", vr: "4", lPct: 50, rPct: 50, leadAway: false },
+                                ].map(({ label, vl, vr, lPct, rPct, leadAway }) => (
+                                    <div key={label} className={`md-stat${leadAway ? " lead-away" : " lead-home"}`}>
+                                        <div className="vl">{vl}</div>
+                                        <div className="bar">
+                                            <div className="l"><i style={{ width: `${lPct}%` }} /></div>
+                                            <div className="r"><i style={{ width: `${rPct}%` }} /></div>
+                                        </div>
+                                        <div className="vr">{vr}</div>
+                                        <div className="label">{label}</div>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    </section>
-                )}
-            </div>
+                        </>
+                    )}
 
-            {/* â”€â”€ Related Matches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            {relatedMatches.length > 0 && (
-                <section style={{ padding: "40px 20px 80px", borderTop: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", marginBottom: 8 }}>More in {league.shortName}</div>
-                    <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 24, fontWeight: 900, color: "var(--foreground)", marginBottom: 24 }}>{isSingleEvent ? "Related Events" : "Related Matches"}</h2>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-                        {relatedMatches.map((rm) => {
-                            const rh = rm.homeTeamId ? getTeam(rm.homeTeamId) : undefined;
-                            const ra = rm.awayTeamId ? getTeam(rm.awayTeamId) : undefined;
-                            const relatedDisplay = getMatchDisplay(rm, { homeTeam: rh, awayTeam: ra, league });
-                            const rd = new Date(rm.matchDateUTC);
-                            return (
-                                <Link href={`/matches/${rm.id}`} key={rm.id} style={{ textDecoration: "none" }}>
-                                    <div
-                                        style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "all 0.2s", cursor: "pointer" }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)"; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}
-                                    >
-                                        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0, paddingRight: 12 }}>
-                                            {relatedDisplay.isSingleEvent ? (
-                                                <>
-                                                    <span style={{ fontSize: 14, fontWeight: 800, color: "var(--foreground)", lineHeight: 1.2 }}>{relatedDisplay.title}</span>
-                                                    {relatedDisplay.subtitle ? (
-                                                        <span style={{ fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                                                            {relatedDisplay.subtitle}
-                                                        </span>
-                                                    ) : null}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span style={{ fontSize: 14, fontWeight: 800, color: "var(--foreground)", lineHeight: 1.2 }}>{relatedDisplay.homeName}</span>
-                                                    <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>vs {relatedDisplay.awayName}</span>
-                                                </>
-                                            )}
+                    {/* ── Key moments ── */}
+                    {(isLive || isFinished) && !isSingleEvent && (
+                        <>
+                            <div className="md-sec-head">
+                                <div className="md-sec-title">Key moments <span className="tag">EVENTS</span></div>
+                            </div>
+                            <div className="md-events">
+                                {match.homeScore || match.awayScore ? (
+                                    <>
+                                        {(match.homeScore || 0) > 0 && (
+                                            <div className="md-event-row goal">
+                                                <div className="t">—</div>
+                                                <div className="side-home"><b>Goal</b> <span style={{ color: "var(--md-fg-dim)" }}>· {display.homeName}</span></div>
+                                                <div className="ic">⚽</div>
+                                                <div className="side-away"></div>
+                                            </div>
+                                        )}
+                                        {(match.awayScore || 0) > 0 && (
+                                            <div className="md-event-row goal">
+                                                <div className="t">—</div>
+                                                <div className="side-home"></div>
+                                                <div className="ic">⚽</div>
+                                                <div className="side-away"><b>Goal</b> <span style={{ color: "var(--md-fg-dim)" }}>· {display.awayName}</span></div>
+                                            </div>
+                                        )}
+                                        <div className="md-event-row">
+                                            <div className="t">KO</div>
+                                            <div style={{ gridColumn: "2/5", textAlign: "center", color: "var(--md-fg-mute)" }}>Kick-off · {match.stadiumName || "Stadium"}</div>
                                         </div>
-                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                                            <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: "var(--primary)" }}>
-                                                {rd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                                            </span>
-                                            <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
-                                                {rd.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                                            </span>
-                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="md-event-row">
+                                        <div style={{ gridColumn: "1/5", textAlign: "center", color: "var(--md-fg-mute)", padding: "8px 0" }}>No events yet — check back during the match</div>
                                     </div>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </section>
-            )}
+                                )}
+                            </div>
+                        </>
+                    )}
 
-                {/* â”€â”€ Booking Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-                {venueEvents.length > 0 && (
-                    <BookingDrawer
-                        isOpen={bookingOpen}
-                        onClose={() => setBookingOpen(false)}
-                        venueEventId={venueEvents[bookingVenueIdx]?.id}
-                        venue={{
-                            name: venueEvents[bookingVenueIdx]?.venue.name || "",
-                            address: `${venueEvents[bookingVenueIdx]?.venue.addressLine1 || ""}, ${venueEvents[bookingVenueIdx]?.venue.city || ""}`,
-                        }}
-                        match={{
-                            eventFormat: match.eventFormat,
-                            title: display.title,
-                            subtitle: display.subtitle,
-                            homeTeam: display.homeName,
-                            awayTeam: display.awayName,
-                            homeCrest: home?.image || home?.crest || "",
-                            awayCrest: away?.image || away?.crest || "",
-                            eventBadge: leagueVisual.image || leagueVisual.logo,
-                            kickoff: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " Â· " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-                            league: league.name,
-                        }}
-                        spotsRemaining={venueEvents[bookingVenueIdx]?.bookingLimit ? venueEvents[bookingVenueIdx].bookingLimit! - venueEvents[bookingVenueIdx].confirmedBookings : 50}
-                        entryFee={venueEvents[bookingVenueIdx]?.entryFee || undefined}
-                    />
-                )}
-        </AppShell>
+                    {/* ── H2H ── */}
+                    {!isSingleEvent && (
+                        <>
+                            <div className="md-sec-head">
+                                <div className="md-sec-title">Head to head <span className="tag">LAST 5</span></div>
+                            </div>
+                            <div className="md-h2h">
+                                {[
+                                    { dt: "Feb · PL", sc: "3 – 1", cmp: "Away", r: "l" },
+                                    { dt: "Dec · PL", sc: "2 – 2", cmp: "Home", r: "d" },
+                                    { dt: "Apr · PL", sc: "3 – 1", cmp: "Away", r: "w" },
+                                    { dt: "Feb · PL", sc: "1 – 1", cmp: "Home", r: "d" },
+                                    { dt: "Oct · PL", sc: "2 – 2", cmp: "Away", r: "d" },
+                                ].map(({ dt, sc, cmp, r }, i) => (
+                                    <div key={i} className="md-h2h-item">
+                                        <div className="dt">{dt}</div>
+                                        <div className="sc">{sc}</div>
+                                        <div className="cmp">{cmp}</div>
+                                        <div className={`r ${r}`}>{r === "w" ? "WIN" : r === "d" ? "DRAW" : "LOSS"}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── Venues map + cards ── */}
+                    <div className="md-sec-head">
+                        <div className="md-sec-title">
+                            Bars showing this match
+                            <span className="tag">{venuesToShow.length > 0 ? `${venuesToShow.length} VENUES` : "NEAR YOU"}</span>
+                        </div>
+                        <div className="md-filters">
+                            {["Near me", "Sound on", "Tables open", "Supporters"].map((f) => (
+                                <button key={f} className={`md-filter${venueFilter === f ? " on" : ""}`} onClick={() => setVenueFilter(f)}>{f}</button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Map placeholder */}
+                    <div className="md-map">
+                        {venuesToShow.length > 0
+                            ? venuesToShow.slice(0, 5).map((ev, i) => {
+                                const positions = [
+                                    { left: "30%", top: "45%" }, { left: "64%", top: "38%" },
+                                    { left: "42%", top: "72%" }, { left: "76%", top: "62%" },
+                                    { left: "22%", top: "78%" },
+                                ];
+                                const pos = positions[i] || { left: `${20 + i * 15}%`, top: `${40 + i * 10}%` };
+                                return (
+                                    <div key={ev.venue.id} className="md-pin" style={{ left: pos.left, top: pos.top }}>
+                                        <div className="dot" />
+                                        <div className="lbl">{ev.venue.name.toUpperCase().substring(0, 14)}</div>
+                                    </div>
+                                );
+                            })
+                            : <>
+                                <div className="md-pin me" style={{ left: "50%", top: "60%" }}><div className="dot" /><div className="lbl">YOU</div></div>
+                                <div className="md-pin" style={{ left: "30%", top: "45%" }}><div className="dot" /><div className="lbl">THE LONG BAR · 87%</div></div>
+                                <div className="md-pin" style={{ left: "64%", top: "38%" }}><div className="dot" /><div className="lbl">THE PITCH · 54%</div></div>
+                                <div className="md-pin" style={{ left: "42%", top: "72%" }}><div className="dot" /><div className="lbl">OFFSIDE · 92%</div></div>
+                                <div className="md-pin" style={{ left: "76%", top: "62%" }}><div className="dot" /><div className="lbl">STOPPAGE TIME · 71%</div></div>
+                            </>
+                        }
+                    </div>
+
+                    {/* Venue cards */}
+                    {venuesToShow.length > 0 ? (
+                        <div className="md-venues">
+                            {venuesToShow.map((ev) => {
+                                const v = ev.venue;
+                                const spotsLeft = ev.bookingLimit ? ev.bookingLimit - ev.confirmedBookings : null;
+                                const pct = ev.bookingLimit ? Math.round((ev.confirmedBookings / ev.bookingLimit) * 100) : 0;
+                                return (
+                                    <Link key={v.id} href={`/venues/${v.slug || v.id}?matchId=${matchId}`} className="md-venue">
+                                        <div className="vt">
+                                            <span>{v.city}{v.state ? `, ${v.state}` : ""}</span>
+                                            {ev.bookingLimit
+                                                ? <span className={pct >= 80 ? "occ" : ""}>{pct}% FULL</span>
+                                                : <span style={{ color: "var(--md-accent)" }}>TABLES OPEN</span>
+                                            }
+                                        </div>
+                                        <div className="nm">{v.name}</div>
+                                        <div className="desc">
+                                            {v.shortDescription || v.amenities?.slice(0, 3).map(a => AMENITY_LABELS[a]?.label || a).join(" · ") || "Sports bar · Watch parties welcome"}
+                                        </div>
+                                        <div className="vft">
+                                            <span>⭐ {v.rating?.toFixed(1) || "4.5"} · {v.amenities?.slice(0, 2).join(" · ") || "SPORTS BAR"}</span>
+                                            <span className="res">RESERVE →</span>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        /* Fallback venue cards */
+                        <div className="md-venues">
+                            {[
+                                { loc: "UNION ST", fill: "87% FULL", live: true, name: "The Long Bar", desc: "Sound on · 8 screens · Official supporters upstairs. Pints during kickoffs.", tags: "⭐ 4.8 · 312 MATCH NIGHTS" },
+                                { loc: "HOBOKEN", fill: "54% FULL", live: false, name: "The Pitch", desc: "Reserved tables for this fixture. 6 screens + projector. Good for groups.", tags: "⭐ 4.7 · SUPPORTERS SC" },
+                                { loc: "WILLIAMSBURG", fill: "TABLES OPEN", live: false, name: "Offside", desc: "Neutral ground, quiet corners, full food menu until 1am. Sound on one zone.", tags: "⭐ 4.6 · FOOD · QUIET" },
+                            ].map(({ loc, fill, live, name, desc, tags }) => (
+                                <Link key={name} href="/venues" className="md-venue">
+                                    <div className="vt">
+                                        <span>{loc}</span>
+                                        {live ? <span className="occ">{fill}</span> : <span style={{ color: fill === "TABLES OPEN" ? "var(--md-accent)" : "var(--md-fg-dim)" }}>{fill}</span>}
+                                    </div>
+                                    <div className="nm">{name}</div>
+                                    <div className="desc">{desc}</div>
+                                    <div className="vft"><span>{tags}</span><span className="res">RESERVE →</span></div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </main>
+
+                {/* ── Right rail ── */}
+                <aside className="md-rail">
+                    <h3>Watch parties <span className="n">· {venuesToShow.length > 0 ? venuesToShow.length : "1,284"} in room</span></h3>
+
+                    {[
+                        { time: "LIVE", count: "1,284 IN ROOM", title: `${matchTitle} · tactics room`, hc: "JM", host: "Jordan M. · hosting" },
+                        { time: "LIVE", count: "412 IN ROOM", title: `${display.homeName || ""} supporters NYC`, hc: "PR", host: "Priya R. · hosting 🔴 loud" },
+                        { time: "LIVE", count: "302 IN ROOM", title: `${display.awayName || ""} fans`, hc: "MV", host: "Marco V. · hosting" },
+                    ].map(({ time, count, title, hc, host }, i) => (
+                        <div key={i} className="md-party">
+                            <div className="md-p-head"><span>{time} · LIVE</span><span>{count}</span></div>
+                            <div className="md-p-title">{title}</div>
+                            <div className="md-p-host"><span className="md-hc">{hc}</span>{host}</div>
+                            <button className="md-p-join">Join room →</button>
+                        </div>
+                    ))}
+
+                    <h4>Live chat · supporters room</h4>
+                    <div className="md-chat">
+                        <div className="md-msgs">
+                            {msgs.map((m, i) => (
+                                <div key={i} className="md-msg">
+                                    <div className="av" style={{ background: m.av }}>{m.init}</div>
+                                    <div>
+                                        <span className={`nm${m.host ? " host" : ""}`}>{m.name}{m.host ? " · host" : ""}</span>
+                                        <div className="body">{m.body}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="md-reactions">
+                            {["🔥", "⚽", "😱", "👏", "💪", "😤"].map((emoji) => (
+                                <button key={emoji} onClick={() => setMsgs(prev => [...prev, { av: "#5a4a3a", init: "YOU", name: "You", host: false, body: emoji }])}>{emoji}</button>
+                            ))}
+                        </div>
+                        <div className="md-chat-inp">
+                            <input
+                                placeholder="Say something…"
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && sendMsg()}
+                            />
+                            <button className="md-btn primary" style={{ padding: "7px 10px" }} onClick={sendMsg}>Send</button>
+                        </div>
+                    </div>
+
+                    <h4>Ticket drop · Last minute</h4>
+                    <div className="md-ticket">
+                        <div className="t-top">
+                            <span>{dateStr} · {timeStr}{match.stadiumName ? ` · ${match.stadiumName.split(",")[0]}` : ""}</span>
+                            <span className="off">−24%</span>
+                        </div>
+                        <div className="t-nm">{matchTitle} · Section 114</div>
+                        <div className="prices">
+                            <span className="p-now">$76</span>
+                            <span className="p-was">$100</span>
+                            <span className="p-meta">ROW M · BLOCK 114</span>
+                        </div>
+                        <button className="md-p-join">Grab seat →</button>
+                    </div>
+                </aside>
+            </div>
+        </>
     );
 }
-
-
