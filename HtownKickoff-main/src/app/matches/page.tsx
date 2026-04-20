@@ -103,7 +103,18 @@ body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 .mt-form{display:flex;gap:3px;}
 .mt-form i{width:6px;height:6px;border-radius:50%;display:inline-block;}
 .mt-form i.w{background:var(--mt-win);}.mt-form i.d{background:var(--mt-line-2);}.mt-form i.l{background:var(--mt-loss);}
-.mt-tc{width:32px;height:32px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:11px;color:#fff;flex-shrink:0;}
+.mt-tc{width:32px;height:32px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:11px;color:#fff;flex-shrink:0;overflow:hidden;}
+.mt-tc img{width:28px;height:28px;object-fit:contain;}
+.mt-league-hd .crest img{width:24px;height:24px;object-fit:contain;}
+/* league filter bar */
+.mt-league-bar{display:flex;gap:6px;padding:10px 32px 12px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--mt-line);flex-wrap:nowrap;}
+.mt-league-bar::-webkit-scrollbar{display:none;}
+.mt-league-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid var(--mt-line);color:var(--mt-fg-dim);font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;background:none;transition:all .14s;white-space:nowrap;flex-shrink:0;}
+.mt-league-pill:hover{color:var(--mt-fg);border-color:var(--mt-line-2);}
+.mt-league-pill.on{border-color:var(--mt-accent);color:var(--mt-accent);background:rgba(255,95,45,0.07);}
+.mt-league-pill img{width:18px;height:18px;object-fit:contain;}
+.mt-league-pill .pill-n{color:var(--mt-fg-mute);font-size:10px;margin-left:2px;}
+.mt-league-pill.on .pill-n{color:var(--mt-accent);opacity:0.7;}
 .mt-score{text-align:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:22px;letter-spacing:-0.02em;}
 .mt-score .sep{color:var(--mt-fg-mute);margin:0 6px;font-weight:400;}
 .mt-vs{text-align:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;color:var(--mt-fg-mute);letter-spacing:.1em;}
@@ -213,7 +224,12 @@ function MatchRow({ match, league, home, away, todayKey }: { match: Match; leagu
                 <span className={`mt-team-name${match.isFeatured ? " bold" : ""}`}>
                     {isSingle ? d.title : d.homeName}
                 </span>
-                <div className="mt-tc" style={{ background: homeColor }}>{getToken(home, d.homeName)}</div>
+                <div className="mt-tc" style={{ background: home?.image ? "transparent" : homeColor }}>
+                    {home?.image
+                        ? <img src={home.image} alt={d.homeName} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                        : getToken(home, d.homeName)
+                    }
+                </div>
             </div>
 
             <div>
@@ -226,7 +242,12 @@ function MatchRow({ match, league, home, away, todayKey }: { match: Match; leagu
             <div className="mt-away">
                 {!isSingle && (
                     <>
-                        <div className="mt-tc" style={{ background: awayColor }}>{getToken(away, d.awayName)}</div>
+                        <div className="mt-tc" style={{ background: away?.image ? "transparent" : awayColor }}>
+                            {away?.image
+                                ? <img src={away.image} alt={d.awayName} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                                : getToken(away, d.awayName)
+                            }
+                        </div>
                         <span className={`mt-team-name${match.isFeatured ? " bold" : ""}`}>{d.awayName}</span>
                     </>
                 )}
@@ -296,6 +317,7 @@ function MatchesPageContent() {
     const { user } = useData() as never as { user: { name?: string } | null };
 
     const [selectedSportId, setSelectedSportId] = React.useState<string | null>(null);
+    const [selectedLeagueId, setSelectedLeagueId] = React.useState<string | null>(null);
     const [searchQuery, setSearchQuery] = React.useState("");
     const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
     const [includePast, setIncludePast] = React.useState(false);
@@ -337,6 +359,28 @@ function MatchesPageContent() {
         return c;
     }, [baseMatches, getLeague]);
 
+    const availableLeagues = React.useMemo(() => {
+        const leagueIds = new Set(
+            baseMatches
+                .filter(m => !selectedSportId || (getLeague(m.leagueId)?.sportId || "soccer") === selectedSportId)
+                .map(m => m.leagueId)
+        );
+        return leagues.filter(l => leagueIds.has(l.id)).sort((a, b) => a.name.localeCompare(b.name));
+    }, [baseMatches, selectedSportId, leagues, getLeague]);
+
+    const leagueCounts = React.useMemo(() => {
+        const c = new Map<string, number>();
+        for (const m of baseMatches) {
+            const l = getLeague(m.leagueId);
+            if (!selectedSportId || (l?.sportId || "soccer") === selectedSportId)
+                c.set(m.leagueId, (c.get(m.leagueId) || 0) + 1);
+        }
+        return c;
+    }, [baseMatches, selectedSportId, getLeague]);
+
+    // Reset league when sport changes
+    React.useEffect(() => { setSelectedLeagueId(null); }, [selectedSportId]);
+
     const filtered = React.useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
         return baseMatches.filter(m => {
@@ -345,9 +389,10 @@ function MatchesPageContent() {
             const a = m.awayTeamId ? getTeam(m.awayTeamId) : undefined;
             const d = getMatchDisplay(m, { homeTeam: h, awayTeam: a, league: l });
             const sportOK = !selectedSportId || (l?.sportId || "soccer") === selectedSportId;
+            const leagueOK = !selectedLeagueId || m.leagueId === selectedLeagueId;
             const dateOK = !selectedDateKey || toUtcDateKey(m.matchDateUTC) === selectedDateKey;
             const queryOK = !q || [l?.name, d.homeName, d.awayName, d.title, m.stadiumName, m.stage].filter(Boolean).join(" ").toLowerCase().includes(q);
-            return sportOK && dateOK && queryOK;
+            return sportOK && leagueOK && dateOK && queryOK;
         }).sort(compareMatches);
     }, [baseMatches, selectedSportId, selectedDateKey, searchQuery, getLeague, getTeam]);
 
@@ -363,7 +408,7 @@ function MatchesPageContent() {
     React.useEffect(() => {
         if (!hasInitReset.current) { hasInitReset.current = true; return; }
         syncPage(1);
-    }, [selectedSportId, selectedDateKey, searchQuery, syncPage]);
+    }, [selectedSportId, selectedLeagueId, selectedDateKey, searchQuery, syncPage]);
 
     const dateChips = React.useMemo(() => {
         const counts = new Map<string, { key: string; upcoming: number; finished: number }>();
@@ -478,6 +523,23 @@ function MatchesPageContent() {
                 })}
             </div>
 
+            {/* League filter bar */}
+            {availableLeagues.length > 1 && (
+                <div className="mt-league-bar">
+                    {availableLeagues.map(l => (
+                        <button
+                            key={l.id}
+                            className={`mt-league-pill${selectedLeagueId === l.id ? " on" : ""}`}
+                            onClick={() => setSelectedLeagueId(prev => prev === l.id ? null : l.id)}
+                        >
+                            {l.image && <img src={l.image} alt={l.name} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />}
+                            {l.shortName || l.name}
+                            <span className="pill-n">{leagueCounts.get(l.id) || 0}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* Toolbar */}
             <div className="mt-toolbar">
                 <div className="mt-sports">
@@ -520,8 +582,11 @@ function MatchesPageContent() {
                                 <div key={league?.id || matches[0]?.leagueId} className="mt-league">
                                     <div className="mt-league-hd">
                                         <div className="title">
-                                            <div className="crest" style={{ background: "#23272f" }}>
-                                                {(league?.logo || league?.shortName || "MW").substring(0, 2).toUpperCase()}
+                                            <div className="crest" style={{ background: league?.image ? "transparent" : "#23272f" }}>
+                                                {league?.image
+                                                    ? <img src={league.image} alt={league.name} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                                                    : (league?.logo || league?.shortName || "MW").substring(0, 2).toUpperCase()
+                                                }
                                             </div>
                                             <h2>{league?.name || "League"}</h2>
                                             <span className="region">{league?.country || "Global"}</span>
