@@ -3,858 +3,624 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, CircleDot, Globe, Timer, Trophy, X } from "lucide-react";
-import { AppShell } from "../../components/AppShell";
-import { MatchCard } from "../../components/MatchCard";
-import { PaginationControls } from "../../components/PaginationControls";
+import { type League, type Match, type Team } from "../../lib/data";
 import { useData } from "../../lib/data-provider";
 import { getMatchDisplay } from "../../lib/match-display";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
 
+/* ── CSS ── */
+const MT_VARS = `
+:root{
+  --mt-bg:#0a0b0d;--mt-bg-1:#101217;--mt-bg-2:#14171d;
+  --mt-line:#23272f;--mt-line-2:#2f3540;
+  --mt-fg:#f1ece4;--mt-fg-dim:#a8a59d;--mt-fg-mute:#6c6a64;
+  --mt-accent:oklch(0.72 0.19 28);--mt-accent-ink:#0a0b0d;
+  --mt-win:oklch(0.78 0.16 145);--mt-loss:oklch(0.65 0.2 20);
+}
+`;
+
+const MT_CSS = `
+body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
+.mt-wrap{min-height:100vh;background:radial-gradient(1200px 600px at 20% -10%,rgba(255,120,60,0.08),transparent 60%),radial-gradient(900px 500px at 100% 10%,rgba(80,180,255,0.05),transparent 60%),var(--mt-bg);}
+/* topbar */
+.mt-topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 28px;background:rgba(10,11,13,.8);backdrop-filter:blur(14px);border-bottom:1px solid var(--mt-line);}
+.mt-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;text-decoration:none;color:var(--mt-fg);}
+.mt-brand-mark{width:22px;height:22px;background:var(--mt-fg);position:relative;border-radius:2px;mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);-webkit-mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);}
+.mt-brand-mark::after{content:"";position:absolute;inset:4px;background:var(--mt-accent);border-radius:1px;}
+.mt-brand em{font-style:normal;color:var(--mt-accent);}
+.mt-nav{display:flex;gap:28px;justify-content:center;}
+.mt-nav a{font-size:13px;color:var(--mt-fg-dim);letter-spacing:.04em;text-transform:uppercase;position:relative;padding:6px 0;text-decoration:none;}
+.mt-nav a.active,.mt-nav a:hover{color:var(--mt-fg);}
+.mt-nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:-15px;height:2px;background:var(--mt-accent);}
+.mt-top-right{display:flex;gap:14px;justify-content:flex-end;align-items:center;}
+.mt-iconbtn{width:36px;height:36px;border:1px solid var(--mt-line);display:grid;place-items:center;color:var(--mt-fg-dim);background:none;cursor:pointer;}
+.mt-iconbtn:hover{color:var(--mt-fg);border-color:var(--mt-line-2);}
+.mt-avatar{width:32px;height:32px;background:linear-gradient(135deg,#5a4a3a,#a07a52);display:grid;place-items:center;font-weight:600;font-size:12px;color:#1a1108;}
+/* crumb */
+.mt-crumb{padding:14px 32px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--mt-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--mt-line);}
+.mt-crumb a:hover{color:var(--mt-fg);}.mt-crumb .sep{margin:0 8px;color:var(--mt-line-2);}.mt-crumb b{color:var(--mt-fg-dim);font-weight:500;}
+/* band */
+.mt-band{padding:32px 32px 20px;border-bottom:1px solid var(--mt-line);position:relative;overflow:hidden;}
+.mt-band::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;}
+.mt-band-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:end;position:relative;z-index:1;}
+.mt-kicker{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.16em;color:var(--mt-fg-mute);text-transform:uppercase;margin-bottom:12px;}
+.mt-h1{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:54px;line-height:.95;letter-spacing:-0.025em;margin:0;}
+.mt-h1 em{font-style:normal;color:var(--mt-accent);}
+.mt-sub{max-width:520px;margin-top:14px;font-size:14px;color:var(--mt-fg-dim);line-height:1.5;}
+.mt-band-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--mt-line);padding-top:16px;}
+.mt-bs .lbl{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.14em;color:var(--mt-fg-mute);text-transform:uppercase;margin-bottom:6px;}
+.mt-bs .v{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:32px;letter-spacing:-0.02em;line-height:1;}
+.mt-bs .v em{font-style:normal;color:var(--mt-accent);}
+/* date strip */
+.mt-dates{display:flex;gap:0;padding:0 32px;margin-top:16px;border-bottom:1px solid var(--mt-line);overflow-x:auto;}
+.mt-dt{flex-shrink:0;padding:14px 20px;border-right:1px solid var(--mt-line);display:flex;flex-direction:column;gap:2px;min-width:92px;cursor:pointer;position:relative;}
+.mt-dt:first-child{border-left:1px solid var(--mt-line);}
+.mt-dt .d{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mt-fg-mute);}
+.mt-dt .n{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:22px;color:var(--mt-fg-dim);letter-spacing:-0.02em;}
+.mt-dt .c{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--mt-fg-mute);letter-spacing:.08em;}
+.mt-dt.on{background:var(--mt-bg-2);}
+.mt-dt.on .d,.mt-dt.on .n{color:var(--mt-fg);}.mt-dt.on .c{color:var(--mt-accent);}
+.mt-dt.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--mt-accent);}
+.mt-dt.past .n,.mt-dt.past .c{color:var(--mt-fg-mute);}
+/* toolbar */
+.mt-toolbar{display:flex;justify-content:space-between;align-items:center;padding:16px 32px;gap:16px;flex-wrap:wrap;}
+.mt-sports{display:flex;gap:6px;flex-wrap:wrap;}
+.mt-sport{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:8px 12px;border:1px solid var(--mt-line);color:var(--mt-fg-dim);cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:none;}
+.mt-sport:hover{color:var(--mt-fg);border-color:var(--mt-line-2);}
+.mt-sport.on{background:var(--mt-fg);color:var(--mt-bg);border-color:var(--mt-fg);}
+.mt-sport .n{color:var(--mt-fg-mute);}.mt-sport.on .n{color:rgba(10,11,13,.55);}
+.mt-view-tools{display:flex;gap:12px;align-items:center;}
+.mt-search-mini{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--mt-line);min-width:240px;}
+.mt-search-mini input{background:transparent;border:0;color:var(--mt-fg);font-family:inherit;font-size:13px;outline:0;flex:1;}
+.mt-search-mini input::placeholder{color:var(--mt-fg-mute);}
+/* page grid */
+.mt-page{display:grid;grid-template-columns:1fr 300px;gap:0;}
+.mt-main{padding:8px 32px 60px;min-width:0;}
+.mt-rail{border-left:1px solid var(--mt-line);padding:24px;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto;background:linear-gradient(180deg,rgba(255,255,255,.015),transparent 200px);}
+/* league section */
+.mt-league{margin-bottom:32px;}
+.mt-league-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 0 12px;border-bottom:1px solid var(--mt-line);position:sticky;top:61px;background:var(--mt-bg);z-index:5;}
+.mt-league-hd .title{display:flex;align-items:center;gap:12px;}
+.mt-league-hd .crest{width:28px;height:28px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:12px;border:1px solid var(--mt-line-2);color:#fff;}
+.mt-league-hd h2{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:18px;margin:0;letter-spacing:-0.01em;}
+.mt-league-hd .region{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.1em;color:var(--mt-fg-mute);text-transform:uppercase;margin-left:4px;}
+.mt-league-hd .acts{display:flex;gap:10px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mt-fg-dim);}
+.mt-league-hd .acts a:hover{color:var(--mt-fg);}
+/* match row */
+.mt-match{display:grid;grid-template-columns:96px 1fr 120px 1fr 130px 150px;gap:14px;padding:14px 10px;align-items:center;border-bottom:1px dashed var(--mt-line);cursor:pointer;transition:background .14s;text-decoration:none;color:inherit;}
+.mt-match:hover{background:var(--mt-bg-1);}
+.mt-match:last-child{border-bottom:0;}
+.mt-match.featured{background:linear-gradient(90deg,rgba(255,120,60,0.06),transparent 40%);border-left:2px solid var(--mt-accent);padding-left:14px;}
+.mt-match.ft .mt-tm .big,.mt-match.ft .mt-tm .s{color:var(--mt-fg-mute);}
+.mt-match.ft .mt-score{color:var(--mt-fg-mute);}
+.mt-tm{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;color:var(--mt-fg);display:flex;flex-direction:column;gap:2px;}
+.mt-tm .big{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:16px;letter-spacing:-0.01em;}
+.mt-tm .s{font-size:9px;letter-spacing:.1em;color:var(--mt-fg-mute);text-transform:uppercase;}
+.mt-home{display:flex;align-items:center;justify-content:flex-end;gap:12px;min-width:0;}
+.mt-away{display:flex;align-items:center;justify-content:flex-start;gap:12px;min-width:0;}
+.mt-team-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mt-team-name.bold{font-weight:700;}
+.mt-form{display:flex;gap:3px;}
+.mt-form i{width:6px;height:6px;border-radius:50%;display:inline-block;}
+.mt-form i.w{background:var(--mt-win);}.mt-form i.d{background:var(--mt-line-2);}.mt-form i.l{background:var(--mt-loss);}
+.mt-tc{width:32px;height:32px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:11px;color:#fff;flex-shrink:0;}
+.mt-score{text-align:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:22px;letter-spacing:-0.02em;}
+.mt-score .sep{color:var(--mt-fg-mute);margin:0 6px;font-weight:400;}
+.mt-vs{text-align:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;color:var(--mt-fg-mute);letter-spacing:.1em;}
+.mt-venue{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--mt-fg-mute);letter-spacing:.06em;text-transform:uppercase;line-height:1.5;}
+.mt-act{display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap;}
+.mt-act button,.mt-act a{padding:7px 9px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--mt-line);color:var(--mt-fg-dim);background:none;cursor:pointer;text-decoration:none;}
+.mt-act button:hover,.mt-act a:hover{border-color:var(--mt-fg-dim);color:var(--mt-fg);}
+.mt-act .join{background:var(--mt-accent);color:var(--mt-accent-ink);border-color:var(--mt-accent);font-weight:600;}
+/* right rail */
+.mt-rail h3{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+.mt-rail h3 .n{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;color:var(--mt-fg-mute);font-weight:400;}
+.mt-rail h4{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mt-fg-mute);margin:24px 0 10px;font-weight:500;}
+.mt-mini{border:1px solid var(--mt-line);background:var(--mt-bg-1);padding:12px;margin-bottom:8px;cursor:pointer;text-decoration:none;display:block;color:inherit;}
+.mt-mini:hover{border-color:var(--mt-line-2);}
+.mt-mini.big{border-color:var(--mt-accent);}
+.mt-mini .mh{display:flex;justify-content:space-between;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.1em;color:var(--mt-fg-mute);text-transform:uppercase;margin-bottom:8px;}
+.mt-mini .mh .m{color:var(--mt-accent);font-weight:600;}
+.mt-mini .row{display:grid;grid-template-columns:20px 1fr auto;gap:10px;align-items:center;padding:2px 0;font-size:13px;}
+.mt-mini .tc2{width:20px;height:20px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:9px;color:#fff;}
+.mt-mini .nm{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mt-mini .sc{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:16px;font-size:11px;color:var(--mt-fg-mute);}
+.mt-mini .foot{display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px dashed var(--mt-line);font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;color:var(--mt-fg-mute);letter-spacing:.08em;text-transform:uppercase;}
+.mt-mini .foot .bars{color:var(--mt-accent);}
+.mt-follow{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--mt-line);margin-bottom:6px;font-size:13px;cursor:pointer;text-decoration:none;color:inherit;}
+.mt-follow:hover{border-color:var(--mt-line-2);}
+.mt-follow .tc3{width:26px;height:26px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:10px;color:#fff;flex-shrink:0;}
+.mt-follow .nm{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:500;font-size:13px;}
+.mt-follow .nx{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--mt-fg-mute);letter-spacing:.06em;margin-left:auto;text-transform:uppercase;white-space:nowrap;}
+.mt-load-more{padding:18px;border:1px dashed var(--mt-line);text-align:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;letter-spacing:.08em;color:var(--mt-fg-dim);text-transform:uppercase;margin-top:20px;display:block;cursor:pointer;}
+.mt-empty{text-align:center;padding:60px 20px;border:1px dashed var(--mt-line);font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;color:var(--mt-fg-mute);letter-spacing:.08em;text-transform:uppercase;}
+@media(max-width:1100px){.mt-page{grid-template-columns:1fr;}.mt-rail{display:none;}.mt-band-grid{grid-template-columns:1fr;}}
+@media(max-width:900px){.mt-match{grid-template-columns:80px 1fr 80px 1fr;}.mt-venue,.mt-act{display:none;}}
+@media(max-width:640px){.mt-match{grid-template-columns:64px 1fr 64px 1fr;}.mt-h1{font-size:36px;}}
+`;
+
+/* ── Helpers ── */
 function asTimestamp(value: string) {
-  const ts = new Date(value).getTime();
-  return Number.isFinite(ts) ? ts : 0;
+    const ts = new Date(value).getTime();
+    return Number.isFinite(ts) ? ts : 0;
 }
-
 function toUtcDateKey(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "";
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+    const d = new Date(value);
+    if (!Number.isFinite(d.getTime())) return "";
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+function isLive(s: Match["status"]) { return s === "IN_PLAY" || s === "PAUSED"; }
+function isUpcoming(s: Match["status"]) { return s === "SCHEDULED" || s === "TIMED"; }
+function isFinished(s: Match["status"]) { return s === "FINISHED"; }
+
+function formatRelDay(key: string, today: string) {
+    const diff = Math.round((new Date(`${key}T00:00:00Z`).getTime() - new Date(`${today}T00:00:00Z`).getTime()) / 86400000);
+    if (diff === 0) return "Today";
+    if (diff === 1) return "Tomorrow";
+    if (diff === -1) return "Yesterday";
+    return new Date(`${key}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "short" });
 }
 
-function ordinal(day: number) {
-  if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`;
-  switch (day % 10) {
-    case 1:
-      return `${day}st`;
-    case 2:
-      return `${day}nd`;
-    case 3:
-      return `${day}rd`;
-    default:
-      return `${day}th`;
-  }
+function formatBoardTime(value: string, todayKey: string) {
+    const d = new Date(value);
+    if (!Number.isFinite(d.getTime())) return "--:--";
+    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const matchKey = toUtcDateKey(value);
+    if (matchKey === todayKey) return time;
+    return `${d.toLocaleDateString("en-US", { weekday: "short" })} ${time}`;
 }
 
-function formatDateFilterLabel(dateKey: string) {
-  const date = new Date(`${dateKey}T00:00:00.000Z`);
-  if (!Number.isFinite(date.getTime())) return dateKey;
-  const month = date.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
-  return `${month} ${ordinal(date.getUTCDate())}`;
+function getToken(team?: Team, fallback?: string) {
+    const s = team?.shortName?.trim();
+    if (s) return s.slice(0, 3).toUpperCase();
+    const src = (fallback || "").trim();
+    if (!src) return "MW";
+    const words = src.split(/\s+/).filter(Boolean);
+    if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
+    return `${words[0][0] || ""}${words[1][0] || ""}`.toUpperCase();
 }
 
-function toMatchRowKey(match: {
-  id: string;
-  leagueId: string;
-  homeTeamId?: string;
-  awayTeamId?: string;
-  matchDateUTC: string;
-}) {
-  return `${match.id}:${match.leagueId}:${match.homeTeamId || "single"}:${match.awayTeamId || "single"}:${toUtcDateKey(match.matchDateUTC)}`;
+function compareMatches(a: Match, b: Match) {
+    if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+    const al = isLive(a.status), bl = isLive(b.status);
+    if (al && !bl) return -1; if (!al && bl) return 1;
+    const af = isFinished(a.status), bf = isFinished(b.status);
+    const ta = asTimestamp(a.matchDateUTC), tb = asTimestamp(b.matchDateUTC);
+    if (af && bf) return tb - ta;
+    return ta - tb;
 }
 
-function compareMatchesWithFeaturedPriority(a: { isFeatured: boolean; status: string; matchDateUTC: string }, b: { isFeatured: boolean; status: string; matchDateUTC: string }) {
-  if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+function MatchRow({ match, league, home, away, todayKey }: { match: Match; league?: League; home?: Team; away?: Team; todayKey: string }) {
+    const d = getMatchDisplay(match, { homeTeam: home, awayTeam: away, league });
+    const live = isLive(match.status), fin = isFinished(match.status);
+    const isSingle = d.isSingleEvent;
+    const timePrimary = fin ? "FT" : live ? "LIVE" : formatBoardTime(match.matchDateUTC, todayKey);
+    const timeSub = live ? "IN PLAY" : fin ? "RESULT" : "UPCOMING";
+    const homeColor = home?.color || "#555";
+    const awayColor = away?.color || "#334";
 
-  const aLive = a.status === "IN_PLAY" || a.status === "PAUSED";
-  const bLive = b.status === "IN_PLAY" || b.status === "PAUSED";
-  if (aLive && !bLive) return -1;
-  if (!aLive && bLive) return 1;
+    return (
+        <Link
+            href={`/matches/${match.id}`}
+            className={`mt-match${match.isFeatured ? " featured" : ""}${fin ? " ft" : ""}`}
+        >
+            <div className="mt-tm">
+                <span className="big">{timePrimary}</span>
+                <span className="s">{timeSub}</span>
+            </div>
 
-  const aFinished = a.status === "FINISHED";
-  const bFinished = b.status === "FINISHED";
-  const ta = asTimestamp(a.matchDateUTC);
-  const tb = asTimestamp(b.matchDateUTC);
-  if (aFinished && bFinished) return tb - ta;
-  return ta - tb;
+            <div className="mt-home">
+                <span className={`mt-team-name${match.isFeatured ? " bold" : ""}`}>
+                    {isSingle ? d.title : d.homeName}
+                </span>
+                <div className="mt-tc" style={{ background: homeColor }}>{getToken(home, d.homeName)}</div>
+            </div>
+
+            <div>
+                {fin || live
+                    ? <div className="mt-score"><span>{match.homeScore ?? "-"}</span><span className="sep">:</span><span>{match.awayScore ?? "-"}</span></div>
+                    : <div className="mt-vs">{isSingle ? "EVENT" : "VS"}</div>
+                }
+            </div>
+
+            <div className="mt-away">
+                {!isSingle && (
+                    <>
+                        <div className="mt-tc" style={{ background: awayColor }}>{getToken(away, d.awayName)}</div>
+                        <span className={`mt-team-name${match.isFeatured ? " bold" : ""}`}>{d.awayName}</span>
+                    </>
+                )}
+                {isSingle && (
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--mt-fg-dim)", letterSpacing: ".06em" }}>
+                        {league?.name || "Event"}
+                    </span>
+                )}
+            </div>
+
+            <div className="mt-venue">
+                {match.stadiumName || league?.country || "—"}<br />
+                {match.matchDay ? `MD ${match.matchDay}` : (match.stage || league?.shortName || "")}
+            </div>
+
+            <div className="mt-act">
+                {!fin && <button>REMIND</button>}
+                {fin && <button>HIGHLIGHTS</button>}
+                <Link
+                    href={`/matches/${match.id}`}
+                    className={`join${(match.venueCount ?? 0) > 0 ? "" : ""}`}
+                    onClick={e => e.stopPropagation()}
+                >
+                    BARS · {match.venueCount ?? 0}
+                </Link>
+            </div>
+        </Link>
+    );
 }
 
-function DraggableFilterRow({ children }: { children: React.ReactNode }) {
-  const ref = React.useRef<HTMLDivElement | null>(null);
-  const dragState = React.useRef({ active: false, moved: false, startX: 0, startScrollLeft: 0 });
-  const [dragging, setDragging] = React.useState(false);
-
-  const endDrag = React.useCallback(() => {
-    dragState.current.active = false;
-    setDragging(false);
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className="no-scrollbar"
-      onMouseDown={(event) => {
-        if (!ref.current) return;
-        dragState.current = {
-          active: true,
-          moved: false,
-          startX: event.clientX,
-          startScrollLeft: ref.current.scrollLeft,
-        };
-        setDragging(true);
-      }}
-      onMouseMove={(event) => {
-        if (!dragState.current.active || !ref.current) return;
-        const delta = event.clientX - dragState.current.startX;
-        if (Math.abs(delta) > 4) {
-          dragState.current.moved = true;
-        }
-        ref.current.scrollLeft = dragState.current.startScrollLeft - delta;
-      }}
-      onMouseUp={endDrag}
-      onMouseLeave={endDrag}
-      onClickCapture={(event) => {
-        if (dragState.current.moved) {
-          event.preventDefault();
-          event.stopPropagation();
-          dragState.current.moved = false;
-        }
-      }}
-      style={{
-        display: "flex",
-        gap: 6,
-        overflowX: "auto",
-        paddingBottom: 2,
-        cursor: dragging ? "grabbing" : "grab",
-        userSelect: dragging ? "none" : "auto",
-      }}
-    >
-      {children}
-    </div>
-  );
+function MiniCard({ match, league, home, away, todayKey, hot }: { match: Match; league?: League; home?: Team; away?: Team; todayKey: string; hot?: boolean }) {
+    const d = getMatchDisplay(match, { homeTeam: home, awayTeam: away, league });
+    const homeColor = home?.color || "#555";
+    const awayColor = away?.color || "#334";
+    const time = formatBoardTime(match.matchDateUTC, todayKey);
+    return (
+        <Link href={`/matches/${match.id}`} className={`mt-mini${hot ? " big" : ""}`}>
+            <div className="mh">
+                <span className={hot ? "m" : ""}>{time}</span>
+                <span>{league?.shortName || "MATCH"}</span>
+            </div>
+            <div className="row">
+                <div className="tc2" style={{ background: homeColor }}>{getToken(home, d.homeName)}</div>
+                <div className="nm">{d.isSingleEvent ? d.title : d.homeName}</div>
+                <div className="sc">vs</div>
+            </div>
+            {!d.isSingleEvent && (
+                <div className="row">
+                    <div className="tc2" style={{ background: awayColor }}>{getToken(away, d.awayName)}</div>
+                    <div className="nm">{d.awayName}</div>
+                    <div className="sc">{formatBoardTime(match.matchDateUTC, todayKey)}</div>
+                </div>
+            )}
+            <div className="foot">
+                <span>{match.stadiumName || league?.country || "Venue"}</span>
+                <span className="bars">{(match.venueCount ?? 0)} BARS</span>
+            </div>
+        </Link>
+    );
 }
 
 function MatchesPageContent() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [activeStatus, setActiveStatus] = React.useState<"all" | "live" | "upcoming" | "finished">("upcoming");
-  const [includePast, setIncludePast] = React.useState(false);
-  const [onlyWithHosting, setOnlyWithHosting] = React.useState(false);
-  const [showFilterModal, setShowFilterModal] = React.useState(false);
-  const [selectedSportId, setSelectedSportId] = React.useState<string | null>(null);
-  const [selectedLeagueId, setSelectedLeagueId] = React.useState<string | null>(null);
-  const [selectedCountry, setSelectedCountry] = React.useState<string | null>(null);
-  const [selectedStartDateKey, setSelectedStartDateKey] = React.useState<string | null>(null);
-  const [selectedEndDateKey, setSelectedEndDateKey] = React.useState<string | null>(null);
-  const [selectedTeamIds, setSelectedTeamIds] = React.useState<string[]>([]);
-  const { matches: MATCHES, leagues, sports, teams, venueEvents, getTeam, getLeague } = useData();
-  const requestedPage = parsePageParam(searchParams.get("page"));
-  const syncArchivePageRef = React.useRef<(nextPage: number) => void>(() => {});
-  const hasInitializedPageReset = React.useRef(false);
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const { matches: MATCHES, leagues, sports, teams, venueEvents, getTeam, getLeague } = useData();
+    const { user } = useData() as never as { user: { name?: string } | null };
 
-  syncArchivePageRef.current = (nextPage: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (nextPage <= 1) {
-      params.delete("page");
-    } else {
-      params.set("page", String(nextPage));
-    }
-    const nextQuery = params.toString();
-    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
-  };
+    const [selectedSportId, setSelectedSportId] = React.useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = React.useState("");
+    const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
+    const [includePast, setIncludePast] = React.useState(false);
 
-  React.useEffect(() => {
-    if (!includePast && activeStatus === "finished") {
-      setActiveStatus("upcoming");
-    }
-  }, [includePast, activeStatus]);
+    const requestedPage = parsePageParam(searchParams.get("page"));
+    const hasInitReset = React.useRef(false);
+    const [renderNow] = React.useState(() => Date.now());
+    const nowKey = React.useMemo(() => toUtcDateKey(new Date(renderNow).toISOString()), [renderNow]);
 
-  const baseMatches = React.useMemo(() => {
-    const threshold = Date.now() - 2 * 60 * 60 * 1000;
-    return MATCHES.filter((match) => {
-      if (includePast) return true;
-      const ts = asTimestamp(match.matchDateUTC);
-      const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
-      const isUpcoming = (match.status === "SCHEDULED" || match.status === "TIMED") && ts >= threshold;
-      return isLive || isUpcoming;
-    });
-  }, [MATCHES, includePast]);
+    const syncPage = React.useCallback((n: number) => {
+        const p = new URLSearchParams(searchParams.toString());
+        if (n <= 1) p.delete("page"); else p.set("page", String(n));
+        const q = p.toString();
+        router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    }, [pathname, router, searchParams]);
 
-  const uniqueBaseMatches = React.useMemo(() => {
-    const seen = new Set<string>();
-    const rows: typeof baseMatches = [];
-    for (const match of baseMatches) {
-      const key = toMatchRowKey(match);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      rows.push(match);
-    }
-    return rows;
-  }, [baseMatches]);
+    const baseMatches = React.useMemo(() => {
+        const threshold = renderNow - 2 * 60 * 60 * 1000;
+        return MATCHES.filter(m => {
+            if (includePast) return true;
+            const ts = asTimestamp(m.matchDateUTC);
+            return isLive(m.status) || (isUpcoming(m.status) && ts >= threshold) || isFinished(m.status);
+        });
+    }, [MATCHES, includePast, renderNow]);
 
-  const availableTeams = React.useMemo(() => {
-    const ids = new Set<string>();
-    for (const match of uniqueBaseMatches) {
-      if (match.homeTeamId) ids.add(match.homeTeamId);
-      if (match.awayTeamId) ids.add(match.awayTeamId);
-    }
-    return teams.filter((team) => ids.has(team.id)).sort((a, b) => a.name.localeCompare(b.name));
-  }, [uniqueBaseMatches, teams]);
+    const availableSports = React.useMemo(() => {
+        const leagueIds = new Set(baseMatches.map(m => m.leagueId));
+        const sportIds = new Set(leagues.filter(l => leagueIds.has(l.id)).map(l => l.sportId || "soccer"));
+        return sports.filter(s => sportIds.has(s.id)).sort((a, b) => a.name.localeCompare(b.name));
+    }, [baseMatches, leagues, sports]);
 
-  const availableSports = React.useMemo(() => {
-    const leagueIdsInDataset = new Set(uniqueBaseMatches.map((m) => m.leagueId));
-    const sportIdsInDataset = new Set(
-      leagues
-        .filter((league) => leagueIdsInDataset.has(league.id))
-        .map((league) => league.sportId || "soccer"),
+    const sportCounts = React.useMemo(() => {
+        const c = new Map<string, number>();
+        for (const m of baseMatches) {
+            const l = getLeague(m.leagueId);
+            const sid = l?.sportId || "soccer";
+            c.set(sid, (c.get(sid) || 0) + 1);
+        }
+        return c;
+    }, [baseMatches, getLeague]);
+
+    const filtered = React.useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        return baseMatches.filter(m => {
+            const l = getLeague(m.leagueId);
+            const h = m.homeTeamId ? getTeam(m.homeTeamId) : undefined;
+            const a = m.awayTeamId ? getTeam(m.awayTeamId) : undefined;
+            const d = getMatchDisplay(m, { homeTeam: h, awayTeam: a, league: l });
+            const sportOK = !selectedSportId || (l?.sportId || "soccer") === selectedSportId;
+            const dateOK = !selectedDateKey || toUtcDateKey(m.matchDateUTC) === selectedDateKey;
+            const queryOK = !q || [l?.name, d.homeName, d.awayName, d.title, m.stadiumName, m.stage].filter(Boolean).join(" ").toLowerCase().includes(q);
+            return sportOK && dateOK && queryOK;
+        }).sort(compareMatches);
+    }, [baseMatches, selectedSportId, selectedDateKey, searchQuery, getLeague, getTeam]);
+
+    const { currentPage, totalPages, pageItems: paginatedMatches } = React.useMemo(
+        () => paginateItems(filtered, requestedPage, 40),
+        [filtered, requestedPage]
     );
 
-    const rows = sports
-      .filter((sport) => sportIdsInDataset.has(sport.id))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    React.useEffect(() => {
+        if (requestedPage !== currentPage) syncPage(currentPage);
+    }, [requestedPage, currentPage, syncPage]);
 
-    if (rows.length > 0) return rows;
-    return [{ id: "soccer", name: "Soccer", slug: "soccer", shortName: "SOC" }];
-  }, [uniqueBaseMatches, leagues, sports]);
+    React.useEffect(() => {
+        if (!hasInitReset.current) { hasInitReset.current = true; return; }
+        syncPage(1);
+    }, [selectedSportId, selectedDateKey, searchQuery, syncPage]);
 
-  const availableLeagues = React.useMemo(() => {
-    const leagueIdsInDataset = new Set(uniqueBaseMatches.map((m) => m.leagueId));
-    return leagues
-      .filter((league) => leagueIdsInDataset.has(league.id))
-      .filter((league) => !selectedSportId || (league.sportId || "soccer") === selectedSportId)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [uniqueBaseMatches, leagues, selectedSportId]);
+    const dateChips = React.useMemo(() => {
+        const counts = new Map<string, { key: string; upcoming: number; finished: number }>();
+        for (const m of baseMatches) {
+            const key = toUtcDateKey(m.matchDateUTC);
+            if (!key) continue;
+            const e = counts.get(key) || { key, upcoming: 0, finished: 0 };
+            if (isLive(m.status) || isUpcoming(m.status)) e.upcoming++;
+            if (isFinished(m.status)) e.finished++;
+            counts.set(key, e);
+        }
+        return Array.from(counts.values()).sort((a, b) => a.key.localeCompare(b.key)).slice(0, 10);
+    }, [baseMatches]);
 
-  const availableCountries = React.useMemo(() => {
-    const leagueIdsInDataset = new Set(uniqueBaseMatches.map((m) => m.leagueId));
-    const countries = new Set<string>();
-    for (const league of leagues) {
-      if (!leagueIdsInDataset.has(league.id)) continue;
-      if (!league.country) continue;
-      countries.add(league.country);
-    }
-    return Array.from(countries).sort((a, b) => a.localeCompare(b));
-  }, [uniqueBaseMatches, leagues]);
+    const groupedMatches = React.useMemo(() => {
+        const groups = new Map<string, { league: League | undefined; matches: Match[] }>();
+        for (const m of paginatedMatches) {
+            const l = getLeague(m.leagueId);
+            const ex = groups.get(m.leagueId);
+            if (ex) ex.matches.push(m);
+            else groups.set(m.leagueId, { league: l, matches: [m] });
+        }
+        return Array.from(groups.values());
+    }, [paginatedMatches, getLeague]);
 
-  const hostingMatchIds = React.useMemo(() => {
-    const ids = new Set<string>();
-    for (const venueEvent of venueEvents) {
-      if (venueEvent.isActive === false) continue;
-      ids.add(String(venueEvent.matchId).trim().toLowerCase());
-    }
-    return ids;
-  }, [venueEvents]);
+    const upcomingRail = React.useMemo(() =>
+        filtered.filter(m => isLive(m.status) || isUpcoming(m.status)).slice(0, 3),
+        [filtered]
+    );
+    const featuredRail = React.useMemo(() =>
+        filtered.filter(m => m.isFeatured || m.isHot || (m.venueCount ?? 0) > 0).slice(0, 3),
+        [filtered]
+    );
 
-  const rowsBeforeDate = React.useMemo(() => {
-    return uniqueBaseMatches.filter((match) => {
-      const matchIdKey = String(match.id).trim().toLowerCase();
-      const hostingAllowed = !onlyWithHosting || hostingMatchIds.has(matchIdKey);
-      const league = getLeague(match.leagueId);
-      const sportAllowed = !selectedSportId || (league?.sportId || "soccer") === selectedSportId;
-      const leagueAllowed = !selectedLeagueId || match.leagueId === selectedLeagueId;
-      const countryAllowed = !selectedCountry || league?.country === selectedCountry;
-      const teamAllowed =
-        selectedTeamIds.length === 0 ||
-        (match.homeTeamId ? selectedTeamIds.includes(match.homeTeamId) : false) ||
-        (match.awayTeamId ? selectedTeamIds.includes(match.awayTeamId) : false);
+    const heroUpcoming = filtered.filter(m => isLive(m.status) || isUpcoming(m.status)).length;
+    const heroPlayed = filtered.filter(m => isFinished(m.status)).length;
+    const heroWeek = filtered.length;
 
-      const statusAllowed =
-        activeStatus === "all" ||
-        (activeStatus === "live" && (match.status === "IN_PLAY" || match.status === "PAUSED")) ||
-        (activeStatus === "upcoming" && (match.status === "SCHEDULED" || match.status === "TIMED")) ||
-        (activeStatus === "finished" && match.status === "FINISHED");
+    const todayDateObj = new Date(`${nowKey}T00:00:00Z`);
+    const todayLabel = todayDateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
-      return hostingAllowed && sportAllowed && leagueAllowed && countryAllowed && teamAllowed && statusAllowed;
-    });
-  }, [uniqueBaseMatches, onlyWithHosting, hostingMatchIds, selectedSportId, selectedLeagueId, selectedCountry, selectedTeamIds, activeStatus, getLeague]);
+    return (
+        <div className="mt-wrap">
+            <style dangerouslySetInnerHTML={{ __html: MT_VARS + MT_CSS }} />
 
-  React.useEffect(() => {
-    if (!selectedSportId) return;
-    if (!availableSports.some((sport) => sport.id === selectedSportId)) {
-      setSelectedSportId(null);
-    }
-  }, [selectedSportId, availableSports]);
-
-  const availableDateBounds = React.useMemo(() => {
-    let min: string | null = null;
-    let max: string | null = null;
-    for (const match of rowsBeforeDate) {
-      const key = toUtcDateKey(match.matchDateUTC);
-      if (!key) continue;
-      if (!min || key < min) min = key;
-      if (!max || key > max) max = key;
-    }
-    return { min, max };
-  }, [rowsBeforeDate]);
-
-  React.useEffect(() => {
-    if (!selectedLeagueId) return;
-    if (!availableLeagues.some((league) => league.id === selectedLeagueId)) {
-      setSelectedLeagueId(null);
-    }
-  }, [selectedLeagueId, availableLeagues]);
-
-  React.useEffect(() => {
-    if (!selectedCountry) return;
-    if (!availableCountries.includes(selectedCountry)) {
-      setSelectedCountry(null);
-    }
-  }, [selectedCountry, availableCountries]);
-
-  React.useEffect(() => {
-    if (selectedStartDateKey && selectedEndDateKey && selectedStartDateKey > selectedEndDateKey) {
-      setSelectedEndDateKey(selectedStartDateKey);
-    }
-  }, [selectedStartDateKey, selectedEndDateKey]);
-
-  React.useEffect(() => {
-    if (selectedStartDateKey && availableDateBounds.min && selectedStartDateKey < availableDateBounds.min) {
-      setSelectedStartDateKey(availableDateBounds.min);
-    }
-    if (selectedStartDateKey && availableDateBounds.max && selectedStartDateKey > availableDateBounds.max) {
-      setSelectedStartDateKey(availableDateBounds.max);
-    }
-  }, [selectedStartDateKey, availableDateBounds]);
-
-  React.useEffect(() => {
-    if (selectedEndDateKey && availableDateBounds.max && selectedEndDateKey > availableDateBounds.max) {
-      setSelectedEndDateKey(availableDateBounds.max);
-    }
-    if (selectedEndDateKey && availableDateBounds.min && selectedEndDateKey < availableDateBounds.min) {
-      setSelectedEndDateKey(availableDateBounds.min);
-    }
-  }, [selectedEndDateKey, availableDateBounds]);
-
-  const filtered = React.useMemo(() => {
-    const rows = rowsBeforeDate.filter((match) => {
-      const matchDateKey = toUtcDateKey(match.matchDateUTC);
-      if (!matchDateKey) return false;
-      if (selectedStartDateKey && matchDateKey < selectedStartDateKey) return false;
-      if (selectedEndDateKey && matchDateKey > selectedEndDateKey) return false;
-      return true;
-    });
-
-    return [...rows].sort(compareMatchesWithFeaturedPriority);
-  }, [rowsBeforeDate, selectedStartDateKey, selectedEndDateKey]);
-
-  const { currentPage, totalPages, pageItems: paginatedMatches } = React.useMemo(
-    () => paginateItems(filtered, requestedPage),
-    [filtered, requestedPage],
-  );
-
-  React.useEffect(() => {
-    if (requestedPage !== currentPage) {
-      syncArchivePageRef.current(currentPage);
-    }
-  }, [requestedPage, currentPage]);
-
-  React.useEffect(() => {
-    if (!hasInitializedPageReset.current) {
-      hasInitializedPageReset.current = true;
-      return;
-    }
-
-    syncArchivePageRef.current(1);
-  }, [activeStatus, includePast, onlyWithHosting, selectedSportId, selectedLeagueId, selectedCountry, selectedStartDateKey, selectedEndDateKey, selectedTeamIds]);
-
-  const liveCount = MATCHES.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED").length;
-
-  const statusTabs = includePast
-    ? [
-        { id: "all", label: "All" },
-        { id: "live", label: "Live" },
-        { id: "upcoming", label: "Upcoming" },
-        { id: "finished", label: "Results" },
-      ]
-    : [
-        { id: "all", label: "All" },
-        { id: "live", label: "Live" },
-        { id: "upcoming", label: "Upcoming" },
-      ];
-
-  return (
-      <AppShell>
-        <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 24px", position: "relative", overflow: "hidden" }}>
-          {/* Subtle gradient background */}
-          <div style={{ position: "absolute", top: -100, right: -100, width: 400, height: 400, borderRadius: "50%", background: "color-mix(in oklch, var(--primary) 8%, transparent)", filter: "blur(80px)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: -50, left: -100, width: 300, height: 300, borderRadius: "50%", background: "color-mix(in oklch, oklch(0.6 0.15 250) 8%, transparent)", filter: "blur(80px)", pointerEvents: "none" }} />
-          
-          <div style={{ position: "relative", zIndex: 10 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 99, backgroundColor: "var(--secondary)", fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--secondary-foreground)", marginBottom: 16, border: "1px solid var(--border)" }}>
-              <Trophy size={14} style={{ color: "var(--primary)" }} />
-              Browse
-            </div>
-            <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 48, fontWeight: 900, color: "var(--foreground)", marginBottom: 8, letterSpacing: "-0.02em", lineHeight: 1 }}>
-              Matches
-            </h1>
-            <p style={{ fontSize: 15, color: "var(--muted-foreground)", marginBottom: 24, maxWidth: 520, lineHeight: 1.6, fontWeight: 500 }}>
-              Upcoming fixtures first, with league and team filters. Past matches stay hidden unless you enable history mode.
-            </p>
-
-            {liveCount > 0 && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 20px", borderRadius: 99, backgroundColor: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 24 }}>
-                <span style={{ position: "relative", width: 10, height: 10 }}>
-                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", backgroundColor: "#f59e0b", animation: "ping 1.5s cubic-bezier(0,0,0.2,1) infinite", opacity: 0.5 }} />
-                  <span style={{ position: "relative", display: "block", width: 10, height: 10, borderRadius: "50%", backgroundColor: "#f59e0b" }} />
-                </span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#f59e0b", letterSpacing: "0.02em" }}>
-                  {liveCount} match{liveCount > 1 ? "es" : ""} live now
-                </span>
-              </div>
-            )}
-
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-              <label style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "0 16px", height: 36, borderRadius: 8,
-                border: onlyWithHosting ? "1px solid var(--primary)" : "1px solid var(--border)",
-                backgroundColor: onlyWithHosting ? "color-mix(in oklch, var(--primary) 5%, transparent)" : "var(--card)",
-                color: onlyWithHosting ? "var(--primary)" : "var(--muted-foreground)",
-                fontWeight: 600, fontSize: 13, cursor: "pointer", transition: "all 0.2s",
-              }}>
-                <input
-                  type="checkbox"
-                  checked={onlyWithHosting}
-                  onChange={(e) => setOnlyWithHosting(e.target.checked)}
-                  style={{ width: 16, height: 16, borderRadius: 4, accentColor: "var(--primary)", cursor: "pointer" }}
-                />
-                Only with hosting venues
-              </label>
-            </div>
-          </div>
-        </section>
-
-        {/* ─── Unified Filter Panel ─── */}
-        <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 24px" }}>
-          <div style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
-            
-            {/* Status Tabs Row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4, padding: 4, backgroundColor: "var(--secondary)", borderRadius: 14, border: "1px solid var(--border)", width: "fit-content", overflowX: "auto" }} className="custom-scrollbar">
-              {statusTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveStatus(tab.id as typeof activeStatus)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    padding: "10px 20px", borderRadius: 10, border: "none",
-                    fontSize: 13, fontWeight: 700, cursor: "pointer",
-                    fontFamily: "inherit", whiteSpace: "nowrap",
-                    transition: "all 0.2s",
-                    backgroundColor: activeStatus === tab.id ? "var(--background)" : "transparent",
-                    color: activeStatus === tab.id ? "var(--foreground)" : "var(--muted-foreground)",
-                    boxShadow: activeStatus === tab.id ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-                  }}
-                >
-                  {tab.id === "live" && <CircleDot size={14} style={{ color: activeStatus === "live" ? "#f59e0b" : "inherit" }} />}
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Divider */}
-            <div style={{ height: 1, backgroundColor: "var(--border)" }} />
-
-            {/* Sport Filter Row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Sport</span>
-              <DraggableFilterRow>
-                <button
-                  onClick={() => setSelectedSportId(null)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "7px 14px", borderRadius: 99,
-                    fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    fontFamily: "inherit", whiteSpace: "nowrap",
-                    border: selectedSportId === null ? "1px solid var(--primary)" : "1px solid var(--border)",
-                    backgroundColor: selectedSportId === null ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                    color: selectedSportId === null ? "var(--primary)" : "var(--muted-foreground)",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <Trophy size={13} /> All
-                </button>
-                {availableSports.map((sport) => {
-                  const sel = selectedSportId === sport.id;
-                  return (
-                    <button
-                      key={sport.id}
-                      onClick={() => setSelectedSportId((prev) => (prev === sport.id ? null : sport.id))}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "7px 14px", borderRadius: 99,
-                        fontSize: 12, fontWeight: 700, cursor: "pointer",
-                        fontFamily: "inherit", whiteSpace: "nowrap",
-                        border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
-                        backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                        color: sel ? "var(--primary)" : "var(--muted-foreground)",
-                        transition: "all 0.2s",
-                      }}
-                    >
-                      {sport.shortName || sport.name}
+            {/* Topbar */}
+            <header className="mt-topbar">
+                <Link href="/" className="mt-brand">
+                    <span className="mt-brand-mark" />
+                    match<em>watch</em>
+                </Link>
+                <nav className="mt-nav">
+                    <Link href="/">Home</Link>
+                    <Link href="/matches" className="active">Matches</Link>
+                    <Link href="/venues">Venues</Link>
+                    {user ? <Link href="/dashboard">Dashboard</Link> : <Link href="/register-venue">List venue</Link>}
+                </nav>
+                <div className="mt-top-right">
+                    <button className="mt-iconbtn" aria-label="Search">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
                     </button>
-                  );
-                })}
-              </DraggableFilterRow>
+                </div>
+            </header>
+
+            {/* Crumb */}
+            <div className="mt-crumb">
+                <Link href="/">Home</Link><span className="sep">/</span><b>Matches</b>
             </div>
 
-            {/* League Filter Row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>League</span>
-              <DraggableFilterRow>
-                <button
-                  onClick={() => setSelectedLeagueId(null)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "7px 14px", borderRadius: 99,
-                    fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    fontFamily: "inherit", whiteSpace: "nowrap",
-                    border: selectedLeagueId === null ? "1px solid var(--primary)" : "1px solid var(--border)",
-                    backgroundColor: selectedLeagueId === null ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                    color: selectedLeagueId === null ? "var(--primary)" : "var(--muted-foreground)",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <Globe size={13} /> All
-                </button>
-                {availableLeagues.map((league) => {
-                  const sel = selectedLeagueId === league.id;
-                  return (
-                    <button
-                      key={league.id}
-                      onClick={() => setSelectedLeagueId((prev) => (prev === league.id ? null : league.id))}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "7px 14px", borderRadius: 99,
-                        fontSize: 12, fontWeight: 700, cursor: "pointer",
-                        fontFamily: "inherit", whiteSpace: "nowrap",
-                        border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
-                        backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                        color: sel ? "var(--primary)" : "var(--muted-foreground)",
-                        transition: "all 0.2s",
-                      }}
-                    >
-                      {league.image ? <img src={league.image} alt={league.shortName} style={{ width: 16, height: 16, objectFit: "contain" }} /> : null}
-                      {league.shortName}
-                    </button>
-                  );
-                })}
-              </DraggableFilterRow>
-            </div>
-
-            {/* Country Filter Row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Region</span>
-              <DraggableFilterRow>
-                <button
-                  onClick={() => setSelectedCountry(null)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "7px 14px", borderRadius: 99,
-                    fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    fontFamily: "inherit", whiteSpace: "nowrap",
-                    border: selectedCountry === null ? "1px solid var(--primary)" : "1px solid var(--border)",
-                    backgroundColor: selectedCountry === null ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                    color: selectedCountry === null ? "var(--primary)" : "var(--muted-foreground)",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <Globe size={13} /> All
-                </button>
-                {availableCountries.map((country) => {
-                  const sel = selectedCountry === country;
-                  return (
-                    <button
-                      key={country}
-                      onClick={() => setSelectedCountry((prev) => (prev === country ? null : country))}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "7px 14px", borderRadius: 99,
-                        fontSize: 12, fontWeight: 700, cursor: "pointer",
-                        fontFamily: "inherit", whiteSpace: "nowrap",
-                        border: sel ? "1px solid var(--primary)" : "1px solid var(--border)",
-                        backgroundColor: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                        color: sel ? "var(--primary)" : "var(--muted-foreground)",
-                        transition: "all 0.2s",
-                      }}
-                    >
-                      {country}
-                    </button>
-                  );
-                })}
-              </DraggableFilterRow>
-            </div>
-
-            {/* Date Filter Row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, minWidth: 60 }}>Date</span>
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
-                  <CalendarDays size={14} style={{ color: "var(--muted-foreground)" }} />
-                  <input
-                    type="date"
-                    value={selectedStartDateKey || ""}
-                    min={availableDateBounds.min || undefined}
-                    max={selectedEndDateKey || availableDateBounds.max || undefined}
-                    onChange={(event) => setSelectedStartDateKey(event.target.value || null)}
-                    style={{ background: "transparent", border: "none", color: "var(--foreground)", font: "inherit", outline: "none" }}
-                  />
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)" }}>to</span>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
-                  <CalendarDays size={14} style={{ color: "var(--muted-foreground)" }} />
-                  <input
-                    type="date"
-                    value={selectedEndDateKey || ""}
-                    min={selectedStartDateKey || availableDateBounds.min || undefined}
-                    max={availableDateBounds.max || undefined}
-                    onChange={(event) => setSelectedEndDateKey(event.target.value || null)}
-                    style={{ background: "transparent", border: "none", color: "var(--foreground)", font: "inherit", outline: "none" }}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    setSelectedStartDateKey(null);
-                    setSelectedEndDateKey(null);
-                  }}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "7px 14px", borderRadius: 99,
-                    fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    fontFamily: "inherit", whiteSpace: "nowrap",
-                    border: !selectedStartDateKey && !selectedEndDateKey ? "1px solid var(--primary)" : "1px solid var(--border)",
-                    backgroundColor: !selectedStartDateKey && !selectedEndDateKey ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
-                    color: !selectedStartDateKey && !selectedEndDateKey ? "var(--primary)" : "var(--muted-foreground)",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  All dates
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-        <section style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 24px 96px" }}>
-          {filtered.length === 0 ? (
-            <div className="text-center py-20 px-5 bg-card border border-border/50 rounded-2xl shadow-sm mt-4">
-              <div className="flex justify-center mb-6">
-                <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center">
-                  <Timer size={36} className="text-muted-foreground" />
-                </div>
-              </div>
-              <h3 className="font-display text-2xl font-bold text-foreground mb-3">
-                No Matches Found
-              </h3>
-              <p className="text-base text-muted-foreground max-w-sm mx-auto">
-                Try changing your filters, adjusting the date range, or turning off "Only with hosting venues."
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {paginatedMatches.map((match, i) => {
-                const league = getLeague(match.leagueId);
-                const home = match.homeTeamId ? getTeam(match.homeTeamId) : undefined;
-                const away = match.awayTeamId ? getTeam(match.awayTeamId) : undefined;
-                const display = getMatchDisplay(match, { homeTeam: home, awayTeam: away, league });
-                if (!league) return null;
-                const date = new Date(match.matchDateUTC);
-                const kickoffLabel =
-                  match.status === "IN_PLAY" ? "LIVE" :
-                  match.status === "PAUSED" ? "HT" :
-                  match.status === "FINISHED" ? "FT" :
-                  date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " · " +
-                  date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-                return (
-                  <Link
-                    href={`/matches/${match.id}`}
-                    key={toMatchRowKey(match)}
-                    className={`animate-fade-up block h-full`}
-                    style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}
-                  >
-                    <MatchCard
-                      className="h-full"
-                      eventFormat={match.eventFormat}
-                      eventTitle={match.eventTitle || undefined}
-                      eventSubtitle={match.eventSubtitle || undefined}
-                      homeTeam={display.homeName}
-                      awayTeam={display.awayName}
-                      homeCrest={home?.crest || ""}
-                      awayCrest={away?.crest || ""}
-                      homeImage={home?.image}
-                      awayImage={away?.image}
-                      kickoff={kickoffLabel}
-                      league={league.name}
-                      leagueLogo={league.logo}
-                      leagueImage={league.image}
-                      venueCount={match.venueCount}
-                      status={match.status === "IN_PLAY" || match.status === "PAUSED" ? "LIVE" : match.status === "FINISHED" ? "FINISHED" : "SCHEDULED"}
-                      homeScore={match.homeScore ?? undefined}
-                      awayScore={match.awayScore ?? undefined}
-                      matchDay={match.matchDay}
-                      isHot={match.isHot}
-                    />
-                  </Link>
-                );
-              })}
-              </div>
-              <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={(page) => syncArchivePageRef.current(page)} />
-            </>
-          )}
-        </section>
-
-        {showFilterModal && (
-            <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.7)", padding: 16 }}>
-            <div style={{ width: "100%", maxWidth: 768, borderRadius: 16, border: "1px solid var(--border)", backgroundColor: "var(--card)", padding: 24 }}>
-              <div className="mb-4 flex items-center justify-between">
-                <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 24, fontWeight: 800, color: "var(--foreground)" }}>Filter Matches</h2>
-                <button onClick={() => setShowFilterModal(false)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}>
-                  <X size={14} />
-                  Close
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <p style={{ marginBottom: 8, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", fontWeight: 700 }}>Sports</p>
-                  <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
-                    {availableSports.map((sport) => {
-                      const selected = selectedSportId === sport.id;
-                      return (
-                        <button
-                          key={sport.id}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-                          onClick={() => setSelectedSportId((prev) => (prev === sport.id ? null : sport.id))}
-                        >
-                          {sport.shortName || sport.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <p style={{ marginBottom: 8, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", fontWeight: 700 }}>Leagues</p>
-                  <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
-                    {availableLeagues.map((league) => {
-                      const selected = selectedLeagueId === league.id;
-                      return (
-                        <button
-                          key={league.id}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-                          onClick={() => setSelectedLeagueId((prev) => (prev === league.id ? null : league.id))}
-                        >
-                          {league.shortName}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Countries</p>
-                  <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
-                    {availableCountries.map((country) => {
-                      const selected = selectedCountry === country;
-                      return (
-                        <button
-                          key={country}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-                          onClick={() => setSelectedCountry((prev) => (prev === country ? null : country))}
-                        >
-                          {country}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Date range</p>
-                  <div className="rounded-md border border-border bg-secondary p-3">
-                    <div className="flex flex-col gap-3">
-                      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-                        <span>Start date</span>
-                        <input
-                          type="date"
-                          value={selectedStartDateKey || ""}
-                          min={availableDateBounds.min || undefined}
-                          max={selectedEndDateKey || availableDateBounds.max || undefined}
-                          onChange={(event) => setSelectedStartDateKey(event.target.value || null)}
-                          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                        />
-                      </label>
-                      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-                        <span>End date</span>
-                        <input
-                          type="date"
-                          value={selectedEndDateKey || ""}
-                          min={selectedStartDateKey || availableDateBounds.min || undefined}
-                          max={availableDateBounds.max || undefined}
-                          onChange={(event) => setSelectedEndDateKey(event.target.value || null)}
-                          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                        />
-                      </label>
-                      <button
-                        className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground"
-                        onClick={() => {
-                          setSelectedStartDateKey(null);
-                          setSelectedEndDateKey(null);
-                        }}
-                      >
-                        Clear date range
-                      </button>
+            {/* Band */}
+            <section className="mt-band">
+                <div className="mt-band-grid">
+                    <div>
+                        <div className="mt-kicker">{todayLabel} · {filtered.length} matches · {availableSports.length} sports</div>
+                        <h1 className="mt-h1">Every match. <em>Every bar.</em><br />Plan your week.</h1>
+                        <p className="mt-sub">Browse every upcoming fixture and recent result, find the best bar to watch it at, and lock in your table before the rush.</p>
                     </div>
-                  </div>
+                    <div className="mt-band-stats">
+                        <div className="mt-bs"><div className="lbl">Upcoming today</div><div className="v">{heroUpcoming}</div></div>
+                        <div className="mt-bs"><div className="lbl">Played</div><div className="v">{heroPlayed}</div></div>
+                        <div className="mt-bs"><div className="lbl">This week</div><div className="v"><em>{heroWeek}</em></div></div>
+                    </div>
                 </div>
+            </section>
 
-                <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">Teams (from current dataset)</p>
-                  <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-border bg-secondary p-3">
-                    {availableTeams.map((team) => {
-                      const selected = selectedTeamIds.includes(team.id);
-                      return (
-                        <button
-                          key={team.id}
-                          className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-                          onClick={() => {
-                            setSelectedTeamIds((prev) =>
-                              selected ? prev.filter((id) => id !== team.id) : [...prev, team.id],
-                            );
-                          }}
+            {/* Date strip */}
+            <div className="mt-dates">
+                {dateChips.map(chip => {
+                    const active = selectedDateKey === chip.key;
+                    const past = chip.key < nowKey;
+                    const isToday = chip.key === nowKey;
+                    return (
+                        <div
+                            key={chip.key}
+                            className={`mt-dt${active ? " on" : ""}${past ? " past" : ""}`}
+                            onClick={() => setSelectedDateKey(active ? null : chip.key)}
                         >
-                          {team.shortName}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedSportId(null);
-                    setSelectedLeagueId(null);
-                    setSelectedCountry(null);
-                    setSelectedStartDateKey(null);
-                    setSelectedEndDateKey(null);
-                    setSelectedTeamIds([]);
-                  }}
-                  style={{ padding: "10px 20px", borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "transparent", color: "var(--muted-foreground)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 13 }}
-                >
-                  Reset Filters
-                </button>
-                <button onClick={() => setShowFilterModal(false)} style={{ padding: "10px 24px", borderRadius: 10, border: "none", backgroundColor: "var(--primary)", color: "var(--primary-foreground)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
-                  Apply Filters
-                </button>
-              </div>
+                            <div className="d">{isToday ? "Today · " : ""}{formatRelDay(chip.key, nowKey)}</div>
+                            <div className="n">{new Date(`${chip.key}T00:00:00Z`).getUTCDate()}</div>
+                            <div className="c">
+                                {chip.upcoming > 0 ? `${chip.upcoming} UPCOMING` : `${chip.finished} PLAYED`}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
-          </div>
-        )}
-      </AppShell>
-  );
+
+            {/* Toolbar */}
+            <div className="mt-toolbar">
+                <div className="mt-sports">
+                    <button
+                        className={`mt-sport${selectedSportId === null ? " on" : ""}`}
+                        onClick={() => setSelectedSportId(null)}
+                    >
+                        All <span className="n">{baseMatches.length}</span>
+                    </button>
+                    {availableSports.map(s => (
+                        <button
+                            key={s.id}
+                            className={`mt-sport${selectedSportId === s.id ? " on" : ""}`}
+                            onClick={() => setSelectedSportId(prev => prev === s.id ? null : s.id)}
+                        >
+                            {s.shortName || s.name} <span className="n">{sportCounts.get(s.id) || 0}</span>
+                        </button>
+                    ))}
+                </div>
+                <div className="mt-view-tools">
+                    <div className="mt-search-mini">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" style={{ color: "var(--mt-fg-mute)" }}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                        <input
+                            placeholder="Team, league, venue…"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Page grid */}
+            <main className="mt-page">
+                <section className="mt-main">
+                    {filtered.length === 0 ? (
+                        <div className="mt-empty">No matches found — try clearing filters</div>
+                    ) : (
+                        <>
+                            {groupedMatches.map(({ league, matches }) => (
+                                <div key={league?.id || matches[0]?.leagueId} className="mt-league">
+                                    <div className="mt-league-hd">
+                                        <div className="title">
+                                            <div className="crest" style={{ background: "#23272f" }}>
+                                                {(league?.logo || league?.shortName || "MW").substring(0, 2).toUpperCase()}
+                                            </div>
+                                            <h2>{league?.name || "League"}</h2>
+                                            <span className="region">{league?.country || "Global"}</span>
+                                        </div>
+                                        <div className="acts">
+                                            <Link href={`/matches?league=${league?.id}`}>All fixtures →</Link>
+                                        </div>
+                                    </div>
+                                    {matches.map(m => (
+                                        <MatchRow
+                                            key={m.id}
+                                            match={m}
+                                            league={league}
+                                            home={m.homeTeamId ? getTeam(m.homeTeamId) : undefined}
+                                            away={m.awayTeamId ? getTeam(m.awayTeamId) : undefined}
+                                            todayKey={nowKey}
+                                        />
+                                    ))}
+                                </div>
+                            ))}
+                            {totalPages > 1 && (
+                                <div style={{ display: "flex", gap: 6, padding: "20px 0", justifyContent: "center" }}>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                        <button
+                                            key={p}
+                                            onClick={() => syncPage(p)}
+                                            style={{
+                                                padding: "7px 12px",
+                                                fontFamily: "'JetBrains Mono', monospace",
+                                                fontSize: 11,
+                                                letterSpacing: ".06em",
+                                                border: "1px solid var(--mt-line)",
+                                                background: p === currentPage ? "var(--mt-accent)" : "none",
+                                                color: p === currentPage ? "var(--mt-accent-ink)" : "var(--mt-fg-dim)",
+                                                cursor: "pointer",
+                                            }}
+                                        >
+                                            {p}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </section>
+
+                {/* Rail */}
+                <aside className="mt-rail">
+                    <h3>Coming up next <span className="n">· {upcomingRail.length} soon</span></h3>
+                    {upcomingRail.map(m => (
+                        <MiniCard
+                            key={m.id} match={m}
+                            league={getLeague(m.leagueId)}
+                            home={m.homeTeamId ? getTeam(m.homeTeamId) : undefined}
+                            away={m.awayTeamId ? getTeam(m.awayTeamId) : undefined}
+                            todayKey={nowKey}
+                        />
+                    ))}
+
+                    {featuredRail.length > 0 && (
+                        <>
+                            <h4>Big matches this week</h4>
+                            {featuredRail.map(m => (
+                                <MiniCard
+                                    key={m.id} match={m}
+                                    league={getLeague(m.leagueId)}
+                                    home={m.homeTeamId ? getTeam(m.homeTeamId) : undefined}
+                                    away={m.awayTeamId ? getTeam(m.awayTeamId) : undefined}
+                                    todayKey={nowKey}
+                                    hot
+                                />
+                            ))}
+                        </>
+                    )}
+
+                    {upcomingRail.length > 0 && (
+                        <>
+                            <h4>Following · matches today</h4>
+                            {upcomingRail.map(m => {
+                                const h = m.homeTeamId ? getTeam(m.homeTeamId) : undefined;
+                                const l = getLeague(m.leagueId);
+                                const d = getMatchDisplay(m, { homeTeam: h, awayTeam: m.awayTeamId ? getTeam(m.awayTeamId) : undefined, league: l });
+                                return (
+                                    <Link key={m.id} href={`/matches/${m.id}`} className="mt-follow">
+                                        <div className="tc3" style={{ background: h?.color || "#555" }}>{getToken(h, d.homeName)}</div>
+                                        <span className="nm">{d.isSingleEvent ? d.title : d.homeName}</span>
+                                        <span className="nx">{formatBoardTime(m.matchDateUTC, nowKey)}</span>
+                                    </Link>
+                                );
+                            })}
+                        </>
+                    )}
+                </aside>
+            </main>
+        </div>
+    );
 }
 
 export default function MatchesPage() {
-  return (
-    <React.Suspense fallback={<AppShell><section style={{ minHeight: "50vh" }} /></AppShell>}>
-      <MatchesPageContent />
-    </React.Suspense>
-  );
+    return (
+        <React.Suspense fallback={
+            <div style={{ background: "#0a0b0d", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#6c6a64", fontFamily: "monospace", fontSize: 13 }}>
+                Loading matches…
+            </div>
+        }>
+            <MatchesPageContent />
+        </React.Suspense>
+    );
 }
