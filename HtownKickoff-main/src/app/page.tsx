@@ -19,7 +19,6 @@ const CSS = `
   .mw-side-item .ico{width:18px;height:18px;display:grid;place-items:center;color:var(--mw-fg-mute);}
   .mw-side-item.active .ico{color:var(--mw-accent);}
   .mw-side-item .badge{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--mw-fg-mute);}
-  .mw-side-item .live-badge{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;color:#0a0b0d;background:var(--mw-accent);padding:2px 5px;letter-spacing:0.05em;}
   .mw-follow-team{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--mw-line);font-size:12px;color:var(--mw-fg-dim);}
   .mw-follow-team:last-child{border-bottom:0;}
   .mw-team-crest{width:22px;height:22px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:10px;color:var(--mw-fg);border-radius:2px;flex-shrink:0;}
@@ -245,7 +244,7 @@ export default function HomePage() {
   const { matches, venues, leagues, teams, isLoading } = useData();
   const { user } = useAuth();
   const [utcTime, setUtcTime] = useState("");
-  const [sportFilter, setSportFilter] = useState("all");
+  const [renderNow] = useState(() => Date.now());
 
   useEffect(() => {
     const tick = () => {
@@ -257,9 +256,17 @@ export default function HomePage() {
     return () => clearInterval(id);
   }, []);
 
-  /* Derive live + upcoming from real data where available */
-  const liveMatches = matches.filter((m) => m.status === "IN_PLAY" || m.status === "PAUSED").slice(0, 8);
-  const upcomingMatches = matches.filter((m) => m.status === "SCHEDULED" || m.status === "TIMED").slice(0, 4);
+  /* Recent scores — finished matches, newest first */
+  const recentMatches = matches
+    .filter((m) => m.status === "FINISHED")
+    .sort((a, b) => new Date(b.matchDateUTC).getTime() - new Date(a.matchDateUTC).getTime())
+    .slice(0, 8);
+
+  /* Upcoming — scheduled/timed, soonest first */
+  const upcomingMatches = matches
+    .filter((m) => m.status === "SCHEDULED" || m.status === "TIMED")
+    .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime())
+    .slice(0, 4);
 
   /* Helpers */
   const getLeagueName = (leagueId: string) => leagues.find((l) => l.id === leagueId)?.name || leagueId.toUpperCase();
@@ -279,7 +286,7 @@ export default function HomePage() {
       <div className="mw-ribbon">
         <div className="left">
           <b>◆ MATCHWATCH</b>
-          <span>WATCH WITH FANS &amp; FRIENDS · FIND A BAR · CATCH IT LIVE</span>
+          <span>WATCH WITH FANS &amp; FRIENDS · FIND A BAR · PLAN MATCH NIGHT</span>
         </div>
         <div className="mw-ribbon-ticker">
           <span><b>{venues.length || 209}</b> bars &amp; venues</span>
@@ -296,8 +303,9 @@ export default function HomePage() {
         </Link>
         <nav className="mw-nav">
           <Link href="/" className="active">Home</Link>
-          <Link href="/venues">Find a bar</Link>
-          <Link href="/matches">Fixtures</Link>
+          <Link href="/venues">Venues</Link>
+          <Link href="/matches">Matches</Link>
+          <Link href="/blog">Blog</Link>
           {user ? <Link href="/dashboard">My bookings</Link> : <Link href="/register-venue">List your venue</Link>}
         </nav>
         <div className="mw-top-right">
@@ -328,17 +336,21 @@ export default function HomePage() {
             <Link href="/" className="mw-side-item active">
               <span className="ico" style={{ color: "var(--mw-accent)" }}>◆</span>
               <span>Home</span>
-              <span className="live-badge">{liveMatches.length || 42} LIVE</span>
+              <span className="badge">{upcomingMatches.length || 42}</span>
             </Link>
             <Link href="/venues" className="mw-side-item">
               <span className="ico">🍺</span>
-              <span>Find a bar</span>
+              <span>Venues</span>
               <span className="badge">{venues.length || 209}</span>
             </Link>
             <Link href="/matches" className="mw-side-item">
               <span className="ico">📅</span>
-              <span>Fixtures</span>
+              <span>Matches</span>
               <span className="badge">{matches.length || 64}</span>
+            </Link>
+            <Link href="/blog" className="mw-side-item">
+              <span className="ico">📰</span>
+              <span>Blog</span>
             </Link>
             {user ? (
               <Link href="/dashboard" className="mw-side-item">
@@ -355,11 +367,11 @@ export default function HomePage() {
 
           <h4>Sports</h4>
           <div className="mw-side-list">
-            <a className="mw-side-item"><span className="ico">⚽</span><span>Football</span><span className="badge">{liveMatches.filter(m => m.status === "IN_PLAY").length || 18}</span></a>
-            <a className="mw-side-item"><span className="ico">🏀</span><span>Basketball</span><span className="badge">9</span></a>
-            <a className="mw-side-item"><span className="ico">🏈</span><span>American FB</span><span className="badge">4</span></a>
-            <a className="mw-side-item"><span className="ico">🏏</span><span>Cricket</span><span className="badge">6</span></a>
-            <a className="mw-side-item"><span className="ico">🎾</span><span>Tennis</span><span className="badge">5</span></a>
+            <div className="mw-side-item"><span className="ico">⚽</span><span>Football</span><span className="badge">{recentMatches.length || 18}</span></div>
+            <div className="mw-side-item"><span className="ico">🏀</span><span>Basketball</span><span className="badge">9</span></div>
+            <div className="mw-side-item"><span className="ico">🏈</span><span>American FB</span><span className="badge">4</span></div>
+            <div className="mw-side-item"><span className="ico">🏏</span><span>Cricket</span><span className="badge">6</span></div>
+            <div className="mw-side-item"><span className="ico">🎾</span><span>Tennis</span><span className="badge">5</span></div>
           </div>
 
           <h4>Following teams</h4>
@@ -400,7 +412,7 @@ export default function HomePage() {
             <div className="mw-hero-inner">
               <div className="mw-hero-left">
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <span className="mw-live-chip"><span className="bd" />LIVE</span>
+                  <span className="mw-live-chip"><span className="bd" />MATCHDAY</span>
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.1em", color: "var(--mw-fg-dim)", textTransform: "uppercase" }}>
                     Matchwatch · Fan-first match experience
                   </span>
@@ -544,36 +556,36 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Live matches grid */}
+          {/* Recent scores */}
           <div className="mw-sec-filter-head">
             <div className="mw-sec-title">
-              Live now <span className="tag">{liveMatches.length || LIVE_FALLBACK.length} LIVE</span>
+              Recent scores <span className="tag">{recentMatches.length} RESULTS</span>
             </div>
             <div className="mw-filters">
-              {["all", "soccer", "basketball", "nfl", "cricket", "tennis"].map((f) => (
-                <button key={f} className={`mw-filter${sportFilter === f ? " on" : ""}`} onClick={() => setSportFilter(f)}>
-                  {f === "all" ? "All" : f === "soccer" ? "Football" : f.charAt(0).toUpperCase() + f.slice(1)}
-                </button>
-              ))}
+              <button className="mw-filter on">Latest</button>
+              <Link href="/matches" className="mw-filter" style={{ textDecoration: "none" }}>All results</Link>
             </div>
           </div>
 
           <div className="mw-match-grid">
-            {liveMatches.length > 0
-              ? liveMatches.map((m) => {
+            {recentMatches.length > 0
+              ? recentMatches.map((m) => {
                 const disp = getMatchDisplay(m);
                 const homeTeam = getTeam(m.homeTeamId);
                 const awayTeam = getTeam(m.awayTeamId);
+                const matchDate = new Date(m.matchDateUTC);
+                const dateStr = matchDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                const homeWon = (m.homeScore ?? 0) > (m.awayScore ?? 0);
+                const awayWon = (m.awayScore ?? 0) > (m.homeScore ?? 0);
                 return (
-                  <div key={m.id} className="mw-match-card live">
+                  <Link key={m.id} href={`/matches/${m.id}`} className="mw-match-card" style={{ textDecoration: "none" }}>
                     <div className="mw-mc-top">
                       <div className="mw-mc-league">
                         <div className="mw-mc-swatch" />
                         {getLeagueName(m.leagueId)}
                       </div>
-                      <div className="mw-mc-status live">
-                        <span className="dot" />
-                        LIVE
+                      <div className="mw-mc-status upcoming">
+                        FINAL · {dateStr}
                       </div>
                     </div>
                     <div className="mw-mc-teams">
@@ -583,29 +595,33 @@ export default function HomePage() {
                             ? <img src={homeTeam.image} alt={disp.homeName} style={{ width: 28, height: 28, objectFit: "contain" }} />
                             : <CrestBox label={disp.homeName.substring(0, 2)} color={homeTeam?.color || "var(--mw-accent)"} />
                           }
-                          <span className="mw-mc-name">{disp.homeName}</span>
+                          <span className="mw-mc-name" style={{ opacity: awayWon ? 0.5 : 1, fontWeight: homeWon ? 600 : 400 }}>{disp.homeName}</span>
                         </div>
                         <div className="mw-mc-team">
                           {awayTeam?.image
                             ? <img src={awayTeam.image} alt={disp.awayName} style={{ width: 28, height: 28, objectFit: "contain" }} />
                             : <CrestBox label={disp.awayName.substring(0, 2)} color={awayTeam?.color || "#374151"} />
                           }
-                          <span className="mw-mc-name">{disp.awayName}</span>
+                          <span className="mw-mc-name" style={{ opacity: homeWon ? 0.5 : 1, fontWeight: awayWon ? 600 : 400 }}>{disp.awayName}</span>
                         </div>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-end" }}>
-                        <div className="mw-mc-score">{m.homeScore ?? "—"}</div>
-                        <div className="mw-mc-score" style={{ color: "var(--mw-fg-dim)", fontWeight: 400 }}>{m.awayScore ?? "—"}</div>
+                        <div className="mw-mc-score" style={{ fontWeight: homeWon ? 700 : 400, color: homeWon ? "var(--mw-fg)" : "var(--mw-fg-dim)" }}>{m.homeScore ?? "—"}</div>
+                        <div className="mw-mc-score" style={{ fontWeight: awayWon ? 700 : 400, color: awayWon ? "var(--mw-fg)" : "var(--mw-fg-dim)" }}>{m.awayScore ?? "—"}</div>
                       </div>
                     </div>
                     <div className="mw-mc-foot">
-                      <span>Find a watch party</span>
-                      <Link href={`/matches/${m.id}`} className="mw-join">View venues →</Link>
+                      <span style={{ color: "var(--mw-fg-mute)" }}>Full-time result</span>
+                      <span className="mw-join">Match report →</span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })
-              : LIVE_FALLBACK.map((m) => <LiveMatchCard key={m.id} match={m} />)
+              : (
+                <div style={{ gridColumn: "1/-1", padding: "40px 0", textAlign: "center", color: "var(--mw-fg-mute)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, letterSpacing: "0.1em" }}>
+                  NO RECENT RESULTS · CHECK BACK AFTER MATCH DAY
+                </div>
+              )
             }
           </div>
 
@@ -628,7 +644,7 @@ export default function HomePage() {
                 const homeTeam = getTeam(m.homeTeamId);
                 const awayTeam = getTeam(m.awayTeamId);
                 const kickoff = new Date(m.matchDateUTC);
-                const diffMs = kickoff.getTime() - Date.now();
+                const diffMs = kickoff.getTime() - renderNow;
                 const diffH = Math.floor(diffMs / 3600000);
                 const diffM = Math.floor((diffMs % 3600000) / 60000);
                 const kickStr = diffH > 0 ? `IN ${diffH}H ${diffM}M` : `IN ${diffM}M`;
