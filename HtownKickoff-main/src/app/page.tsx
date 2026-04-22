@@ -70,7 +70,27 @@ const CSS = `
   .mw-mc-status.upcoming{color:var(--mw-fg-dim);}
   .mw-mc-teams{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;}
   .mw-mc-team{display:flex;align-items:center;gap:12px;padding:4px 0;}
-  .mw-crest{width:28px;height:28px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:11px;}
+  .mw-crest{width:28px;height:28px;display:grid;place-items:center;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:11px;flex-shrink:0;}
+  .mw-crest img{width:28px;height:28px;object-fit:contain;}
+  .mw-mc-team img{width:28px;height:28px;object-fit:contain;flex-shrink:0;}
+  /* partners section */
+  .mw-partners{border:1px solid var(--mw-line);margin-top:48px;background:linear-gradient(180deg,rgba(255,255,255,0.015),transparent);}
+  .mw-partners-head{padding:28px 28px 0;display:flex;align-items:center;gap:16px;}
+  .mw-partners-kicker{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--mw-fg-mute);}
+  .mw-partners-title-txt{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:22px;color:var(--mw-fg);margin:6px 0 0;}
+  .mw-partners-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-top:1px solid var(--mw-line);margin-top:20px;}
+  .mw-partner-card{padding:28px;border-right:1px solid var(--mw-line);display:flex;flex-direction:column;gap:14px;transition:background .14s;}
+  .mw-partner-card:last-child{border-right:0;}
+  .mw-partner-card:hover{background:rgba(255,255,255,0.02);}
+  .mw-partner-logo-box{height:52px;display:flex;align-items:center;}
+  .mw-partner-wordmark{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:900;font-size:24px;letter-spacing:-0.03em;color:var(--mw-fg);line-height:1;}
+  .mw-partner-wordmark em{font-style:normal;color:var(--mw-accent);}
+  .mw-partner-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:14px;color:var(--mw-fg);}
+  .mw-partner-desc{font-size:13px;color:var(--mw-fg-dim);line-height:1.55;flex:1;}
+  .mw-partner-link{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mw-accent);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--mw-accent);transition:all .14s;align-self:flex-start;}
+  .mw-partner-link:hover{background:var(--mw-accent);color:#0a0b0d;}
+  .mw-partners-cta{padding:20px 28px;border-top:1px solid var(--mw-line);display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.01);}
+  .mw-partners-cta p{font-size:13px;color:var(--mw-fg-dim);margin:0;}
   .mw-mc-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:500;font-size:16px;}
   .mw-mc-score{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:24px;min-width:28px;text-align:right;}
   .mw-mc-foot{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px dashed var(--mw-line);font-size:11px;color:var(--mw-fg-mute);}
@@ -260,13 +280,19 @@ export default function HomePage() {
     return () => clearInterval(id);
   }, []);
 
-  /* Recent scores — finished matches, newest first */
-  const recentMatches = matches
-    .filter((m) => m.status === "FINISHED")
-    .sort((a, b) => new Date(b.matchDateUTC).getTime() - new Date(a.matchDateUTC).getTime())
+  /* Today / coming soon — live now or starting within 72h */
+  const in72h = renderNow + 72 * 60 * 60 * 1000;
+  const todayMatches = matches
+    .filter((m) => {
+      const ts = new Date(m.matchDateUTC).getTime();
+      const live = m.status === "IN_PLAY" || m.status === "PAUSED";
+      const soonScheduled = (m.status === "SCHEDULED" || m.status === "TIMED") && ts >= renderNow && ts <= in72h;
+      return live || soonScheduled;
+    })
+    .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime())
     .slice(0, 8);
 
-  /* Upcoming — scheduled/timed, soonest first */
+  /* Upcoming — if no today matches, fall back to next scheduled */
   const upcomingMatches = matches
     .filter((m) => m.status === "SCHEDULED" || m.status === "TIMED")
     .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime())
@@ -367,7 +393,7 @@ export default function HomePage() {
 
           <h4>Sports</h4>
           <div className="mw-side-list">
-            <div className="mw-side-item"><span className="ico">⚽</span><span>Football</span><span className="badge">{recentMatches.length || 18}</span></div>
+            <div className="mw-side-item"><span className="ico">⚽</span><span>Football</span><span className="badge">{todayMatches.length || 18}</span></div>
             <div className="mw-side-item"><span className="ico">🏀</span><span>Basketball</span><span className="badge">9</span></div>
             <div className="mw-side-item"><span className="ico">🏈</span><span>American FB</span><span className="badge">4</span></div>
             <div className="mw-side-item"><span className="ico">🏏</span><span>Cricket</span><span className="badge">6</span></div>
@@ -556,70 +582,81 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Recent scores */}
+          {/* Today / Coming soon */}
           <div className="mw-sec-filter-head">
             <div className="mw-sec-title">
-              Recent scores <span className="tag">{recentMatches.length} RESULTS</span>
+              Today / Coming soon <span className="tag">{todayMatches.length} MATCHES</span>
             </div>
             <div className="mw-filters">
-              <button className="mw-filter on">Latest</button>
-              <Link href="/matches" className="mw-filter" style={{ textDecoration: "none" }}>All results</Link>
+              <button className="mw-filter on">Live &amp; upcoming</button>
+              <Link href="/matches" className="mw-filter" style={{ textDecoration: "none" }}>All fixtures</Link>
             </div>
           </div>
 
           <div className="mw-match-grid">
-            {recentMatches.length > 0
-              ? recentMatches.map((m) => {
+            {todayMatches.length > 0
+              ? todayMatches.map((m) => {
                 const disp = getMatchDisplay(m);
                 const homeTeam = getTeam(m.homeTeamId);
                 const awayTeam = getTeam(m.awayTeamId);
-                const matchDate = new Date(m.matchDateUTC);
-                const dateStr = matchDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                const homeWon = (m.homeScore ?? 0) > (m.awayScore ?? 0);
-                const awayWon = (m.awayScore ?? 0) > (m.homeScore ?? 0);
+                const isLive = m.status === "IN_PLAY" || m.status === "PAUSED";
+                const kickoff = new Date(m.matchDateUTC);
+                const diffMs = kickoff.getTime() - renderNow;
+                const diffH = Math.floor(diffMs / 3600000);
+                const diffM = Math.floor((diffMs % 3600000) / 60000);
+                const kickStr = diffMs <= 0 ? "STARTING" : diffH > 0 ? `IN ${diffH}H ${diffM}M` : `IN ${diffM}M`;
                 return (
-                  <Link key={m.id} href={`/matches/${m.id}`} className="mw-match-card" style={{ textDecoration: "none" }}>
+                  <Link key={m.id} href={`/matches/${m.id}`} className={`mw-match-card${isLive ? " live" : ""}`} style={{ textDecoration: "none" }}>
                     <div className="mw-mc-top">
                       <div className="mw-mc-league">
                         <div className="mw-mc-swatch" />
                         {getLeagueName(m.leagueId)}
                       </div>
-                      <div className="mw-mc-status upcoming">
-                        FINAL · {dateStr}
-                      </div>
+                      {isLive
+                        ? <div className="mw-mc-status live"><span className="dot" />LIVE</div>
+                        : <div className="mw-mc-status upcoming">{kickStr}</div>
+                      }
                     </div>
                     <div className="mw-mc-teams">
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <div className="mw-mc-team">
                           {homeTeam?.image
-                            ? <img src={homeTeam.image} alt={disp.homeName} style={{ width: 28, height: 28, objectFit: "contain" }} />
+                            ? <img src={homeTeam.image} alt={disp.homeName} style={{ width: 28, height: 28, objectFit: "contain" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                             : <CrestBox label={disp.homeName.substring(0, 2)} color={homeTeam?.color || "var(--mw-accent)"} />
                           }
-                          <span className="mw-mc-name" style={{ opacity: awayWon ? 0.5 : 1, fontWeight: homeWon ? 600 : 400 }}>{disp.homeName}</span>
+                          <span className="mw-mc-name">{disp.homeName}</span>
                         </div>
                         <div className="mw-mc-team">
                           {awayTeam?.image
-                            ? <img src={awayTeam.image} alt={disp.awayName} style={{ width: 28, height: 28, objectFit: "contain" }} />
+                            ? <img src={awayTeam.image} alt={disp.awayName} style={{ width: 28, height: 28, objectFit: "contain" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                             : <CrestBox label={disp.awayName.substring(0, 2)} color={awayTeam?.color || "#374151"} />
                           }
-                          <span className="mw-mc-name" style={{ opacity: homeWon ? 0.5 : 1, fontWeight: awayWon ? 600 : 400 }}>{disp.awayName}</span>
+                          <span className="mw-mc-name">{disp.awayName}</span>
                         </div>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-end" }}>
-                        <div className="mw-mc-score" style={{ fontWeight: homeWon ? 700 : 400, color: homeWon ? "var(--mw-fg)" : "var(--mw-fg-dim)" }}>{m.homeScore ?? "—"}</div>
-                        <div className="mw-mc-score" style={{ fontWeight: awayWon ? 700 : 400, color: awayWon ? "var(--mw-fg)" : "var(--mw-fg-dim)" }}>{m.awayScore ?? "—"}</div>
+                        {isLive
+                          ? <>
+                            <div className="mw-mc-score" style={{ color: "var(--mw-accent)" }}>{m.homeScore ?? 0}</div>
+                            <div className="mw-mc-score" style={{ color: "var(--mw-fg-dim)" }}>{m.awayScore ?? 0}</div>
+                          </>
+                          : <>
+                            <div className="mw-mc-score" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, color: "var(--mw-fg-dim)", fontWeight: 500 }}>—</div>
+                            <div className="mw-mc-score" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, color: "var(--mw-fg-dim)", fontWeight: 500 }}>—</div>
+                          </>
+                        }
                       </div>
                     </div>
                     <div className="mw-mc-foot">
-                      <span style={{ color: "var(--mw-fg-mute)" }}>Full-time result</span>
-                      <span className="mw-join">Match report →</span>
+                      <span>{isLive ? "Watching live" : "Find where to watch"}</span>
+                      <Link href={`/matches/${m.id}`} className="mw-join">View venues →</Link>
                     </div>
                   </Link>
                 );
               })
               : (
                 <div style={{ gridColumn: "1/-1", padding: "40px 0", textAlign: "center", color: "var(--mw-fg-mute)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, letterSpacing: "0.1em" }}>
-                  NO RECENT RESULTS · CHECK BACK AFTER MATCH DAY
+                  NO MATCHES TODAY · CHECK BACK SOON
                 </div>
               )
             }
@@ -689,6 +726,46 @@ export default function HomePage() {
               : UPCOMING_FALLBACK.map((m, i) => <UpcomingMatchCard key={i} match={m} />)
             }
           </div>
+
+          {/* Strategic Partners */}
+          <section className="mw-partners">
+            <div className="mw-partners-head">
+              <div>
+                <div className="mw-partners-kicker">Strategic Partners</div>
+                <div className="mw-partners-title-txt">Powering the Houston football community</div>
+              </div>
+            </div>
+            <div className="mw-partners-grid">
+              {/* Team Houston */}
+              <div className="mw-partner-card">
+                <div className="mw-partner-logo-box">
+                  <div className="mw-partner-wordmark">Team<em>Houston</em></div>
+                </div>
+                <div className="mw-partner-desc">
+                  The premier platform for Houston's amateur and semi-pro football scene. Leagues, tournaments, and community events — all in one place.
+                </div>
+                <a href="https://www.team-houston.com/" target="_blank" rel="noopener noreferrer" className="mw-partner-link">
+                  Visit Team Houston →
+                </a>
+              </div>
+              {/* GetActivent */}
+              <div className="mw-partner-card">
+                <div className="mw-partner-logo-box">
+                  <div className="mw-partner-wordmark">Get<em>Activent</em></div>
+                </div>
+                <div className="mw-partner-desc">
+                  Discover local sports events and activities near you. From pickup games to watch parties, GetActivent connects Houston's active community.
+                </div>
+                <a href="https://www.getactivent.com/" target="_blank" rel="noopener noreferrer" className="mw-partner-link">
+                  Visit GetActivent →
+                </a>
+              </div>
+            </div>
+            <div className="mw-partners-cta">
+              <p>Interested in partnering with MatchWatch?</p>
+              <Link href="/partners" className="mw-btn-pill ghost" style={{ fontSize: 12 }}>Become a partner →</Link>
+            </div>
+          </section>
         </main>
 
         {/* Right rail */}
