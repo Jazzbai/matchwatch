@@ -173,10 +173,10 @@ const LIVE_FALLBACK = [
 ];
 
 const UPCOMING_FALLBACK = [
-  { sport: "soccer", league: "Champions League", home: "Bayern", away: "PSG", kick: "IN 42 MIN", watchers: 18211 },
-  { sport: "basketball", league: "NBA", home: "Nuggets", away: "Heat", kick: "IN 2H 12M", watchers: 2103 },
-  { sport: "nfl", league: "NFL", home: "Chiefs", away: "Bills", kick: "IN 4H 08M", watchers: 3210 },
-  { sport: "soccer", league: "Serie A", home: "Inter", away: "Milan", kick: "IN 5H 30M", watchers: 6440 },
+  { sport: "soccer", league: "Champions League", home: "Bayern München", away: "Paris S-G", kick: "IN 42 MIN", watchers: 18211, homeImg: "https://crests.football-data.org/5.png", awayImg: "https://crests.football-data.org/524.png" },
+  { sport: "soccer", league: "Premier League", home: "Arsenal", away: "Liverpool", kick: "IN 2H 12M", watchers: 9103, homeImg: "https://crests.football-data.org/57.png", awayImg: "https://crests.football-data.org/64.png" },
+  { sport: "soccer", league: "La Liga", home: "Real Madrid", away: "Barcelona", kick: "IN 4H 08M", watchers: 31200, homeImg: "https://crests.football-data.org/86.png", awayImg: "https://crests.football-data.org/81.png" },
+  { sport: "soccer", league: "Serie A", home: "Inter", away: "AC Milan", kick: "IN 5H 30M", watchers: 6440, homeImg: "https://crests.football-data.org/108.png", awayImg: "https://crests.football-data.org/98.png" },
 ];
 
 const SPORT_COLORS: Record<string, string> = {
@@ -229,6 +229,14 @@ function LiveMatchCard({ match }: { match: typeof LIVE_FALLBACK[0] }) {
   );
 }
 
+function TeamCrest({ img, label, color }: { img?: string; label: string; color: string }) {
+  const [failed, setFailed] = React.useState(false);
+  if (img && !failed) {
+    return <img src={img} alt={label} style={{ width: 28, height: 28, objectFit: "contain", flexShrink: 0 }} onError={() => setFailed(true)} />;
+  }
+  return <CrestBox label={label.substring(0, 2)} color={color} />;
+}
+
 function UpcomingMatchCard({ match }: { match: typeof UPCOMING_FALLBACK[0] }) {
   const accentColor = SPORT_COLORS[match.sport] || "var(--mw-accent)";
   return (
@@ -243,11 +251,11 @@ function UpcomingMatchCard({ match }: { match: typeof UPCOMING_FALLBACK[0] }) {
       <div className="mw-mc-teams">
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <div className="mw-mc-team">
-            <CrestBox label={match.home.substring(0, 2)} color={accentColor} />
+            <TeamCrest img={match.homeImg} label={match.home} color={accentColor} />
             <span className="mw-mc-name">{match.home}</span>
           </div>
           <div className="mw-mc-team">
-            <CrestBox label={match.away.substring(0, 2)} color="#374151" />
+            <TeamCrest img={match.awayImg} label={match.away} color="#374151" />
             <span className="mw-mc-name">{match.away}</span>
           </div>
         </div>
@@ -394,40 +402,30 @@ export default function HomePage() {
           <h4>Sports</h4>
           <div className="mw-side-list">
             <div className="mw-side-item"><span className="ico">⚽</span><span>Football</span><span className="badge">{todayMatches.length || 18}</span></div>
-            <div className="mw-side-item"><span className="ico">🏀</span><span>Basketball</span><span className="badge">9</span></div>
-            <div className="mw-side-item"><span className="ico">🏈</span><span>American FB</span><span className="badge">4</span></div>
-            <div className="mw-side-item"><span className="ico">🏏</span><span>Cricket</span><span className="badge">6</span></div>
-            <div className="mw-side-item"><span className="ico">🎾</span><span>Tennis</span><span className="badge">5</span></div>
           </div>
 
           <h4>Following teams</h4>
-          <div className="mw-follow-team">
-            <span className="mw-team-crest" style={{ background: "#dc2626" }}>AR</span>
-            <span style={{ flex: 1 }}>Arsenal</span>
-            <div className="mw-form">
-              {["W","W","D","W","L"].map((r, i) => (
-                <div key={i} className="mw-dot" style={{ background: r === "W" ? "oklch(0.78 0.16 145)" : r === "D" ? "var(--mw-fg-mute)" : "oklch(0.65 0.2 20)" }} />
-              ))}
-            </div>
-          </div>
-          <div className="mw-follow-team">
-            <span className="mw-team-crest" style={{ background: "#0b1220" }}>NY</span>
-            <span style={{ flex: 1 }}>NYCFC</span>
-            <div className="mw-form">
-              {["W","W","W","D","W"].map((r, i) => (
-                <div key={i} className="mw-dot" style={{ background: r === "W" ? "oklch(0.78 0.16 145)" : r === "D" ? "var(--mw-fg-mute)" : "oklch(0.65 0.2 20)" }} />
-              ))}
-            </div>
-          </div>
-          <div className="mw-follow-team">
-            <span className="mw-team-crest" style={{ background: "#ff6b00" }}>HT</span>
-            <span style={{ flex: 1 }}>Houston Dynamo</span>
-            <div className="mw-form">
-              {["W","L","W","W","D"].map((r, i) => (
-                <div key={i} className="mw-dot" style={{ background: r === "W" ? "oklch(0.78 0.16 145)" : r === "D" ? "var(--mw-fg-mute)" : "oklch(0.65 0.2 20)" }} />
-              ))}
-            </div>
-          </div>
+          {[
+            { name: "Arsenal", color: "#dc2626", form: ["W","W","D","W","L"] },
+            { name: "NYCFC", color: "#0b1220", form: ["W","W","W","D","W"] },
+            { name: "Houston Dynamo", color: "#ff6b00", form: ["W","L","W","W","D"] },
+          ].map(({ name, color, form }) => {
+            const t = teams.find(t => t.name.toLowerCase().includes(name.split(" ")[0].toLowerCase()));
+            return (
+              <div key={name} className="mw-follow-team">
+                {t?.image
+                  ? <img src={t.image} alt={name} style={{ width: 22, height: 22, objectFit: "contain", flexShrink: 0 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                  : <span className="mw-team-crest" style={{ background: color }}>{name.substring(0, 2).toUpperCase()}</span>
+                }
+                <span style={{ flex: 1 }}>{name}</span>
+                <div className="mw-form">
+                  {form.map((r, i) => (
+                    <div key={i} className="mw-dot" style={{ background: r === "W" ? "oklch(0.78 0.16 145)" : r === "D" ? "var(--mw-fg-mute)" : "oklch(0.65 0.2 20)" }} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </aside>
 
         {/* Main content */}
