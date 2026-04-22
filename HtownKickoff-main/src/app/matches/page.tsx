@@ -32,10 +32,11 @@ body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 .mt-nav{display:flex;align-items:center;gap:2px;}
 .mt-nav a{padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--mt-fg-dim);transition:all .18s;text-decoration:none;}
 .mt-nav a.active,.mt-nav a:hover{background:rgba(255,255,255,0.07);color:var(--mt-fg);}
-.mt-top-right{display:flex;gap:10px;align-items:center;}
+.mt-top-right{display:flex;gap:8px;align-items:center;}
 .mt-btn-pill{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;background:var(--mt-accent);color:var(--mt-accent-ink);transition:all .18s;}
 .mt-btn-pill:hover{opacity:0.88;transform:translateY(-1px);}
 .mt-btn-pill.ghost{background:rgba(255,255,255,0.07);color:var(--mt-fg);}
+.mt-mobile-nav{display:none;}
 /* crumb */
 .mt-crumb{padding:14px 32px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--mt-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--mt-line);}
 .mt-crumb a:hover{color:var(--mt-fg);}.mt-crumb .sep{margin:0 8px;color:var(--mt-line-2);}.mt-crumb b{color:var(--mt-fg-dim);font-weight:500;}
@@ -146,7 +147,7 @@ body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 .mt-load-more{padding:18px;border:1px dashed var(--mt-line);text-align:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;letter-spacing:.08em;color:var(--mt-fg-dim);text-transform:uppercase;margin-top:20px;display:block;cursor:pointer;}
 .mt-empty{text-align:center;padding:60px 20px;border:1px dashed var(--mt-line);font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;color:var(--mt-fg-mute);letter-spacing:.08em;text-transform:uppercase;}
 @media(max-width:1100px){.mt-page{grid-template-columns:1fr;}.mt-rail{display:none;}.mt-band-grid{grid-template-columns:1fr;}}
-@media(max-width:900px){.mt-nav{display:none;}.mt-match{grid-template-columns:80px 1fr 80px 1fr;}.mt-venue,.mt-act{display:none;}}
+@media(max-width:900px){.mt-nav{display:none;}.mt-mobile-nav{display:flex;align-items:center;gap:4px;}.mt-mobile-nav a{padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--mt-fg-dim);text-decoration:none;transition:all .18s;white-space:nowrap;}.mt-mobile-nav a.active,.mt-mobile-nav a:hover{background:rgba(255,255,255,0.07);color:var(--mt-fg);}.mt-list-venue-btn{display:none;}.mt-match{grid-template-columns:80px 1fr 80px 1fr;}.mt-venue,.mt-act{display:none;}}
 @media(max-width:640px){.mt-topbar{padding:8px 12px;}.mt-topbar-inner{padding:8px 14px;}.mt-match{grid-template-columns:64px 1fr 64px 1fr;}.mt-h1{font-size:32px;}.mt-band{padding:20px 16px;}.mt-dates{padding:0 12px;}.mt-toolbar{padding:12px 16px;}.mt-list{padding:16px 16px 60px;}.mt-crumb{padding:10px 16px;}}
 `;
 
@@ -468,11 +469,16 @@ function MatchesPageContent() {
                         <Link href="/blog">Blog</Link>
                         {user && <Link href="/dashboard">My bookings</Link>}
                     </nav>
+                    <nav className="mt-mobile-nav">
+                        <Link href="/" >Home</Link>
+                        <Link href="/venues">Venues</Link>
+                        {user && <Link href="/dashboard">Bookings</Link>}
+                    </nav>
                     <div className="mt-top-right">
                         {user
                             ? <Link href="/dashboard" className="mt-btn-pill ghost">{user.name?.split(" ")[0]}</Link>
                             : <>
-                                <Link href="/register-venue" className="mt-btn-pill ghost">List venue</Link>
+                                <Link href="/register-venue" className="mt-btn-pill ghost mt-list-venue-btn">List venue</Link>
                                 <Link href="/login" className="mt-btn-pill">Log in</Link>
                               </>
                         }

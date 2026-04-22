@@ -32,10 +32,11 @@ body{background:var(--vn-bg)!important;color:var(--vn-fg)!important;}
 .vn-nav{display:flex;align-items:center;gap:2px;}
 .vn-nav a{padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--vn-fg-dim);transition:all .18s;text-decoration:none;}
 .vn-nav a.active,.vn-nav a:hover{background:rgba(255,255,255,0.07);color:var(--vn-fg);}
-.vn-top-right{display:flex;gap:10px;align-items:center;}
+.vn-top-right{display:flex;gap:8px;align-items:center;}
 .vn-btn-pill{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;background:var(--vn-accent);color:var(--vn-accent-ink);transition:all .18s;}
 .vn-btn-pill:hover{opacity:0.88;transform:translateY(-1px);}
 .vn-btn-pill.ghost{background:rgba(255,255,255,0.07);color:var(--vn-fg);}
+.vn-mobile-nav{display:none;}
 /* crumb */
 .vn-crumb{padding:14px 32px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--vn-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--vn-line);}
 .vn-crumb a:hover{color:var(--vn-fg);}.vn-crumb .sep{margin:0 8px;color:var(--vn-line-2);}.vn-crumb b{color:var(--vn-fg-dim);font-weight:500;}
@@ -153,7 +154,7 @@ body{background:var(--vn-bg)!important;color:var(--vn-fg)!important;}
 .vn-load-more{padding:18px;border:1px dashed var(--vn-line);text-align:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;letter-spacing:.08em;color:var(--vn-fg-dim);text-transform:uppercase;margin-top:12px;cursor:pointer;background:none;width:100%;}
 .vn-load-more:hover{color:var(--vn-fg);border-color:var(--vn-line-2);}
 @media(max-width:1100px){.vn-page{grid-template-columns:1fr;}.vn-map-wrap{display:none;}.vn-band-grid{grid-template-columns:1fr;}}
-@media(max-width:900px){.vn-nav{display:none;}}
+@media(max-width:900px){.vn-nav{display:none;}.vn-mobile-nav{display:flex;align-items:center;gap:4px;}.vn-mobile-nav a{padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--vn-fg-dim);text-decoration:none;transition:all .18s;white-space:nowrap;}.vn-mobile-nav a:hover{background:rgba(255,255,255,0.07);color:var(--vn-fg);}.vn-list-venue-btn{display:none;}}
 @media(max-width:768px){.vn-topbar{padding:8px 12px;}.vn-topbar-inner{padding:8px 14px;}.vn-h1{font-size:32px;}.vn-band{padding:24px 16px 36px;}.vn-search-wrap{padding:0 16px;}.vn-chips{padding:16px 16px 0;}.vn-list{padding:16px 16px 60px;}.vn-search{grid-template-columns:auto 1fr auto;}.vn-crumb{padding:10px 16px;}}
 `;
 
@@ -277,11 +278,16 @@ function VenuesPageContent() {
                         <Link href="/blog">Blog</Link>
                         {user && <Link href="/dashboard">My bookings</Link>}
                     </nav>
+                    <nav className="vn-mobile-nav">
+                        <Link href="/">Home</Link>
+                        <Link href="/matches">Matches</Link>
+                        {user && <Link href="/dashboard">Bookings</Link>}
+                    </nav>
                     <div className="vn-top-right">
                         {user
                             ? <Link href="/dashboard" className="vn-btn-pill ghost">{initials}</Link>
                             : <>
-                                <Link href="/register-venue" className="vn-btn-pill ghost">List venue</Link>
+                                <Link href="/register-venue" className="vn-btn-pill ghost vn-list-venue-btn">List venue</Link>
                                 <Link href="/login" className="vn-btn-pill">Log in</Link>
                               </>
                         }

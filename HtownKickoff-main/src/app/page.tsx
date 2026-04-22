@@ -134,13 +134,14 @@ const CSS = `
   .mw-nav{display:flex;align-items:center;gap:2px;}
   .mw-nav a{padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--mw-fg-dim);transition:all .18s;text-decoration:none;}
   .mw-nav a.active,.mw-nav a:hover{background:rgba(255,255,255,0.07);color:var(--mw-fg);}
-  .mw-top-right{display:flex;gap:10px;align-items:center;}
+  .mw-top-right{display:flex;gap:8px;align-items:center;}
   .mw-btn-pill{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;background:var(--mw-accent);color:#0a0b0d;transition:all .18s;}
   .mw-btn-pill:hover{opacity:0.88;transform:translateY(-1px);}
   .mw-btn-pill.ghost{background:rgba(255,255,255,0.07);color:var(--mw-fg);}
+  .mw-mobile-nav{display:none;}
   @media (max-width:1200px){.mw-page{grid-template-columns:1fr;}.mw-side,.mw-rail{display:none;}.mw-fixtures{grid-template-columns:repeat(2,1fr);}}
-  @media (max-width:900px){.mw-nav{display:none;}}
-  @media (max-width:768px){.mw-topbar{padding:8px 12px;}.mw-topbar-inner{padding:8px 14px;}.mw-main{padding:16px 16px 60px;}.mw-fixtures{grid-template-columns:1fr;}.mw-match-grid{grid-template-columns:1fr;}.mw-hero-inner{grid-template-columns:1fr;}.mw-hero-right{display:none;}.mw-ribbon{padding:8px 16px;font-size:10px;flex-wrap:wrap;gap:6px;}.mw-hero-left{padding:20px 16px;}.mw-sec-head{padding:14px 16px;}.mw-section{margin-bottom:24px;}}
+  @media (max-width:900px){.mw-nav{display:none;}.mw-mobile-nav{display:flex;align-items:center;gap:4px;}.mw-mobile-nav a{padding:7px 13px;border-radius:999px;font-size:13px;font-weight:600;color:var(--mw-fg-dim);text-decoration:none;transition:all .18s;white-space:nowrap;}.mw-mobile-nav a:hover{background:rgba(255,255,255,0.07);color:var(--mw-fg);}.mw-list-venue-btn{display:none;}}
+  @media (max-width:768px){.mw-topbar{padding:8px 10px;}.mw-topbar-inner{padding:7px 12px;}.mw-main{padding:16px 16px 60px;}.mw-fixtures{grid-template-columns:1fr;}.mw-match-grid{grid-template-columns:1fr;}.mw-hero-inner{grid-template-columns:1fr;}.mw-hero-right{display:none;}.mw-ribbon{padding:8px 16px;font-size:10px;flex-wrap:wrap;gap:6px;}.mw-hero-left{padding:20px 16px;}.mw-sec-head{padding:14px 16px;}.mw-section{margin-bottom:24px;}}
 `;
 
 const MW_VARS = `
@@ -347,12 +348,18 @@ export default function HomePage() {
             <Link href="/blog">Blog</Link>
             {user && <Link href="/dashboard">My bookings</Link>}
           </nav>
+          {/* Mobile-only quick nav */}
+          <nav className="mw-mobile-nav">
+            <Link href="/matches">Matches</Link>
+            <Link href="/venues">Venues</Link>
+            {user && <Link href="/dashboard">Bookings</Link>}
+          </nav>
           <div className="mw-top-right">
             {user ? (
               <Link href="/dashboard" className="mw-btn-pill ghost">{initials}</Link>
             ) : (
               <>
-                <Link href="/register-venue" className="mw-btn-pill ghost">List venue</Link>
+                <Link href="/register-venue" className="mw-btn-pill ghost mw-list-venue-btn">List venue</Link>
                 <Link href="/login" className="mw-btn-pill">Log in</Link>
               </>
             )}
