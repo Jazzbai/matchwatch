@@ -32,6 +32,15 @@ export const matchEventFormatEnum = pgEnum('match_event_format', ['HEAD_TO_HEAD'
 export const motorsportEntryStatusEnum = pgEnum('motorsport_entry_status', ['ENTERED', 'ACTIVE', 'FINISHED', 'DNF', 'DNS', 'DSQ', 'WITHDRAWN']);
 export const blogPublishStatusEnum = pgEnum('blog_publish_status', ['DRAFT', 'PUBLISHED']);
 export const blogCommentStatusEnum = pgEnum('blog_comment_status', ['PENDING', 'APPROVED', 'REJECTED']);
+export const aiCallAgentQualificationStatusEnum = pgEnum('ai_call_agent_qualification_status', [
+    'NOT_STARTED', 'IN_REVIEW', 'QUALIFIED', 'NEEDS_REVIEW', 'NOT_QUALIFIED',
+]);
+export const aiCallAgentReservationModeEnum = pgEnum('ai_call_agent_reservation_mode', [
+    'NONE', 'ANSWER_ONLY', 'COLLECT_REQUEST', 'FULL_INTAKE', 'TRANSFER_TO_STAFF',
+]);
+export const aiCallAgentGoLiveReadinessEnum = pgEnum('ai_call_agent_go_live_readiness', [
+    'READY_NOW', 'READY_IN_7_DAYS', 'READY_IN_14_DAYS', 'NOT_READY',
+]);
 
 // ─── Users ──────────────────────────────────────
 
@@ -623,6 +632,19 @@ export const venues = pgTable('venues', {
     isFeatured: boolean('is_featured').default(false).notNull(),
     stripeAccountId: varchar('stripe_account_id'),
     metadata: jsonb('metadata').default({}),
+    // ─── AI Call Agent Qualification ───────────────
+    aiCallAgentQualificationStatus: aiCallAgentQualificationStatusEnum('ai_call_agent_qualification_status').default('NOT_STARTED').notNull(),
+    aiCallAgentQualifiedFor: text('ai_call_agent_qualified_for').array().notNull().default([]),
+    aiCallAgentReservationMode: aiCallAgentReservationModeEnum('ai_call_agent_reservation_mode').default('NONE').notNull(),
+    aiCallAgentEscalationContactName: varchar('ai_call_agent_escalation_contact_name', { length: 150 }),
+    aiCallAgentEscalationContactPhone: varchar('ai_call_agent_escalation_contact_phone', { length: 30 }),
+    aiCallAgentEscalationContactEmail: varchar('ai_call_agent_escalation_contact_email', { length: 255 }),
+    aiCallAgentLanguages: text('ai_call_agent_languages').array().notNull().default([]),
+    aiCallAgentGoLiveReadiness: aiCallAgentGoLiveReadinessEnum('ai_call_agent_go_live_readiness').default('NOT_READY').notNull(),
+    aiCallAgentNotes: text('ai_call_agent_notes'),
+    aiCallAgentQuestionnaireLink: varchar('ai_call_agent_questionnaire_link', { length: 500 }),
+    aiCallAgentQualifiedAt: timestamp('ai_call_agent_qualified_at'),
+    aiCallAgentQualifiedByUserId: uuid('ai_call_agent_qualified_by_user_id').references(() => users.id),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at'),

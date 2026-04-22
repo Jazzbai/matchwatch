@@ -476,6 +476,97 @@ export default function AdminPage() {
   const coverInputRef = React.useRef<HTMLInputElement | null>(null);
   const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
   const [deleteVenueEmailConfirm, setDeleteVenueEmailConfirm] = React.useState("");
+  // ─── AI Call Agent Qualification state ───────────────────────────────
+  type AiQualStatus = "NOT_STARTED" | "IN_REVIEW" | "QUALIFIED" | "NEEDS_REVIEW" | "NOT_QUALIFIED";
+  type AiReservationMode = "NONE" | "ANSWER_ONLY" | "COLLECT_REQUEST" | "FULL_INTAKE" | "TRANSFER_TO_STAFF";
+  type AiGoLive = "READY_NOW" | "READY_IN_7_DAYS" | "READY_IN_14_DAYS" | "NOT_READY";
+
+  const [aiQualStatus, setAiQualStatus] = React.useState<AiQualStatus>("NOT_STARTED");
+  const [aiQualifiedFor, setAiQualifiedFor] = React.useState<string[]>([]);
+  const [aiReservationMode, setAiReservationMode] = React.useState<AiReservationMode>("NONE");
+  const [aiEscalationName, setAiEscalationName] = React.useState("");
+  const [aiEscalationPhone, setAiEscalationPhone] = React.useState("");
+  const [aiEscalationEmail, setAiEscalationEmail] = React.useState("");
+  const [aiLanguages, setAiLanguages] = React.useState<string[]>([]);
+  const [aiLanguageInput, setAiLanguageInput] = React.useState("");
+  const [aiGoLive, setAiGoLive] = React.useState<AiGoLive>("NOT_READY");
+  const [aiNotes, setAiNotes] = React.useState("");
+  const [aiQuestionnaireLink, setAiQuestionnaireLink] = React.useState("");
+  const [savingAiQual, setSavingAiQual] = React.useState(false);
+  // questionnaire answers
+  const [aiIsActive, setAiIsActive] = React.useState<boolean | null>(null);
+  const [aiReceivesCalls, setAiReceivesCalls] = React.useState<boolean | null>(null);
+  const [aiAcceptsReservations, setAiAcceptsReservations] = React.useState<"yes" | "no" | "groups" | null>(null);
+  const [aiHoursReady, setAiHoursReady] = React.useState<boolean | null>(null);
+  const [aiHasEscalation, setAiHasEscalation] = React.useState<boolean | null>(null);
+  const [aiWantsMultilingual, setAiWantsMultilingual] = React.useState<boolean | null>(null);
+
+  const AI_USE_CASES = [
+    { value: "reservations", label: "Reservations" },
+    { value: "watch_party_questions", label: "Watch party questions" },
+    { value: "private_events", label: "Private events" },
+    { value: "general_faq", label: "General FAQs" },
+    { value: "directions_hours", label: "Directions / hours" },
+    { value: "lead_capture", label: "Lead capture" },
+  ];
+
+  function computeAiQualStatus(): AiQualStatus {
+    if (aiIsActive === null || aiReceivesCalls === null || aiQualifiedFor.length === 0) {
+      return "NOT_STARTED";
+    }
+    if (!aiIsActive || !aiReceivesCalls || aiQualifiedFor.length === 0) {
+      return "NOT_QUALIFIED";
+    }
+    if (aiGoLive === "NOT_READY" || !aiHasEscalation || !aiHoursReady) {
+      return "NEEDS_REVIEW";
+    }
+    if (!aiEscalationPhone.trim() && !aiEscalationEmail.trim()) {
+      return "NEEDS_REVIEW";
+    }
+    return "QUALIFIED";
+  }
+
+  const saveAiQualification = async () => {
+    if (!selectedVenueId) { setError("Select a venue first."); return; }
+    const computedStatus = computeAiQualStatus();
+    setSavingAiQual(true);
+    setError(null);
+    try {
+      await api.put(dashboardPath("/dashboard/venue"), {
+        aiCallAgentQualificationStatus: computedStatus,
+        aiCallAgentQualifiedFor: aiQualifiedFor,
+        aiCallAgentReservationMode: aiReservationMode,
+        aiCallAgentEscalationContactName: aiEscalationName.trim() || undefined,
+        aiCallAgentEscalationContactPhone: aiEscalationPhone.trim() || undefined,
+        aiCallAgentEscalationContactEmail: aiEscalationEmail.trim() || undefined,
+        aiCallAgentLanguages: aiLanguages,
+        aiCallAgentGoLiveReadiness: aiGoLive,
+        aiCallAgentNotes: aiNotes.trim() || undefined,
+        aiCallAgentQuestionnaireLink: aiQuestionnaireLink.trim() || undefined,
+      });
+      setAiQualStatus(computedStatus);
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save AI qualification");
+    } finally {
+      setSavingAiQual(false);
+    }
+  };
+
+  function toggleAiUseCase(value: string) {
+    setAiQualifiedFor((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+    );
+  }
+
+  function addAiLanguage() {
+    const lang = aiLanguageInput.trim();
+    if (lang && !aiLanguages.includes(lang)) {
+      setAiLanguages((prev) => [...prev, lang]);
+    }
+    setAiLanguageInput("");
+  }
+
   const [newOwnedVenue, setNewOwnedVenue] = React.useState({
     googlePlaceId: "",
     name: "",
@@ -705,6 +796,24 @@ export default function AdminPage() {
           : [],
       );
       setPromotedEventId(typeof profile.promotedVenueEventId === "string" ? profile.promotedVenueEventId : null);
+      // AI Call Agent Qualification
+      setAiQualStatus((profile as any).aiCallAgentQualificationStatus || "NOT_STARTED");
+      setAiQualifiedFor((profile as any).aiCallAgentQualifiedFor || []);
+      setAiReservationMode((profile as any).aiCallAgentReservationMode || "NONE");
+      setAiEscalationName((profile as any).aiCallAgentEscalationContactName || "");
+      setAiEscalationPhone((profile as any).aiCallAgentEscalationContactPhone || "");
+      setAiEscalationEmail((profile as any).aiCallAgentEscalationContactEmail || "");
+      setAiLanguages((profile as any).aiCallAgentLanguages || []);
+      setAiGoLive((profile as any).aiCallAgentGoLiveReadiness || "NOT_READY");
+      setAiNotes((profile as any).aiCallAgentNotes || "");
+      setAiQuestionnaireLink((profile as any).aiCallAgentQuestionnaireLink || "");
+      const existingStatus: string = (profile as any).aiCallAgentQualificationStatus || "NOT_STARTED";
+      if (existingStatus !== "NOT_STARTED") {
+        setAiIsActive(true);
+        setAiReceivesCalls(true);
+        setAiHoursReady(existingStatus === "QUALIFIED");
+        setAiHasEscalation(!!(profile as any).aiCallAgentEscalationContactPhone || !!(profile as any).aiCallAgentEscalationContactEmail);
+      }
 
       const groupedUpcomingMatches = upcomingMatchesRes.data || {};
       const flattened = Object.values(groupedUpcomingMatches)
@@ -2241,6 +2350,295 @@ export default function AdminPage() {
                   <button style={btnPrimary(savingSettings)} disabled={savingSettings} onClick={() => void saveVenueSettings()}>
                     {savingSettings ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving</> : <><Save size={14} /> Save Venue Settings</>}
                   </button>
+                </div>
+
+                {/* ─── AI Call Agent Qualification ─────────────────────────── */}
+                <div style={{ marginTop: 32, borderTop: "1px solid var(--border)", paddingTop: 28 }}>
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 18 }}>🤖</span>
+                        <h4 style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>AI Call Agent Qualification</h4>
+                        {/* Status badge */}
+                        {aiQualStatus === "QUALIFIED" && (
+                          <span style={{ padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)" }}>QUALIFIED</span>
+                        )}
+                        {aiQualStatus === "NEEDS_REVIEW" && (
+                          <span style={{ padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: "rgba(234,179,8,0.15)", color: "#eab308", border: "1px solid rgba(234,179,8,0.3)" }}>NEEDS REVIEW</span>
+                        )}
+                        {aiQualStatus === "NOT_QUALIFIED" && (
+                          <span style={{ padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}>NOT QUALIFIED</span>
+                        )}
+                        {aiQualStatus === "IN_REVIEW" && (
+                          <span style={{ padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)" }}>IN REVIEW</span>
+                        )}
+                        {aiQualStatus === "NOT_STARTED" && (
+                          <span style={{ padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: "rgba(148,163,184,0.1)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>NOT STARTED</span>
+                        )}
+                      </div>
+                      <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0, lineHeight: 1.5 }}>
+                        Complete this questionnaire to determine if your venue is a good fit for an AI call agent to handle reservations, watch-party questions, and FAQs.
+                      </p>
+                    </div>
+                    {aiQuestionnaireLink && (
+                      <a href={aiQuestionnaireLink} target="_blank" rel="noopener noreferrer" style={{ ...btnOutline(), textDecoration: "none", fontSize: 12 }}>
+                        Open questionnaire →
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Q1: Is venue active? */}
+                  <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)" }}>
+                    <label style={{ ...labelStyle, marginBottom: 10 }}>1. Is this venue currently open and actively serving customers?</label>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      {[{ v: true, label: "Yes" }, { v: false, label: "No" }].map(({ v, label }) => (
+                        <button key={label} type="button"
+                          style={{ padding: "6px 18px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid", transition: "all .14s",
+                            background: aiIsActive === v ? "var(--primary)" : "transparent",
+                            color: aiIsActive === v ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                            borderColor: aiIsActive === v ? "var(--primary)" : "var(--border)" }}
+                          onClick={() => setAiIsActive(v)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Q2: Receives calls? */}
+                  <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)" }}>
+                    <label style={{ ...labelStyle, marginBottom: 10 }}>2. Does this venue receive customer phone calls regularly?</label>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      {[{ v: true, label: "Yes" }, { v: false, label: "No" }].map(({ v, label }) => (
+                        <button key={label} type="button"
+                          style={{ padding: "6px 18px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid", transition: "all .14s",
+                            background: aiReceivesCalls === v ? "var(--primary)" : "transparent",
+                            color: aiReceivesCalls === v ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                            borderColor: aiReceivesCalls === v ? "var(--primary)" : "var(--border)" }}
+                          onClick={() => setAiReceivesCalls(v)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Q3: Use cases */}
+                  <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)" }}>
+                    <label style={{ ...labelStyle, marginBottom: 10 }}>3. What types of calls should the AI handle? (select all that apply)</label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {AI_USE_CASES.map(({ value, label }) => {
+                        const checked = aiQualifiedFor.includes(value);
+                        return (
+                          <button key={value} type="button"
+                            style={{ padding: "6px 14px", borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid", transition: "all .14s",
+                              background: checked ? "rgba(var(--primary-rgb,34,197,94),0.15)" : "transparent",
+                              color: checked ? "var(--primary)" : "var(--muted-foreground)",
+                              borderColor: checked ? "var(--primary)" : "var(--border)" }}
+                            onClick={() => toggleAiUseCase(value)}>
+                            {checked ? "✓ " : ""}{label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Q4: Accept reservations? */}
+                  <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)" }}>
+                    <label style={{ ...labelStyle, marginBottom: 10 }}>4. Does the venue currently accept reservations?</label>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      {[{ v: "yes" as const, label: "Yes" }, { v: "no" as const, label: "No" }, { v: "groups" as const, label: "Only for large groups" }].map(({ v, label }) => (
+                        <button key={v} type="button"
+                          style={{ padding: "6px 16px", borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid", transition: "all .14s",
+                            background: aiAcceptsReservations === v ? "var(--primary)" : "transparent",
+                            color: aiAcceptsReservations === v ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                            borderColor: aiAcceptsReservations === v ? "var(--primary)" : "var(--border)" }}
+                          onClick={() => setAiAcceptsReservations(v)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Q5: Reservation handling mode */}
+                  <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)" }}>
+                    <label style={{ ...labelStyle, marginBottom: 10 }}>5. Reservation Handling Mode — how should the AI handle reservation calls?</label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {[
+                        { v: "NONE" as const, label: "Do not handle reservations" },
+                        { v: "ANSWER_ONLY" as const, label: "Answer reservation questions only" },
+                        { v: "COLLECT_REQUEST" as const, label: "Collect reservation request and notify staff" },
+                        { v: "FULL_INTAKE" as const, label: "Full reservation intake" },
+                        { v: "TRANSFER_TO_STAFF" as const, label: "Transfer reservation calls to staff" },
+                      ].map(({ v, label }) => (
+                        <label key={v} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13, color: "var(--foreground)" }}>
+                          <input type="radio" name="aiReservationMode" value={v} checked={aiReservationMode === v} onChange={() => setAiReservationMode(v)}
+                            style={{ accentColor: "var(--primary)", width: 15, height: 15 }} />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Q6: Hours/policies ready? */}
+                  <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)" }}>
+                    <label style={{ ...labelStyle, marginBottom: 10 }}>6. Are business hours, policies, and event details ready for the AI?</label>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      {[{ v: true, label: "Yes" }, { v: false, label: "No" }].map(({ v, label }) => (
+                        <button key={label} type="button"
+                          style={{ padding: "6px 18px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid", transition: "all .14s",
+                            background: aiHoursReady === v ? "var(--primary)" : "transparent",
+                            color: aiHoursReady === v ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                            borderColor: aiHoursReady === v ? "var(--primary)" : "var(--border)" }}
+                          onClick={() => setAiHoursReady(v)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Q7: Escalation contact? */}
+                  <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)" }}>
+                    <label style={{ ...labelStyle, marginBottom: 10 }}>7. Is there a human escalation contact for urgent or missed-call cases?</label>
+                    <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                      {[{ v: true, label: "Yes" }, { v: false, label: "No" }].map(({ v, label }) => (
+                        <button key={label} type="button"
+                          style={{ padding: "6px 18px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid", transition: "all .14s",
+                            background: aiHasEscalation === v ? "var(--primary)" : "transparent",
+                            color: aiHasEscalation === v ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                            borderColor: aiHasEscalation === v ? "var(--primary)" : "var(--border)" }}
+                          onClick={() => setAiHasEscalation(v)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {aiHasEscalation && (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+                        <div>
+                          <label style={labelStyle}>Contact name</label>
+                          <input value={aiEscalationName} onChange={(e) => setAiEscalationName(e.target.value)} placeholder="Jane Smith" style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Contact phone</label>
+                          <input value={aiEscalationPhone} onChange={(e) => setAiEscalationPhone(e.target.value)} placeholder="+1 (713) 000-0000" style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Contact email</label>
+                          <input type="email" value={aiEscalationEmail} onChange={(e) => setAiEscalationEmail(e.target.value)} placeholder="manager@venue.com" style={inputStyle} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Q8: Multilingual? */}
+                  <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)" }}>
+                    <label style={{ ...labelStyle, marginBottom: 10 }}>8. Does the venue want multilingual support?</label>
+                    <div style={{ display: "flex", gap: 10, marginBottom: aiWantsMultilingual ? 12 : 0 }}>
+                      {[{ v: true, label: "Yes" }, { v: false, label: "No" }].map(({ v, label }) => (
+                        <button key={label} type="button"
+                          style={{ padding: "6px 18px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid", transition: "all .14s",
+                            background: aiWantsMultilingual === v ? "var(--primary)" : "transparent",
+                            color: aiWantsMultilingual === v ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                            borderColor: aiWantsMultilingual === v ? "var(--primary)" : "var(--border)" }}
+                          onClick={() => setAiWantsMultilingual(v)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {aiWantsMultilingual && (
+                      <div>
+                        <label style={labelStyle}>Languages (press Enter to add)</label>
+                        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                          <input value={aiLanguageInput} onChange={(e) => setAiLanguageInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAiLanguage(); } }}
+                            placeholder="e.g. Spanish, Arabic, French" style={{ ...inputStyle, flex: 1 }} />
+                          <button type="button" style={btnOutline()} onClick={addAiLanguage}>Add</button>
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {aiLanguages.map((lang) => (
+                            <span key={lang} style={{ padding: "4px 12px", borderRadius: 99, fontSize: 12, background: "rgba(var(--primary-rgb,34,197,94),0.1)", color: "var(--primary)", border: "1px solid rgba(var(--primary-rgb,34,197,94),0.25)", display: "flex", alignItems: "center", gap: 6 }}>
+                              {lang}
+                              <button type="button" onClick={() => setAiLanguages((prev) => prev.filter((l) => l !== lang))} style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", padding: 0, lineHeight: 1 }}>×</button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Q9: Go-live readiness */}
+                  <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)" }}>
+                    <label style={{ ...labelStyle, marginBottom: 10 }}>9. Is the venue ready to go live with an AI call agent?</label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                      {[
+                        { v: "READY_NOW" as const, label: "Ready now" },
+                        { v: "READY_IN_7_DAYS" as const, label: "Ready in 7 days" },
+                        { v: "READY_IN_14_DAYS" as const, label: "Ready in 14 days" },
+                        { v: "NOT_READY" as const, label: "Not ready" },
+                      ].map(({ v, label }) => (
+                        <button key={v} type="button"
+                          style={{ padding: "6px 16px", borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid", transition: "all .14s",
+                            background: aiGoLive === v ? "var(--primary)" : "transparent",
+                            color: aiGoLive === v ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                            borderColor: aiGoLive === v ? "var(--primary)" : "var(--border)" }}
+                          onClick={() => setAiGoLive(v)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Additional notes + questionnaire link */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14, marginBottom: 20 }}>
+                    <div>
+                      <label style={labelStyle}>Internal notes (optional)</label>
+                      <textarea value={aiNotes} onChange={(e) => setAiNotes(e.target.value)} rows={3} placeholder="Any additional context for setup…" style={{ ...inputStyle, height: "auto", resize: "vertical" }} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Questionnaire link (optional)</label>
+                      <input value={aiQuestionnaireLink} onChange={(e) => setAiQuestionnaireLink(e.target.value)} placeholder="https://…" style={inputStyle} />
+                    </div>
+                  </div>
+
+                  {/* Computed status preview */}
+                  {aiIsActive !== null && aiReceivesCalls !== null && aiQualifiedFor.length > 0 && (
+                    <div style={{ padding: "12px 16px", borderRadius: 10, border: "1px solid var(--border)", marginBottom: 16, background: "var(--card)", fontSize: 13 }}>
+                      <span style={{ fontWeight: 600, color: "var(--foreground)" }}>Computed status: </span>
+                      {(() => {
+                        const s = computeAiQualStatus();
+                        const color = s === "QUALIFIED" ? "#22c55e" : s === "NEEDS_REVIEW" ? "#eab308" : s === "NOT_QUALIFIED" ? "#ef4444" : "var(--muted-foreground)";
+                        return <span style={{ color, fontWeight: 700 }}>{s.replace(/_/g, " ")}</span>;
+                      })()}
+                      {aiQualifiedFor.length > 0 && (
+                        <span style={{ color: "var(--muted-foreground)", marginLeft: 8 }}>
+                          · {aiQualifiedFor.map((v) => AI_USE_CASES.find((c) => c.value === v)?.label || v).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <button style={btnPrimary(savingAiQual)} disabled={savingAiQual} onClick={() => void saveAiQualification()}>
+                      {savingAiQual ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving</> : <><Save size={14} /> Save Qualification</>}
+                    </button>
+                    <button
+                      style={{
+                        ...btnOutline(),
+                        opacity: (aiQualStatus === "QUALIFIED" || aiQualStatus === "NEEDS_REVIEW") ? 1 : 0.4,
+                        cursor: (aiQualStatus === "QUALIFIED" || aiQualStatus === "NEEDS_REVIEW") ? "pointer" : "not-allowed",
+                      }}
+                      disabled={aiQualStatus !== "QUALIFIED" && aiQualStatus !== "NEEDS_REVIEW"}
+                      onClick={() => window.open("https://foreva.ai/", "_blank")}
+                    >
+                      Continue to Agent Setup →
+                    </button>
+                    {aiQualStatus === "NEEDS_REVIEW" && (
+                      <span style={{ fontSize: 12, color: "#eab308" }}>⚠ Some information is missing — review before launching.</span>
+                    )}
+                    {aiQualStatus === "NOT_QUALIFIED" && (
+                      <span style={{ fontSize: 12, color: "#ef4444" }}>✗ Venue does not qualify yet — answer all questions to proceed.</span>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ marginTop: 24, borderTop: "1px solid var(--border)", paddingTop: 24 }}>

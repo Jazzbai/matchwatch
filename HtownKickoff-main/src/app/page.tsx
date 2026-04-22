@@ -753,16 +753,16 @@ export default function HomePage() {
                   Visit Team Houston →
                 </a>
               </div>
-              {/* GetActivent */}
+              {/* Activent */}
               <div className="mw-partner-card">
                 <div className="mw-partner-logo-box">
-                  <div className="mw-partner-wordmark">Get<em>Activent</em></div>
+                  <div className="mw-partner-wordmark"><em>Activent</em></div>
                 </div>
                 <div className="mw-partner-desc">
-                  Discover local sports events and activities near you. From pickup games to watch parties, GetActivent connects Houston's active community.
+                  Discover local sports events and activities near you. From pickup games to watch parties, Activent connects Houston's active community.
                 </div>
                 <a href="https://www.getactivent.com/" target="_blank" rel="noopener noreferrer" className="mw-partner-link">
-                  Visit GetActivent →
+                  Visit Activent →
                 </a>
               </div>
             </div>

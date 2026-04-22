@@ -153,6 +153,17 @@ export const updateVenueSchema = z.object({
     coverImageS3Key: z.string().max(500).optional(),
     galleryImageUrls: z.array(z.string().url()).max(5).optional(),
     galleryS3Keys: z.array(z.string().max(500)).max(5).optional(),
+    // AI Call Agent Qualification
+    aiCallAgentQualificationStatus: z.enum(['NOT_STARTED', 'IN_REVIEW', 'QUALIFIED', 'NEEDS_REVIEW', 'NOT_QUALIFIED']).optional(),
+    aiCallAgentQualifiedFor: z.array(z.string().max(80)).max(20).optional(),
+    aiCallAgentReservationMode: z.enum(['NONE', 'ANSWER_ONLY', 'COLLECT_REQUEST', 'FULL_INTAKE', 'TRANSFER_TO_STAFF']).optional(),
+    aiCallAgentEscalationContactName: z.string().max(150).optional(),
+    aiCallAgentEscalationContactPhone: z.string().max(30).optional(),
+    aiCallAgentEscalationContactEmail: z.string().max(255).optional(),
+    aiCallAgentLanguages: z.array(z.string().max(80)).max(20).optional(),
+    aiCallAgentGoLiveReadiness: z.enum(['READY_NOW', 'READY_IN_7_DAYS', 'READY_IN_14_DAYS', 'NOT_READY']).optional(),
+    aiCallAgentNotes: z.string().max(2000).optional(),
+    aiCallAgentQuestionnaireLink: z.string().max(500).optional(),
 });
 
 // ─── Booking Schemas ────────────────────────────

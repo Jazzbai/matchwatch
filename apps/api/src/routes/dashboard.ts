@@ -674,6 +674,22 @@ async function updateVenueHandler(c: any) {
             galleryImageUrls: parsed.data.galleryImageUrls.slice(0, 5),
         };
     }
+    // AI Call Agent Qualification fields
+    if (parsed.data.aiCallAgentQualificationStatus !== undefined) updates.aiCallAgentQualificationStatus = parsed.data.aiCallAgentQualificationStatus;
+    if (parsed.data.aiCallAgentQualifiedFor !== undefined) updates.aiCallAgentQualifiedFor = parsed.data.aiCallAgentQualifiedFor;
+    if (parsed.data.aiCallAgentReservationMode !== undefined) updates.aiCallAgentReservationMode = parsed.data.aiCallAgentReservationMode;
+    if (parsed.data.aiCallAgentEscalationContactName !== undefined) updates.aiCallAgentEscalationContactName = parsed.data.aiCallAgentEscalationContactName || null;
+    if (parsed.data.aiCallAgentEscalationContactPhone !== undefined) updates.aiCallAgentEscalationContactPhone = parsed.data.aiCallAgentEscalationContactPhone || null;
+    if (parsed.data.aiCallAgentEscalationContactEmail !== undefined) updates.aiCallAgentEscalationContactEmail = parsed.data.aiCallAgentEscalationContactEmail || null;
+    if (parsed.data.aiCallAgentLanguages !== undefined) updates.aiCallAgentLanguages = parsed.data.aiCallAgentLanguages;
+    if (parsed.data.aiCallAgentGoLiveReadiness !== undefined) updates.aiCallAgentGoLiveReadiness = parsed.data.aiCallAgentGoLiveReadiness;
+    if (parsed.data.aiCallAgentNotes !== undefined) updates.aiCallAgentNotes = parsed.data.aiCallAgentNotes || null;
+    if (parsed.data.aiCallAgentQuestionnaireLink !== undefined) updates.aiCallAgentQuestionnaireLink = parsed.data.aiCallAgentQuestionnaireLink || null;
+    // Auto-stamp qualified_at when status changes to QUALIFIED
+    if (parsed.data.aiCallAgentQualificationStatus === 'QUALIFIED' && venue.aiCallAgentQualificationStatus !== 'QUALIFIED') {
+        updates.aiCallAgentQualifiedAt = new Date();
+        updates.aiCallAgentQualifiedByUserId = user.id;
+    }
     if (googleFields && parsed.data.amenities === undefined) {
         const googleAmenities = await getAllowedGoogleAmenities(googleSnapshot);
         if (googleAmenities.length > 0) {

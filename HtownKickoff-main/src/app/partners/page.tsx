@@ -143,14 +143,14 @@ export default function PartnersPage() {
             </a>
           </div>
 
-          {/* GetActivent */}
+          {/* Activent */}
           <div className="pp-partner">
             <div>
-              <div className="pp-partner-mark">Get<em>Activent</em></div>
+              <div className="pp-partner-mark"><em>Activent</em></div>
               <div className="pp-partner-type">Local Events & Activities</div>
             </div>
             <p className="pp-partner-desc">
-              GetActivent helps Houstonians discover local sports events and activities happening right in their neighborhood. From pickup games to organized watch parties, they make it easy to stay active and connected.
+              Activent helps Houstonians discover local sports events and activities happening right in their neighborhood. From pickup games to organized watch parties, they make it easy to stay active and connected.
             </p>
             <div className="pp-partner-tags">
               <span className="pp-tag">Local events</span>
