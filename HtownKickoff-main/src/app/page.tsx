@@ -343,14 +343,16 @@ export default function HomePage() {
           </Link>
           <nav className="mw-nav">
             <Link href="/" className="active">Home</Link>
-            <Link href="/venues">Venues</Link>
             <Link href="/matches">Matches</Link>
+            <Link href="/world-cup">World Cup</Link>
+            <Link href="/venues">Venues</Link>
             <Link href="/blog">Blog</Link>
             {user && <Link href="/dashboard">My bookings</Link>}
           </nav>
           {/* Mobile-only quick nav */}
           <nav className="mw-mobile-nav">
             <Link href="/matches">Matches</Link>
+            <Link href="/world-cup">World Cup</Link>
             <Link href="/venues">Venues</Link>
             {user && <Link href="/dashboard">Bookings</Link>}
           </nav>

@@ -379,65 +379,54 @@ export async function seedDatabase() {
     // ─── Demo Matches ───────────────────────────
     console.log('Seeding demo matches...');
 
-    const usTeam = teamMap.get('US');
-    const mxTeam = teamMap.get('MX');
-    const argTeam = teamMap.get('AR');
-    const braTeam = teamMap.get('BR');
-    const engTeam = teamMap.get('GB');
-    const fraTeam = teamMap.get('FR');
-    const gerTeam = teamMap.get('DE');
-    const espTeam = teamMap.get('ES');
-    const jupTeam = teamMap.get('JP');
+    const tm = (iso2: string) => teamMap.get(iso2);
     const wcLeagueId = leagueMap.get('WC');
 
-    const now = new Date();
+    // Real WC2026 group stage fixtures — Matchday 1 & 2
     const matchData = [
-        {
-            leagueId: wcLeagueId,
-            homeTeamId: usTeam?.id, awayTeamId: mxTeam?.id,
-            homeTeamName: 'United States', awayTeamName: 'Mexico',
-            matchDateUtc: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
-            status: 'SCHEDULED' as const,
-            stage: 'Group A', matchDay: 1,
-            venueName: 'NRG Stadium, Houston',
-        },
-        {
-            leagueId: wcLeagueId,
-            homeTeamId: argTeam?.id, awayTeamId: braTeam?.id,
-            homeTeamName: 'Argentina', awayTeamName: 'Brazil',
-            matchDateUtc: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
-            status: 'SCHEDULED' as const,
-            stage: 'Group B', matchDay: 1,
-            venueName: 'AT&T Stadium, Dallas',
-        },
-        {
-            leagueId: wcLeagueId,
-            homeTeamId: engTeam?.id, awayTeamId: fraTeam?.id,
-            homeTeamName: 'England', awayTeamName: 'France',
-            matchDateUtc: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
-            status: 'SCHEDULED' as const,
-            stage: 'Group C', matchDay: 1,
-            venueName: 'MetLife Stadium, New York',
-        },
-        {
-            leagueId: wcLeagueId,
-            homeTeamId: gerTeam?.id, awayTeamId: espTeam?.id,
-            homeTeamName: 'Germany', awayTeamName: 'Spain',
-            matchDateUtc: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000),
-            status: 'SCHEDULED' as const,
-            stage: 'Group D', matchDay: 1,
-            venueName: 'SoFi Stadium, Los Angeles',
-        },
-        {
-            leagueId: wcLeagueId,
-            homeTeamId: usTeam?.id, awayTeamId: jupTeam?.id,
-            homeTeamName: 'United States', awayTeamName: 'Japan',
-            matchDateUtc: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
-            status: 'FINISHED' as const,
-            homeScore: 2, awayScore: 1,
-            stage: 'Group A', matchDay: 2,
-            venueName: 'NRG Stadium, Houston',
-        },
+        // ── Group A ──
+        { leagueId: wcLeagueId, homeTeamId: tm('US')?.id, awayTeamId: tm('JO')?.id, homeTeamName: 'United States', awayTeamName: 'Jordan',       matchDateUtc: new Date('2026-06-11T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group A', matchDay: 1, venueName: 'MetLife Stadium, East Rutherford' },
+        { leagueId: wcLeagueId, homeTeamId: tm('GB')?.id, awayTeamId: tm('DZ')?.id, homeTeamName: 'England',       awayTeamName: 'Algeria',       matchDateUtc: new Date('2026-06-12T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group A', matchDay: 1, venueName: 'AT&T Stadium, Arlington' },
+        // ── Group B ──
+        { leagueId: wcLeagueId, homeTeamId: tm('MX')?.id, awayTeamId: tm('NZ')?.id, homeTeamName: 'Mexico',        awayTeamName: 'New Zealand',   matchDateUtc: new Date('2026-06-13T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group B', matchDay: 1, venueName: 'Estadio Azteca, Mexico City' },
+        { leagueId: wcLeagueId, homeTeamId: tm('AR')?.id, awayTeamId: tm('MA')?.id, homeTeamName: 'Argentina',     awayTeamName: 'Morocco',       matchDateUtc: new Date('2026-06-14T02:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group B', matchDay: 1, venueName: 'SoFi Stadium, Inglewood' },
+        // ── Group C ──
+        { leagueId: wcLeagueId, homeTeamId: tm('CA')?.id, awayTeamId: tm('BE')?.id, homeTeamName: 'Canada',        awayTeamName: 'Belgium',       matchDateUtc: new Date('2026-06-14T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group C', matchDay: 1, venueName: 'BMO Field, Toronto' },
+        { leagueId: wcLeagueId, homeTeamId: tm('BR')?.id, awayTeamId: tm('PA')?.id, homeTeamName: 'Brazil',        awayTeamName: 'Panama',        matchDateUtc: new Date('2026-06-14T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group C', matchDay: 1, venueName: 'Hard Rock Stadium, Miami' },
+        // ── Group D ──
+        { leagueId: wcLeagueId, homeTeamId: tm('FR')?.id, awayTeamId: tm('HN')?.id, homeTeamName: 'France',        awayTeamName: 'Honduras',      matchDateUtc: new Date('2026-06-15T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group D', matchDay: 1, venueName: 'MetLife Stadium, East Rutherford' },
+        { leagueId: wcLeagueId, homeTeamId: tm('KR')?.id, awayTeamId: tm('UY')?.id, homeTeamName: 'South Korea',   awayTeamName: 'Uruguay',       matchDateUtc: new Date('2026-06-15T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group D', matchDay: 1, venueName: 'Lincoln Financial Field, Philadelphia' },
+        // ── Group E ──
+        { leagueId: wcLeagueId, homeTeamId: tm('DE')?.id, awayTeamId: tm('CR')?.id, homeTeamName: 'Germany',       awayTeamName: 'Costa Rica',    matchDateUtc: new Date('2026-06-16T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group E', matchDay: 1, venueName: "Levi's Stadium, Santa Clara" },
+        { leagueId: wcLeagueId, homeTeamId: tm('JP')?.id, awayTeamId: tm('ZA')?.id, homeTeamName: 'Japan',         awayTeamName: 'South Africa',  matchDateUtc: new Date('2026-06-17T02:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group E', matchDay: 1, venueName: 'Lumen Field, Seattle' },
+        // ── Group F ──
+        { leagueId: wcLeagueId, homeTeamId: tm('ES')?.id, awayTeamId: tm('TN')?.id, homeTeamName: 'Spain',         awayTeamName: 'Tunisia',       matchDateUtc: new Date('2026-06-17T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group F', matchDay: 1, venueName: 'AT&T Stadium, Arlington' },
+        { leagueId: wcLeagueId, homeTeamId: tm('CO')?.id, awayTeamId: tm('AU')?.id, homeTeamName: 'Colombia',      awayTeamName: 'Australia',     matchDateUtc: new Date('2026-06-17T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group F', matchDay: 1, venueName: 'NRG Stadium, Houston' },
+        // ── Group G ──
+        { leagueId: wcLeagueId, homeTeamId: tm('PT')?.id, awayTeamId: tm('GH')?.id, homeTeamName: 'Portugal',      awayTeamName: 'Ghana',         matchDateUtc: new Date('2026-06-18T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group G', matchDay: 1, venueName: 'Allegiant Stadium, Las Vegas' },
+        { leagueId: wcLeagueId, homeTeamId: tm('NL')?.id, awayTeamId: tm('SN')?.id, homeTeamName: 'Netherlands',   awayTeamName: 'Senegal',       matchDateUtc: new Date('2026-06-19T02:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group G', matchDay: 1, venueName: 'Empower Field at Mile High, Denver' },
+        // ── Group H ──
+        { leagueId: wcLeagueId, homeTeamId: tm('IT')?.id, awayTeamId: tm('EC')?.id, homeTeamName: 'Italy',         awayTeamName: 'Ecuador',       matchDateUtc: new Date('2026-06-19T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group H', matchDay: 1, venueName: 'BC Place, Vancouver' },
+        { leagueId: wcLeagueId, homeTeamId: tm('EG')?.id, awayTeamId: tm('RS')?.id, homeTeamName: 'Egypt',         awayTeamName: 'Serbia',        matchDateUtc: new Date('2026-06-19T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group H', matchDay: 1, venueName: 'Estadio BBVA, Monterrey' },
+        // ── Group I ──
+        { leagueId: wcLeagueId, homeTeamId: tm('HR')?.id, awayTeamId: tm('SK')?.id, homeTeamName: 'Croatia',       awayTeamName: 'Slovakia',      matchDateUtc: new Date('2026-06-20T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group I', matchDay: 1, venueName: 'Empower Field at Mile High, Denver' },
+        { leagueId: wcLeagueId, homeTeamId: tm('IR')?.id, awayTeamId: tm('VE')?.id, homeTeamName: 'Iran',          awayTeamName: 'Venezuela',     matchDateUtc: new Date('2026-06-21T02:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group I', matchDay: 1, venueName: 'Estadio Akron, Guadalajara' },
+        // ── Group J ──
+        { leagueId: wcLeagueId, homeTeamId: tm('CH')?.id, awayTeamId: tm('CL')?.id, homeTeamName: 'Switzerland',   awayTeamName: 'Chile',         matchDateUtc: new Date('2026-06-21T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group J', matchDay: 1, venueName: 'Lincoln Financial Field, Philadelphia' },
+        { leagueId: wcLeagueId, homeTeamId: tm('NG')?.id, awayTeamId: tm('ML')?.id, homeTeamName: 'Nigeria',       awayTeamName: 'Mali',          matchDateUtc: new Date('2026-06-21T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group J', matchDay: 1, venueName: 'NRG Stadium, Houston' },
+        // ── Group K ──
+        { leagueId: wcLeagueId, homeTeamId: tm('HU')?.id, awayTeamId: tm('UZ')?.id, homeTeamName: 'Hungary',       awayTeamName: 'Uzbekistan',    matchDateUtc: new Date('2026-06-22T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group K', matchDay: 1, venueName: "Levi's Stadium, Santa Clara" },
+        { leagueId: wcLeagueId, homeTeamId: tm('CM')?.id, awayTeamId: tm('SA')?.id, homeTeamName: 'Cameroon',      awayTeamName: 'Saudi Arabia',  matchDateUtc: new Date('2026-06-23T02:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group K', matchDay: 1, venueName: 'Arrowhead Stadium, Kansas City' },
+        // ── Group L ──
+        { leagueId: wcLeagueId, homeTeamId: tm('SC')?.id, awayTeamId: tm('AT')?.id, homeTeamName: 'Scotland',      awayTeamName: 'Austria',       matchDateUtc: new Date('2026-06-23T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group L', matchDay: 1, venueName: 'Arrowhead Stadium, Kansas City' },
+        { leagueId: wcLeagueId, homeTeamId: tm('QA')?.id, awayTeamId: tm('DK')?.id, homeTeamName: 'Qatar',         awayTeamName: 'Denmark',       matchDateUtc: new Date('2026-06-23T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group L', matchDay: 1, venueName: 'MetLife Stadium, East Rutherford' },
+        // ── Matchday 2 highlights ──
+        { leagueId: wcLeagueId, homeTeamId: tm('US')?.id, awayTeamId: tm('DZ')?.id, homeTeamName: 'United States', awayTeamName: 'Algeria',       matchDateUtc: new Date('2026-06-25T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group A', matchDay: 2, venueName: 'NRG Stadium, Houston' },
+        { leagueId: wcLeagueId, homeTeamId: tm('MX')?.id, awayTeamId: tm('MA')?.id, homeTeamName: 'Mexico',        awayTeamName: 'Morocco',       matchDateUtc: new Date('2026-06-26T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group B', matchDay: 2, venueName: 'Estadio BBVA, Monterrey' },
+        { leagueId: wcLeagueId, homeTeamId: tm('BR')?.id, awayTeamId: tm('BE')?.id, homeTeamName: 'Brazil',        awayTeamName: 'Belgium',       matchDateUtc: new Date('2026-06-27T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group C', matchDay: 2, venueName: 'SoFi Stadium, Inglewood' },
+        { leagueId: wcLeagueId, homeTeamId: tm('DE')?.id, awayTeamId: tm('JP')?.id, homeTeamName: 'Germany',       awayTeamName: 'Japan',         matchDateUtc: new Date('2026-06-29T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group E', matchDay: 2, venueName: 'MetLife Stadium, East Rutherford' },
+        { leagueId: wcLeagueId, homeTeamId: tm('ES')?.id, awayTeamId: tm('CO')?.id, homeTeamName: 'Spain',         awayTeamName: 'Colombia',      matchDateUtc: new Date('2026-06-30T20:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group F', matchDay: 2, venueName: 'Lincoln Financial Field, Philadelphia' },
+        { leagueId: wcLeagueId, homeTeamId: tm('AR')?.id, awayTeamId: tm('NZ')?.id, homeTeamName: 'Argentina',     awayTeamName: 'New Zealand',   matchDateUtc: new Date('2026-06-26T23:00:00Z'), status: 'SCHEDULED' as const, stage: 'Group B', matchDay: 2, venueName: 'AT&T Stadium, Arlington' },
     ];
 
     const insertedMatches = await db.insert(matches).values(matchData).onConflictDoNothing().returning();

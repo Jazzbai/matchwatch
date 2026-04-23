@@ -465,12 +465,14 @@ function MatchesPageContent() {
                     <nav className="mt-nav">
                         <Link href="/">Home</Link>
                         <Link href="/matches" className="active">Matches</Link>
+                        <Link href="/world-cup">World Cup</Link>
                         <Link href="/venues">Venues</Link>
                         <Link href="/blog">Blog</Link>
                         {user && <Link href="/dashboard">My bookings</Link>}
                     </nav>
                     <nav className="mt-mobile-nav">
-                        <Link href="/" >Home</Link>
+                        <Link href="/">Home</Link>
+                        <Link href="/world-cup">World Cup</Link>
                         <Link href="/venues">Venues</Link>
                         {user && <Link href="/dashboard">Bookings</Link>}
                     </nav>

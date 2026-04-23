@@ -84,8 +84,9 @@ export default function PartnersPage() {
           </Link>
           <nav className="pp-nav">
             <Link href="/">Home</Link>
-            <Link href="/venues">Venues</Link>
             <Link href="/matches">Matches</Link>
+            <Link href="/world-cup">World Cup</Link>
+            <Link href="/venues">Venues</Link>
             <Link href="/partners" className="active">Partners</Link>
             {user && <Link href="/dashboard">My bookings</Link>}
           </nav>
