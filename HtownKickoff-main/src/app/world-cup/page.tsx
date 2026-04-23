@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "../../lib/auth-context";
-import { useData } from "../../lib/data-provider";
 
 // ─── Static WC2026 Data ─────────────────────────
 
@@ -232,7 +231,6 @@ type Tab = "groups" | "schedule" | "stadiums";
 
 export default function WorldCupPage() {
     const { user } = useAuth();
-    const { matches } = useData();
     const [tab, setTab] = useState<Tab>("groups");
     const [groupFilter, setGroupFilter] = useState<string>("all");
 
@@ -443,9 +441,7 @@ export default function WorldCupPage() {
                                                     <span className="stadium-name">{f.stadium}</span>
                                                     {f.city}
                                                 </div>
-                                                <Link href={`/matches`} className="wc-watch-btn" onClick={e => e.stopPropagation()} title="Find watch party">
-                                                    🍺
-                                                </Link>
+                                                <div className="wc-watch-btn" title="Find watch party">🍺</div>
                                             </Link>
                                         ))}
                                     </div>
