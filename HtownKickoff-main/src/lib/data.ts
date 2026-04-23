@@ -48,6 +48,18 @@ export const LEAGUES: League[] = [
     { id: "nwsl", sportId: "soccer", name: "NWSL", shortName: "NWSL", logo: "NWSL", country: "US", externalId: "NWSL" },
 ];
 
+// ─── Country ─────────────────────────────────────
+export interface Country {
+    id: string;
+    name: string;
+    iso2: string;
+    iso3: string;
+    fifaCode?: string | null;
+    iocCode?: string | null;
+    flagEmoji?: string | null;
+    flagSvgUrl?: string | null;
+}
+
 // ─── Team / National Team Data ───────────────────
 export interface Team {
     id: string;
@@ -58,6 +70,8 @@ export interface Team {
     leagueId: string;
     country: string;
     image: string; // team logo/flag image path
+    countryId?: string | null;
+    teamType?: 'national_team' | 'club' | 'franchise';
 }
 
 const TEAM_IMAGES = ["/argentina.png", "/germany.png", "/brazil.png", "/real-madrid.png", "/barcelona.png"];

@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { db } from './client';
-import { sports, leagues, teams, users, venues, matches, venueEvents } from './schema';
+import { sports, leagues, teams, countries, competitionTeams, users, venues, matches, venueEvents } from './schema';
 import { hashPassword } from '../lib/auth';
 import { generateUniqueSlug } from '../lib/utils';
 import { eq, sql } from 'drizzle-orm';
@@ -61,6 +61,129 @@ export async function ensureLeaguesSeeded() {
     return db.insert(leagues).values(rows).onConflictDoNothing().returning();
 }
 
+// ─── WC 2026 Countries ──────────────────────────
+
+export const WC2026_COUNTRIES = [
+    // CONCACAF hosts + Americas
+    { name: 'United States',   iso2: 'US',  iso3: 'USA', fifaCode: 'USA', iocCode: 'USA', flagEmoji: '🇺🇸' },
+    { name: 'Mexico',          iso2: 'MX',  iso3: 'MEX', fifaCode: 'MEX', iocCode: 'MEX', flagEmoji: '🇲🇽' },
+    { name: 'Canada',          iso2: 'CA',  iso3: 'CAN', fifaCode: 'CAN', iocCode: 'CAN', flagEmoji: '🇨🇦' },
+    { name: 'Argentina',       iso2: 'AR',  iso3: 'ARG', fifaCode: 'ARG', iocCode: 'ARG', flagEmoji: '🇦🇷' },
+    { name: 'Brazil',          iso2: 'BR',  iso3: 'BRA', fifaCode: 'BRA', iocCode: 'BRA', flagEmoji: '🇧🇷' },
+    { name: 'Uruguay',         iso2: 'UY',  iso3: 'URY', fifaCode: 'URU', iocCode: 'URU', flagEmoji: '🇺🇾' },
+    { name: 'Colombia',        iso2: 'CO',  iso3: 'COL', fifaCode: 'COL', iocCode: 'COL', flagEmoji: '🇨🇴' },
+    { name: 'Ecuador',         iso2: 'EC',  iso3: 'ECU', fifaCode: 'ECU', iocCode: 'ECU', flagEmoji: '🇪🇨' },
+    { name: 'Venezuela',       iso2: 'VE',  iso3: 'VEN', fifaCode: 'VEN', iocCode: 'VEN', flagEmoji: '🇻🇪' },
+    { name: 'Chile',           iso2: 'CL',  iso3: 'CHL', fifaCode: 'CHI', iocCode: 'CHI', flagEmoji: '🇨🇱' },
+    { name: 'Panama',          iso2: 'PA',  iso3: 'PAN', fifaCode: 'PAN', iocCode: 'PAN', flagEmoji: '🇵🇦' },
+    { name: 'Costa Rica',      iso2: 'CR',  iso3: 'CRI', fifaCode: 'CRC', iocCode: 'CRC', flagEmoji: '🇨🇷' },
+    { name: 'Honduras',        iso2: 'HN',  iso3: 'HND', fifaCode: 'HON', iocCode: 'HON', flagEmoji: '🇭🇳' },
+    // UEFA
+    { name: 'France',          iso2: 'FR',  iso3: 'FRA', fifaCode: 'FRA', iocCode: 'FRA', flagEmoji: '🇫🇷' },
+    { name: 'England',         iso2: 'GB',  iso3: 'GBR', fifaCode: 'ENG', iocCode: null,  flagEmoji: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+    { name: 'Spain',           iso2: 'ES',  iso3: 'ESP', fifaCode: 'ESP', iocCode: 'ESP', flagEmoji: '🇪🇸' },
+    { name: 'Germany',         iso2: 'DE',  iso3: 'DEU', fifaCode: 'GER', iocCode: 'GER', flagEmoji: '🇩🇪' },
+    { name: 'Portugal',        iso2: 'PT',  iso3: 'PRT', fifaCode: 'POR', iocCode: 'POR', flagEmoji: '🇵🇹' },
+    { name: 'Netherlands',     iso2: 'NL',  iso3: 'NLD', fifaCode: 'NED', iocCode: 'NED', flagEmoji: '🇳🇱' },
+    { name: 'Italy',           iso2: 'IT',  iso3: 'ITA', fifaCode: 'ITA', iocCode: 'ITA', flagEmoji: '🇮🇹' },
+    { name: 'Belgium',         iso2: 'BE',  iso3: 'BEL', fifaCode: 'BEL', iocCode: 'BEL', flagEmoji: '🇧🇪' },
+    { name: 'Switzerland',     iso2: 'CH',  iso3: 'CHE', fifaCode: 'SUI', iocCode: 'SUI', flagEmoji: '🇨🇭' },
+    { name: 'Austria',         iso2: 'AT',  iso3: 'AUT', fifaCode: 'AUT', iocCode: 'AUT', flagEmoji: '🇦🇹' },
+    { name: 'Denmark',         iso2: 'DK',  iso3: 'DNK', fifaCode: 'DEN', iocCode: 'DEN', flagEmoji: '🇩🇰' },
+    { name: 'Croatia',         iso2: 'HR',  iso3: 'HRV', fifaCode: 'CRO', iocCode: 'CRO', flagEmoji: '🇭🇷' },
+    { name: 'Serbia',          iso2: 'RS',  iso3: 'SRB', fifaCode: 'SRB', iocCode: 'SRB', flagEmoji: '🇷🇸' },
+    { name: 'Hungary',         iso2: 'HU',  iso3: 'HUN', fifaCode: 'HUN', iocCode: 'HUN', flagEmoji: '🇭🇺' },
+    { name: 'Scotland',        iso2: 'SC',  iso3: 'SCO', fifaCode: 'SCO', iocCode: null,  flagEmoji: '🏴󠁧󠁢󠁳󠁣󠁴󠁿' },
+    { name: 'Slovakia',        iso2: 'SK',  iso3: 'SVK', fifaCode: 'SVK', iocCode: 'SVK', flagEmoji: '🇸🇰' },
+    // CAF
+    { name: 'Morocco',         iso2: 'MA',  iso3: 'MAR', fifaCode: 'MAR', iocCode: 'MAR', flagEmoji: '🇲🇦' },
+    { name: 'Senegal',         iso2: 'SN',  iso3: 'SEN', fifaCode: 'SEN', iocCode: 'SEN', flagEmoji: '🇸🇳' },
+    { name: 'Egypt',           iso2: 'EG',  iso3: 'EGY', fifaCode: 'EGY', iocCode: 'EGY', flagEmoji: '🇪🇬' },
+    { name: 'Nigeria',         iso2: 'NG',  iso3: 'NGA', fifaCode: 'NGA', iocCode: 'NGR', flagEmoji: '🇳🇬' },
+    { name: 'South Africa',    iso2: 'ZA',  iso3: 'ZAF', fifaCode: 'RSA', iocCode: 'RSA', flagEmoji: '🇿🇦' },
+    { name: 'Cameroon',        iso2: 'CM',  iso3: 'CMR', fifaCode: 'CMR', iocCode: 'CMR', flagEmoji: '🇨🇲' },
+    { name: 'Algeria',         iso2: 'DZ',  iso3: 'DZA', fifaCode: 'ALG', iocCode: 'ALG', flagEmoji: '🇩🇿' },
+    { name: 'Mali',            iso2: 'ML',  iso3: 'MLI', fifaCode: 'MLI', iocCode: 'MLI', flagEmoji: '🇲🇱' },
+    { name: 'Tunisia',         iso2: 'TN',  iso3: 'TUN', fifaCode: 'TUN', iocCode: 'TUN', flagEmoji: '🇹🇳' },
+    { name: 'Ghana',           iso2: 'GH',  iso3: 'GHA', fifaCode: 'GHA', iocCode: 'GHA', flagEmoji: '🇬🇭' },
+    // AFC
+    { name: 'Japan',           iso2: 'JP',  iso3: 'JPN', fifaCode: 'JPN', iocCode: 'JPN', flagEmoji: '🇯🇵' },
+    { name: 'South Korea',     iso2: 'KR',  iso3: 'KOR', fifaCode: 'KOR', iocCode: 'KOR', flagEmoji: '🇰🇷' },
+    { name: 'Australia',       iso2: 'AU',  iso3: 'AUS', fifaCode: 'AUS', iocCode: 'AUS', flagEmoji: '🇦🇺' },
+    { name: 'Iran',            iso2: 'IR',  iso3: 'IRN', fifaCode: 'IRN', iocCode: 'IRI', flagEmoji: '🇮🇷' },
+    { name: 'Saudi Arabia',    iso2: 'SA',  iso3: 'SAU', fifaCode: 'KSA', iocCode: 'KSA', flagEmoji: '🇸🇦' },
+    { name: 'Qatar',           iso2: 'QA',  iso3: 'QAT', fifaCode: 'QAT', iocCode: 'QAT', flagEmoji: '🇶🇦' },
+    { name: 'Uzbekistan',      iso2: 'UZ',  iso3: 'UZB', fifaCode: 'UZB', iocCode: 'UZB', flagEmoji: '🇺🇿' },
+    { name: 'Jordan',          iso2: 'JO',  iso3: 'JOR', fifaCode: 'JOR', iocCode: 'JOR', flagEmoji: '🇯🇴' },
+    // OFC
+    { name: 'New Zealand',     iso2: 'NZ',  iso3: 'NZL', fifaCode: 'NZL', iocCode: 'NZL', flagEmoji: '🇳🇿' },
+];
+
+// iso2 → group assignment for WC2026
+export const WC2026_GROUP_ASSIGNMENTS: Record<string, string> = {
+    US: 'A', GB: 'A', DZ: 'A', JO: 'A',
+    MX: 'B', AR: 'B', MA: 'B', NZ: 'B',
+    CA: 'C', BR: 'C', BE: 'C', PA: 'C',
+    FR: 'D', KR: 'D', UY: 'D', HN: 'D',
+    DE: 'E', JP: 'E', ZA: 'E', CR: 'E',
+    ES: 'F', AU: 'F', CO: 'F', TN: 'F',
+    PT: 'G', NL: 'G', SN: 'G', GH: 'G',
+    IT: 'H', EG: 'H', EC: 'H', RS: 'H',
+    HR: 'I', IR: 'I', VE: 'I', SK: 'I',
+    CH: 'J', NG: 'J', CL: 'J', ML: 'J',
+    HU: 'K', CM: 'K', SA: 'K', UZ: 'K',
+    SC: 'L', QA: 'L', DK: 'L', AT: 'L',
+};
+
+export async function ensureCountriesSeeded() {
+    const rows = WC2026_COUNTRIES.map((c) => ({
+        ...c,
+        flagSvgUrl: `https://flagcdn.com/${c.iso2.toLowerCase()}.svg`,
+    }));
+    return db.insert(countries).values(rows).onConflictDoNothing().returning();
+}
+
+export async function seedWorldCup2026() {
+    await ensureCountriesSeeded();
+    await ensureLeaguesSeeded();
+
+    const allCountries = await db.select({ id: countries.id, iso2: countries.iso2 }).from(countries);
+    const countryByIso2 = new Map(allCountries.map((c) => [c.iso2, c.id]));
+
+    const allLeagues = await db.select({ id: leagues.id, externalId: leagues.externalId }).from(leagues);
+    const wcLeagueId = allLeagues.find((l) => l.externalId === 'WC')?.id;
+    if (!wcLeagueId) throw new Error('WC league not found — run ensureLeaguesSeeded first');
+
+    const nationalTeamRows = WC2026_COUNTRIES.map((c) => ({
+        name: c.name,
+        slug: generateUniqueSlug(c.name),
+        shortName: c.fifaCode ?? c.iso3,
+        country: c.iso2,
+        countryId: countryByIso2.get(c.iso2) ?? null,
+        teamType: 'national_team' as const,
+        leagueId: wcLeagueId,
+        externalId: c.iso2,
+        isActive: true,
+    }));
+
+    const insertedTeams = await db.insert(teams).values(nationalTeamRows).onConflictDoNothing().returning();
+
+    // Reload all WC national teams to get IDs (including pre-existing ones)
+    const allTeams = await db.select({ id: teams.id, externalId: teams.externalId }).from(teams);
+    const teamByIso2 = new Map(allTeams.map((t) => [t.externalId, t.id]));
+
+    const competitionRows = WC2026_COUNTRIES.map((c) => ({
+        competitionId: wcLeagueId,
+        teamId: teamByIso2.get(c.iso2)!,
+        groupName: WC2026_GROUP_ASSIGNMENTS[c.iso2] ?? null,
+        status: 'active',
+    })).filter((r) => r.teamId);
+
+    const insertedCompetitionTeams = await db.insert(competitionTeams).values(competitionRows).onConflictDoNothing().returning();
+
+    return { insertedTeams, insertedCompetitionTeams };
+}
+
 export async function seedDatabase() {
     console.log('Starting database seed...\n');
     console.log('Seeding sports...');
@@ -72,53 +195,42 @@ export async function seedDatabase() {
     const insertedLeagues = await ensureLeaguesSeeded();
     console.log(`  OK: ${insertedLeagues.length} leagues inserted\n`);
 
+    // ─── Countries + WC2026 national teams ──────
+    console.log('Seeding WC2026 countries and national teams...');
+    const { insertedTeams: insertedNationalTeams, insertedCompetitionTeams } = await seedWorldCup2026();
+    console.log(`  OK: ${insertedNationalTeams.length} national teams inserted`);
+    console.log(`  OK: ${insertedCompetitionTeams.length} competition_teams entries inserted\n`);
+
     // Get league IDs by externalId
     const allLeagues = await db.select().from(leagues);
     const leagueMap = new Map(allLeagues.map(l => [l.externalId, l.id]));
 
-    // ─── Teams ──────────────────────────────────
-    console.log('Seeding teams...');
-    const teamData = [
-        // World Cup teams
-        { name: 'United States', shortName: 'USA', externalId: 'US', leagueId: leagueMap.get('WC') },
-        { name: 'Mexico', shortName: 'MEX', externalId: 'MX', leagueId: leagueMap.get('WC') },
-        { name: 'Canada', shortName: 'CAN', externalId: 'CA', leagueId: leagueMap.get('WC') },
-        { name: 'Argentina', shortName: 'ARG', externalId: 'AR', leagueId: leagueMap.get('WC') },
-        { name: 'Brazil', shortName: 'BRA', externalId: 'BR', leagueId: leagueMap.get('WC') },
-        { name: 'France', shortName: 'FRA', externalId: 'FR', leagueId: leagueMap.get('WC') },
-        { name: 'Germany', shortName: 'GER', externalId: 'DE', leagueId: leagueMap.get('WC') },
-        { name: 'England', shortName: 'ENG', externalId: 'ENG', leagueId: leagueMap.get('WC') },
-        { name: 'Spain', shortName: 'ESP', externalId: 'ES', leagueId: leagueMap.get('WC') },
-        { name: 'Netherlands', shortName: 'NED', externalId: 'NL', leagueId: leagueMap.get('WC') },
-        { name: 'Portugal', shortName: 'POR', externalId: 'PT', leagueId: leagueMap.get('WC') },
-        { name: 'Japan', shortName: 'JPN', externalId: 'JP', leagueId: leagueMap.get('WC') },
-        { name: 'South Korea', shortName: 'KOR', externalId: 'KR', leagueId: leagueMap.get('WC') },
-        { name: 'Morocco', shortName: 'MAR', externalId: 'MA', leagueId: leagueMap.get('WC') },
-        { name: 'Senegal', shortName: 'SEN', externalId: 'SN', leagueId: leagueMap.get('WC') },
-        { name: 'Uruguay', shortName: 'URU', externalId: 'UY', leagueId: leagueMap.get('WC') },
-        // PL clubs
-        { name: 'Manchester City', shortName: 'Man City', externalId: 'MCY', leagueId: leagueMap.get('PL') },
-        { name: 'Arsenal', shortName: 'Arsenal', externalId: 'ARS', leagueId: leagueMap.get('PL') },
-        { name: 'Liverpool', shortName: 'Liverpool', externalId: 'LIV', leagueId: leagueMap.get('PL') },
-        { name: 'Chelsea', shortName: 'Chelsea', externalId: 'CHE', leagueId: leagueMap.get('PL') },
-        { name: 'Manchester United', shortName: 'Man Utd', externalId: 'MUN', leagueId: leagueMap.get('PL') },
-        { name: 'Tottenham Hotspur', shortName: 'Spurs', externalId: 'TOT', leagueId: leagueMap.get('PL') },
-        // La Liga clubs
-        { name: 'Real Madrid', shortName: 'R. Madrid', externalId: 'RMA', leagueId: leagueMap.get('PD') },
-        { name: 'FC Barcelona', shortName: 'Barcelona', externalId: 'FCB', leagueId: leagueMap.get('PD') },
-        { name: 'Atlético Madrid', shortName: 'Atlético', externalId: 'ATM', leagueId: leagueMap.get('PD') },
-        // MLS clubs
-        { name: 'Houston Dynamo FC', shortName: 'Dynamo', externalId: 'HOU', leagueId: leagueMap.get('MLS') },
-        { name: 'Inter Miami CF', shortName: 'Inter Miami', externalId: 'MIA', leagueId: leagueMap.get('MLS') },
-        { name: 'LA Galaxy', shortName: 'Galaxy', externalId: 'LAG', leagueId: leagueMap.get('MLS') },
-        { name: 'LAFC', shortName: 'LAFC', externalId: 'LAFC', leagueId: leagueMap.get('MLS') },
+    // ─── Club Teams ─────────────────────────────
+    console.log('Seeding club teams...');
+    const clubTeamData = [
+        // PL
+        { name: 'Manchester City',    shortName: 'Man City',    externalId: 'MCY',  teamType: 'club' as const, leagueId: leagueMap.get('PL') },
+        { name: 'Arsenal',            shortName: 'Arsenal',     externalId: 'ARS',  teamType: 'club' as const, leagueId: leagueMap.get('PL') },
+        { name: 'Liverpool',          shortName: 'Liverpool',   externalId: 'LIV',  teamType: 'club' as const, leagueId: leagueMap.get('PL') },
+        { name: 'Chelsea',            shortName: 'Chelsea',     externalId: 'CHE',  teamType: 'club' as const, leagueId: leagueMap.get('PL') },
+        { name: 'Manchester United',  shortName: 'Man Utd',     externalId: 'MUN',  teamType: 'club' as const, leagueId: leagueMap.get('PL') },
+        { name: 'Tottenham Hotspur',  shortName: 'Spurs',       externalId: 'TOT',  teamType: 'club' as const, leagueId: leagueMap.get('PL') },
+        // La Liga
+        { name: 'Real Madrid',        shortName: 'R. Madrid',   externalId: 'RMA',  teamType: 'club' as const, leagueId: leagueMap.get('PD') },
+        { name: 'FC Barcelona',       shortName: 'Barcelona',   externalId: 'FCB',  teamType: 'club' as const, leagueId: leagueMap.get('PD') },
+        { name: 'Atlético Madrid',    shortName: 'Atlético',    externalId: 'ATM',  teamType: 'club' as const, leagueId: leagueMap.get('PD') },
+        // MLS
+        { name: 'Houston Dynamo FC',  shortName: 'Dynamo',      externalId: 'HOU',  teamType: 'franchise' as const, leagueId: leagueMap.get('MLS') },
+        { name: 'Inter Miami CF',     shortName: 'Inter Miami', externalId: 'MIA',  teamType: 'franchise' as const, leagueId: leagueMap.get('MLS') },
+        { name: 'LA Galaxy',          shortName: 'Galaxy',      externalId: 'LAG',  teamType: 'franchise' as const, leagueId: leagueMap.get('MLS') },
+        { name: 'LAFC',               shortName: 'LAFC',        externalId: 'LAFC', teamType: 'franchise' as const, leagueId: leagueMap.get('MLS') },
     ];
 
-    const insertedTeams = await db.insert(teams).values(teamData.map((team) => ({
+    const insertedTeams = await db.insert(teams).values(clubTeamData.map((team) => ({
         ...team,
         slug: generateUniqueSlug(team.name),
     }))).onConflictDoNothing().returning();
-    console.log(`  OK: ${insertedTeams.length} teams inserted\n`);
+    console.log(`  OK: ${insertedTeams.length} club/franchise teams inserted\n`);
 
     // Get all teams for match creation
     const allTeams = await db.select().from(teams);
@@ -271,7 +383,7 @@ export async function seedDatabase() {
     const mxTeam = teamMap.get('MX');
     const argTeam = teamMap.get('AR');
     const braTeam = teamMap.get('BR');
-    const engTeam = teamMap.get('ENG');
+    const engTeam = teamMap.get('GB');
     const fraTeam = teamMap.get('FR');
     const gerTeam = teamMap.get('DE');
     const espTeam = teamMap.get('ES');

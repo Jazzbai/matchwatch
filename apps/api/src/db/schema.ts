@@ -41,6 +41,7 @@ export const aiCallAgentReservationModeEnum = pgEnum('ai_call_agent_reservation_
 export const aiCallAgentGoLiveReadinessEnum = pgEnum('ai_call_agent_go_live_readiness', [
     'READY_NOW', 'READY_IN_7_DAYS', 'READY_IN_14_DAYS', 'NOT_READY',
 ]);
+export const teamTypeEnum = pgEnum('team_type', ['national_team', 'club', 'franchise']);
 
 // ─── Users ──────────────────────────────────────
 
@@ -159,6 +160,25 @@ export const leagues = pgTable('leagues', {
     index('leagues_sport_idx').on(table.sportId),
 ]);
 
+// ─── Countries ──────────────────────────────────
+
+export const countries = pgTable('countries', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: varchar('name', { length: 100 }).notNull(),
+    iso2: varchar('iso2', { length: 2 }).notNull().unique(),
+    iso3: varchar('iso3', { length: 3 }).notNull().unique(),
+    fifaCode: varchar('fifa_code', { length: 10 }),
+    iocCode: varchar('ioc_code', { length: 10 }),
+    flagEmoji: varchar('flag_emoji', { length: 10 }),
+    flagSvgUrl: varchar('flag_svg_url', { length: 500 }),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('countries_iso2_idx').on(table.iso2),
+    index('countries_iso3_idx').on(table.iso3),
+]);
+
 // ─── Teams ──────────────────────────────────────
 
 export const teams = pgTable('teams', {
@@ -172,6 +192,8 @@ export const teams = pgTable('teams', {
     description: text('description'),
     website: varchar('website', { length: 255 }),
     country: varchar('country', { length: 80 }),
+    countryId: uuid('country_id').references(() => countries.id),
+    teamType: teamTypeEnum('team_type').default('club').notNull(),
     socialLinks: jsonb('social_links').default([]),
     aliases: text('aliases').array().default([]),
     enrichmentSnapshot: jsonb('enrichment_snapshot').default({}),
@@ -190,7 +212,25 @@ export const teams = pgTable('teams', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
     index('teams_league_idx').on(table.leagueId),
+    index('teams_country_idx').on(table.countryId),
     index('teams_primary_stadium_idx').on(table.primaryStadiumId),
+]);
+
+// ─── Competition Teams ───────────────────────────
+
+export const competitionTeams = pgTable('competition_teams', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    competitionId: uuid('competition_id').notNull().references(() => leagues.id, { onDelete: 'cascade' }),
+    teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+    groupName: varchar('group_name', { length: 10 }),
+    seededPosition: integer('seeded_position'),
+    status: varchar('status', { length: 30 }).default('active').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('competition_teams_unique').on(table.competitionId, table.teamId),
+    index('competition_teams_competition_idx').on(table.competitionId),
+    index('competition_teams_team_idx').on(table.teamId),
+    index('competition_teams_group_idx').on(table.groupName),
 ]);
 
 export const stadiums = pgTable('stadiums', {
