@@ -1,0 +1,44 @@
+[33m3744430[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merge Ali branch sports entity updates into main
+
+ .env.example                                                            |    7 [32m+[m
+ HtownKickoff-main/src/app/admin/page.tsx                                |  111 [32m+++++[m[31m-[m
+ HtownKickoff-main/src/app/drivers/[slug]/page.tsx                       |   76 [32m+++[m[31m-[m
+ HtownKickoff-main/src/app/jazzbai/page.tsx                              | 1579 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m-----[m
+ HtownKickoff-main/src/app/leagues/[slug]/page.tsx                       |   88 [32m++++[m[31m-[m
+ HtownKickoff-main/src/app/matches/[matchId]/page.tsx                    |   34 [32m+[m[31m-[m
+ HtownKickoff-main/src/app/motorsport/teams/[slug]/page.tsx              |   76 [32m+++[m[31m-[m
+ HtownKickoff-main/src/app/players/[slug]/page.tsx                       |   89 [32m++++[m[31m-[m
+ HtownKickoff-main/src/app/stadiums/[slug]/page.tsx                      |  158 [32m++++++++[m
+ HtownKickoff-main/src/app/teams/[teamId]/page.tsx                       |  119 [32m++++++[m
+ HtownKickoff-main/src/components/admin/MotorsportEntitiesAdminPanel.tsx |  642 [32m++++++++++++++++++++++++++++++++[m
+ HtownKickoff-main/src/components/admin/PlayersAdminPanel.tsx            |  336 [32m++++++++++++++++[m[31m-[m
+ HtownKickoff-main/src/lib/superAdminUploads.ts                          |   80 [32m++++[m
+ README.md                                                               |   76 [32m++++[m
+ apps/api/package.json                                                   |    1 [32m+[m
+ apps/api/src/db/auto-migrate.ts                                         |    8 [32m+[m[31m-[m
+ apps/api/src/db/migrations/0010_entity_pages_predictions.sql            |   96 [32m+++[m[31m--[m
+ apps/api/src/db/migrations/0014_entity_slug_redirects.sql               |   14 [32m+[m
+ apps/api/src/db/migrations/0015_stadium_pages_roster.sql                |  156 [32m++++++++[m
+ apps/api/src/db/migrations/0016_players_entity_backfill.sql             |   90 [32m+++++[m
+ apps/api/src/db/migrations/meta/_journal.json                           |  123 [32m++[m[31m----[m
+ apps/api/src/db/schema.ts                                               |   98 [32m++++[m[31m-[m
+ apps/api/src/index.ts                                                   |   14 [32m+[m[31m-[m
+ apps/api/src/lib/entityEnrichment.ts                                    |  320 [32m++++++++++++++[m[31m--[m
+ apps/api/src/lib/entityRecommendations.ts                               |  231 [32m++++++++++++[m
+ apps/api/src/lib/entitySlugs.ts                                         |  234 [32m++++++++++++[m
+ apps/api/src/lib/playerContext.ts                                       |  140 [32m+++++++[m
+ apps/api/src/lib/standings.ts                                           |  215 [32m++++++++++[m[31m-[m
+ apps/api/src/lib/storage.ts                                             |    9 [32m+[m[31m-[m
+ apps/api/src/lib/teamIdentity.ts                                        |   73 [32m++++[m
+ apps/api/src/routes/drivers.ts                                          |   37 [32m+[m[31m-[m
+ apps/api/src/routes/leagues.ts                                          |   67 [32m+++[m[31m-[m
+ apps/api/src/routes/motorsportTeams.ts                                  |   36 [32m+[m[31m-[m
+ apps/api/src/routes/players.ts                                          |  170 [32m+++++++[m[31m--[m
+ apps/api/src/routes/stadiums.ts                                         |   65 [32m++++[m
+ apps/api/src/routes/superAdmin.ts                                       | 2653 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m------------[m
+ apps/api/src/routes/teams.ts                                            |  173 [32m++++++++[m[31m-[m
+ apps/api/src/scripts/syncUpcomingMatches.ts                             |   13 [32m+[m
+ apps/api/src/workers/matchSync.ts                                       |  144 [32m++++++[m[31m--[m
+ docker-compose.yml                                                      |    5 [32m+[m
+ packages/shared/src/schemas.ts                                          |    2 [32m+[m[31m-[m
+ 41 files changed, 7988 insertions(+), 670 deletions(-)
