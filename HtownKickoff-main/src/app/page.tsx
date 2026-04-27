@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useData } from "../lib/data-provider";
 import { useAuth } from "../lib/auth-context";
 import { getMatchDisplay } from "../lib/match-display";
+import { isNationalTeamCompetition } from "../lib/league-utils";
 
 /* ── CSS-in-JS style block injected once ── */
 const CSS = `
@@ -278,6 +279,10 @@ export default function HomePage() {
   const { user } = useAuth();
   const [utcTime, setUtcTime] = useState("");
   const [renderNow] = useState(() => Date.now());
+  const nonWorldCupMatches = React.useMemo(
+    () => matches.filter((match) => !isNationalTeamCompetition(leagues.find((league) => league.id === match.leagueId))),
+    [matches, leagues]
+  );
 
   useEffect(() => {
     const tick = () => {
@@ -291,7 +296,7 @@ export default function HomePage() {
 
   /* Today / coming soon — live now or starting within 72h */
   const in72h = renderNow + 72 * 60 * 60 * 1000;
-  const todayMatches = matches
+  const todayMatches = nonWorldCupMatches
     .filter((m) => {
       const ts = new Date(m.matchDateUTC).getTime();
       const live = m.status === "IN_PLAY" || m.status === "PAUSED";
@@ -302,7 +307,7 @@ export default function HomePage() {
     .slice(0, 8);
 
   /* Upcoming — if no today matches, fall back to next scheduled */
-  const upcomingMatches = matches
+  const upcomingMatches = nonWorldCupMatches
     .filter((m) => m.status === "SCHEDULED" || m.status === "TIMED")
     .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime())
     .slice(0, 4);
@@ -329,7 +334,7 @@ export default function HomePage() {
         </div>
         <div className="mw-ribbon-ticker">
           <span><b>{venues.length || 209}</b> bars &amp; venues</span>
-          <span><b>{matches.length || 42}</b> upcoming matches</span>
+          <span><b>{nonWorldCupMatches.length || 42}</b> upcoming matches</span>
           <span><b>$48 avg</b> saved on tickets</span>
         </div>
       </div>
@@ -346,7 +351,6 @@ export default function HomePage() {
             <Link href="/matches">Matches</Link>
             <Link href="/world-cup">World Cup</Link>
             <Link href="/venues">Venues</Link>
-            <Link href="/blog">Blog</Link>
             {user && <Link href="/dashboard">My bookings</Link>}
           </nav>
           {/* Mobile-only quick nav */}
@@ -390,10 +394,6 @@ export default function HomePage() {
               <span className="ico">📅</span>
               <span>Matches</span>
               <span className="badge">{matches.length || 64}</span>
-            </Link>
-            <Link href="/blog" className="mw-side-item">
-              <span className="ico">📰</span>
-              <span>Blog</span>
             </Link>
             {user ? (
               <Link href="/dashboard" className="mw-side-item">
@@ -463,7 +463,7 @@ export default function HomePage() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderTop: "1px solid var(--mw-line)", paddingTop: 18, marginTop: 4 }}>
                   {[
                     { label: "VENUES &amp; BARS", val: String(venues.length || 209), accent: false },
-                    { label: "UPCOMING MATCHES", val: String(matches.length || 42), accent: false },
+                    { label: "UPCOMING MATCHES", val: String(nonWorldCupMatches.length || 42), accent: false },
                     { label: "AVG TICKET SAVINGS", val: "$48", accent: true },
                   ].map(({ label, val, accent }) => (
                     <div key={label}>
@@ -813,7 +813,7 @@ export default function HomePage() {
 
           <h4>List your venue</h4>
           <div className="mw-create-party">
-            Show {matches.length || 42} upcoming matches to your customers and grow your crowd on match nights.
+            Show {nonWorldCupMatches.length || 42} upcoming matches to your customers and grow your crowd on match nights.
             <Link href="/register-venue" className="mw-btn" style={{ padding: "8px 12px", fontSize: 11 }}>+ Add your bar</Link>
           </div>
         </aside>

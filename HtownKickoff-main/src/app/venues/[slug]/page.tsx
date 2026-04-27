@@ -448,7 +448,6 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
                             <Link href="/">Home</Link>
                             <Link href="/matches">Matches</Link>
                             <Link href="/venues" className="active">Venues</Link>
-                            <Link href="/blog">Blog</Link>
                             {user && <Link href="/dashboard">My bookings</Link>}
                         </nav>
                         <div className="vp-top-right">

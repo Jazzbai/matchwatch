@@ -126,7 +126,6 @@ export default function BlogIndexPage() {
                         <Link href="/matches">Matches</Link>
                         <Link href="/world-cup">World Cup</Link>
                         <Link href="/venues">Venues</Link>
-                        <Link href="/blog" className="active">Blog</Link>
                         {user && <Link href="/dashboard">My bookings</Link>}
                     </nav>
                     <nav className="bl-mobile-nav">

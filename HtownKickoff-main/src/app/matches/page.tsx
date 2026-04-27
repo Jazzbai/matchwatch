@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type League, type Match, type Team } from "../../lib/data";
 import { useData } from "../../lib/data-provider";
+import { isNationalTeamCompetition } from "../../lib/league-utils";
 import { getMatchDisplay } from "../../lib/match-display";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
 
@@ -203,6 +204,7 @@ function compareMatches(a: Match, b: Match) {
 }
 
 function MatchRow({ match, league, home, away, todayKey }: { match: Match; league?: League; home?: Team; away?: Team; todayKey: string }) {
+    const router = useRouter();
     const d = getMatchDisplay(match, { homeTeam: home, awayTeam: away, league });
     const live = isLive(match.status), fin = isFinished(match.status);
     const isSingle = d.isSingleEvent;
@@ -210,11 +212,20 @@ function MatchRow({ match, league, home, away, todayKey }: { match: Match; leagu
     const timeSub = live ? "IN PLAY" : fin ? "RESULT" : "UPCOMING";
     const homeColor = home?.color || "#555";
     const awayColor = away?.color || "#334";
+    const matchHref = `/matches/${match.id}`;
 
     return (
-        <Link
-            href={`/matches/${match.id}`}
+        <article
             className={`mt-match${match.isFeatured ? " featured" : ""}${fin ? " ft" : ""}`}
+            role="link"
+            tabIndex={0}
+            onClick={() => router.push(matchHref)}
+            onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    router.push(matchHref);
+                }
+            }}
         >
             <div className="mt-tm">
                 <span className="big">{timePrimary}</span>
@@ -265,17 +276,17 @@ function MatchRow({ match, league, home, away, todayKey }: { match: Match; leagu
             </div>
 
             <div className="mt-act">
-                {!fin && <button>REMIND</button>}
-                {fin && <button>HIGHLIGHTS</button>}
+                {!fin && <button type="button" onClick={e => e.stopPropagation()}>REMIND</button>}
+                {fin && <button type="button" onClick={e => e.stopPropagation()}>HIGHLIGHTS</button>}
                 <Link
-                    href={`/matches/${match.id}`}
+                    href={matchHref}
                     className={`join${(match.venueCount ?? 0) > 0 ? "" : ""}`}
                     onClick={e => e.stopPropagation()}
                 >
                     BARS · {match.venueCount ?? 0}
                 </Link>
             </div>
-        </Link>
+        </article>
     );
 }
 
@@ -338,11 +349,12 @@ function MatchesPageContent() {
     const baseMatches = React.useMemo(() => {
         const threshold = renderNow - 2 * 60 * 60 * 1000;
         return MATCHES.filter(m => {
+            if (isNationalTeamCompetition(getLeague(m.leagueId))) return false;
             if (includePast) return true;
             const ts = asTimestamp(m.matchDateUTC);
             return isLive(m.status) || (isUpcoming(m.status) && ts >= threshold) || isFinished(m.status);
         });
-    }, [MATCHES, includePast, renderNow]);
+    }, [MATCHES, includePast, renderNow, getLeague]);
 
     const availableSports = React.useMemo(() => {
         const leagueIds = new Set(baseMatches.map(m => m.leagueId));
@@ -467,7 +479,6 @@ function MatchesPageContent() {
                         <Link href="/matches" className="active">Matches</Link>
                         <Link href="/world-cup">World Cup</Link>
                         <Link href="/venues">Venues</Link>
-                        <Link href="/blog">Blog</Link>
                         {user && <Link href="/dashboard">My bookings</Link>}
                     </nav>
                     <nav className="mt-mobile-nav">

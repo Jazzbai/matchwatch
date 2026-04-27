@@ -273,7 +273,6 @@ function VenuesPageContent() {
                         <Link href="/matches">Matches</Link>
                         <Link href="/world-cup">World Cup</Link>
                         <Link href="/venues" className="active">Venues</Link>
-                        <Link href="/blog">Blog</Link>
                         {user && <Link href="/dashboard">My bookings</Link>}
                     </nav>
                     <nav className="vn-mobile-nav">

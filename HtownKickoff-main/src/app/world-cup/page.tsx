@@ -268,14 +268,12 @@ export default function WorldCupPage() {
                         <Link href="/matches">Matches</Link>
                         <Link href="/world-cup" className="active">World Cup</Link>
                         <Link href="/venues">Venues</Link>
-                        <Link href="/blog">Blog</Link>
                         {user && <Link href="/dashboard">My bookings</Link>}
                     </nav>
                     <nav className="wc-mobile-nav">
                         <Link href="/">Home</Link>
                         <Link href="/matches">Matches</Link>
                         <Link href="/venues">Venues</Link>
-                        <Link href="/blog">Blog</Link>
                     </nav>
                     <div className="wc-top-right">
                         {user ? (
