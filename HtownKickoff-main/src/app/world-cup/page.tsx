@@ -117,6 +117,9 @@ body { background: var(--wc-bg) !important; color: var(--wc-fg) !important; }
 .wc-btn-pill { display: inline-flex; align-items: center; padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none; background: var(--wc-accent); color: #060709; transition: all .18s; }
 .wc-btn-pill:hover { opacity: 0.88; transform: translateY(-1px); }
 .wc-btn-pill.ghost { background: rgba(255,255,255,0.07); color: var(--wc-fg); }
+.wc-mobile-nav { display: none; }
+.wc-mobile-nav a { padding: 7px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--wc-fg-dim); text-decoration: none; transition: all .18s; white-space: nowrap; }
+.wc-mobile-nav a:hover { background: rgba(255,255,255,0.07); color: var(--wc-fg); }
 
 /* ── Hero ── */
 .wc-hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--wc-line); background: linear-gradient(160deg, rgba(212,168,67,0.12) 0%, transparent 50%), radial-gradient(ellipse 120% 80% at 70% 0%, rgba(255,95,45,0.08), transparent 60%), #07090c; padding: 60px 40px 48px; }
@@ -195,6 +198,7 @@ body { background: var(--wc-bg) !important; color: var(--wc-fg) !important; }
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .wc-nav { display: none; }
+  .wc-mobile-nav { display: flex; align-items: center; gap: 4px; }
   .wc-groups-grid { grid-template-columns: repeat(2, 1fr); }
   .wc-stadiums-grid { grid-template-columns: repeat(2, 1fr); }
   .wc-hero-inner { grid-template-columns: 1fr; }
@@ -266,6 +270,12 @@ export default function WorldCupPage() {
                         <Link href="/venues">Venues</Link>
                         <Link href="/blog">Blog</Link>
                         {user && <Link href="/dashboard">My bookings</Link>}
+                    </nav>
+                    <nav className="wc-mobile-nav">
+                        <Link href="/">Home</Link>
+                        <Link href="/matches">Matches</Link>
+                        <Link href="/venues">Venues</Link>
+                        <Link href="/blog">Blog</Link>
                     </nav>
                     <div className="wc-top-right">
                         {user ? (
