@@ -7,6 +7,7 @@ import { useData, type Venue } from "../../lib/data-provider";
 import { useAuth } from "../../lib/auth-context";
 import { AMENITY_LABELS } from "../../lib/data";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
+import { MatchVenueMap } from "../../components/MatchVenueMap";
 
 /* ── CSS ── */
 const VN_VARS = `
@@ -70,7 +71,8 @@ body{background:var(--vn-bg)!important;color:var(--vn-fg)!important;}
 /* layout */
 .vn-page{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:20px;}
 .vn-list{padding:20px 32px 60px;min-width:0;}
-.vn-map-wrap{position:sticky;top:61px;height:calc(100vh - 61px);padding:20px 20px 20px 0;}
+.vn-map-wrap{position:sticky;top:61px;height:calc(100vh - 61px);padding:20px 20px 20px 0;display:flex;flex-direction:column;}
+.vn-map-wrap > div{flex:1;border-radius:0!important;}
 /* list head */
 .vn-list-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
 .vn-list-head .count{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:20px;}
@@ -181,11 +183,6 @@ function normalizeState(s: string): string {
 
 type SortOption = "rating" | "reviews" | "name";
 
-const PIN_POSITIONS = [
-    { left: "32%", top: "40%" }, { left: "62%", top: "30%" }, { left: "42%", top: "78%" },
-    { left: "72%", top: "58%" }, { left: "22%", top: "70%" }, { left: "80%", top: "42%" },
-    { left: "55%", top: "55%" }, { left: "38%", top: "25%" }, { left: "68%", top: "75%" },
-];
 
 function VenuesPageContent() {
     const { venues: VENUES, isLoading } = useData();
@@ -457,56 +454,26 @@ function VenuesPageContent() {
 
                 {/* Map panel */}
                 <aside className="vn-map-wrap">
-                    <div className="vn-map-panel">
-                        <div className="vn-road h" style={{ top: "22%" }} />
-                        <div className="vn-road h" style={{ top: "48%" }} />
-                        <div className="vn-road h" style={{ top: "72%" }} />
-                        <div className="vn-road v" style={{ left: "28%" }} />
-                        <div className="vn-road v" style={{ left: "58%" }} />
-                        <div className="vn-road v" style={{ left: "82%" }} />
-                        <div className="vn-blob" style={{ background: "rgba(255,120,60,0.2)", width: 220, height: 220, left: "20%", top: "28%" }} />
-                        <div className="vn-blob" style={{ background: "rgba(80,180,255,0.12)", width: 180, height: 180, left: "60%", top: "50%" }} />
-
-                        {/* Legend */}
-                        <div className="vn-map-ctrl tl">
-                            <div className="vn-legend">
-                                <span><span className="dot hot" />LIVE NOW</span>
-                                <span><span className="dot nrm" />SHOWING LATER</span>
-                                <span><span className="dot you" />YOU</span>
-                            </div>
-                        </div>
-
-                        {/* User location pin */}
-                        <div className="vn-pin me" style={{ left: "46%", top: "62%" }}>
-                            <div className="marker">◉</div>
-                            <div className="vn-maplabel">YOU</div>
-                        </div>
-
-                        {/* Venue pins */}
-                        {displayedVenues.slice(0, 9).map((v, i) => {
-                            const pos = PIN_POSITIONS[i] || { left: `${20 + i * 8}%`, top: `${30 + i * 8}%` };
-                            const isHot = (v.upcomingEventsCount || 0) > 0;
-                            const isActive = selectedVenue?.id === v.id;
-                            const label = v.name.toUpperCase().substring(0, 14);
-                            return (
-                                <div
-                                    key={v.id}
-                                    className={`vn-pin${isHot ? " hot" : ""}${isActive ? " active" : ""}`}
-                                    style={{ left: pos.left, top: pos.top }}
-                                    onClick={() => openDrawer(v)}
-                                >
-                                    <div className="marker">{i + 1}</div>
-                                    <div className="vn-maplabel">{label}</div>
-                                </div>
-                            );
-                        })}
-
-                        {/* Map controls */}
-                        <div className="vn-map-ctrl br">
-                            <button className="vn-mapbtn">+</button>
-                            <button className="vn-mapbtn">−</button>
-                        </div>
-                    </div>
+                    <MatchVenueMap
+                        venues={filtered
+                            .filter(v => v.lat && v.lng)
+                            .map(v => ({
+                                id: v.id,
+                                name: v.name,
+                                slug: v.slug,
+                                addressLine1: v.addressLine1,
+                                city: v.city,
+                                lat: v.lat,
+                                lng: v.lng,
+                                confirmedBookings: 0,
+                                bookingLimit: null,
+                            }))}
+                        onSelectVenue={(id) => {
+                            const v = filtered.find(x => x.id === id);
+                            if (v) openDrawer(v);
+                        }}
+                        height={Math.max(500, typeof window !== "undefined" ? window.innerHeight - 80 : 600)}
+                    />
                 </aside>
             </main>
 
