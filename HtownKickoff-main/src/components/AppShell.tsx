@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, LogIn, Menu, Newspaper, Store, Trophy, UserCircle2, X } from "lucide-react";
+import { House, LogIn, Menu, Store, Trophy, UserCircle2, X } from "lucide-react";
 import { useAuth } from "../lib/auth-context";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -51,7 +51,6 @@ export function FloatingNav() {
     const navLinks = [
         { label: "Matches", href: "/matches", icon: Trophy },
         { label: "Venues", href: "/venues", icon: Store },
-        { label: "Blog", href: "/blog", icon: Newspaper },
     ];
 
     return (
