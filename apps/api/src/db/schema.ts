@@ -42,6 +42,7 @@ export const aiCallAgentGoLiveReadinessEnum = pgEnum('ai_call_agent_go_live_read
     'READY_NOW', 'READY_IN_7_DAYS', 'READY_IN_14_DAYS', 'NOT_READY',
 ]);
 export const teamTypeEnum = pgEnum('team_type', ['national_team', 'club', 'franchise']);
+export const youtubeSearchStatusEnum = pgEnum('youtube_search_status', ['pending', 'found', 'not_found', 'failed']);
 
 // ─── Users ──────────────────────────────────────
 
@@ -336,6 +337,14 @@ export const matches = pgTable('matches', {
     matchDay: integer('match_day'),
     stage: varchar('stage', { length: 50 }),
     venueName: varchar('venue_name', { length: 200 }),
+    youtubeVideoId: varchar('youtube_video_id', { length: 32 }),
+    youtubeVideoTitle: varchar('youtube_video_title', { length: 255 }),
+    youtubeChannelTitle: varchar('youtube_channel_title', { length: 255 }),
+    youtubePublishedAt: timestamp('youtube_published_at'),
+    youtubeThumbnailUrl: varchar('youtube_thumbnail_url'),
+    youtubeEmbedUrl: varchar('youtube_embed_url'),
+    youtubeSearchStatus: youtubeSearchStatusEnum('youtube_search_status').default('pending').notNull(),
+    youtubeCheckedAt: timestamp('youtube_checked_at'),
     lastSyncedAt: timestamp('last_synced_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -343,6 +352,7 @@ export const matches = pgTable('matches', {
     index('matches_league_idx').on(table.leagueId),
     index('matches_date_idx').on(table.matchDateUtc),
     index('matches_status_idx').on(table.status),
+    index('matches_youtube_status_checked_idx').on(table.youtubeSearchStatus, table.youtubeCheckedAt),
 ]);
 
 // ─── Motorsport Participants ────────────────────────────────────────

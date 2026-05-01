@@ -35,6 +35,7 @@ import sponsorInquiryRoutes from './routes/sponsorInquiry';
 import { logger } from './lib/logger';
 import { normalizeEntitySlugs } from './lib/entitySlugs';
 import { scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
+import { scheduleYoutubeRecapSync, startYoutubeRecapWorker } from './workers/youtubeRecapSync';
 
 // Create App
 const app = new Hono();
@@ -153,6 +154,13 @@ async function start() {
                 }
             } else {
                 logger.warn('Match sync worker disabled via ENABLE_MATCH_SYNC_WORKER=false');
+            }
+
+            try {
+                startYoutubeRecapWorker();
+                await scheduleYoutubeRecapSync();
+            } catch (err) {
+                logger.error({ err }, 'YouTube recap worker startup failed');
             }
         },
     );

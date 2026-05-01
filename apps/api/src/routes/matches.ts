@@ -1,13 +1,23 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { db } from '../db/client';
 import { drivers, entrants, eventEntries, leagues, manufacturers, matches, sports, teams, venueEvents, venues } from '../db/schema';
 import { eq, and, gte, lte, desc, asc, count, inArray, or, sql } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { matchQuerySchema, matchVenueQuerySchema } from '@matchwatch/shared';
-import { optionalAuthMiddleware } from '../middleware';
+import { authMiddleware, optionalAuthMiddleware, requireRole } from '../middleware';
 import { getMatchPrediction } from '../lib/predictions';
+import { getYoutubeRecapTarget, processMatchYoutubeRecap, processRecentFinishedMatchRecaps } from '../lib/youtubeRecaps';
 
 const matchRoutes = new Hono();
+const youtubeRecapBatchSchema = z.object({
+    limit: z.coerce.number().int().min(1).max(50).default(10),
+    forceRefresh: z.coerce.boolean().default(false),
+    leagueSlugs: z.array(z.string().min(1)).default(['mls']),
+});
+const youtubeRecapRefreshSchema = z.object({
+    forceRefresh: z.coerce.boolean().default(true),
+});
 
 // ─── GET / ──────────────────────────────────────
 matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
@@ -121,6 +131,14 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
             matchDay: r.match.matchDay,
             stage: r.match.stage,
             venueName: r.match.venueName,
+            youtubeVideoId: r.match.youtubeVideoId,
+            youtubeVideoTitle: r.match.youtubeVideoTitle,
+            youtubeChannelTitle: r.match.youtubeChannelTitle,
+            youtubePublishedAt: r.match.youtubePublishedAt,
+            youtubeThumbnailUrl: r.match.youtubeThumbnailUrl,
+            youtubeEmbedUrl: r.match.youtubeEmbedUrl,
+            youtubeSearchStatus: r.match.youtubeSearchStatus,
+            youtubeCheckedAt: r.match.youtubeCheckedAt,
             venueCount: venueCounts.get(r.match.id) || 0,
             league: r.league ? {
                 id: r.league.id,
@@ -276,6 +294,37 @@ matchRoutes.get('/upcoming', async (c) => {
 });
 
 // ─── GET /:matchId ──────────────────────────────
+matchRoutes.post('/youtube-recaps/process-recent', authMiddleware, requireRole('ADMIN', 'SUPER_ADMIN'), async (c) => {
+    const parsed = youtubeRecapBatchSchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid recap batch request', parsed.error.issues), 400);
+    }
+
+    const result = await processRecentFinishedMatchRecaps({
+        limit: parsed.data.limit,
+        forceRefresh: parsed.data.forceRefresh,
+        leagueSlugs: parsed.data.leagueSlugs,
+    });
+
+    return c.json(apiResponse(result));
+});
+
+matchRoutes.post('/:matchId/youtube-recap/refresh', authMiddleware, requireRole('ADMIN', 'SUPER_ADMIN'), async (c) => {
+    const matchId = c.req.param('matchId');
+    const parsed = youtubeRecapRefreshSchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid recap refresh request', parsed.error.issues), 400);
+    }
+
+    const result = await processMatchYoutubeRecap(matchId, { forceRefresh: parsed.data.forceRefresh });
+    if (result.reason === 'match_not_found') {
+        return c.json(apiError('NOT_FOUND', 'Match not found'), 404);
+    }
+
+    const recap = await getYoutubeRecapTarget(matchId);
+    return c.json(apiResponse({ result, recap }));
+});
+
 matchRoutes.get('/:matchId/entries', async (c) => {
     const matchId = c.req.param('matchId');
 
