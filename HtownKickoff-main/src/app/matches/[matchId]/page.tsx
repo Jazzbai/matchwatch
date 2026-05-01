@@ -222,7 +222,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
     const cachedMatch = MATCHES.find((m) => m.id === matchId);
     const [directMatch, setDirectMatch] = useState<import("../../../lib/data").Match | null>(null);
     const [directFetchDone, setDirectFetchDone] = useState(false);
-    const match = cachedMatch || directMatch;
+    // Prefer directMatch if it has YouTube data that the cached version lacks
+    const match = (directMatch?.youtubeVideoId || directMatch?.youtubeEmbedUrl) ? directMatch : (cachedMatch || directMatch);
     const venueEvents = match ? getVenueEvents(match.id) : [];
     const [chatInput, setChatInput] = useState("");
     const [msgs, setMsgs] = useState(DEMO_MSGS);
@@ -231,14 +232,16 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
     useEffect(() => { void refetch(); }, [refetch, matchId]);
 
     useEffect(() => {
-        if (cachedMatch || isLoading) return;
+        if (isLoading) return;
+        // Skip if we already have YouTube data from cache
+        if (cachedMatch?.youtubeVideoId || cachedMatch?.youtubeEmbedUrl || cachedMatch?.youtubeSearchStatus) return;
         setDirectFetchDone(false);
         fetch(`${API_BASE}/matches/${matchId}`, { credentials: "include" })
             .then((r) => r.ok ? r.json() : null)
             .then((json) => { if (json?.data) setDirectMatch(mapApiMatchToMatch(json.data)); })
             .catch(() => {})
             .finally(() => setDirectFetchDone(true));
-    }, [matchId, cachedMatch, isLoading]);
+    }, [matchId, cachedMatch?.youtubeVideoId, cachedMatch?.youtubeEmbedUrl, cachedMatch?.youtubeSearchStatus, isLoading]);
 
     const isSingleEvent = match ? isSingleEventMatch(match) : false;
     const initials = user?.name ? user.name.split(" ").map((w) => w[0]).join("").substring(0, 2).toUpperCase() : "MW";
