@@ -164,6 +164,12 @@ function formatStageLabel(stage?: string | null, matchDay?: number | string | nu
 }
 
 /* ── Chat messages for the right rail ── */
+function buildSafeYoutubeEmbedUrl(videoId?: string | null) {
+    const safeVideoId = (videoId || "").trim();
+    if (!/^[A-Za-z0-9_-]{11}$/.test(safeVideoId)) return null;
+    return `https://www.youtube.com/embed/${safeVideoId}`;
+}
+
 const DEMO_MSGS = [
     { av: "#b4876a", init: "JM", name: "Jordan M.", host: true, body: "What a goal! 🔥🔥" },
     { av: "#7a8ca6", init: "AS", name: "Ana S.", host: false, body: "That assist was unreal" },
@@ -172,11 +178,51 @@ const DEMO_MSGS = [
     { av: "#a69c7a", init: "MV", name: "Mira V.", host: false, body: "atmosphere must be insane right now" },
 ];
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+
+function mapApiMatchToMatch(m: any): import("../../../lib/data").Match {
+    const leagueId = m.leagueId || m.league?.id || "unknown-league";
+    const homeTeamId = m.homeTeamId || (m.homeTeamName ? m.homeTeamName.toLowerCase().replace(/\s+/g, "-") : undefined);
+    const awayTeamId = m.awayTeamId || (m.awayTeamName ? m.awayTeamName.toLowerCase().replace(/\s+/g, "-") : undefined);
+    return {
+        id: m.id,
+        isFeatured: Boolean(m.isFeatured),
+        homeTeamId: m.eventFormat === "SINGLE_EVENT" ? undefined : homeTeamId,
+        awayTeamId: m.eventFormat === "SINGLE_EVENT" ? undefined : awayTeamId,
+        homeTeamName: m.homeTeamName || undefined,
+        awayTeamName: m.awayTeamName || undefined,
+        leagueId,
+        matchDateUTC: m.matchDateUtc || m.matchDateUTC || new Date().toISOString(),
+        status: m.status || "SCHEDULED",
+        homeScore: m.homeScore ?? null,
+        awayScore: m.awayScore ?? null,
+        matchDay: m.matchDay ? String(m.matchDay) : "",
+        stage: m.stage || "",
+        stadiumName: m.venueName || m.stadiumName || "",
+        venueCount: m.venueCount || 0,
+        isHot: (m.venueCount || 0) >= 10,
+        eventFormat: m.eventFormat || "HEAD_TO_HEAD",
+        eventTitle: m.eventTitle || undefined,
+        eventSubtitle: m.eventSubtitle || undefined,
+        youtubeVideoId: m.youtubeVideoId || undefined,
+        youtubeVideoTitle: m.youtubeVideoTitle || undefined,
+        youtubeChannelTitle: m.youtubeChannelTitle || undefined,
+        youtubePublishedAt: m.youtubePublishedAt || undefined,
+        youtubeThumbnailUrl: m.youtubeThumbnailUrl || undefined,
+        youtubeEmbedUrl: m.youtubeEmbedUrl || undefined,
+        youtubeSearchStatus: m.youtubeSearchStatus || undefined,
+        youtubeCheckedAt: m.youtubeCheckedAt || undefined,
+    };
+}
+
 export default function MatchDetailPage({ params }: { params: Promise<{ matchId: string }> }) {
     const { matchId } = use(params);
     const { matches: MATCHES, getTeam, getLeague, getVenueEvents, isLoading, refetch } = useData();
     const { user } = useAuth();
-    const match = MATCHES.find((m) => m.id === matchId);
+    const cachedMatch = MATCHES.find((m) => m.id === matchId);
+    const [directMatch, setDirectMatch] = useState<import("../../../lib/data").Match | null>(null);
+    const [directFetchDone, setDirectFetchDone] = useState(false);
+    const match = cachedMatch || directMatch;
     const venueEvents = match ? getVenueEvents(match.id) : [];
     const [chatInput, setChatInput] = useState("");
     const [msgs, setMsgs] = useState(DEMO_MSGS);
@@ -184,10 +230,20 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
 
     useEffect(() => { void refetch(); }, [refetch, matchId]);
 
+    useEffect(() => {
+        if (cachedMatch || isLoading) return;
+        setDirectFetchDone(false);
+        fetch(`${API_BASE}/matches/${matchId}`, { credentials: "include" })
+            .then((r) => r.ok ? r.json() : null)
+            .then((json) => { if (json?.data) setDirectMatch(mapApiMatchToMatch(json.data)); })
+            .catch(() => {})
+            .finally(() => setDirectFetchDone(true));
+    }, [matchId, cachedMatch, isLoading]);
+
     const isSingleEvent = match ? isSingleEventMatch(match) : false;
     const initials = user?.name ? user.name.split(" ").map((w) => w[0]).join("").substring(0, 2).toUpperCase() : "MW";
 
-    if (isLoading && !match) {
+    if (!match && (isLoading || (!cachedMatch && !directFetchDone))) {
         return (
             <div style={{ background: "var(--md-bg)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--md-fg-dim)", fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
                 Loading match…
@@ -217,6 +273,10 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
 
     const isLive = match.status === "IN_PLAY" || match.status === "PAUSED";
     const isFinished = match.status === "FINISHED";
+    const canShowRecap = isFinished && d.getTime() <= Date.now();
+    const recapEmbedUrl = canShowRecap
+        ? (buildSafeYoutubeEmbedUrl(match.youtubeVideoId) || (match.youtubeEmbedUrl?.startsWith("https://www.youtube.com/embed/") ? match.youtubeEmbedUrl : null))
+        : null;
 
     const homeColor = home?.color || "#dc2626";
     const awayColor = away?.color || "#1d4ed8";
@@ -437,6 +497,39 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                     )}
 
                     {/* ── H2H ── */}
+                    {recapEmbedUrl && (
+                        <>
+                            <div className="md-sec-head">
+                                <div className="md-sec-title">Match recap <span className="tag">HIGHLIGHTS</span></div>
+                            </div>
+                            <section style={{ border: "1px solid var(--md-line)", background: "var(--md-bg-1)", overflow: "hidden" }}>
+                                <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#000" }}>
+                                    <iframe
+                                        src={recapEmbedUrl}
+                                        title={match.youtubeVideoTitle || `${matchTitle} highlights`}
+                                        loading="lazy"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        allowFullScreen
+                                        referrerPolicy="strict-origin-when-cross-origin"
+                                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+                                    />
+                                </div>
+                                {(match.youtubeVideoTitle || match.youtubeChannelTitle) && (
+                                    <div style={{ display: "grid", gap: 6, padding: "16px 18px", borderTop: "1px solid var(--md-line)" }}>
+                                        {match.youtubeVideoTitle && (
+                                            <div style={{ fontFamily: "'Space Grotesk', var(--font-space), sans-serif", fontWeight: 600, fontSize: 18, color: "var(--md-fg)" }}>
+                                                {match.youtubeVideoTitle}
+                                            </div>
+                                        )}
+                                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--md-fg-mute)" }}>
+                                            {match.youtubeChannelTitle || "YouTube"}
+                                        </div>
+                                    </div>
+                                )}
+                            </section>
+                        </>
+                    )}
+
                     {!isSingleEvent && (
                         <>
                             <div className="md-sec-head">
