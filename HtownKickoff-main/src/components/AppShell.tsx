@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, LogIn, Menu, Store, Trophy, UserCircle2, X } from "lucide-react";
+import { Building2, House, LogIn, Menu, Store, Trophy, UserCircle2, X } from "lucide-react";
 import { useAuth } from "../lib/auth-context";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -51,6 +51,7 @@ export function FloatingNav() {
     const navLinks = [
         { label: "Matches", href: "/matches", icon: Trophy },
         { label: "Venues", href: "/venues", icon: Store },
+        { label: "For Venues", href: "/for-venues/register", icon: Building2 },
     ];
 
     return (
@@ -105,7 +106,7 @@ export function FloatingNav() {
                     }}
                 >
                     {navLinks.map((link) => {
-                        const isActive = pathname.startsWith(link.href);
+                        const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
                         return (
                             <Link
                                 key={link.href}
