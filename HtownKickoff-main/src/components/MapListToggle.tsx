@@ -1,22 +1,25 @@
 ﻿"use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { List, Map } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { List, Map as MapIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import {
+    createMarkerSpiderfier,
     createVenueClusterGroup,
     createVenuePinIcon,
     loadLeafletWithClusters,
     type ClusterLayer,
     type ClusterLeafletModule,
     type LeafletMap,
+    type MarkerSpiderfierController,
     type LeafletTileLayer,
+    type SpiderfyMarkerRecord,
 } from "@/lib/leaflet-map-markers";
 import { VenueCard, type VenueCardProps } from "./VenueCard";
 
 export type VenueMapListItem = VenueCardProps & {
     id: string;
-    slug: string;
+    slug?: string | null;
     lat: number;
     lng: number;
 };
@@ -54,6 +57,10 @@ function getTileConfig(theme: string | undefined) {
     };
 }
 
+function venueHref(venue: Pick<VenueMapListItem, "id" | "slug">) {
+    return `/venues/${encodeURIComponent(venue.slug || venue.id)}`;
+}
+
 export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560 }: MapListToggleProps) {
     const { resolvedTheme } = useTheme();
     const [mobileView, setMobileView] = useState<"cards" | "map">("cards");
@@ -63,13 +70,20 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
     const mapRef = useRef<LeafletMap | null>(null);
     const leafletRef = useRef<ClusterLeafletModule | null>(null);
     const markerLayerRef = useRef<ClusterLayer | null>(null);
+    const spiderfierRef = useRef<MarkerSpiderfierController | null>(null);
     const tileLayerRef = useRef<LeafletTileLayer | null>(null);
+    const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
 
     const mappedVenues = useMemo(
         () => venues
             .map((venue, index) => ({ ...venue, originalIndex: index }))
             .filter((venue) => Number.isFinite(venue.lat) && Number.isFinite(venue.lng) && Math.abs(venue.lat) > 0 && Math.abs(venue.lng) > 0),
         [venues],
+    );
+    const mappedVenueLookup = useMemo(
+        () => new Map(mappedVenues.map((venue) => [venue.id, venue] as const)),
+        [mappedVenues],
     );
     const stickyTop = 96;
     const effectiveMapHeight: number | string = isMobile
@@ -84,7 +98,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
         return () => media.removeEventListener("change", update);
     }, []);
 
-    const syncTileLayer = () => {
+    const syncTileLayer = useCallback(() => {
         const L = leafletRef.current;
         const map = mapRef.current;
         if (!L || !map) return;
@@ -96,7 +110,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
             maxZoom: 19,
             attribution: tileConfig.attribution,
         }).addTo(map);
-    };
+    }, [resolvedTheme]);
 
     useEffect(() => {
         let mounted = true;
@@ -131,17 +145,19 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                 mapRef.current.remove();
                 mapRef.current = null;
             }
+            spiderfierRef.current?.destroy();
+            spiderfierRef.current = null;
             markerLayerRef.current = null;
             tileLayerRef.current = null;
             leafletRef.current = null;
         };
-    }, []);
+    }, [syncTileLayer]);
 
     useEffect(() => {
         if (!mapReady) return;
         syncTileLayer();
         window.setTimeout(() => mapRef.current?.invalidateSize(), 0);
-    }, [mapReady, resolvedTheme]);
+    }, [mapReady, syncTileLayer]);
 
     useEffect(() => {
         const L = leafletRef.current;
@@ -152,6 +168,8 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
             markerLayerRef.current.remove();
             markerLayerRef.current = null;
         }
+        spiderfierRef.current?.destroy();
+        spiderfierRef.current = null;
 
         const layer = createVenueClusterGroup(L, isMobile);
         markerLayerRef.current = layer;
@@ -163,6 +181,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
         }
 
         const points: [number, number][] = [];
+        const spiderfyRecords: SpiderfyMarkerRecord<(typeof mappedVenues)[number]>[] = [];
 
         mappedVenues.forEach((venue) => {
             const marker = L.marker([venue.lat, venue.lng], {
@@ -173,7 +192,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
             const title = escapeHtml(venue.name);
             const subtitle = escapeHtml([venue.city, venue.address].filter(Boolean).join(" | "));
             const rating = Number(venue.rating || 0).toFixed(1);
-            const href = `/venues/${venue.slug}`;
+            const href = venueHref(venue);
             const popupClassName = resolvedTheme === "dark" ? "venue-map-popup-dark" : "venue-map-popup-light";
 
             marker.bindPopup(
@@ -193,8 +212,47 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                 `,
                 { className: popupClassName, closeButton: false, offset: [0, -18] },
             );
+            marker.on("click", () => {
+                const spiderfied = spiderfierRef.current?.spiderfy(venue.id) ?? false;
+                if (spiderfied) return;
+
+                setSelectedVenueId(venue.id);
+                onVenueClick?.(venue.originalIndex);
+                marker.openPopup();
+            });
             layer.addLayer(marker);
+            spiderfyRecords.push({
+                id: venue.id,
+                lat: venue.lat,
+                lng: venue.lng,
+                marker,
+                data: venue,
+                popupHtml: `
+                <div class="venue-map-popup-card">
+                    <img src="${image}" alt="${title}" class="venue-map-popup-image" />
+                    <div class="venue-map-popup-body">
+                        <div class="venue-map-popup-kicker">Venue</div>
+                        <div class="venue-map-popup-title">${title}</div>
+                        <div class="venue-map-popup-meta">${subtitle}</div>
+                        <div class="venue-map-popup-footer">
+                            <span class="venue-map-popup-rating">${rating} stars</span>
+                            <a class="venue-map-popup-link" href="${href}">View Venue</a>
+                        </div>
+                    </div>
+                </div>
+                `,
+                popupOptions: { className: popupClassName, closeButton: false, offset: [0, -18] },
+                onSelect: () => {
+                    setSelectedVenueId(venue.id);
+                    onVenueClick?.(venue.originalIndex);
+                },
+            });
             points.push([venue.lat, venue.lng]);
+        });
+
+        spiderfierRef.current = createMarkerSpiderfier(L, map, spiderfyRecords, {
+            nearbyMarkerTolerancePx: isMobile ? 24 : 18,
+            minZoomToSpiderfy: isMobile ? 14 : 15,
         });
 
         if (points.length === 1) {
@@ -212,7 +270,24 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
         }
 
         setTimeout(() => map.invalidateSize(), 0);
+        return () => {
+            spiderfierRef.current?.destroy();
+            spiderfierRef.current = null;
+        };
     }, [isMobile, mappedVenues, onVenueClick, resolvedTheme]);
+
+    useEffect(() => {
+        if (!selectedVenueId) return;
+        const node = cardRefs.current[selectedVenueId];
+        node?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, [selectedVenueId]);
+
+    const focusVenue = (venueId: string) => {
+        setSelectedVenueId(venueId);
+        const venue = mappedVenueLookup.get(venueId);
+        if (!venue) return;
+        spiderfierRef.current?.focus(venueId);
+    };
 
     useEffect(() => {
         const map = mapRef.current;
@@ -230,7 +305,29 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
     const listPane = (
         <div style={{ display: "grid", gap: 16, gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", alignContent: "start" }}>
             {venues.map((venue, index) => (
-                <VenueCard key={venue.id} {...venue} onClick={() => onVenueClick?.(index)} onBookNow={() => onBookNow?.(index)} />
+                <div
+                    key={venue.id}
+                    ref={(node) => {
+                        cardRefs.current[venue.id] = node;
+                    }}
+                    style={{
+                        borderRadius: 24,
+                        transition: "box-shadow 0.2s ease, transform 0.2s ease",
+                        boxShadow: selectedVenueId === venue.id
+                            ? "0 0 0 2px color-mix(in oklch, var(--primary) 38%, transparent), 0 16px 40px rgba(0,0,0,0.12)"
+                            : "none",
+                    }}
+                >
+                    <VenueCard
+                        {...venue}
+                        onClick={() => {
+                            setSelectedVenueId(venue.id);
+                            onVenueClick?.(index);
+                            focusVenue(venue.id);
+                        }}
+                        onBookNow={() => onBookNow?.(index)}
+                    />
+                </div>
             ))}
         </div>
     );
@@ -280,7 +377,7 @@ export function MapListToggle({ venues, onVenueClick, onBookNow, mapHeight = 560
                             cursor: "pointer",
                         }}
                     >
-                        <Map size={16} />
+                        <MapIcon size={16} />
                         Map View
                     </button>
                 </div>

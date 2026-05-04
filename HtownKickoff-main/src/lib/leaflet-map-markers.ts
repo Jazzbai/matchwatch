@@ -2,6 +2,11 @@ export type LeafletModule = typeof import("leaflet");
 export type LeafletMap = import("leaflet").Map;
 export type LeafletLayer = import("leaflet").Layer;
 export type LeafletTileLayer = import("leaflet").TileLayer;
+export type LeafletLayerGroup = import("leaflet").LayerGroup;
+export type LeafletMarker = import("leaflet").Marker;
+export type LeafletPoint = import("leaflet").Point;
+export type LeafletPopupOptions = import("leaflet").PopupOptions;
+export type LeafletMarkerOptions = import("leaflet").MarkerOptions;
 
 export interface ClusterLayer {
     addTo(map: LeafletMap): unknown;
@@ -21,6 +26,34 @@ export interface ClusterLeafletModule extends LeafletModule {
         disableClusteringAtZoom: number;
         iconCreateFunction: (cluster: { getChildCount(): number }) => unknown;
     }): ClusterLayer;
+}
+
+export interface SpiderfyMarkerRecord<T = unknown> {
+    id: string;
+    lat: number;
+    lng: number;
+    marker: LeafletMarker;
+    data: T;
+    popupHtml?: string;
+    popupOptions?: LeafletPopupOptions;
+    onSelect?: () => void;
+}
+
+export interface MarkerSpiderfierOptions {
+    nearbyMarkerTolerancePx?: number;
+    circleToSpiralThreshold?: number;
+    circleFootSeparationPx?: number;
+    spiralFootSeparationPx?: number;
+    spiralLengthStartPx?: number;
+    spiralLengthFactorPx?: number;
+    minZoomToSpiderfy?: number;
+}
+
+export interface MarkerSpiderfierController {
+    spiderfy(target: string | SpiderfyMarkerRecord): boolean;
+    unspiderfy(): void;
+    focus(targetId: string, zoom?: number): void;
+    destroy(): void;
 }
 
 export async function loadLeafletWithClusters(): Promise<ClusterLeafletModule> {
@@ -94,4 +127,189 @@ export function createVenueClusterGroup(L: ClusterLeafletModule, compact = false
             });
         },
     });
+}
+
+function generateCirclePoints(
+    center: LeafletPoint,
+    count: number,
+    footSeparationPx: number,
+    L: LeafletModule,
+) {
+    const circumference = footSeparationPx * (2 + count);
+    const radius = circumference / (Math.PI * 2);
+    const angleStep = (Math.PI * 2) / count;
+    const points: LeafletPoint[] = [];
+
+    for (let index = 0; index < count; index += 1) {
+        const angle = -Math.PI / 2 + index * angleStep;
+        points.push(L.point(
+            center.x + radius * Math.cos(angle),
+            center.y + radius * Math.sin(angle),
+        ));
+    }
+
+    return points;
+}
+
+function generateSpiralPoints(
+    center: LeafletPoint,
+    count: number,
+    footSeparationPx: number,
+    spiralLengthStartPx: number,
+    spiralLengthFactorPx: number,
+    L: LeafletModule,
+) {
+    const points: LeafletPoint[] = [];
+    let legLength = spiralLengthStartPx;
+    let angle = 0;
+
+    for (let index = 0; index < count; index += 1) {
+        angle += footSeparationPx / legLength + index * 0.0005;
+        const x = center.x + legLength * Math.cos(angle);
+        const y = center.y + legLength * Math.sin(angle);
+        points.push(L.point(x, y));
+        legLength += (Math.PI * 2 * spiralLengthFactorPx) / angle;
+    }
+
+    return points;
+}
+
+export function createMarkerSpiderfier<T>(
+    L: LeafletModule,
+    map: LeafletMap,
+    records: SpiderfyMarkerRecord<T>[],
+    options?: MarkerSpiderfierOptions,
+): MarkerSpiderfierController {
+    const nearbyMarkerTolerancePx = options?.nearbyMarkerTolerancePx ?? 18;
+    const circleToSpiralThreshold = options?.circleToSpiralThreshold ?? 9;
+    const circleFootSeparationPx = options?.circleFootSeparationPx ?? 34;
+    const spiralFootSeparationPx = options?.spiralFootSeparationPx ?? 26;
+    const spiralLengthStartPx = options?.spiralLengthStartPx ?? 14;
+    const spiralLengthFactorPx = options?.spiralLengthFactorPx ?? 6;
+    const minZoomToSpiderfy = options?.minZoomToSpiderfy ?? 15;
+
+    const recordMap = new Map(records.map((record) => [record.id, record] as const));
+    const overlayGroup = L.layerGroup().addTo(map);
+    const activeSpiderfyIds = new Set<string>();
+
+    const unspiderfy = () => {
+        overlayGroup.clearLayers();
+        if (activeSpiderfyIds.size === 0) return;
+
+        activeSpiderfyIds.forEach((id) => {
+            const record = recordMap.get(id);
+            if (record) record.marker.setOpacity(1);
+        });
+        activeSpiderfyIds.clear();
+    };
+
+    const findNearbyRecords = (target: SpiderfyMarkerRecord<T>) => {
+        const centerPoint = map.latLngToLayerPoint([target.lat, target.lng]);
+        return records.filter((candidate) => {
+            const point = map.latLngToLayerPoint([candidate.lat, candidate.lng]);
+            return centerPoint.distanceTo(point) <= nearbyMarkerTolerancePx;
+        });
+    };
+
+    const spiderfy = (target: string | SpiderfyMarkerRecord<T>) => {
+        if (map.getZoom() < minZoomToSpiderfy) return false;
+
+        const targetRecord = typeof target === "string" ? recordMap.get(target) : target;
+        if (!targetRecord) return false;
+
+        const nearbyRecords = findNearbyRecords(targetRecord);
+        if (nearbyRecords.length <= 1) {
+            unspiderfy();
+            return false;
+        }
+
+        const nearbyIds = new Set(nearbyRecords.map((record) => record.id));
+        if (
+            activeSpiderfyIds.size === nearbyIds.size &&
+            [...activeSpiderfyIds].every((id) => nearbyIds.has(id))
+        ) {
+            return true;
+        }
+
+        unspiderfy();
+
+        const centerLatLng = L.latLng(targetRecord.lat, targetRecord.lng);
+        const centerPoint = map.latLngToLayerPoint(centerLatLng);
+        const spiderPoints = nearbyRecords.length >= circleToSpiralThreshold
+            ? generateSpiralPoints(centerPoint, nearbyRecords.length, spiralFootSeparationPx, spiralLengthStartPx, spiralLengthFactorPx, L)
+            : generateCirclePoints(centerPoint, nearbyRecords.length, circleFootSeparationPx, L);
+
+        nearbyRecords.forEach((record, index) => {
+            record.marker.closePopup();
+            record.marker.setOpacity(0);
+            activeSpiderfyIds.add(record.id);
+
+            const destinationLatLng = map.layerPointToLatLng(spiderPoints[index]);
+            const sourceLatLng = L.latLng(record.lat, record.lng);
+
+            L.polyline([sourceLatLng, destinationLatLng], {
+                className: "venue-map-spider-leg",
+                color: "#32c36c",
+                weight: 2,
+                opacity: 0.95,
+                interactive: false,
+            }).addTo(overlayGroup);
+
+            const markerOptions: LeafletMarkerOptions = {
+                zIndexOffset: 1000,
+                keyboard: false,
+            };
+            if (record.marker.options.icon) {
+                markerOptions.icon = record.marker.options.icon;
+            }
+            const spiderMarker = L.marker(destinationLatLng, markerOptions);
+
+            if (record.popupHtml) {
+                spiderMarker.bindPopup(record.popupHtml, record.popupOptions);
+            }
+
+            spiderMarker.on("click", () => {
+                record.onSelect?.();
+                if (record.popupHtml) {
+                    spiderMarker.openPopup();
+                }
+            });
+
+            spiderMarker.addTo(overlayGroup);
+        });
+
+        return true;
+    };
+
+    const focus = (targetId: string, zoom = minZoomToSpiderfy + 1) => {
+        const record = recordMap.get(targetId);
+        if (!record) return;
+
+        map.flyTo([record.lat, record.lng], Math.max(map.getZoom(), zoom), {
+            animate: true,
+            duration: 0.35,
+        });
+
+        window.setTimeout(() => {
+            spiderfy(record);
+        }, 260);
+    };
+
+    const clearOnInteraction = () => unspiderfy();
+    map.on("click", clearOnInteraction);
+    map.on("zoomstart", clearOnInteraction);
+    map.on("movestart", clearOnInteraction);
+
+    return {
+        spiderfy,
+        unspiderfy,
+        focus,
+        destroy: () => {
+            unspiderfy();
+            map.off("click", clearOnInteraction);
+            map.off("zoomstart", clearOnInteraction);
+            map.off("movestart", clearOnInteraction);
+            overlayGroup.remove();
+        },
+    };
 }

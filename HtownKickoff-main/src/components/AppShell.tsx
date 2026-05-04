@@ -38,10 +38,6 @@ export function FloatingNav() {
         return () => media.removeEventListener("change", update);
     }, []);
 
-    useEffect(() => {
-        setMobileMenuOpen(false);
-    }, [pathname]);
-
     const dashboardHref =
         user?.role === "BUSINESS" || user?.role === "VENUE_OWNER" ? "/admin"
         : user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" ? "/admin"
@@ -49,9 +45,10 @@ export function FloatingNav() {
     const avatarUrl = (user?.avatarUrl || "").trim();
 
     const navLinks = [
+        { label: "Home", href: "/", icon: House },
         { label: "Matches", href: "/matches", icon: Trophy },
         { label: "Venues", href: "/venues", icon: Store },
-        { label: "For Venues", href: "/for-venues/register", icon: Building2 },
+        { label: "For venues", href: "/for-venues", icon: Building2 },
     ];
 
     return (
@@ -75,7 +72,7 @@ export function FloatingNav() {
                     pointerEvents: "auto",
                     borderRadius: 999,
                     width: "100%",
-                    maxWidth: isMobile ? "calc(100vw - 16px)" : 900,
+                    maxWidth: isMobile ? "calc(100vw - 16px)" : 1080,
                     padding: isMobile ? "10px 16px" : "12px 24px",
                     transition: "all 0.5s",
                     backgroundColor: scrolled ? "color-mix(in oklch, var(--background) 70%, transparent)" : "color-mix(in oklch, var(--background) 40%, transparent)",
@@ -158,18 +155,30 @@ export function FloatingNav() {
                             {user?.role === "BUSINESS" || user?.role === "VENUE_OWNER" ? (user?.name || "Business") : "Account"}
                         </Link>
                     ) : (
-                        <Link
-                            href="/login"
-                            style={{
-                                display: isMobile ? "none" : "flex",
-                                alignItems: "center", gap: 6, padding: "8px 20px",
-                                borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: "none",
-                                backgroundColor: "var(--primary)", color: "var(--primary-foreground)",
-                                transition: "all 0.2s",
-                            }}
-                        >
-                            Log In
-                        </Link>
+                        <div style={{ display: isMobile ? "none" : "flex", alignItems: "center", gap: 8 }}>
+                            <Link
+                                href="/login"
+                                style={{
+                                    fontSize: 13, fontWeight: 600, textDecoration: "none",
+                                    color: "var(--muted-foreground)", padding: "8px 12px",
+                                    borderRadius: 999, transition: "all 0.2s",
+                                }}
+                            >
+                                Sign in
+                            </Link>
+                            <Link
+                                href="/for-venues/register"
+                                style={{
+                                    display: "flex", alignItems: "center", gap: 6, padding: "8px 18px",
+                                    borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: "none",
+                                    backgroundColor: "var(--primary)", color: "var(--primary-foreground)",
+                                    transition: "all 0.2s",
+                                }}
+                            >
+                                <Building2 size={14} />
+                                List your venue
+                            </Link>
+                        </div>
                     )}
 
                     {/* Mobile Menu Toggle */}
@@ -212,11 +221,13 @@ export function FloatingNav() {
                         <ThemeToggle />
                     </div>
                     {[
-                        { label: "Home", href: "/", icon: House },
                         ...navLinks,
                         ...(isAuthenticated
                             ? [{ label: "Dashboard", href: dashboardHref, icon: UserCircle2 }]
-                            : [{ label: "Log In", href: "/login", icon: LogIn }])
+                            : [
+                                { label: "Sign In", href: "/login", icon: LogIn },
+                                { label: "List Your Venue", href: "/for-venues/register", icon: Building2 },
+                              ])
                     ].map((link) => (
                         <Link
                             key={link.href}

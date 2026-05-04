@@ -14,6 +14,7 @@ import {
   Users,
   ArrowRight,
 } from "lucide-react";
+import { FloatingNav } from "../../components/AppShell";
 import { useAuth } from "../../lib/auth-context";
 import { api } from "../../lib/api";
 import { executeRecaptcha, isRecaptchaEnabled } from "../../lib/recaptcha";
@@ -119,15 +120,26 @@ export default function LoginPage() {
 
   return (
     <div
+      className="matchwatch-login-page"
       style={{
         display: "flex",
         minHeight: "100vh",
         width: "100%",
-        backgroundColor: "var(--background)",
-        color: "var(--foreground)",
+        paddingTop: 96,
+        backgroundColor: "#0a0b0d",
+        color: "#f1ece4",
         fontFamily: "var(--font-body), system-ui, sans-serif",
+        ["--background" as string]: "#0a0b0d",
+        ["--foreground" as string]: "#f1ece4",
+        ["--card" as string]: "#101217",
+        ["--secondary" as string]: "#14171d",
+        ["--muted-foreground" as string]: "#a8a59d",
+        ["--border" as string]: "#23272f",
+        ["--primary" as string]: "oklch(0.72 0.19 28)",
+        ["--primary-foreground" as string]: "#0a0b0d",
       }}
     >
+      <FloatingNav />
       {/* ===== LEFT PANE — FORM ===== */}
       <div
         style={{
