@@ -48,6 +48,10 @@ export const metadata: Metadata = {
     description:
       "Discover venues, sync live matches, and run watch-party bookings in one platform.",
     type: "website",
+    images: ["/logo.svg"],
+  },
+  icons: {
+    icon: "/logo.svg",
   },
 };
 

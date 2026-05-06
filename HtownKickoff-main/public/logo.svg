@@ -1,0 +1,24 @@
+<svg viewBox="0 0 1536 768" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MatchWatch logo">
+  <defs>
+    <linearGradient id="blue" x1="0" y1="30" x2="0" y2="682" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#70AEEF" />
+      <stop offset=".52" stop-color="#548EE7" />
+      <stop offset="1" stop-color="#3F6FBD" />
+    </linearGradient>
+    <linearGradient id="orange" x1="0" y1="30" x2="0" y2="682" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F0A64C" />
+      <stop offset=".52" stop-color="#E8792E" />
+      <stop offset="1" stop-color="#CF571B" />
+    </linearGradient>
+  </defs>
+
+  <path
+    fill="url(#blue)"
+    d="M36 682L244 30H384L520 346L657 30H798L938 682H797L704 248L591 509H449L324 218L178 682H36Z"
+  />
+
+  <path
+    fill="url(#orange)"
+    d="M657 30H798L943 494L1069 204H1210L1329 509L1415 30H1556L1435 682H1294L1140 368L1004 682H861L657 30Z"
+  />
+</svg>
