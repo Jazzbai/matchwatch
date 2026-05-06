@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { Menu, X } from "lucide-react";
 import { useData } from "../lib/data-provider";
 import { useAuth } from "../lib/auth-context";
 import { getMatchDisplay } from "../lib/match-display";
@@ -127,7 +128,7 @@ const CSS = `
   .mw-ribbon b{color:var(--mw-accent);font-weight:600;}
   .mw-ribbon-ticker{display:flex;gap:18px;color:var(--mw-fg-mute);}
   .mw-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;}
-  .mw-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:920px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,0.8);box-shadow:0 2px 20px rgba(0,0,0,0.25);}
+  .mw-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1080px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,0.8);box-shadow:0 2px 20px rgba(0,0,0,0.25);}
   .mw-brand{display:flex;flex-direction:column;align-items:flex-start;text-decoration:none;color:var(--mw-fg);}
   .mw-brand-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:900;font-size:18px;letter-spacing:-0.02em;line-height:1.1;}
   .mw-brand-name em{font-style:normal;color:var(--mw-accent);}
@@ -136,13 +137,14 @@ const CSS = `
   .mw-nav a{padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--mw-fg-dim);transition:all .18s;text-decoration:none;}
   .mw-nav a.active,.mw-nav a:hover{background:rgba(255,255,255,0.07);color:var(--mw-fg);}
   .mw-top-right{display:flex;gap:8px;align-items:center;}
-  .mw-btn-pill{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;background:var(--mw-accent);color:#0a0b0d;transition:all .18s;}
+  .mw-btn-pill{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;background:var(--mw-accent);color:#0a0b0d;transition:all .18s;}
   .mw-btn-pill:hover{opacity:0.88;transform:translateY(-1px);}
   .mw-btn-pill.ghost{background:rgba(255,255,255,0.07);color:var(--mw-fg);}
+  .mw-menu-toggle{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--mw-line);border-radius:999px;background:rgba(255,255,255,0.04);color:var(--mw-fg);cursor:pointer;}
   .mw-mobile-nav{display:none;}
   @media (max-width:1200px){.mw-page{grid-template-columns:1fr;}.mw-side,.mw-rail{display:none;}.mw-fixtures{grid-template-columns:repeat(2,1fr);}}
-  @media (max-width:900px){.mw-nav{display:none;}.mw-mobile-nav{display:flex;align-items:center;gap:4px;}.mw-mobile-nav a{padding:7px 13px;border-radius:999px;font-size:13px;font-weight:600;color:var(--mw-fg-dim);text-decoration:none;transition:all .18s;white-space:nowrap;}.mw-mobile-nav a:hover{background:rgba(255,255,255,0.07);color:var(--mw-fg);}.mw-list-venue-btn{display:none;}}
-  @media (max-width:768px){.mw-topbar{padding:8px 10px;}.mw-topbar-inner{padding:7px 12px;}.mw-main{padding:16px 16px 60px;}.mw-fixtures{grid-template-columns:1fr;}.mw-match-grid{grid-template-columns:1fr;}.mw-hero-inner{grid-template-columns:1fr;}.mw-hero-right{display:none;}.mw-ribbon{padding:8px 16px;font-size:10px;flex-wrap:wrap;gap:6px;}.mw-hero-left{padding:20px 16px;}.mw-sec-head{padding:14px 16px;}.mw-section{margin-bottom:24px;}}
+  @media (max-width:900px){.mw-topbar{padding:8px 10px;}.mw-topbar-inner{max-width:none;border-radius:18px;padding:9px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px 8px;align-items:center;}.mw-brand{min-width:0;}.mw-brand-tag{display:none;}.mw-nav{display:none;}.mw-top-right{grid-column:2;grid-row:1;display:flex;gap:6px;}.mw-menu-toggle{display:inline-flex;grid-column:3;grid-row:1;justify-self:end;}.mw-mobile-nav{grid-column:1/-1;grid-row:2;display:none;flex-direction:column;gap:8px;padding-top:8px;}.mw-mobile-nav.open{display:flex;}.mw-mobile-nav a{padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700;color:var(--mw-fg);background:rgba(255,255,255,0.04);text-decoration:none;transition:all .18s;white-space:nowrap;}.mw-mobile-nav a:hover,.mw-mobile-nav a.active{background:rgba(255,255,255,0.08);color:var(--mw-fg);}.mw-mobile-nav .primary{background:var(--mw-accent);color:#0a0b0d;}.mw-btn-pill{padding:8px 12px;font-size:12px;white-space:nowrap;}.mw-list-venue-btn{display:none;}}
+  @media (max-width:768px){.mw-main{padding:16px 16px 60px;}.mw-fixtures{grid-template-columns:1fr;}.mw-match-grid{grid-template-columns:1fr;}.mw-hero-inner{grid-template-columns:1fr;}.mw-hero-right{display:none;}.mw-ribbon{padding:8px 16px;font-size:10px;flex-wrap:wrap;gap:6px;}.mw-hero-left{padding:20px 16px;}.mw-sec-head{padding:14px 16px;}.mw-section{margin-bottom:24px;}}
 `;
 
 const MW_VARS = `
@@ -279,6 +281,7 @@ export default function HomePage() {
   const { user } = useAuth();
   const [utcTime, setUtcTime] = useState("");
   const [renderNow] = useState(() => Date.now());
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const nonWorldCupMatches = React.useMemo(
     () => matches.filter((match) => !isNationalTeamCompetition(leagues.find((league) => league.id === match.leagueId))),
     [matches, leagues]
@@ -351,21 +354,38 @@ export default function HomePage() {
             <Link href="/matches">Matches</Link>
             <Link href="/world-cup">World Cup</Link>
             <Link href="/venues">Venues</Link>
-            {user && <Link href="/dashboard">My bookings</Link>}
+            <Link href="/for-venues">For venues</Link>
           </nav>
-          {/* Mobile-only quick nav */}
-          <nav className="mw-mobile-nav">
-            <Link href="/matches">Matches</Link>
-            <Link href="/world-cup">World Cup</Link>
-            <Link href="/venues">Venues</Link>
-            {user && <Link href="/dashboard">Bookings</Link>}
+          <button
+            type="button"
+            className="mw-menu-toggle"
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+          <nav className={`mw-mobile-nav${mobileMenuOpen ? " open" : ""}`}>
+            <Link href="/" className="active" onClick={() => setMobileMenuOpen(false)}>Home</Link>
+            <Link href="/matches" onClick={() => setMobileMenuOpen(false)}>Matches</Link>
+            <Link href="/world-cup" onClick={() => setMobileMenuOpen(false)}>World Cup</Link>
+            <Link href="/venues" onClick={() => setMobileMenuOpen(false)}>Venues</Link>
+            <Link href="/for-venues" onClick={() => setMobileMenuOpen(false)}>For venues</Link>
+            {user ? (
+              <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>My bookings</Link>
+            ) : (
+              <>
+                <Link href="/for-venues/register" onClick={() => setMobileMenuOpen(false)}>List venue</Link>
+                <Link href="/login" className="primary" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
+              </>
+            )}
           </nav>
           <div className="mw-top-right">
             {user ? (
               <Link href="/dashboard" className="mw-btn-pill ghost">{initials}</Link>
             ) : (
               <>
-                <Link href="/register-venue" className="mw-btn-pill ghost mw-list-venue-btn">List venue</Link>
+                <Link href="/for-venues/register" className="mw-btn-pill ghost mw-list-venue-btn">List venue</Link>
                 <Link href="/login" className="mw-btn-pill">Log in</Link>
               </>
             )}
@@ -401,7 +421,7 @@ export default function HomePage() {
                 <span>My bookings</span>
               </Link>
             ) : (
-              <Link href="/register-venue" className="mw-side-item">
+              <Link href="/for-venues/register" className="mw-side-item">
                 <span className="ico">🏟️</span>
                 <span>List your venue</span>
               </Link>
@@ -478,7 +498,7 @@ export default function HomePage() {
                 <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
                   <Link href="/venues" className="mw-btn primary">Find a bar near me</Link>
                   <Link href="/matches" className="mw-btn ghost">View fixtures</Link>
-                  {!user && <Link href="/register" className="mw-btn ghost">Join free</Link>}
+                  {!user && <Link href="/login?view=signup" className="mw-btn ghost">Join free</Link>}
                 </div>
               </div>
 
@@ -814,7 +834,7 @@ export default function HomePage() {
           <h4>List your venue</h4>
           <div className="mw-create-party">
             Show {nonWorldCupMatches.length || 42} upcoming matches to your customers and grow your crowd on match nights.
-            <Link href="/register-venue" className="mw-btn" style={{ padding: "8px 12px", fontSize: 11 }}>+ Add your bar</Link>
+            <Link href="/for-venues/register" className="mw-btn" style={{ padding: "8px 12px", fontSize: 11 }}>+ Add your bar</Link>
           </div>
         </aside>
       </div>

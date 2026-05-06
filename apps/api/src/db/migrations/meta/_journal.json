@@ -18,6 +18,8 @@
     { "idx": 13, "version": "7", "when": 1775647368000, "tag": "0013_sponsor_inquiries", "breakpoints": true },
     { "idx": 14, "version": "7", "when": 1775154000000, "tag": "0014_entity_slug_redirects", "breakpoints": true },
     { "idx": 15, "version": "7", "when": 1775259000000, "tag": "0015_stadium_pages_roster", "breakpoints": true },
-    { "idx": 16, "version": "7", "when": 1775262600000, "tag": "0016_players_entity_backfill", "breakpoints": true }
+    { "idx": 16, "version": "7", "when": 1775262600000, "tag": "0016_players_entity_backfill", "breakpoints": true },
+    { "idx": 17, "version": "7", "when": 1776816000000, "tag": "0018_countries_competition_teams", "breakpoints": true },
+    { "idx": 18, "version": "7", "when": 1776902400000, "tag": "0019_match_youtube_recaps", "breakpoints": true }
   ]
 }

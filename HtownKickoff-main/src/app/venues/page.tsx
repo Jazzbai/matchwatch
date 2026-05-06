@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Menu, X } from "lucide-react";
 import { useData, type Venue } from "../../lib/data-provider";
 import { useAuth } from "../../lib/auth-context";
 import { AMENITY_LABELS } from "../../lib/data";
@@ -37,6 +38,7 @@ body{background:var(--vn-bg)!important;color:var(--vn-fg)!important;}
 .vn-btn-pill{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;background:var(--vn-accent);color:var(--vn-accent-ink);transition:all .18s;}
 .vn-btn-pill:hover{opacity:0.88;transform:translateY(-1px);}
 .vn-btn-pill.ghost{background:rgba(255,255,255,0.07);color:var(--vn-fg);}
+.vn-menu-toggle{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--vn-line);border-radius:999px;background:rgba(255,255,255,0.04);color:var(--vn-fg);cursor:pointer;}
 .vn-mobile-nav{display:none;}
 /* crumb */
 .vn-crumb{padding:14px 32px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--vn-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--vn-line);}
@@ -156,8 +158,8 @@ body{background:var(--vn-bg)!important;color:var(--vn-fg)!important;}
 .vn-load-more{padding:18px;border:1px dashed var(--vn-line);text-align:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;letter-spacing:.08em;color:var(--vn-fg-dim);text-transform:uppercase;margin-top:12px;cursor:pointer;background:none;width:100%;}
 .vn-load-more:hover{color:var(--vn-fg);border-color:var(--vn-line-2);}
 @media(max-width:1100px){.vn-page{grid-template-columns:1fr;}.vn-map-wrap{display:none;}.vn-band-grid{grid-template-columns:1fr;}}
-@media(max-width:900px){.vn-nav{display:none;}.vn-mobile-nav{display:flex;align-items:center;gap:4px;}.vn-mobile-nav a{padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--vn-fg-dim);text-decoration:none;transition:all .18s;white-space:nowrap;}.vn-mobile-nav a:hover{background:rgba(255,255,255,0.07);color:var(--vn-fg);}.vn-list-venue-btn{display:none;}}
-@media(max-width:768px){.vn-topbar{padding:8px 12px;}.vn-topbar-inner{padding:8px 14px;}.vn-h1{font-size:32px;}.vn-band{padding:24px 16px 36px;}.vn-search-wrap{padding:0 16px;}.vn-chips{padding:16px 16px 0;}.vn-list{padding:16px 16px 60px;}.vn-search{grid-template-columns:auto 1fr auto;}.vn-crumb{padding:10px 16px;}}
+@media(max-width:900px){.vn-topbar{padding:8px 10px;}.vn-topbar-inner{max-width:none;border-radius:18px;padding:9px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px 8px;align-items:center;}.vn-brand{min-width:0;}.vn-brand-tag{display:none;}.vn-nav{display:none;}.vn-top-right{grid-column:2;grid-row:1;display:flex;gap:6px;}.vn-menu-toggle{display:inline-flex;grid-column:3;grid-row:1;justify-self:end;}.vn-mobile-nav{grid-column:1/-1;grid-row:2;display:none;flex-direction:column;gap:8px;padding-top:8px;}.vn-mobile-nav.open{display:flex;}.vn-mobile-nav a{padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700;color:var(--vn-fg);background:rgba(255,255,255,0.04);text-decoration:none;transition:all .18s;white-space:nowrap;}.vn-mobile-nav a:hover,.vn-mobile-nav a.active{background:rgba(255,255,255,0.08);color:var(--vn-fg);}.vn-mobile-nav .primary{background:var(--vn-accent);color:var(--vn-accent-ink);}.vn-btn-pill{padding:8px 12px;font-size:12px;white-space:nowrap;}.vn-list-venue-btn{display:none;}}
+@media(max-width:768px){.vn-h1{font-size:32px;}.vn-band{padding:24px 16px 36px;}.vn-search-wrap{padding:0 16px;}.vn-chips{padding:16px 16px 0;}.vn-list{padding:16px 16px 60px;}.vn-search{grid-template-columns:auto 1fr auto;}.vn-crumb{padding:10px 16px;}}
 `;
 
 const STATE_ABBREV: Record<string, string> = {
@@ -183,6 +185,21 @@ function normalizeState(s: string): string {
 
 type SortOption = "rating" | "reviews" | "name";
 
+function VenueListImage({ src, alt }: { src?: string; alt: string }) {
+    const [failed, setFailed] = useState(false);
+    const imageSrc = !failed && src ? src : "/venue-hero.webp";
+
+    return (
+        <img
+            src={imageSrc}
+            alt={alt}
+            loading="lazy"
+            decoding="async"
+            onError={() => setFailed(true)}
+        />
+    );
+}
+
 
 function VenuesPageContent() {
     const { venues: VENUES, isLoading } = useData();
@@ -191,6 +208,7 @@ function VenuesPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
     const [sortBy, setSortBy] = useState<SortOption>("rating");
@@ -275,17 +293,35 @@ function VenuesPageContent() {
                         <Link href="/venues" className="active">Venues</Link>
                         {user && <Link href="/dashboard">My bookings</Link>}
                     </nav>
-                    <nav className="vn-mobile-nav">
-                        <Link href="/">Home</Link>
-                        <Link href="/world-cup">World Cup</Link>
-                        <Link href="/matches">Matches</Link>
-                        {user && <Link href="/dashboard">Bookings</Link>}
+                    <button
+                        type="button"
+                        className="vn-menu-toggle"
+                        aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+                        aria-expanded={mobileMenuOpen}
+                        onClick={() => setMobileMenuOpen((open) => !open)}
+                    >
+                        {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                    </button>
+                    <nav className={`vn-mobile-nav${mobileMenuOpen ? " open" : ""}`}>
+                        <Link href="/" onClick={() => setMobileMenuOpen(false)}>Home</Link>
+                        <Link href="/matches" onClick={() => setMobileMenuOpen(false)}>Matches</Link>
+                        <Link href="/world-cup" onClick={() => setMobileMenuOpen(false)}>World Cup</Link>
+                        <Link href="/venues" className="active" onClick={() => setMobileMenuOpen(false)}>Venues</Link>
+                        <Link href="/for-venues" onClick={() => setMobileMenuOpen(false)}>For venues</Link>
+                        {user ? (
+                            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>My bookings</Link>
+                        ) : (
+                            <>
+                                <Link href="/for-venues/register" onClick={() => setMobileMenuOpen(false)}>List venue</Link>
+                                <Link href="/login" className="primary" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
+                            </>
+                        )}
                     </nav>
                     <div className="vn-top-right">
                         {user
                             ? <Link href="/dashboard" className="vn-btn-pill ghost">{initials}</Link>
                             : <>
-                                <Link href="/register-venue" className="vn-btn-pill ghost vn-list-venue-btn">List venue</Link>
+                                <Link href="/for-venues/register" className="vn-btn-pill ghost vn-list-venue-btn">List venue</Link>
                                 <Link href="/login" className="vn-btn-pill">Log in</Link>
                               </>
                         }
@@ -406,10 +442,7 @@ function VenuesPageContent() {
                                     onClick={() => openDrawer(v)}
                                 >
                                     <div className="vn-img">
-                                        {v.coverImageUrl
-                                            ? <img src={v.coverImageUrl} alt={v.name} />
-                                            : <div className="glyph">{v.name.split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase()}</div>
-                                        }
+                                        <VenueListImage src={v.coverImageUrl} alt={v.name} />
                                         {v.fanTeams?.[0] && (
                                             <span className="tag">{v.fanTeams[0].teamName.toUpperCase().substring(0, 16)}</span>
                                         )}

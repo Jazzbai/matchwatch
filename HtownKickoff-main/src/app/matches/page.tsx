@@ -3,7 +3,9 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Menu, X } from "lucide-react";
 import { type League, type Match, type Team } from "../../lib/data";
+import { useAuth } from "../../lib/auth-context";
 import { useData } from "../../lib/data-provider";
 import { isNationalTeamCompetition } from "../../lib/league-utils";
 import { getMatchDisplay } from "../../lib/match-display";
@@ -25,7 +27,7 @@ body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 .mt-wrap{min-height:100vh;background:radial-gradient(1200px 600px at 20% -10%,rgba(255,120,60,0.08),transparent 60%),radial-gradient(900px 500px at 100% 10%,rgba(80,180,255,0.05),transparent 60%),var(--mt-bg);}
 /* topbar */
 .mt-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;}
-.mt-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:920px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,0.8);box-shadow:0 2px 20px rgba(0,0,0,0.25);}
+.mt-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1080px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,0.8);box-shadow:0 2px 20px rgba(0,0,0,0.25);}
 .mt-brand{display:flex;flex-direction:column;align-items:flex-start;text-decoration:none;color:var(--mt-fg);}
 .mt-brand-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:900;font-size:18px;letter-spacing:-0.02em;line-height:1.1;}
 .mt-brand-name em{font-style:normal;color:var(--mt-accent);}
@@ -37,6 +39,7 @@ body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 .mt-btn-pill{display:inline-flex;align-items:center;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;background:var(--mt-accent);color:var(--mt-accent-ink);transition:all .18s;}
 .mt-btn-pill:hover{opacity:0.88;transform:translateY(-1px);}
 .mt-btn-pill.ghost{background:rgba(255,255,255,0.07);color:var(--mt-fg);}
+.mt-menu-toggle{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--mt-line);border-radius:999px;background:rgba(255,255,255,0.04);color:var(--mt-fg);cursor:pointer;}
 .mt-mobile-nav{display:none;}
 /* crumb */
 .mt-crumb{padding:14px 32px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--mt-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--mt-line);}
@@ -148,8 +151,8 @@ body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 .mt-load-more{padding:18px;border:1px dashed var(--mt-line);text-align:center;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;letter-spacing:.08em;color:var(--mt-fg-dim);text-transform:uppercase;margin-top:20px;display:block;cursor:pointer;}
 .mt-empty{text-align:center;padding:60px 20px;border:1px dashed var(--mt-line);font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;color:var(--mt-fg-mute);letter-spacing:.08em;text-transform:uppercase;}
 @media(max-width:1100px){.mt-page{grid-template-columns:1fr;}.mt-rail{display:none;}.mt-band-grid{grid-template-columns:1fr;}}
-@media(max-width:900px){.mt-nav{display:none;}.mt-mobile-nav{display:flex;align-items:center;gap:4px;}.mt-mobile-nav a{padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--mt-fg-dim);text-decoration:none;transition:all .18s;white-space:nowrap;}.mt-mobile-nav a.active,.mt-mobile-nav a:hover{background:rgba(255,255,255,0.07);color:var(--mt-fg);}.mt-list-venue-btn{display:none;}.mt-match{grid-template-columns:80px 1fr 80px 1fr;}.mt-venue,.mt-act{display:none;}}
-@media(max-width:640px){.mt-topbar{padding:8px 12px;}.mt-topbar-inner{padding:8px 14px;}.mt-match{grid-template-columns:64px 1fr 64px 1fr;}.mt-h1{font-size:32px;}.mt-band{padding:20px 16px;}.mt-dates{padding:0 12px;}.mt-toolbar{padding:12px 16px;}.mt-list{padding:16px 16px 60px;}.mt-crumb{padding:10px 16px;}}
+@media(max-width:900px){.mt-topbar{padding:8px 10px;}.mt-topbar-inner{max-width:none;border-radius:18px;padding:9px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px 8px;align-items:center;}.mt-brand{min-width:0;}.mt-brand-tag{display:none;}.mt-nav{display:none;}.mt-top-right{grid-column:2;grid-row:1;display:flex;gap:6px;}.mt-menu-toggle{display:inline-flex;grid-column:3;grid-row:1;justify-self:end;}.mt-mobile-nav{grid-column:1/-1;grid-row:2;display:none;flex-direction:column;gap:8px;padding-top:8px;}.mt-mobile-nav.open{display:flex;}.mt-mobile-nav a{padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700;color:var(--mt-fg);background:rgba(255,255,255,0.04);text-decoration:none;transition:all .18s;white-space:nowrap;}.mt-mobile-nav a.active,.mt-mobile-nav a:hover{background:rgba(255,255,255,0.08);color:var(--mt-fg);}.mt-mobile-nav .primary{background:var(--mt-accent);color:var(--mt-accent-ink);}.mt-btn-pill{padding:8px 12px;font-size:12px;white-space:nowrap;}.mt-list-venue-btn{display:none;}.mt-match{grid-template-columns:80px 1fr 80px 1fr;}.mt-venue,.mt-act{display:none;}.mt-league-hd{top:64px;}.mt-search-mini{min-width:120px;}}
+@media(max-width:640px){.mt-match{grid-template-columns:64px 1fr 64px 1fr;}.mt-h1{font-size:32px;}.mt-band{padding:20px 16px;}.mt-dates{padding:0 12px;}.mt-toolbar{padding:12px 16px;flex-direction:column;align-items:flex-start;}.mt-view-tools{width:100%;}.mt-search-mini{min-width:0;width:100%;}.mt-list{padding:16px 16px 60px;}.mt-crumb{padding:10px 16px;}}
 `;
 
 /* ── Helpers ── */
@@ -326,16 +329,18 @@ function MatchesPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { matches: MATCHES, leagues, sports, teams, venueEvents, getTeam, getLeague } = useData();
-    const { user } = useData() as never as { user: { name?: string } | null };
+    const { user } = useAuth();
 
+    const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
     const [selectedSportId, setSelectedSportId] = React.useState<string | null>(null);
-    const [selectedLeagueId, setSelectedLeagueId] = React.useState<string | null>(null);
+    const [selectedLeagueId, setSelectedLeagueId] = React.useState<string | null>(() => searchParams.get("league"));
     const [searchQuery, setSearchQuery] = React.useState("");
     const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
     const [includePast, setIncludePast] = React.useState(false);
 
     const requestedPage = parsePageParam(searchParams.get("page"));
     const hasInitReset = React.useRef(false);
+    const hasSportInitReset = React.useRef(false);
     const [renderNow] = React.useState(() => Date.now());
     const nowKey = React.useMemo(() => toUtcDateKey(new Date(renderNow).toISOString()), [renderNow]);
 
@@ -392,7 +397,13 @@ function MatchesPageContent() {
     }, [baseMatches, selectedSportId, getLeague]);
 
     // Reset league when sport changes
-    React.useEffect(() => { setSelectedLeagueId(null); }, [selectedSportId]);
+    React.useEffect(() => {
+        if (!hasSportInitReset.current) {
+            hasSportInitReset.current = true;
+            return;
+        }
+        setSelectedLeagueId(null);
+    }, [selectedSportId]);
 
     const filtered = React.useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
@@ -407,7 +418,7 @@ function MatchesPageContent() {
             const queryOK = !q || [l?.name, d.homeName, d.awayName, d.title, m.stadiumName, m.stage].filter(Boolean).join(" ").toLowerCase().includes(q);
             return sportOK && leagueOK && dateOK && queryOK;
         }).sort(compareMatches);
-    }, [baseMatches, selectedSportId, selectedDateKey, searchQuery, getLeague, getTeam]);
+    }, [baseMatches, selectedSportId, selectedLeagueId, selectedDateKey, searchQuery, getLeague, getTeam]);
 
     const { currentPage, totalPages, pageItems: paginatedMatches } = React.useMemo(
         () => paginateItems(filtered, requestedPage, 40),
@@ -479,19 +490,37 @@ function MatchesPageContent() {
                         <Link href="/matches" className="active">Matches</Link>
                         <Link href="/world-cup">World Cup</Link>
                         <Link href="/venues">Venues</Link>
-                        {user && <Link href="/dashboard">My bookings</Link>}
+                        <Link href="/for-venues">For venues</Link>
                     </nav>
-                    <nav className="mt-mobile-nav">
-                        <Link href="/">Home</Link>
-                        <Link href="/world-cup">World Cup</Link>
-                        <Link href="/venues">Venues</Link>
-                        {user && <Link href="/dashboard">Bookings</Link>}
+                    <button
+                        type="button"
+                        className="mt-menu-toggle"
+                        aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+                        aria-expanded={mobileMenuOpen}
+                        onClick={() => setMobileMenuOpen((open) => !open)}
+                    >
+                        {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                    </button>
+                    <nav className={`mt-mobile-nav${mobileMenuOpen ? " open" : ""}`}>
+                        <Link href="/" onClick={() => setMobileMenuOpen(false)}>Home</Link>
+                        <Link href="/matches" className="active" onClick={() => setMobileMenuOpen(false)}>Matches</Link>
+                        <Link href="/world-cup" onClick={() => setMobileMenuOpen(false)}>World Cup</Link>
+                        <Link href="/venues" onClick={() => setMobileMenuOpen(false)}>Venues</Link>
+                        <Link href="/for-venues" onClick={() => setMobileMenuOpen(false)}>For venues</Link>
+                        {user ? (
+                            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>My bookings</Link>
+                        ) : (
+                            <>
+                                <Link href="/for-venues/register" onClick={() => setMobileMenuOpen(false)}>List venue</Link>
+                                <Link href="/login" className="primary" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
+                            </>
+                        )}
                     </nav>
                     <div className="mt-top-right">
                         {user
                             ? <Link href="/dashboard" className="mt-btn-pill ghost">{user.name?.split(" ")[0]}</Link>
                             : <>
-                                <Link href="/register-venue" className="mt-btn-pill ghost mt-list-venue-btn">List venue</Link>
+                                <Link href="/for-venues/register" className="mt-btn-pill ghost mt-list-venue-btn">List venue</Link>
                                 <Link href="/login" className="mt-btn-pill">Log in</Link>
                               </>
                         }

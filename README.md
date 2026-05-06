@@ -139,6 +139,7 @@ Key variables from `.env.example`:
 - `RECAPTCHA_SECRET_KEY`
 - `FOOTBALL_DATA_API_KEY`
 - `API_FOOTBALL_API_KEY`
+- `YOUTUBE_API_KEY`
 - `THE_SPORTS_DB_API_KEY`
 - `JOLPICA_BASE_URL`
 - `ESPN_SCOREBOARD_BASE_URL`
@@ -254,11 +255,17 @@ Notes:
 Add these to the server `.env` before rebuilding:
 
 ```env
+RUN_STARTUP_MIGRATIONS=true
+RUN_STARTUP_SEED=true
+ENABLE_MATCH_SYNC_WORKER=true
 GOOGLE_PLACES_API_KEY=your_places_key
 ENTITY_ENRICHMENT_PROVIDER=generated
 SERPAPI_API_KEY=
 SERPAPI_LOCATION=
+YOUTUBE_API_KEY=your_youtube_data_api_key
 ```
+
+There is also a ready-made server template at [server.env.example](server.env.example).
 
 Then redeploy:
 

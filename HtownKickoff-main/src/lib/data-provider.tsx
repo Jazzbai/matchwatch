@@ -2,8 +2,17 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import {
+    ADMIN_STATS,
     AMENITY_LABELS,
+    ALL_TEAMS,
+    BOOKINGS,
+    LEAGUES,
+    MATCHES,
     PRICE_LABELS,
+    POSTS,
+    REVIEWS,
+    VENUES,
+    VENUE_EVENTS,
     type Match,
     type Venue,
     type League,
@@ -145,6 +154,14 @@ type ApiMatch = {
     stage?: string | null;
     venueName?: string | null;
     venueCount?: number;
+    youtubeVideoId?: string | null;
+    youtubeVideoTitle?: string | null;
+    youtubeChannelTitle?: string | null;
+    youtubePublishedAt?: string | null;
+    youtubeThumbnailUrl?: string | null;
+    youtubeEmbedUrl?: string | null;
+    youtubeSearchStatus?: "pending" | "found" | "not_found" | "failed" | null;
+    youtubeCheckedAt?: string | null;
     league?: {
         id: string;
         sportId?: string | null;
@@ -539,17 +556,17 @@ async function fetchPrioritySoccerMatches(): Promise<{ matches: ApiMatch[]; face
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-    const [matches, setMatches] = useState<Match[]>([]);
-    const [venues, setVenues] = useState<Venue[]>([]);
-    const [leagues, setLeagues] = useState<League[]>([]);
-    const [sports, setSports] = useState<Sport[]>([]);
-    const [teams, setTeams] = useState<Team[]>([]);
-    const [venueEvents, setVenueEvents] = useState<VenueEvent[]>([]);
-    const [reviews, setReviews] = useState<Review[]>([]);
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [matches, setMatches] = useState<Match[]>(MATCHES);
+    const [venues, setVenues] = useState<Venue[]>(VENUES);
+    const [leagues, setLeagues] = useState<League[]>(LEAGUES);
+    const [sports, setSports] = useState<Sport[]>([{ id: "soccer", name: "Soccer", slug: "soccer", shortName: "SOC" }]);
+    const [teams, setTeams] = useState<Team[]>(ALL_TEAMS);
+    const [venueEvents, setVenueEvents] = useState<VenueEvent[]>(VENUE_EVENTS);
+    const [reviews, setReviews] = useState<Review[]>(REVIEWS);
+    const [posts, setPosts] = useState<Post[]>(POSTS);
+    const [bookings, setBookings] = useState<Booking[]>(BOOKINGS);
     const [users] = useState<User[]>([]);
-    const [adminStats] = useState(EMPTY_ADMIN_STATS);
+    const [adminStats] = useState(ADMIN_STATS || EMPTY_ADMIN_STATS);
     const [isApiConnected, setIsApiConnected] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -758,6 +775,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 eventFormat,
                 eventTitle: m.eventTitle || undefined,
                 eventSubtitle: m.eventSubtitle || undefined,
+                youtubeVideoId: m.youtubeVideoId || undefined,
+                youtubeVideoTitle: m.youtubeVideoTitle || undefined,
+                youtubeChannelTitle: m.youtubeChannelTitle || undefined,
+                youtubePublishedAt: m.youtubePublishedAt || undefined,
+                youtubeThumbnailUrl: m.youtubeThumbnailUrl || undefined,
+                youtubeEmbedUrl: m.youtubeEmbedUrl || undefined,
+                youtubeSearchStatus: m.youtubeSearchStatus || undefined,
+                youtubeCheckedAt: m.youtubeCheckedAt || undefined,
             };
         });
 
@@ -829,16 +854,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const venueDetails = await Promise.all(
             baseVenues.map(async (venue) => {
                 const shouldFetchDeepVenueData = detailedVenueIds.has(venue.id);
-                const events = await safeFetchPaginated<any>(`/venues/${venue.slug}/events`, VENUE_FETCH_LIMIT, 6);
+                const shouldFetchVenueEvents = venueDetailSlug ? shouldFetchDeepVenueData : true;
+                const venueSlugOrId = venue.slug || venue.id;
+                const events = shouldFetchVenueEvents
+                    ? await safeFetchPaginated<any>(`/venues/${venueSlugOrId}/events`, VENUE_FETCH_LIMIT, 6)
+                    : [];
 
                 if (!shouldFetchDeepVenueData) {
                     return { venue, detail: null, events: events || [], venuePosts: [], venueReviews: [] };
                 }
 
                 const [detail, venuePosts, venueReviews] = await Promise.all([
-                    safeFetch<any>(`/venues/${venue.slug}`),
-                    safeFetchPaginated<any>(`/venues/${venue.slug}/posts`, VENUE_FETCH_LIMIT, 6),
-                    safeFetchPaginated<any>(`/venues/${venue.slug}/reviews`, VENUE_FETCH_LIMIT, 6),
+                    safeFetch<any>(`/venues/${venueSlugOrId}`),
+                    safeFetchPaginated<any>(`/venues/${venueSlugOrId}/posts`, VENUE_FETCH_LIMIT, 6),
+                    safeFetchPaginated<any>(`/venues/${venueSlugOrId}/reviews`, VENUE_FETCH_LIMIT, 6),
                 ]);
 
                 return { venue, detail, events: events || [], venuePosts: venuePosts || [], venueReviews: venueReviews || [] };
@@ -955,6 +984,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
                         eventFormat,
                         eventTitle: match?.eventTitle || undefined,
                         eventSubtitle: match?.eventSubtitle || undefined,
+                        youtubeVideoId: match?.youtubeVideoId || undefined,
+                        youtubeVideoTitle: match?.youtubeVideoTitle || undefined,
+                        youtubeChannelTitle: match?.youtubeChannelTitle || undefined,
+                        youtubePublishedAt: match?.youtubePublishedAt || undefined,
+                        youtubeThumbnailUrl: match?.youtubeThumbnailUrl || undefined,
+                        youtubeEmbedUrl: match?.youtubeEmbedUrl || undefined,
+                        youtubeSearchStatus: match?.youtubeSearchStatus || undefined,
+                        youtubeCheckedAt: match?.youtubeCheckedAt || undefined,
                     });
                     knownMatchIds.add(normalizedEventMatchId);
                 }

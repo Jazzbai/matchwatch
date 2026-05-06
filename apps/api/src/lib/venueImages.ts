@@ -45,6 +45,10 @@ function asString(value: unknown) {
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
+function isLegacyGooglePlacePhotoUrl(value: string) {
+    return value.includes('maps.googleapis.com/maps/api/place/photo');
+}
+
 function asNumber(value: unknown) {
     return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -286,12 +290,22 @@ export function buildVenueImageRenderPayload(params: {
         url: buildGoogleGalleryProxyUrl(params.slugOrId, index),
         attributions: getGooglePhotoAttributions(photo),
     }));
-    const coverImageUrl = manualCoverImageUrl
+    const isLegacyGoogleManualCover = Boolean(manualCoverImageUrl && isLegacyGooglePlacePhotoUrl(manualCoverImageUrl));
+    const preferredManualCoverImageUrl = isLegacyGoogleManualCover ? null : manualCoverImageUrl;
+    const fallbackManualCoverImageUrl = isLegacyGoogleManualCover ? manualCoverImageUrl : null;
+
+    const coverImageUrl = preferredManualCoverImageUrl
         || googleCoverUrl
+        || fallbackManualCoverImageUrl
         || manualGalleryImageUrls[0]
         || googleGallery[0]?.url
         || null;
-    const imageSource: VenueImageRenderPayload['imageSource'] = manualCoverImageUrl || manualGalleryImageUrls[0]
+    const selectedManualImage = Boolean(
+        (preferredManualCoverImageUrl && coverImageUrl === preferredManualCoverImageUrl)
+        || (fallbackManualCoverImageUrl && coverImageUrl === fallbackManualCoverImageUrl)
+        || (manualGalleryImageUrls[0] && coverImageUrl === manualGalleryImageUrls[0]),
+    );
+    const imageSource: VenueImageRenderPayload['imageSource'] = selectedManualImage
         ? 'manual'
         : googleCoverUrl || googleGallery[0]?.url
             ? 'google'

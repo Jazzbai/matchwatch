@@ -275,7 +275,10 @@ async function findBestGoogleMatch(
     }
 
     console.log(`    ✓ Best match (score ${best.score}): ${best.result.displayName} @ ${best.result.formattedAddress}`);
-    return best.result;
+    return {
+        ...best.result,
+        formattedAddress: best.result.formattedAddress ?? null,
+    };
 }
 
 // ─── DB Operations ────────────────────────────────────────────────────────────

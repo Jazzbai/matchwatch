@@ -153,6 +153,14 @@ export interface Match {
     eventFormat?: MatchEventFormat;
     eventTitle?: string;
     eventSubtitle?: string;
+    youtubeVideoId?: string;
+    youtubeVideoTitle?: string;
+    youtubeChannelTitle?: string;
+    youtubePublishedAt?: string;
+    youtubeThumbnailUrl?: string;
+    youtubeEmbedUrl?: string;
+    youtubeSearchStatus?: "pending" | "found" | "not_found" | "failed";
+    youtubeCheckedAt?: string;
 }
 
 const RAW_MATCHES: Omit<Match, "isFeatured">[] = [

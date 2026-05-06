@@ -1,4 +1,5 @@
 import { logger } from './logger';
+import { redis } from './redis';
 import {
     normalizeGooglePhotoSnapshots,
     normalizeGoogleSourceSnapshot,
@@ -86,10 +87,32 @@ export type GooglePlaceSearchResult = {
 
 const GOOGLE_PLACES_BASE_URL = process.env.GOOGLE_PLACES_BASE_URL || 'https://places.googleapis.com/v1';
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY?.trim();
+const GOOGLE_SEARCH_CACHE_TTL_SECONDS = 30 * 60; // 30 minutes
+const GOOGLE_PLACE_DETAILS_CACHE_TTL_SECONDS = 60 * 60; // 1 hour
+const GOOGLE_PHOTO_URI_CACHE_TTL_SECONDS = 15 * 60; // 15 minutes
 
 function ensureApiKey() {
     if (!GOOGLE_PLACES_API_KEY) {
         throw new Error('GOOGLE_PLACES_API_KEY is not configured');
+    }
+}
+
+async function getJsonCache<T>(key: string): Promise<T | null> {
+    try {
+        const value = await redis.get(key);
+        if (!value) return null;
+        return JSON.parse(value) as T;
+    } catch (error) {
+        logger.warn({ key, error: error instanceof Error ? error.message : String(error) }, 'Redis cache read failed');
+        return null;
+    }
+}
+
+async function setJsonCache(key: string, value: unknown, ttlSeconds: number) {
+    try {
+        await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
+    } catch (error) {
+        logger.warn({ key, error: error instanceof Error ? error.message : String(error) }, 'Redis cache write failed');
     }
 }
 
@@ -308,7 +331,11 @@ function mapPlaceToSnapshot(place: Record<string, unknown>): GoogleSourceSnapsho
 
 async function googleFetch<T>(url: string, init: RequestInit, context: string): Promise<T> {
     ensureApiKey();
-    const response = await fetch(url, {
+    const urlWithKey = url.includes('?')
+        ? `${url}&key=${encodeURIComponent(GOOGLE_PLACES_API_KEY!)}`
+        : `${url}?key=${encodeURIComponent(GOOGLE_PLACES_API_KEY!)}`;
+
+    const response = await fetch(urlWithKey, {
         ...init,
         headers: {
             'Content-Type': 'application/json',
@@ -332,6 +359,12 @@ async function googleFetch<T>(url: string, init: RequestInit, context: string): 
 export async function searchGooglePlaces(query: string): Promise<GooglePlaceSearchResult[]> {
     const trimmed = query.trim();
     if (!trimmed) return [];
+
+    const cacheKey = `googlePlaces:search:${trimmed.toLowerCase()}`;
+    const cached = await getJsonCache<GooglePlaceSearchResult[]>(cacheKey);
+    if (cached) {
+        return cached;
+    }
 
     const payload = {
         textQuery: trimmed,
@@ -358,7 +391,7 @@ export async function searchGooglePlaces(query: string): Promise<GooglePlaceSear
         'searchGooglePlaces',
     );
 
-    return (response.places || []).flatMap((place) => {
+    const results = (response.places || []).flatMap((place) => {
         if (!isRecord(place)) return [];
         const snapshot = mapPlaceToSnapshot(place);
         if (!snapshot.placeId) return [];
@@ -372,12 +405,21 @@ export async function searchGooglePlaces(query: string): Promise<GooglePlaceSear
             reviewCount: snapshot.reviewCount,
         }];
     });
+
+    await setJsonCache(cacheKey, results, GOOGLE_SEARCH_CACHE_TTL_SECONDS);
+    return results;
 }
 
 export async function getGooglePlaceDetails(placeId: string): Promise<GoogleSourceSnapshot> {
     const trimmed = placeId.trim();
     if (!trimmed) {
         throw new Error('placeId is required');
+    }
+
+    const cacheKey = `googlePlaces:details:${trimmed}`;
+    const cached = await getJsonCache<GoogleSourceSnapshot>(cacheKey);
+    if (cached) {
+        return cached;
     }
 
     const fieldMask = [
@@ -434,13 +476,21 @@ export async function getGooglePlaceDetails(placeId: string): Promise<GoogleSour
         'getGooglePlaceDetails',
     );
 
-    return mapPlaceToSnapshot(response);
+    const snapshot = mapPlaceToSnapshot(response);
+    await setJsonCache(cacheKey, snapshot, GOOGLE_PLACE_DETAILS_CACHE_TTL_SECONDS);
+    return snapshot;
 }
 
 export async function getGooglePhotoMediaUri(photoName: string, maxWidthPx = 1600) {
     const trimmed = photoName.trim();
     if (!trimmed) {
         throw new Error('photoName is required');
+    }
+
+    const key = `googlePlaces:photoUri:${trimmed}:${Math.max(200, Math.min(4800, maxWidthPx))}`;
+    const cached = await getJsonCache<{ photoUri: string }>(key);
+    if (cached?.photoUri) {
+        return cached.photoUri;
     }
 
     const encodedName = trimmed
@@ -461,6 +511,7 @@ export async function getGooglePhotoMediaUri(photoName: string, maxWidthPx = 160
         throw new Error('Google photo media URI not available');
     }
 
+    await setJsonCache(key, { photoUri }, GOOGLE_PHOTO_URI_CACHE_TTL_SECONDS);
     return photoUri;
 }
 

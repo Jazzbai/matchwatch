@@ -47,6 +47,7 @@ export function FloatingNav() {
     const navLinks = [
         { label: "Home", href: "/", icon: House },
         { label: "Matches", href: "/matches", icon: Trophy },
+        { label: "World Cup", href: "/world-cup", icon: Trophy },
         { label: "Venues", href: "/venues", icon: Store },
         { label: "For venues", href: "/for-venues", icon: Building2 },
     ];
@@ -171,7 +172,7 @@ export function FloatingNav() {
                                 style={{
                                     display: "flex", alignItems: "center", gap: 6, padding: "8px 18px",
                                     borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: "none",
-                                    backgroundColor: "var(--primary)", color: "var(--primary-foreground)",
+                                    backgroundColor: "#F97316", color: "#ffffff",
                                     transition: "all 0.2s",
                                 }}
                             >

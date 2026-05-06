@@ -65,8 +65,8 @@ const PP_CSS = `
   .pp-benefit-ico{font-size:24px;margin-bottom:12px;}
   .pp-benefit-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;color:var(--pp-fg);margin-bottom:8px;}
   .pp-benefit-desc{font-size:13px;color:var(--pp-fg-dim);line-height:1.55;}
-  @media(max-width:900px){.pp-nav{display:none;}}
-  @media(max-width:768px){.pp-topbar{padding:8px 12px;}.pp-topbar-inner{padding:8px 14px;}.pp-wrap{padding:24px 16px 60px;}.pp-hero{padding:28px 20px;}.pp-partners-grid{grid-template-columns:1fr;}.pp-benefits{grid-template-columns:1fr;}.pp-benefit{border-right:0;border-bottom:1px solid var(--pp-line);}.pp-benefit:last-child{border-bottom:0;}.pp-cta{padding:28px 20px;}}
+  @media(max-width:900px){.pp-topbar{padding:8px 10px;}.pp-topbar-inner{max-width:none;border-radius:18px;padding:9px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;}.pp-brand{min-width:0;}.pp-brand-tag{display:none;}.pp-nav{display:none;}.pp-top-right{gap:6px;}.pp-btn-pill{padding:8px 12px;font-size:12px;white-space:nowrap;}}
+  @media(max-width:768px){.pp-wrap{padding:24px 16px 60px;}.pp-hero{padding:28px 20px;}.pp-partners-grid{grid-template-columns:1fr;}.pp-benefits{grid-template-columns:1fr;}.pp-benefit{border-right:0;border-bottom:1px solid var(--pp-line);}.pp-benefit:last-child{border-bottom:0;}.pp-cta{padding:28px 20px;}}
 `;
 
 export default function PartnersPage() {
@@ -95,7 +95,7 @@ export default function PartnersPage() {
               <Link href="/dashboard" className="pp-btn-pill ghost">Dashboard</Link>
             ) : (
               <>
-                <Link href="/register-venue" className="pp-btn-pill ghost">List venue</Link>
+                <Link href="/for-venues/register" className="pp-btn-pill ghost">List venue</Link>
                 <Link href="/login" className="pp-btn-pill">Log in</Link>
               </>
             )}

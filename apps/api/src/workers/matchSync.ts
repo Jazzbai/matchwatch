@@ -1478,7 +1478,12 @@ export async function scheduleMatchSync() {
         jobId: 'live-status-refresh',
     });
 
-    logger.info('Match sync cron scheduled: nightly at 02:00 UTC and live refresh every 5 minutes');
+    await matchSyncQueue.add('startup-sync', {}, {
+        jobId: `startup-match-sync-${Date.now()}`,
+        priority: 1,
+    });
+
+    logger.info('Match sync scheduled: immediate startup sync, nightly at 02:00 UTC, and live refresh every 5 minutes');
 }
 
 export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {

@@ -310,7 +310,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                     <Link href="/">Home</Link>
                     <Link href="/matches" className="active">Matches</Link>
                     <Link href="/venues">Venues</Link>
-                    {user ? <Link href="/dashboard">Dashboard</Link> : <Link href="/register-venue">List venue</Link>}
+                    {user ? <Link href="/dashboard">Dashboard</Link> : <Link href="/for-venues/register">List venue</Link>}
                 </nav>
                 <div className="md-top-right">
                     <button className="md-iconbtn" aria-label="Search">
@@ -500,23 +500,29 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                     )}
 
                     {/* ── H2H ── */}
-                    {recapEmbedUrl && (
+                    {canShowRecap && match.youtubeVideoId && (
                         <>
                             <div className="md-sec-head">
                                 <div className="md-sec-title">Match recap <span className="tag">HIGHLIGHTS</span></div>
                             </div>
                             <section style={{ border: "1px solid var(--md-line)", background: "var(--md-bg-1)", overflow: "hidden" }}>
-                                <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#000" }}>
-                                    <iframe
-                                        src={recapEmbedUrl}
-                                        title={match.youtubeVideoTitle || `${matchTitle} highlights`}
-                                        loading="lazy"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                        allowFullScreen
-                                        referrerPolicy="strict-origin-when-cross-origin"
-                                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+                                <a
+                                    href={`https://www.youtube.com/watch?v=${match.youtubeVideoId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ display: "block", textDecoration: "none", position: "relative" }}
+                                >
+                                    <img
+                                        src={match.youtubeThumbnailUrl || `https://img.youtube.com/vi/${match.youtubeVideoId}/maxresdefault.jpg`}
+                                        alt={match.youtubeVideoTitle || `${matchTitle} highlights`}
+                                        style={{ width: "100%", display: "block", aspectRatio: "16 / 9", objectFit: "cover", background: "#000" }}
                                     />
-                                </div>
+                                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <div style={{ width: 68, height: 48, background: "#ff0000", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.92 }}>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+                                        </div>
+                                    </div>
+                                </a>
                                 {(match.youtubeVideoTitle || match.youtubeChannelTitle) && (
                                     <div style={{ display: "grid", gap: 6, padding: "16px 18px", borderTop: "1px solid var(--md-line)" }}>
                                         {match.youtubeVideoTitle && (

@@ -202,8 +202,8 @@ body{background:var(--vp-bg)!important;color:var(--vp-fg)!important;}
 .vp-skeleton{background:var(--vp-bg-1);animation:vpPulse 1.5s ease-in-out infinite;}
 @keyframes vpPulse{0%,100%{opacity:1}50%{opacity:0.4}}
 /* responsive */
-@media(max-width:900px){.vp-nav{display:none;}.vp-page{grid-template-columns:1fr;}.vp-rail{display:none;}}
-@media(max-width:640px){.vp-topbar{padding:8px 12px;}.vp-topbar-inner{padding:8px 14px;}.vp-hero{height:300px;}.vp-hero-content{padding:14px 16px 20px;}.vp-main{padding:16px 16px 60px;}.vp-banner{margin:12px 16px;}.vp-tabs{padding:0 16px;}.vp-crumb{padding:10px 16px;}.vp-facts{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:900px){.vp-topbar{padding:8px 10px;}.vp-topbar-inner{max-width:none;border-radius:18px;padding:9px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;}.vp-brand{min-width:0;}.vp-brand-tag{display:none;}.vp-nav{display:none;}.vp-top-right{gap:6px;}.vp-btn-pill{padding:8px 12px;font-size:12px;white-space:nowrap;}.vp-page{grid-template-columns:1fr;}.vp-rail{display:none;}}
+@media(max-width:640px){.vp-hero{height:300px;}.vp-hero-content{padding:14px 16px 20px;}.vp-main{padding:16px 16px 60px;}.vp-banner{margin:12px 16px;}.vp-tabs{padding:0 16px;}.vp-crumb{padding:10px 16px;}.vp-facts{grid-template-columns:repeat(2,1fr);}}
 `;
 
 /* ── helpers ── */
@@ -228,6 +228,18 @@ function TeamCrest({ src, fallback, alt }: { src?: string; fallback: string; alt
     );
 }
 
+function VenueHeroImage({ src, alt }: { src?: string; alt: string }) {
+    const [failed, setFailed] = useState(false);
+    return (
+        <img
+            src={!failed && src ? src : "/venue-hero.webp"}
+            alt={alt}
+            className="vp-hero-img"
+            onError={() => setFailed(true)}
+        />
+    );
+}
+
 function formatMatchDate(iso: string) {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return { date: "TBD", time: "TBD" };
@@ -245,7 +257,8 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
     const preselectedMatchId = searchParams.get("matchId");
     const { isAuthenticated, user } = useAuth();
     const { venues: venueList, getTeam, getLeague, getVenueReviews, getVenuePosts, getVenueMatchEvents, isLoading } = useData();
-    const venue = venueList.find((v) => v.slug === slug);
+    const venue = venueList.find((v) => v.slug === slug || v.id === slug);
+    const venueSlugOrId = venue?.slug || venue?.id || slug;
 
     const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
     const [bookingOpen, setBookingOpen] = useState(false);
@@ -289,9 +302,9 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
             setLocalMatchEvents([]);
             setFanTeams([]);
             const [venueResult, menuResult, eventsResult] = await Promise.allSettled([
-                api.get<{ followerCount: number; isFollowing: boolean; fanTeams?: VenueFanTeam[] }>(`/venues/${venue.slug}`),
-                api.get<VenueMenuCategory[]>(`/venues/${venue.slug}/menu`),
-                api.get<any[]>(`/venues/${venue.slug}/events?limit=20`),
+                api.get<{ followerCount: number; isFollowing: boolean; fanTeams?: VenueFanTeam[] }>(`/venues/${venueSlugOrId}`),
+                api.get<VenueMenuCategory[]>(`/venues/${venueSlugOrId}/menu`),
+                api.get<any[]>(`/venues/${venueSlugOrId}/events?limit=20`),
             ]);
             if (!active) return;
             if (venueResult.status === "fulfilled") {
@@ -335,15 +348,15 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
         };
         void load();
         return () => { active = false; };
-    }, [venue]);
+    }, [venue, venueSlugOrId]);
 
     const handleToggleFollow = async () => {
         if (!venue) return;
         setActionError(null);
-        if (!isAuthenticated) { router.push(`/login?next=/venues/${venue.slug}`); return; }
+        if (!isAuthenticated) { router.push(`/login?next=/venues/${venueSlugOrId}`); return; }
         setFollowBusy(true);
         try {
-            const res = await api.post<{ following: boolean }>(`/venues/${venue.slug}/follow`);
+            const res = await api.post<{ following: boolean }>(`/venues/${venueSlugOrId}/follow`);
             const next = Boolean(res.data.following);
             setIsFollowing(next);
             setFollowerCount((prev) => Math.max(0, prev + (next ? 1 : -1)));
@@ -454,7 +467,7 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
                             {user
                                 ? <Link href="/dashboard" className="vp-btn-pill ghost">{initials}</Link>
                                 : <>
-                                    <Link href="/register-venue" className="vp-btn-pill ghost">List venue</Link>
+                                    <Link href="/for-venues/register" className="vp-btn-pill ghost">List venue</Link>
                                     <Link href="/login" className="vp-btn-pill">Log in</Link>
                                   </>
                             }
@@ -464,7 +477,7 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
 
                 {/* Hero */}
                 <section className="vp-hero">
-                    <img src={heroImage} alt={venue.name} className="vp-hero-img" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                    <VenueHeroImage src={heroImage} alt={venue.name} />
                     <div className="vp-hero-overlay" />
                     <div className="vp-hero-content">
                         <div className="vp-hero-top">

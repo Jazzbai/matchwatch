@@ -425,6 +425,14 @@ export interface Match {
     stage?: string;
     venueName?: string;
     venueCount?: number;
+    youtubeVideoId?: string | null;
+    youtubeVideoTitle?: string | null;
+    youtubeChannelTitle?: string | null;
+    youtubePublishedAt?: string | null;
+    youtubeThumbnailUrl?: string | null;
+    youtubeEmbedUrl?: string | null;
+    youtubeSearchStatus?: 'pending' | 'found' | 'not_found' | 'failed';
+    youtubeCheckedAt?: string | null;
     league?: {
         id: string;
         name: string;

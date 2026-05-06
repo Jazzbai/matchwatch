@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { Menu, X } from "lucide-react";
 import { useAuth } from "../../lib/auth-context";
 
 // ─── Static WC2026 Data ─────────────────────────
@@ -86,16 +87,16 @@ const WC_FIXTURES = [
 
 const WC_VARS = `
 :root {
-  --wc-bg: #060709;
-  --wc-bg-1: #0d0f13;
-  --wc-bg-2: #121519;
-  --wc-line: #1e2229;
-  --wc-line-2: #2a3040;
-  --wc-fg: #f2ede5;
+  --wc-bg: #0a0b0d;
+  --wc-bg-1: #101217;
+  --wc-bg-2: #14171d;
+  --wc-line: #23272f;
+  --wc-line-2: #2f3540;
+  --wc-fg: #f1ece4;
   --wc-fg-dim: #a8a59d;
-  --wc-fg-mute: #5c5a55;
+  --wc-fg-mute: #6c6a64;
   --wc-accent: oklch(0.72 0.19 28);
-  --wc-gold: #d4a843;
+  --wc-gold: var(--wc-accent);
 }
 `;
 
@@ -104,7 +105,7 @@ body { background: var(--wc-bg) !important; color: var(--wc-fg) !important; }
 
 /* ── Topbar ── */
 .wc-topbar { position: sticky; top: 0; z-index: 20; display: flex; justify-content: center; padding: 10px 16px; }
-.wc-topbar-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 960px; padding: 10px 20px; border-radius: 999px; background: color-mix(in srgb, #060709 80%, transparent); backdrop-filter: blur(16px); border: 1px solid rgba(30,34,41,0.9); box-shadow: 0 2px 20px rgba(0,0,0,0.4); }
+.wc-topbar-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1080px; padding: 10px 20px; border-radius: 999px; background: color-mix(in srgb, #0a0b0d 75%, transparent); backdrop-filter: blur(16px); border: 1px solid rgba(35,39,47,0.8); box-shadow: 0 2px 20px rgba(0,0,0,0.25); }
 .wc-brand { display: flex; flex-direction: column; align-items: flex-start; text-decoration: none; color: var(--wc-fg); }
 .wc-brand-name { font-family: 'Space Grotesk', sans-serif; font-weight: 900; font-size: 18px; letter-spacing: -0.02em; line-height: 1.1; }
 .wc-brand-name em { font-style: normal; color: var(--wc-accent); }
@@ -117,39 +118,55 @@ body { background: var(--wc-bg) !important; color: var(--wc-fg) !important; }
 .wc-btn-pill { display: inline-flex; align-items: center; padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none; background: var(--wc-accent); color: #060709; transition: all .18s; }
 .wc-btn-pill:hover { opacity: 0.88; transform: translateY(-1px); }
 .wc-btn-pill.ghost { background: rgba(255,255,255,0.07); color: var(--wc-fg); }
+.wc-menu-toggle { display: none; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid var(--wc-line); border-radius: 999px; background: rgba(255,255,255,0.04); color: var(--wc-fg); cursor: pointer; }
 .wc-mobile-nav { display: none; }
-.wc-mobile-nav a { padding: 7px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--wc-fg-dim); text-decoration: none; transition: all .18s; white-space: nowrap; }
-.wc-mobile-nav a:hover { background: rgba(255,255,255,0.07); color: var(--wc-fg); }
+.wc-mobile-nav a { padding: 12px 14px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--wc-fg); background: rgba(255,255,255,0.04); text-decoration: none; transition: all .18s; white-space: nowrap; }
+.wc-mobile-nav a:hover,.wc-mobile-nav a.active { background: rgba(255,255,255,0.08); color: var(--wc-fg); }
+.wc-mobile-nav .primary { background: var(--wc-accent); color: #0a0b0d; }
+
+@keyframes wcNoticeIn {
+  from { opacity: 0; transform: translate(-50%, -16px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.wc-top-notice { position: fixed; top: 78px; left: 50%; z-index: 60; width: min(640px, calc(100vw - 24px)); display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--wc-line-2); border-left: 3px solid var(--wc-accent); background: color-mix(in srgb, var(--wc-bg-1) 94%, transparent); color: var(--wc-fg); backdrop-filter: blur(18px); box-shadow: 0 16px 42px rgba(0,0,0,0.28); animation: wcNoticeIn .28s ease-out both; }
+.wc-top-notice-title { font-family: 'Space Grotesk', var(--font-space), sans-serif; font-weight: 700; font-size: 14px; line-height: 1.2; }
+.wc-top-notice-msg { margin-top: 2px; font-size: 12px; line-height: 1.45; color: var(--wc-fg-dim); }
+.wc-top-notice button { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid var(--wc-line); border-radius: 999px; background: rgba(255,255,255,0.05); color: var(--wc-fg); cursor: pointer; transition: background .16s, border-color .16s; }
+.wc-top-notice button:hover { background: rgba(255,255,255,0.09); border-color: var(--wc-line-2); }
 
 /* ── Hero ── */
-.wc-hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--wc-line); background: linear-gradient(160deg, rgba(212,168,67,0.12) 0%, transparent 50%), radial-gradient(ellipse 120% 80% at 70% 0%, rgba(255,95,45,0.08), transparent 60%), #07090c; padding: 60px 40px 48px; }
-.wc-hero::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; }
-.wc-hero-inner { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center; }
-.wc-hero-kicker { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--wc-gold); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-.wc-hero-kicker::before { content: ""; display: inline-block; width: 20px; height: 1px; background: var(--wc-gold); }
-.wc-h1 { font-family: 'Space Grotesk', sans-serif; font-weight: 900; font-size: clamp(36px, 5vw, 60px); line-height: 0.95; letter-spacing: -0.03em; margin: 0 0 16px; }
+.wc-hero { max-width: 1080px; margin: 0 auto 32px; position: relative; overflow: hidden; border: 1px solid var(--wc-line); background: linear-gradient(120deg, rgba(255,95,45,0.10), transparent 60%), linear-gradient(0deg, #0c0e12, #131720); }
+.wc-hero::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 48px 48px; pointer-events: none; }
+.wc-hero-inner { position: relative; z-index: 1; display: grid; grid-template-columns: 1.3fr 1fr; min-height: 340px; gap: 0; align-items: stretch; }
+.wc-hero-left { padding: 28px 32px; display: flex; flex-direction: column; gap: 22px; }
+.wc-hero-right { border-left: 1px solid var(--wc-line); padding: 20px; background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; }
+.wc-live-chip { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.08em; padding: 5px 8px; background: var(--wc-accent); color: #0a0b0d; font-weight: 600; text-transform: uppercase; }
+.wc-live-chip .bd { width: 6px; height: 6px; background: #0a0b0d; border-radius: 50%; }
+.wc-hero-kicker { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--wc-fg-dim); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.wc-h1 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: clamp(36px, 5vw, 64px); line-height: 0.95; letter-spacing: -0.025em; margin: 0; text-wrap: balance; }
 .wc-h1 em { font-style: normal; color: var(--wc-gold); }
-.wc-hero-meta { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 20px; }
+.wc-hero-copy { max-width: 520px; font-size: 16px; color: var(--wc-fg-dim); line-height: 1.5; margin: 0; }
+.wc-hero-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 1px solid var(--wc-line); padding-top: 18px; margin-top: 4px; }
 .wc-hero-stat { display: flex; flex-direction: column; gap: 2px; }
-.wc-hero-stat .v { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 28px; letter-spacing: -0.02em; color: var(--wc-fg); }
+.wc-hero-stat .v { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 32px; letter-spacing: -0.02em; color: var(--wc-fg); line-height: 1; }
 .wc-hero-stat .l { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--wc-fg-mute); }
 .wc-hosts { display: flex; gap: 8px; flex-direction: column; }
 .wc-host-flag { display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.06em; color: var(--wc-fg-dim); }
 .wc-host-flag img { width: 28px; height: 18px; object-fit: cover; border-radius: 2px; }
-.wc-countdown { border: 1px solid var(--wc-line-2); background: var(--wc-bg-1); padding: 20px 24px; min-width: 180px; }
+.wc-countdown { border: 1px solid var(--wc-line); background: var(--wc-bg-1); padding: 20px; min-width: 180px; }
 .wc-countdown .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--wc-fg-mute); margin-bottom: 10px; }
 .wc-countdown .days { font-family: 'Space Grotesk', sans-serif; font-weight: 900; font-size: 52px; letter-spacing: -0.04em; color: var(--wc-gold); line-height: 1; }
 .wc-countdown .days-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--wc-fg-mute); letter-spacing: 0.1em; margin-top: 4px; }
 .wc-countdown .opening { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--wc-fg-dim); margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--wc-line-2); letter-spacing: 0.04em; }
 
 /* ── Tabs ── */
-.wc-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--wc-line); background: var(--wc-bg-1); max-width: 960px; margin: 0 auto; }
+.wc-tabs { display: flex; gap: 0; border: 1px solid var(--wc-line); border-bottom: 0; background: var(--wc-bg-1); max-width: 1080px; margin: 0 auto; }
 .wc-tab { padding: 14px 24px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--wc-fg-dim); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; transition: all .14s; display: flex; align-items: center; gap: 7px; }
 .wc-tab:hover { color: var(--wc-fg); }
 .wc-tab.on { color: var(--wc-fg); border-bottom-color: var(--wc-gold); }
 
 /* ── Content ── */
-.wc-body { max-width: 960px; margin: 0 auto; padding: 32px 0 80px; }
+.wc-body { max-width: 1080px; margin: 0 auto; padding: 32px 0 80px; }
 
 /* ── Groups ── */
 .wc-groups-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
@@ -197,16 +214,30 @@ body { background: var(--wc-bg) !important; color: var(--wc-fg) !important; }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
+  .wc-topbar { padding: 8px 10px; }
+  .wc-topbar-inner { max-width: none; border-radius: 18px; padding: 9px 10px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 10px; }
+  .wc-brand { min-width: 0; }
+  .wc-brand-tag { display: none; }
   .wc-nav { display: none; }
-  .wc-mobile-nav { display: flex; align-items: center; gap: 4px; }
+  .wc-top-right { display: none; }
+  .wc-menu-toggle { display: inline-flex; justify-self: end; }
+  .wc-mobile-nav { grid-column: 1 / -1; display: none; flex-direction: column; gap: 8px; padding-top: 8px; }
+  .wc-mobile-nav.open { display: flex; }
+  .wc-top-notice { top: 74px; }
+  .wc-btn-pill { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
   .wc-groups-grid { grid-template-columns: repeat(2, 1fr); }
   .wc-stadiums-grid { grid-template-columns: repeat(2, 1fr); }
+  .wc-hero { margin: 0 10px 24px; }
   .wc-hero-inner { grid-template-columns: 1fr; }
+  .wc-hero-right { border-left: 0; border-top: 1px solid var(--wc-line); }
+  .wc-hero-meta { grid-template-columns: repeat(2, 1fr); gap: 14px 0; }
   .wc-fixture { grid-template-columns: 64px 1fr 60px 1fr 100px; }
   .wc-watch-btn { display: none; }
 }
 @media (max-width: 600px) {
-  .wc-hero { padding: 36px 20px 32px; }
+  .wc-hero-left { padding: 20px 16px; }
+  .wc-hero-right { padding: 16px; }
+  .wc-h1 { font-size: 36px; }
   .wc-groups-grid { grid-template-columns: 1fr 1fr; }
   .wc-stadiums-grid { grid-template-columns: 1fr; }
   .wc-body { padding: 20px 16px 60px; }
@@ -232,11 +263,24 @@ function formatDate(dateStr: string) {
 }
 
 type Tab = "groups" | "schedule" | "stadiums";
+const WORLD_CUP_NOTICE_SESSION_KEY = "matchwatch:world-cup-notice:v1";
 
 export default function WorldCupPage() {
     const { user } = useAuth();
     const [tab, setTab] = useState<Tab>("groups");
     const [groupFilter, setGroupFilter] = useState<string>("all");
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [showNotice, setShowNotice] = useState(false);
+
+    React.useEffect(() => {
+        try {
+            if (window.sessionStorage.getItem(WORLD_CUP_NOTICE_SESSION_KEY)) return;
+            window.sessionStorage.setItem(WORLD_CUP_NOTICE_SESSION_KEY, "1");
+            setShowNotice(true);
+        } catch {
+            setShowNotice(true);
+        }
+    }, []);
 
     const daysToOpen = daysUntil("2026-06-11");
 
@@ -256,6 +300,20 @@ export default function WorldCupPage() {
         <>
             <style dangerouslySetInnerHTML={{ __html: WC_VARS + WC_CSS }} />
 
+            {showNotice && (
+                <div className="wc-top-notice" role="status" aria-live="polite">
+                    <div>
+                        <div className="wc-top-notice-title">World Cup hub is live</div>
+                        <div className="wc-top-notice-msg">
+                            Browse groups, fixtures, and host cities, then find watch parties near you.
+                        </div>
+                    </div>
+                    <button type="button" aria-label="Close notification" onClick={() => setShowNotice(false)}>
+                        <X size={16} />
+                    </button>
+                </div>
+            )}
+
             {/* Topbar */}
             <header className="wc-topbar">
                 <div className="wc-topbar-inner">
@@ -270,17 +328,36 @@ export default function WorldCupPage() {
                         <Link href="/venues">Venues</Link>
                         {user && <Link href="/dashboard">My bookings</Link>}
                     </nav>
-                    <nav className="wc-mobile-nav">
-                        <Link href="/">Home</Link>
-                        <Link href="/matches">Matches</Link>
-                        <Link href="/venues">Venues</Link>
+                    <button
+                        type="button"
+                        className="wc-menu-toggle"
+                        aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+                        aria-expanded={mobileMenuOpen}
+                        onClick={() => setMobileMenuOpen((open) => !open)}
+                    >
+                        {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                    </button>
+                    <nav className={`wc-mobile-nav${mobileMenuOpen ? " open" : ""}`}>
+                        <Link href="/" onClick={() => setMobileMenuOpen(false)}>Home</Link>
+                        <Link href="/matches" onClick={() => setMobileMenuOpen(false)}>Matches</Link>
+                        <Link href="/world-cup" className="active" onClick={() => setMobileMenuOpen(false)}>World Cup</Link>
+                        <Link href="/venues" onClick={() => setMobileMenuOpen(false)}>Venues</Link>
+                        <Link href="/for-venues" onClick={() => setMobileMenuOpen(false)}>For venues</Link>
+                        {user ? (
+                            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>My bookings</Link>
+                        ) : (
+                            <>
+                                <Link href="/for-venues/register" onClick={() => setMobileMenuOpen(false)}>List venue</Link>
+                                <Link href="/login" className="primary" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
+                            </>
+                        )}
                     </nav>
                     <div className="wc-top-right">
                         {user ? (
                             <Link href="/dashboard" className="wc-btn-pill ghost">{user.name?.split(" ")[0]}</Link>
                         ) : (
                             <>
-                                <Link href="/register-venue" className="wc-btn-pill ghost">List venue</Link>
+                                <Link href="/for-venues/register" className="wc-btn-pill ghost">List venue</Link>
                                 <Link href="/login" className="wc-btn-pill">Log in</Link>
                             </>
                         )}
@@ -291,24 +368,27 @@ export default function WorldCupPage() {
             {/* Hero */}
             <div className="wc-hero">
                 <div className="wc-hero-inner">
-                    <div>
-                        <div className="wc-hero-kicker">Official tournament · June 11 – July 19, 2026</div>
+                    <div className="wc-hero-left">
+                        <div className="wc-hero-kicker">
+                            <span className="wc-live-chip"><span className="bd" />World Cup</span>
+                            <span>Official tournament - June 11 to July 19, 2026</span>
+                        </div>
                         <h1 className="wc-h1">FIFA World Cup<br /><em>2026</em></h1>
-                        <div style={{ fontSize: 15, color: "var(--wc-fg-dim)", lineHeight: 1.6, maxWidth: 480, marginBottom: 24 }}>
+                        <p className="wc-hero-copy">
                             48 teams. 12 groups. 3 nations. 16 stadiums across the United States, Mexico, and Canada.
                             Find where to watch every match.
-                        </div>
+                        </p>
                         <div className="wc-hero-meta">
                             <div className="wc-hero-stat"><span className="v">48</span><span className="l">Teams</span></div>
                             <div className="wc-hero-stat"><span className="v">12</span><span className="l">Groups</span></div>
                             <div className="wc-hero-stat"><span className="v">104</span><span className="l">Matches</span></div>
                             <div className="wc-hero-stat"><span className="v">16</span><span className="l">Stadiums</span></div>
                         </div>
-                        <div className="wc-hosts" style={{ marginTop: 28 }}>
+                        <div className="wc-hosts" style={{ marginTop: "auto" }}>
                             {[
-                                { iso2: "us", name: "United States · 11 venues" },
-                                { iso2: "mx", name: "Mexico · 3 venues" },
-                                { iso2: "ca", name: "Canada · 2 venues" },
+                                { iso2: "us", name: "United States - 11 venues" },
+                                { iso2: "mx", name: "Mexico - 3 venues" },
+                                { iso2: "ca", name: "Canada - 2 venues" },
                             ].map(h => (
                                 <div key={h.iso2} className="wc-host-flag">
                                     <img src={`https://flagcdn.com/${h.iso2}.svg`} alt={h.iso2} />
@@ -317,12 +397,23 @@ export default function WorldCupPage() {
                             ))}
                         </div>
                     </div>
-                    <div>
+                    <div className="wc-hero-right">
                         <div className="wc-countdown">
                             <div className="label">Kickoff countdown</div>
                             <div className="days">{daysToOpen}</div>
                             <div className="days-label">days to go</div>
-                            <div className="opening">🏟 Opening · Jun 11, 2026<br />MetLife Stadium, New Jersey</div>
+                            <div className="opening">Opening - Jun 11, 2026<br />MetLife Stadium, New Jersey</div>
+                        </div>
+                        <div style={{ border: "1px solid var(--wc-line)", background: "var(--wc-bg-1)", padding: 14 }}>
+                            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--wc-fg-mute)", marginBottom: 10 }}>
+                                Watch party hub
+                            </div>
+                            <div style={{ fontFamily: "'Space Grotesk', var(--font-space), sans-serif", fontWeight: 600, fontSize: 16, color: "var(--wc-fg)", marginBottom: 6 }}>
+                                Find bars showing every tournament match.
+                            </div>
+                            <div style={{ fontSize: 12, color: "var(--wc-fg-dim)", lineHeight: 1.5 }}>
+                                Browse fixtures, groups, and host cities, then jump into venues ready for World Cup crowds.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -330,7 +421,7 @@ export default function WorldCupPage() {
 
             {/* Tab bar */}
             <div style={{ borderBottom: "1px solid var(--wc-line)" }}>
-                <div style={{ maxWidth: 960, margin: "0 auto", display: "flex" }}>
+                <div className="wc-tabs">
                     {([
                         { id: "groups" as Tab, label: "Groups", icon: "🏆" },
                         { id: "schedule" as Tab, label: "Schedule", icon: "📅" },

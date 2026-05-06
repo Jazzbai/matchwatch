@@ -852,15 +852,26 @@ function SearchPicker({
   );
 }
 
-async function superAdminFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api/v1/super-admin${path}`, {
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
-    ...init,
-  });
+async function superAdminFetch<T>(path: string, init?: RequestInit, timeoutMs = 15000): Promise<T> {
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeout = controller && !init?.signal
+    ? window.setTimeout(() => controller.abort(), timeoutMs)
+    : null;
+
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1/super-admin${path}`, {
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers || {}),
+      },
+      ...init,
+      signal: init?.signal || controller?.signal,
+    });
+  } finally {
+    if (timeout) window.clearTimeout(timeout);
+  }
 
   const payload = await response.json().catch(() => null);
   if (!response.ok || !payload?.success) {
@@ -1046,12 +1057,12 @@ function resolveVenueGalleryDisplayItems(
   }));
 }
 
-function buildGoogleCoverPreviewUrl(slugOrId: string) {
-  return `/api/v1/venues/${encodeURIComponent(slugOrId)}/cover-image`;
+function buildGoogleCoverPreviewUrl(slugOrId: string, maxWidthPx = 1200) {
+  return `/api/v1/venues/${encodeURIComponent(slugOrId)}/cover-image?maxWidthPx=${maxWidthPx}`;
 }
 
-function buildGoogleGalleryPreviewUrl(slugOrId: string, index: number) {
-  return `/api/v1/venues/${encodeURIComponent(slugOrId)}/gallery/${index}`;
+function buildGoogleGalleryPreviewUrl(slugOrId: string, index: number, maxWidthPx = 800) {
+  return `/api/v1/venues/${encodeURIComponent(slugOrId)}/gallery/${index}?maxWidthPx=${maxWidthPx}`;
 }
 
 function getGoogleImagePreviewState(
@@ -1074,8 +1085,8 @@ function getGoogleImagePreviewState(
 
   if (options?.slugOrId?.trim()) {
     return {
-      coverImageUrl: fallbackGalleryCount > 0 || suggested.length > 0 ? buildGoogleCoverPreviewUrl(options.slugOrId) : "",
-      galleryImageUrls: Array.from({ length: fallbackGalleryCount }, (_, index) => buildGoogleGalleryPreviewUrl(options.slugOrId!, index)),
+      coverImageUrl: fallbackGalleryCount > 0 || suggested.length > 0 ? buildGoogleCoverPreviewUrl(options.slugOrId, 1200) : "",
+      galleryImageUrls: Array.from({ length: fallbackGalleryCount }, (_, index) => buildGoogleGalleryPreviewUrl(options.slugOrId!, index, 800)),
     };
   }
 
@@ -1093,14 +1104,109 @@ function getGoogleImagePreviewState(
 function SuperAdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div
+      className="jazzbai-admin-shell"
       suppressHydrationWarning
       style={{
         minHeight: "100dvh",
+        "--background": "#0a0b0d",
+        "--foreground": "#f5f1e8",
+        "--card": "#11141a",
+        "--card-foreground": "#f5f1e8",
+        "--secondary": "#171b22",
+        "--secondary-foreground": "#ebe5da",
+        "--muted-foreground": "#a9a196",
+        "--primary": "#f9733d",
+        "--primary-foreground": "#0a0b0d",
+        "--border": "#2b3038",
+        "--input": "#222730",
         background: "var(--background)",
         color: "var(--foreground)",
         fontFamily: "var(--font-body), system-ui, sans-serif",
-      }}
+      } as React.CSSProperties}
     >
+      <style jsx global>{`
+        .jazzbai-admin-shell {
+          overflow-x: clip;
+        }
+
+        .jazzbai-report-page {
+          width: 100%;
+        }
+
+        .jazzbai-report-tabs {
+          scrollbar-width: thin;
+        }
+
+        .jazzbai-report-tabs button,
+        .jazzbai-report-actions button {
+          white-space: nowrap;
+        }
+
+        @media (max-width: 720px) {
+          .jazzbai-login-main {
+            padding: 28px 14px !important;
+          }
+
+          .jazzbai-login-card {
+            padding: 18px !important;
+            border-radius: 12px !important;
+          }
+
+          .jazzbai-login-card h1 {
+            font-size: 24px !important;
+          }
+
+          .jazzbai-report-page {
+            padding: 18px 12px 64px !important;
+          }
+
+          .jazzbai-report-header {
+            display: grid !important;
+            align-items: stretch !important;
+          }
+
+          .jazzbai-report-header h1 {
+            font-size: 24px !important;
+            line-height: 1.12 !important;
+          }
+
+          .jazzbai-report-actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            width: 100%;
+          }
+
+          .jazzbai-report-actions button {
+            justify-content: center;
+            min-height: 40px;
+          }
+
+          .jazzbai-report-tabs {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            margin: 0 -12px 16px !important;
+            padding: 0 12px 8px;
+            scroll-snap-type: x proximity;
+          }
+
+          .jazzbai-report-tabs button {
+            flex: 0 0 auto;
+            min-height: 40px;
+            scroll-snap-align: start;
+          }
+
+          .jazzbai-report-stat-grid,
+          .jazzbai-report-status-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .jazzbai-report-section-head {
+            display: grid !important;
+            align-items: start !important;
+          }
+        }
+      `}</style>
       {children}
     </div>
   );
@@ -2052,7 +2158,7 @@ export default function JazzbaiSuperAdminPage() {
     async function checkSession() {
       setCheckingSession(true);
       try {
-        const data = await superAdminFetch<{ authenticated: boolean; username: string }>("/session");
+        const data = await superAdminFetch<{ authenticated: boolean; username: string }>("/session", undefined, 5000);
         setAuthenticated(Boolean(data.authenticated));
         setAdminUsername(data.username || "");
       } catch {
@@ -2385,8 +2491,8 @@ export default function JazzbaiSuperAdminPage() {
   if (!authenticated) {
     return (
       <SuperAdminShell>
-        <main style={{ maxWidth: 520, margin: "0 auto", padding: "72px 20px" }}>
-          <section style={{ borderRadius: 16, border: "1px solid var(--border)", background: "var(--card)", padding: 24 }}>
+        <main className="jazzbai-login-main" style={{ maxWidth: 520, margin: "0 auto", padding: "72px 20px" }}>
+          <section className="jazzbai-login-card" style={{ borderRadius: 16, border: "1px solid var(--border)", background: "var(--card)", padding: 24 }}>
             <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", fontWeight: 800 }}>
               JazzBai Control
             </p>
@@ -2424,7 +2530,7 @@ export default function JazzbaiSuperAdminPage() {
                   onChange={(e) => setLoginPassword(e.target.value)}
                   type="password"
                   autoComplete="current-password"
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                  placeholder="Password"
                   style={{ width: "100%", borderRadius: 10, border: "1px solid var(--border)", background: "var(--secondary)", color: "var(--foreground)", padding: "11px 12px", fontSize: 14 }}
                   required
                 />
@@ -3065,8 +3171,8 @@ export default function JazzbaiSuperAdminPage() {
 
   return (
     <SuperAdminShell>
-      <main style={pageStyle}>
-        <header style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "flex-end" }}>
+      <main className="jazzbai-report-page" style={pageStyle}>
+        <header className="jazzbai-report-header" style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
             <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-foreground)", fontWeight: 800 }}>
               JazzBai Domain
@@ -3076,7 +3182,7 @@ export default function JazzbaiSuperAdminPage() {
               Logged in as <strong style={{ color: "var(--foreground)" }}>{adminUsername}</strong>
             </p>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="jazzbai-report-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
               onClick={() => void loadTabData(activeTab)}
               style={smallBtn("outline", Boolean(submittingAction))}
@@ -3088,7 +3194,7 @@ export default function JazzbaiSuperAdminPage() {
               onClick={() => void handleLogout()}
               style={smallBtn("danger")}
             >
-              Logout
+              Log out
             </button>
           </div>
         </header>
@@ -3099,7 +3205,7 @@ export default function JazzbaiSuperAdminPage() {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        <div className="jazzbai-report-tabs" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
           {([
             ["overview", "Overview"],
             ["users", "Users"],
@@ -3136,7 +3242,7 @@ export default function JazzbaiSuperAdminPage() {
 
         {activeTab === "overview" && (
           <section style={{ display: "grid", gap: 16 }}>
-            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <div className="jazzbai-report-stat-grid" style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
               {[
                 { label: "Total Users", value: stats?.users.total ?? 0 },
                 { label: "Active Users", value: stats?.users.active ?? 0 },
@@ -3158,11 +3264,11 @@ export default function JazzbaiSuperAdminPage() {
             </div>
 
             <div style={cardStyle}>
-              <div style={sectionHeadStyle}>
+              <div className="jazzbai-report-section-head" style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 16, color: "var(--foreground)", fontWeight: 800 }}>Infrastructure Status</h2>
                 {lookupsLoading && <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Refreshing...</span>}
               </div>
-              <div style={{ padding: 16, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+              <div className="jazzbai-report-status-grid" style={{ padding: 16, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
                 <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12 }}>
                   <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>System Memory</p>
                   <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted-foreground)" }}>

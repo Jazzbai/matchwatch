@@ -23,6 +23,10 @@ function galleryImageUrlsFromMetadata(metadata: unknown): string[] {
     return raw.filter((value): value is string => typeof value === 'string').slice(0, 5);
 }
 
+function isLegacyGooglePlacePhotoUrl(value: string) {
+    return value.includes('maps.googleapis.com/maps/api/place/photo');
+}
+
 function venueMetadataRecord(metadata: unknown): Record<string, unknown> {
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
     return metadata as Record<string, unknown>;
@@ -81,9 +85,9 @@ async function refreshVenueGoogleSnapshot(venue: typeof venues.$inferSelect) {
     };
 }
 
-async function resolveVenueGooglePhotoRedirect(venue: typeof venues.$inferSelect, photoName: string) {
+async function resolveVenueGooglePhotoRedirect(venue: typeof venues.$inferSelect, photoName: string, maxWidthPx = 1600) {
     try {
-        return await getGooglePhotoMediaUri(photoName);
+        return await getGooglePhotoMediaUri(photoName, maxWidthPx);
     } catch (error) {
         if (!venue.googlePlaceId) throw error;
 
@@ -93,9 +97,8 @@ async function resolveVenueGooglePhotoRedirect(venue: typeof venues.$inferSelect
             throw error;
         }
 
-        return getGooglePhotoMediaUri(photoName);
+        return getGooglePhotoMediaUri(photoName, maxWidthPx);
     }
-
 }
 
 // ─── GET / ──────────────────────────────────────
@@ -107,7 +110,8 @@ venueRoutes.get('/:slugOrId/cover-image', async (c) => {
     }
 
     const manualCover = venue.coverImageUrl?.trim() || null;
-    if (manualCover) {
+    const shouldPreferGoogleSnapshot = Boolean(manualCover && isLegacyGooglePlacePhotoUrl(manualCover));
+    if (manualCover && !shouldPreferGoogleSnapshot) {
         return c.redirect(manualCover, 302);
     }
 
@@ -116,9 +120,11 @@ venueRoutes.get('/:slugOrId/cover-image', async (c) => {
         normalizeGoogleSourceSnapshot((venue.googleSourceSnapshot || {}) as GoogleSourceSnapshot),
     );
 
+    const maxWidthPx = Number.parseInt(c.req.query('maxWidthPx') || '1600', 10);
     if (cover?.name) {
         try {
-            const photoUri = await resolveVenueGooglePhotoRedirect(venue, cover.name);
+            const photoUri = await resolveVenueGooglePhotoRedirect(venue, cover.name, maxWidthPx);
+            c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
             return c.redirect(photoUri, 302);
         } catch {
             // fall through to the next valid image source
@@ -131,11 +137,16 @@ venueRoutes.get('/:slugOrId/cover-image', async (c) => {
 
     if (gallery[0]?.name) {
         try {
-            const photoUri = await resolveVenueGooglePhotoRedirect(venue, gallery[0].name);
+            const photoUri = await resolveVenueGooglePhotoRedirect(venue, gallery[0].name, maxWidthPx);
+            c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
             return c.redirect(photoUri, 302);
         } catch {
             // fall through to 404
         }
+    }
+
+    if (manualCover) {
+        return c.redirect(manualCover, 302);
     }
 
     return c.json(apiError('NOT_FOUND', 'Venue cover image not found'), 404);
@@ -166,8 +177,10 @@ venueRoutes.get('/:slugOrId/gallery/:index', async (c) => {
         return c.json(apiError('NOT_FOUND', 'Venue gallery image not found'), 404);
     }
 
+    const maxWidthPx = Number.parseInt(c.req.query('maxWidthPx') || '1600', 10);
     try {
-        const photoUri = await resolveVenueGooglePhotoRedirect(venue, googlePhoto.name);
+        const photoUri = await resolveVenueGooglePhotoRedirect(venue, googlePhoto.name, maxWidthPx);
+        c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
         return c.redirect(photoUri, 302);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Google gallery image lookup failed';
@@ -192,8 +205,10 @@ venueRoutes.get('/:slugOrId/google-photo', async (c) => {
         return c.json(apiError('NOT_FOUND', 'Google photo not found for venue'), 404);
     }
 
+    const maxWidthPx = Number.parseInt(c.req.query('maxWidthPx') || '1600', 10);
     try {
-        const photoUri = await resolveVenueGooglePhotoRedirect(venue, photoName);
+        const photoUri = await resolveVenueGooglePhotoRedirect(venue, photoName, maxWidthPx);
+        c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
         return c.redirect(photoUri, 302);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Google photo lookup failed';

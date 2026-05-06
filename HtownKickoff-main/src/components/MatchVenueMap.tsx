@@ -2,18 +2,21 @@
 
 import React, { useEffect, useMemo, useRef } from "react";
 import {
+    createMarkerSpiderfier,
     createVenueClusterGroup,
     createVenuePinIcon,
     loadLeafletWithClusters,
     type ClusterLayer,
     type ClusterLeafletModule,
     type LeafletMap,
+    type MarkerSpiderfierController,
+    type SpiderfyMarkerRecord,
 } from "@/lib/leaflet-map-markers";
 
 type MatchVenueMapPoint = {
     id: string;
     name: string;
-    slug: string;
+    slug?: string | null;
     addressLine1?: string;
     city?: string;
     lat: number;
@@ -28,7 +31,7 @@ type MatchVenueMapProps = {
     height?: number;
 };
 
-const FALLBACK_CENTER: [number, number] = [29.7604, -95.3698]; // Houston
+const FALLBACK_CENTER: [number, number] = [29.7604, -95.3698];
 
 function escapeHtml(value: string) {
     return value
@@ -39,11 +42,16 @@ function escapeHtml(value: string) {
         .replace(/'/g, "&#039;");
 }
 
+function venueHref(venue: Pick<MatchVenueMapPoint, "id" | "slug">) {
+    return `/venues/${encodeURIComponent(venue.slug || venue.id)}`;
+}
+
 export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenueMapProps) {
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<LeafletMap | null>(null);
     const markerLayerRef = useRef<ClusterLayer | null>(null);
     const leafletRef = useRef<ClusterLeafletModule | null>(null);
+    const spiderfierRef = useRef<MarkerSpiderfierController | null>(null);
 
     const validVenues = useMemo(
         () =>
@@ -89,6 +97,8 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
 
         return () => {
             mounted = false;
+            spiderfierRef.current?.destroy();
+            spiderfierRef.current = null;
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
@@ -107,6 +117,8 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
             markerLayerRef.current.remove();
             markerLayerRef.current = null;
         }
+        spiderfierRef.current?.destroy();
+        spiderfierRef.current = null;
 
         const layer = createVenueClusterGroup(L, true);
         markerLayerRef.current = layer;
@@ -118,29 +130,60 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
         }
 
         const points: [number, number][] = [];
+        const spiderfyRecords: SpiderfyMarkerRecord<MatchVenueMapPoint>[] = [];
 
         for (const venue of validVenues) {
             const marker = L.marker([venue.lat, venue.lng], {
                 icon: createVenuePinIcon(L),
             });
+
             const capacityLabel = venue.bookingLimit
                 ? `${venue.confirmedBookings}/${venue.bookingLimit} booked`
                 : `${venue.confirmedBookings} booked`;
-            marker.bindPopup(
-                `<div style="min-width:180px"><strong>${escapeHtml(venue.name)}</strong><br/>${escapeHtml(venue.city || "")}${venue.city && venue.addressLine1 ? " · " : ""}${escapeHtml(venue.addressLine1 || "")}<br/><span style="color:#666">${escapeHtml(capacityLabel)}</span></div>`,
-            );
-            marker.on("click", () => onSelectVenue?.(venue.id));
+
+            const popupHtml = `<div style="min-width:180px"><strong>${escapeHtml(venue.name)}</strong><br/>${escapeHtml(venue.city || "")}${venue.city && venue.addressLine1 ? " | " : ""}${escapeHtml(venue.addressLine1 || "")}<br/><span style="color:#666">${escapeHtml(capacityLabel)}</span><br/><a href="${venueHref(venue)}" style="display:inline-block;margin-top:8px;font-weight:700">View venue</a></div>`;
+
+            marker.bindPopup(popupHtml);
+            marker.on("click", () => {
+                const spiderfied = spiderfierRef.current?.spiderfy(venue.id) ?? false;
+                if (spiderfied) return;
+                onSelectVenue?.(venue.id);
+                marker.openPopup();
+            });
+
             layer.addLayer(marker);
+            spiderfyRecords.push({
+                id: venue.id,
+                lat: venue.lat,
+                lng: venue.lng,
+                marker,
+                data: venue,
+                popupHtml,
+                onSelect: () => onSelectVenue?.(venue.id),
+            });
             points.push([venue.lat, venue.lng]);
         }
 
+        spiderfierRef.current = createMarkerSpiderfier(L, map, spiderfyRecords, {
+            nearbyMarkerTolerancePx: 18,
+            minZoomToSpiderfy: 15,
+        });
+
         if (points.length === 1) {
             map.setView(points[0], 13, { animate: false });
-            return;
+            return () => {
+                spiderfierRef.current?.destroy();
+                spiderfierRef.current = null;
+            };
         }
 
         const bounds = L.latLngBounds(points);
         map.fitBounds(bounds, { padding: [30, 30] });
+
+        return () => {
+            spiderfierRef.current?.destroy();
+            spiderfierRef.current = null;
+        };
     }, [validVenues, onSelectVenue]);
 
     return (

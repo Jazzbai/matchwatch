@@ -74,6 +74,8 @@ rsync -azP --delete \
 
 ## 5. Create server `.env`
 
+You can start from [server.env.example](server.env.example) and then fill in the real secrets.
+
 ```bash
 ssh -i ~/matchwatch.pem ubuntu@44.215.158.165
 cd ~/JazzB-watchparty
@@ -88,6 +90,9 @@ REDIS_URL=redis://redis:6379
 PORT=4000
 NODE_ENV=production
 LOG_LEVEL=info
+RUN_STARTUP_MIGRATIONS=true
+RUN_STARTUP_SEED=true
+ENABLE_MATCH_SYNC_WORKER=true
 
 # ─── JWT (production) ────────────────────────────
 JWT_SECRET=CHANGE_THIS_TO_A_LONG_RANDOM_SECRET
@@ -110,6 +115,7 @@ API_PROXY_TARGET=http://api:4000
 # ─── Match API keys ──────────────────────────────
 FOOTBALL_DATA_API_KEY=YOUR_FOOTBALL_DATA_KEY
 API_FOOTBALL_API_KEY=YOUR_API_FOOTBALL_KEY
+YOUTUBE_API_KEY=YOUR_YOUTUBE_DATA_API_KEY
 
 # ─── AWS S3 ──────────────────────────────────────
 AWS_REGION=us-east-1

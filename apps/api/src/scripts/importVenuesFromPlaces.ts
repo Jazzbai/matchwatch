@@ -128,7 +128,7 @@ async function searchPlaces(
                 location: { lat, lng },
                 radius: radiusMeters,
                 keyword: query,
-                type: PlaceType2.bar,
+                type: 'bar',
                 key: GOOGLE_API_KEY,
                 ...(pageToken ? { pagetoken: pageToken } : {}),
             },
@@ -221,12 +221,12 @@ async function scrapeVenueWebsite(
 ): Promise<ScrapedVenueData> {
     try {
         console.log(`    🕷  Scraping ${url}`);
-        const result = await firecrawl.scrapeUrl(url, {
+        const result = await firecrawl.scrape(url, {
             formats: ['markdown'],
             onlyMainContent: true,
-        });
+        }) as { markdown?: string };
 
-        if (!result.success || !result.markdown) return {};
+        if (!result.markdown) return {};
 
         const md = result.markdown.toLowerCase();
 
@@ -235,10 +235,10 @@ async function scrapeVenueWebsite(
         const sentences = result.markdown
             .replace(/#+\s/g, '')
             .split(/[.\n]/)
-            .map((s) => s.trim())
-            .filter((s) => s.length > 40 && s.length < 400);
+            .map((s: string) => s.trim())
+            .filter((s: string) => s.length > 40 && s.length < 400);
 
-        const descSentence = sentences.find((s) =>
+        const descSentence = sentences.find((s: string) =>
             s.toLowerCase().includes(nameToken) ||
             s.toLowerCase().includes('sports bar') ||
             s.toLowerCase().includes('beer garden') ||
