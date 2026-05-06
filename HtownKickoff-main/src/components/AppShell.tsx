@@ -83,13 +83,18 @@ export function FloatingNav() {
                 }}
             >
                 {/* Logo */}
-                <Link href="/" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "flex-start", minWidth: 0 }}>
-                    <span style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 900, fontSize: isMobile ? 16 : 20, letterSpacing: "-0.02em", color: "var(--foreground)", lineHeight: 1.1 }}>
-                        matchwatch
-                    </span>
-                    <span style={{ fontFamily: "monospace", fontSize: isMobile ? 8 : 9, letterSpacing: isMobile ? "0.18em" : "0.25em", color: "var(--primary)", fontWeight: 700, textTransform: "uppercase", marginTop: -2, opacity: 0.8 }}>
-                        Watchparty Hub
-                    </span>
+                <Link href="/" aria-label="MatchWatch home" style={{ textDecoration: "none", display: "flex", alignItems: "center", minWidth: 0 }}>
+                    <img
+                        src="/logo.svg"
+                        alt="MatchWatch"
+                        style={{
+                            display: "block",
+                            width: isMobile ? 120 : 156,
+                            height: "auto",
+                            maxHeight: isMobile ? 36 : 44,
+                            objectFit: "contain",
+                        }}
+                    />
                 </Link>
 
                 {/* Desktop Links — centered absolutely */}
