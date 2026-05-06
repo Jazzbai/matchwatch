@@ -129,7 +129,8 @@ const CSS = `
   .mw-ribbon-ticker{display:flex;gap:18px;color:var(--mw-fg-mute);}
   .mw-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;}
   .mw-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1080px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,0.8);box-shadow:0 2px 20px rgba(0,0,0,0.25);}
-  .mw-brand{display:flex;flex-direction:column;align-items:flex-start;text-decoration:none;color:var(--mw-fg);}
+  .mw-brand{display:flex;align-items:center;text-decoration:none;color:var(--mw-fg);min-width:0;}
+  .mw-brand-logo{display:block;width:156px;height:auto;max-height:44px;object-fit:contain;}
   .mw-brand-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:900;font-size:18px;letter-spacing:-0.02em;line-height:1.1;}
   .mw-brand-name em{font-style:normal;color:var(--mw-accent);}
   .mw-brand-tag{font-family:monospace;font-size:9px;letter-spacing:0.22em;color:var(--mw-accent);font-weight:700;text-transform:uppercase;margin-top:1px;opacity:0.8;}
@@ -143,7 +144,7 @@ const CSS = `
   .mw-menu-toggle{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--mw-line);border-radius:999px;background:rgba(255,255,255,0.04);color:var(--mw-fg);cursor:pointer;}
   .mw-mobile-nav{display:none;}
   @media (max-width:1200px){.mw-page{grid-template-columns:1fr;}.mw-side,.mw-rail{display:none;}.mw-fixtures{grid-template-columns:repeat(2,1fr);}}
-  @media (max-width:900px){.mw-topbar{padding:8px 10px;}.mw-topbar-inner{max-width:none;border-radius:18px;padding:9px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px 8px;align-items:center;}.mw-brand{min-width:0;}.mw-brand-tag{display:none;}.mw-nav{display:none;}.mw-top-right{grid-column:2;grid-row:1;display:flex;gap:6px;}.mw-menu-toggle{display:inline-flex;grid-column:3;grid-row:1;justify-self:end;}.mw-mobile-nav{grid-column:1/-1;grid-row:2;display:none;flex-direction:column;gap:8px;padding-top:8px;}.mw-mobile-nav.open{display:flex;}.mw-mobile-nav a{padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700;color:var(--mw-fg);background:rgba(255,255,255,0.04);text-decoration:none;transition:all .18s;white-space:nowrap;}.mw-mobile-nav a:hover,.mw-mobile-nav a.active{background:rgba(255,255,255,0.08);color:var(--mw-fg);}.mw-mobile-nav .primary{background:var(--mw-accent);color:#0a0b0d;}.mw-btn-pill{padding:8px 12px;font-size:12px;white-space:nowrap;}.mw-list-venue-btn{display:none;}}
+  @media (max-width:900px){.mw-topbar{padding:8px 10px;}.mw-topbar-inner{max-width:none;border-radius:18px;padding:9px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px 8px;align-items:center;}.mw-brand{min-width:0;}.mw-brand-logo{width:120px;max-height:36px;}.mw-brand-tag{display:none;}.mw-nav{display:none;}.mw-top-right{grid-column:2;grid-row:1;display:flex;gap:6px;}.mw-menu-toggle{display:inline-flex;grid-column:3;grid-row:1;justify-self:end;}.mw-mobile-nav{grid-column:1/-1;grid-row:2;display:none;flex-direction:column;gap:8px;padding-top:8px;}.mw-mobile-nav.open{display:flex;}.mw-mobile-nav a{padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700;color:var(--mw-fg);background:rgba(255,255,255,0.04);text-decoration:none;transition:all .18s;white-space:nowrap;}.mw-mobile-nav a:hover,.mw-mobile-nav a.active{background:rgba(255,255,255,0.08);color:var(--mw-fg);}.mw-mobile-nav .primary{background:var(--mw-accent);color:#0a0b0d;}.mw-btn-pill{padding:8px 12px;font-size:12px;white-space:nowrap;}.mw-list-venue-btn{display:none;}}
   @media (max-width:768px){.mw-main{padding:16px 16px 60px;}.mw-fixtures{grid-template-columns:1fr;}.mw-match-grid{grid-template-columns:1fr;}.mw-hero-inner{grid-template-columns:1fr;}.mw-hero-right{display:none;}.mw-ribbon{padding:8px 16px;font-size:10px;flex-wrap:wrap;gap:6px;}.mw-hero-left{padding:20px 16px;}.mw-sec-head{padding:14px 16px;}.mw-section{margin-bottom:24px;}}
 `;
 
@@ -345,9 +346,8 @@ export default function HomePage() {
       {/* Topbar */}
       <header className="mw-topbar">
         <div className="mw-topbar-inner">
-          <Link href="/" className="mw-brand">
-            <div className="mw-brand-name">match<em>watch</em></div>
-            <div className="mw-brand-tag">Watchparty Hub</div>
+          <Link href="/" className="mw-brand" aria-label="MatchWatch home">
+            <img className="mw-brand-logo" src="/logo.svg" alt="MatchWatch" />
           </Link>
           <nav className="mw-nav">
             <Link href="/" className="active">Home</Link>
