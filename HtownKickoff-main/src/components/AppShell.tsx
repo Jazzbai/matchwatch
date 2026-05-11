@@ -16,6 +16,7 @@ export function FloatingNav() {
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [compactNav, setCompactNav] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -25,9 +26,11 @@ export function FloatingNav() {
 
     useEffect(() => {
         const media = window.matchMedia("(max-width: 767px)");
+        const compactMedia = window.matchMedia("(max-width: 1120px)");
         const update = () => {
             const mobile = media.matches;
             setIsMobile(mobile);
+            setCompactNav(compactMedia.matches && !mobile);
             if (!mobile) {
                 setMobileMenuOpen(false);
             }
@@ -35,7 +38,11 @@ export function FloatingNav() {
 
         update();
         media.addEventListener("change", update);
-        return () => media.removeEventListener("change", update);
+        compactMedia.addEventListener("change", update);
+        return () => {
+            media.removeEventListener("change", update);
+            compactMedia.removeEventListener("change", update);
+        };
     }, []);
 
     const dashboardHref =
@@ -67,14 +74,15 @@ export function FloatingNav() {
             {/* The Pill */}
             <nav
                 style={{
-                    display: "flex",
+                    display: "grid",
+                    gridTemplateColumns: isMobile ? "minmax(0, 1fr) auto" : "auto minmax(0, 1fr) auto",
                     alignItems: "center",
-                    justifyContent: "space-between",
+                    columnGap: isMobile ? 10 : 18,
                     pointerEvents: "auto",
                     borderRadius: 999,
                     width: "100%",
-                    maxWidth: isMobile ? "calc(100vw - 16px)" : 1080,
-                    padding: isMobile ? "10px 16px" : "12px 24px",
+                    maxWidth: isMobile ? "calc(100vw - 16px)" : 1160,
+                    padding: isMobile ? "10px 14px" : "10px 16px",
                     transition: "all 0.5s",
                     backgroundColor: scrolled ? "color-mix(in oklch, var(--background) 70%, transparent)" : "color-mix(in oklch, var(--background) 40%, transparent)",
                     backdropFilter: scrolled ? "blur(24px)" : "blur(16px)",
@@ -89,7 +97,7 @@ export function FloatingNav() {
                         alt="MatchWatch"
                         style={{
                             display: "block",
-                            width: isMobile ? 120 : 156,
+                            width: isMobile ? 118 : 148,
                             height: "auto",
                             maxHeight: isMobile ? 36 : 44,
                             objectFit: "contain",
@@ -102,10 +110,10 @@ export function FloatingNav() {
                     style={{
                         display: isMobile ? "none" : "flex",
                         alignItems: "center",
-                        gap: 4,
-                        position: "absolute",
-                        left: "50%",
-                        transform: "translateX(-50%)",
+                        justifyContent: "center",
+                        gap: 3,
+                        minWidth: 0,
+                        overflow: "hidden",
                     }}
                 >
                     {navLinks.map((link) => {
@@ -118,18 +126,19 @@ export function FloatingNav() {
                                     position: "relative",
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: 8,
-                                    padding: "8px 18px",
+                                    gap: compactNav ? 6 : 8,
+                                    padding: compactNav ? "8px 11px" : "8px 14px",
                                     borderRadius: 999,
-                                    fontSize: 14,
+                                    fontSize: compactNav ? 13 : 14,
                                     fontWeight: 600,
                                     textDecoration: "none",
                                     color: isActive ? "var(--foreground)" : "var(--muted-foreground)",
                                     backgroundColor: isActive ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "transparent",
                                     transition: "all 0.2s",
+                                    whiteSpace: "nowrap",
                                 }}
                             >
-                                <link.icon size={16} style={{ color: isActive ? "var(--primary)" : "var(--muted-foreground)" }} />
+                                <link.icon size={compactNav ? 15 : 16} style={{ color: isActive ? "var(--primary)" : "var(--muted-foreground)", flexShrink: 0 }} />
                                 {link.label}
                             </Link>
                         );
@@ -137,7 +146,7 @@ export function FloatingNav() {
                 </div>
 
                 {/* Right Side */}
-                <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: isMobile ? 8 : 10, minWidth: 0 }}>
                     <div style={{ display: isMobile ? "none" : "block" }}>
                         <ThemeToggle />
                     </div>
@@ -147,10 +156,13 @@ export function FloatingNav() {
                             href={dashboardHref}
                             style={{
                                 display: isMobile ? "none" : "flex",
-                                alignItems: "center", gap: 8, padding: "6px 16px 6px 8px",
+                                alignItems: "center", gap: 8, padding: compactNav ? "6px 10px 6px 8px" : "6px 14px 6px 8px",
                                 borderRadius: 999, fontSize: 12, fontWeight: 700, textDecoration: "none",
                                 backgroundColor: "var(--secondary)", color: "var(--secondary-foreground)",
                                 border: "1px solid var(--border)", transition: "all 0.2s",
+                                maxWidth: compactNav ? 132 : 180,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
                             }}
                         >
                             {avatarUrl ? (
@@ -158,7 +170,9 @@ export function FloatingNav() {
                             ) : (
                                 <UserCircle2 size={20} style={{ color: "var(--foreground)" }} />
                             )}
-                            {user?.role === "BUSINESS" || user?.role === "VENUE_OWNER" ? (user?.name || "Business") : "Account"}
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {user?.role === "BUSINESS" || user?.role === "VENUE_OWNER" ? (user?.name || "Business") : "Account"}
+                            </span>
                         </Link>
                     ) : (
                         <div style={{ display: isMobile ? "none" : "flex", alignItems: "center", gap: 8 }}>
@@ -166,8 +180,9 @@ export function FloatingNav() {
                                 href="/login"
                                 style={{
                                     fontSize: 13, fontWeight: 600, textDecoration: "none",
-                                    color: "var(--muted-foreground)", padding: "8px 12px",
+                                    color: "var(--muted-foreground)", padding: compactNav ? "8px 8px" : "8px 10px",
                                     borderRadius: 999, transition: "all 0.2s",
+                                    whiteSpace: "nowrap",
                                 }}
                             >
                                 Sign in
@@ -175,10 +190,11 @@ export function FloatingNav() {
                             <Link
                                 href="/for-venues/register"
                                 style={{
-                                    display: "flex", alignItems: "center", gap: 6, padding: "8px 18px",
+                                    display: "flex", alignItems: "center", gap: 6, padding: compactNav ? "8px 12px" : "8px 16px",
                                     borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: "none",
                                     backgroundColor: "#F97316", color: "#ffffff",
                                     transition: "all 0.2s",
+                                    whiteSpace: "nowrap",
                                 }}
                             >
                                 <Building2 size={14} />
