@@ -498,28 +498,32 @@ body:has(.matchwatch-login-page) {
   cursor: pointer;
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 1180px) {
   .site-nav {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    width: calc(100vw - 24px);
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: calc(100vw - 16px);
     gap: 10px;
+    min-height: 58px;
   }
 
   .site-nav__logo-img {
-    width: 132px;
+    width: 124px;
+    max-height: 36px;
   }
 
-  .site-nav__link {
-    padding-inline: 10px;
-    font-size: 0.8rem;
+  .site-nav__links,
+  .site-nav__desktop-only,
+  .site-nav__account,
+  .site-nav__auth {
+    display: none !important;
   }
 
-  .site-nav__link svg {
-    display: none;
+  .site-nav__actions {
+    justify-content: flex-end;
   }
 
-  .site-nav__auth-link {
-    display: none;
+  .site-nav__menu-button {
+    display: inline-flex;
   }
 }
 
