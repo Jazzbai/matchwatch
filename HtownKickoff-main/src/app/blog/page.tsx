@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "../../lib/auth-context";
 import { blogApi, type BlogCategory, type BlogPostSummary } from "../../lib/api";
+import { FloatingNav } from "../../components/AppShell";
 
 const BL_VARS = `
 :root {
@@ -114,6 +115,7 @@ export default function BlogIndexPage() {
     return (
         <div className="bl-wrap">
             <style dangerouslySetInnerHTML={{ __html: BL_VARS + BL_CSS }} />
+            <FloatingNav />
 
             <header className="bl-topbar">
                 <div className="bl-topbar-inner">

@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "../../lib/auth-context";
+import { FloatingNav } from "../../components/AppShell";
 
 // ─── Static WC2026 Data ─────────────────────────
 
@@ -299,6 +300,7 @@ export default function WorldCupPage() {
     return (
         <>
             <style dangerouslySetInnerHTML={{ __html: WC_VARS + WC_CSS }} />
+            <FloatingNav />
 
             {showNotice && (
                 <div className="wc-top-notice" role="status" aria-live="polite">

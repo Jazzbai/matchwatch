@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useAuth } from "../../lib/auth-context";
+import { FloatingNav } from "../../components/AppShell";
 
 const PP_VARS = `
   :root {
@@ -75,6 +76,7 @@ export default function PartnersPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: PP_VARS + PP_CSS }} />
+      <FloatingNav />
 
       <header className="pp-topbar">
         <div className="pp-topbar-inner">

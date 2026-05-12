@@ -7,6 +7,7 @@ import { api } from "../../../lib/api";
 import { AMENITY_LABELS } from "../../../lib/data";
 import { getLeagueVisual, getMatchDisplay, getSingleEventSubtitle, getSingleEventTitle, isSingleEventMatch } from "../../../lib/match-display";
 import { useData, type Venue, type VenueEvent } from "../../../lib/data-provider";
+import { FloatingNav } from "../../../components/AppShell";
 
 /* ── CSS injected once ── */
 const MD_CSS = `
@@ -301,6 +302,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
     return (
         <>
             <style dangerouslySetInnerHTML={{ __html: MD_VARS + MD_CSS + `body{background:var(--md-bg)!important;color:var(--md-fg)!important;}` }} />
+            <FloatingNav />
             {/* Topbar */}
             <header className="md-topbar">
                 <Link href="/" className="md-brand">

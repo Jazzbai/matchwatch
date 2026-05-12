@@ -5,6 +5,7 @@ import Link from "next/link";
 import { use } from "react";
 import { useAuth } from "../../../lib/auth-context";
 import { blogApi, type BlogComment, type BlogPostDetail } from "../../../lib/api";
+import { FloatingNav } from "../../../components/AppShell";
 
 const BP_VARS = `
 :root {
@@ -118,6 +119,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
     return (
         <div className="bp-wrap">
             <style dangerouslySetInnerHTML={{ __html: BP_VARS + BP_CSS }} />
+            <FloatingNav />
 
             <header className="bp-topbar">
                 <div className="bp-topbar-inner">

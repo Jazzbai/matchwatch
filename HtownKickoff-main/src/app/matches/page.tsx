@@ -10,6 +10,7 @@ import { useData } from "../../lib/data-provider";
 import { isNationalTeamCompetition } from "../../lib/league-utils";
 import { getMatchDisplay } from "../../lib/match-display";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
+import { FloatingNav } from "../../components/AppShell";
 
 /* ── CSS ── */
 const MT_VARS = `
@@ -477,6 +478,7 @@ function MatchesPageContent() {
     return (
         <div className="mt-wrap">
             <style dangerouslySetInnerHTML={{ __html: MT_VARS + MT_CSS }} />
+            <FloatingNav />
 
             {/* Topbar */}
             <header className="mt-topbar">

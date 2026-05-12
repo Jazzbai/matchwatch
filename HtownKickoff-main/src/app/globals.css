@@ -224,6 +224,32 @@ body:has(.matchwatch-login-page) {
   overflow-x: hidden;
 }
 
+/* These pages now render the shared FloatingNav; keep old local headers inert. */
+.mw-ribbon,
+.mw-topbar,
+.mt-topbar,
+.vn-topbar,
+.wc-topbar,
+.pp-topbar,
+.bl-topbar,
+.bp-topbar,
+.vp-topbar,
+.md-topbar {
+  display: none !important;
+}
+
+.mw-page,
+.mt-crumb,
+.vn-wrap,
+.wc-stage,
+.pp-hero,
+.bl-main,
+.bp-content,
+.vp-wrap,
+.md-crumb {
+  margin-top: 124px !important;
+}
+
 .site-nav-wrap {
   position: fixed;
   top: 0;

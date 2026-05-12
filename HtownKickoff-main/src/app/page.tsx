@@ -7,6 +7,7 @@ import { useData } from "../lib/data-provider";
 import { useAuth } from "../lib/auth-context";
 import { getMatchDisplay } from "../lib/match-display";
 import { isNationalTeamCompetition } from "../lib/league-utils";
+import { FloatingNav } from "../components/AppShell";
 
 /* ── CSS-in-JS style block injected once ── */
 const CSS = `
@@ -327,6 +328,7 @@ export default function HomePage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: MW_VARS + CSS + `body{background:var(--mw-bg)!important;color:var(--mw-fg)!important;}` }} />
+      <FloatingNav />
       {/* Ribbon */}
       <div className="mw-ribbon">
         <div className="left">

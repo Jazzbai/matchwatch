@@ -9,6 +9,7 @@ import { api } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
 import { useData } from "../../../lib/data-provider";
 import { getLeagueVisual, getMatchDisplay } from "../../../lib/match-display";
+import { FloatingNav } from "../../../components/AppShell";
 
 /* ── types ── */
 type VenueMenuCategory = {
@@ -409,6 +410,7 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
             <>
                 <style dangerouslySetInnerHTML={{ __html: VP_VARS + VP_CSS }} />
                 <div className="vp-wrap">
+                    <FloatingNav />
                     <header className="vp-topbar">
                         <div className="vp-topbar-inner">
                             <Link href="/" className="vp-brand"><img className="vp-brand-logo" src="/logo.svg" alt="MatchWatch" /></Link>
@@ -449,6 +451,7 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
         <>
             <style dangerouslySetInnerHTML={{ __html: VP_VARS + VP_CSS }} />
             <div className="vp-wrap">
+                <FloatingNav />
 
                 {/* Topbar */}
                 <header className="vp-topbar">

@@ -9,6 +9,7 @@ import { useAuth } from "../../lib/auth-context";
 import { AMENITY_LABELS } from "../../lib/data";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
 import { MatchVenueMap } from "../../components/MatchVenueMap";
+import { FloatingNav } from "../../components/AppShell";
 
 /* ── CSS ── */
 const VN_VARS = `
@@ -278,6 +279,7 @@ function VenuesPageContent() {
     return (
         <div className="vn-wrap">
             <style dangerouslySetInnerHTML={{ __html: VN_VARS + VN_CSS }} />
+            <FloatingNav />
 
             {/* Topbar */}
             <header className="vn-topbar">
