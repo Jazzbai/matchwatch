@@ -29,8 +29,8 @@ export default function ForVenuesPage() {
             <AppShell>
                 <section
                     style={{
-                        "--primary": "#F97316",
-                        "--ring": "#F97316",
+                        "--primary": "#FF4B4B",
+                        "--ring": "#FF4B4B",
                         padding: "48px 20px",
                         maxWidth: "700px",
                         margin: "0 auto",
