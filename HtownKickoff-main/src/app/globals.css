@@ -9,6 +9,9 @@
    ═══════════════════════════════════════════════════ */
 
 :root {
+  --site-nav-content-offset: 132px;
+  --site-nav-content-offset-mobile: 108px;
+
   /* ── Light Mode ──────────────────────────────── */
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.15 0 0);
@@ -219,7 +222,7 @@ body:has(.matchwatch-login-page) {
 
 .app-shell__main {
   flex: 1;
-  padding-top: 124px;
+  padding-top: var(--site-nav-content-offset);
   padding-bottom: 48px;
   overflow-x: hidden;
 }
@@ -247,7 +250,7 @@ body:has(.matchwatch-login-page) {
 .bp-content,
 .vp-wrap,
 .md-crumb {
-  margin-top: 124px !important;
+  margin-top: var(--site-nav-content-offset) !important;
 }
 
 .site-nav-wrap {
@@ -541,7 +544,19 @@ body:has(.matchwatch-login-page) {
   }
 
   .app-shell__main {
-    padding-top: 94px;
+    padding-top: var(--site-nav-content-offset-mobile);
+  }
+
+  .mw-page,
+  .mt-crumb,
+  .vn-wrap,
+  .wc-stage,
+  .pp-hero,
+  .bl-main,
+  .bp-content,
+  .vp-wrap,
+  .md-crumb {
+    margin-top: var(--site-nav-content-offset-mobile) !important;
   }
 
   .site-nav__logo {
