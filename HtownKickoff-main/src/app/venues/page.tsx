@@ -283,8 +283,7 @@ function VenuesPageContent() {
             <header className="vn-topbar">
                 <div className="vn-topbar-inner">
                     <Link href="/" className="vn-brand">
-                        <div className="vn-brand-name">match<em>watch</em></div>
-                        <div className="vn-brand-tag">Watchparty Hub</div>
+                        <img className="vn-brand-logo" src="/logo.svg" alt="MatchWatch" />
                     </Link>
                     <nav className="vn-nav">
                         <Link href="/">Home</Link>

@@ -482,8 +482,7 @@ function MatchesPageContent() {
             <header className="mt-topbar">
                 <div className="mt-topbar-inner">
                     <Link href="/" className="mt-brand">
-                        <div className="mt-brand-name">match<em>watch</em></div>
-                        <div className="mt-brand-tag">Watchparty Hub</div>
+                        <img className="mt-brand-logo" src="/logo.svg" alt="MatchWatch" />
                     </Link>
                     <nav className="mt-nav">
                         <Link href="/">Home</Link>

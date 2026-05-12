@@ -118,8 +118,7 @@ export default function BlogIndexPage() {
             <header className="bl-topbar">
                 <div className="bl-topbar-inner">
                     <Link href="/" className="bl-brand">
-                        <div className="bl-brand-name">match<em>watch</em></div>
-                        <div className="bl-brand-tag">Watchparty Hub</div>
+                        <img className="bl-brand-logo" src="/logo.svg" alt="MatchWatch" />
                     </Link>
                     <nav className="bl-nav">
                         <Link href="/">Home</Link>

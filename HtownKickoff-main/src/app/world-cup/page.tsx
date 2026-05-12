@@ -318,8 +318,7 @@ export default function WorldCupPage() {
             <header className="wc-topbar">
                 <div className="wc-topbar-inner">
                     <Link href="/" className="wc-brand">
-                        <div className="wc-brand-name">match<em>watch</em></div>
-                        <div className="wc-brand-tag">Watchparty Hub</div>
+                        <img className="wc-brand-logo" src="/logo.svg" alt="MatchWatch" />
                     </Link>
                     <nav className="wc-nav">
                         <Link href="/">Home</Link>

@@ -79,8 +79,7 @@ export default function PartnersPage() {
       <header className="pp-topbar">
         <div className="pp-topbar-inner">
           <Link href="/" className="pp-brand">
-            <div className="pp-brand-name">match<em>watch</em></div>
-            <div className="pp-brand-tag">Watchparty Hub</div>
+            <img className="pp-brand-logo" src="/logo.svg" alt="MatchWatch" />
           </Link>
           <nav className="pp-nav">
             <Link href="/">Home</Link>

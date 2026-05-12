@@ -411,7 +411,7 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
                 <div className="vp-wrap">
                     <header className="vp-topbar">
                         <div className="vp-topbar-inner">
-                            <Link href="/" className="vp-brand"><div className="vp-brand-name">match<em>watch</em></div></Link>
+                            <Link href="/" className="vp-brand"><img className="vp-brand-logo" src="/logo.svg" alt="MatchWatch" /></Link>
                             <nav className="vp-nav"><Link href="/">Home</Link><Link href="/venues" className="active">Venues</Link><Link href="/matches">Matches</Link></nav>
                             <div className="vp-top-right"><Link href="/login" className="vp-btn-pill">Log in</Link></div>
                         </div>
@@ -454,8 +454,7 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
                 <header className="vp-topbar">
                     <div className="vp-topbar-inner">
                         <Link href="/" className="vp-brand">
-                            <div className="vp-brand-name">match<em>watch</em></div>
-                            <div className="vp-brand-tag">Watchparty Hub</div>
+                            <img className="vp-brand-logo" src="/logo.svg" alt="MatchWatch" />
                         </Link>
                         <nav className="vp-nav">
                             <Link href="/">Home</Link>

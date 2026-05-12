@@ -27,7 +27,15 @@ export default function ForVenuesPage() {
     return (
         
             <AppShell>
-                <section style={{ padding: "48px 20px", maxWidth: "700px", margin: "0 auto" }}>
+                <section
+                    style={{
+                        "--primary": "#F97316",
+                        "--ring": "#F97316",
+                        padding: "48px 20px",
+                        maxWidth: "700px",
+                        margin: "0 auto",
+                    } as React.CSSProperties}
+                >
                     <div className="section-label" style={{ marginBottom: "8px" }}>FOR VENUE OWNERS</div>
                     <h1 className="font-display text-display animate-fade-up" style={{ color: "var(--foreground)", marginBottom: "8px" }}>
                         LIST YOUR <span style={{ color: "var(--primary)" }}>VENUE</span>

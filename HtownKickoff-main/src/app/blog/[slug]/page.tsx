@@ -122,8 +122,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
             <header className="bp-topbar">
                 <div className="bp-topbar-inner">
                     <Link href="/" className="bp-brand">
-                        <div className="bp-brand-name">match<em>watch</em></div>
-                        <div className="bp-brand-tag">Watchparty Hub</div>
+                        <img className="bp-brand-logo" src="/logo.svg" alt="MatchWatch" />
                     </Link>
                     <nav className="bp-nav">
                         <Link href="/">Home</Link>

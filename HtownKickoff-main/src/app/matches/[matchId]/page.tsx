@@ -128,6 +128,7 @@ const MD_CSS = `
   .md-ticket .p-meta{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--md-fg-dim);}
   .md-topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 28px;background:rgba(10,11,13,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--md-line);}
   .md-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;text-decoration:none;color:var(--md-fg);}
+  .md-brand-logo{display:block;width:148px;height:auto;max-height:40px;object-fit:contain;}
   .md-brand em{font-style:normal;color:var(--md-accent);}
   .md-brand-mark{width:22px;height:22px;position:relative;background:var(--md-fg);mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);-webkit-mask-image:conic-gradient(from 0deg,#000 0 25%,transparent 25% 50%,#000 50% 75%,transparent 75% 100%);border-radius:2px;}
   .md-brand-mark::after{content:"";position:absolute;inset:4px;background:var(--md-accent);border-radius:1px;}
@@ -303,8 +304,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
             {/* Topbar */}
             <header className="md-topbar">
                 <Link href="/" className="md-brand">
-                    <span className="md-brand-mark" />
-                    match<em>watch</em>
+                    <img className="md-brand-logo" src="/logo.svg" alt="MatchWatch" />
                 </Link>
                 <nav className="md-nav">
                     <Link href="/">Home</Link>

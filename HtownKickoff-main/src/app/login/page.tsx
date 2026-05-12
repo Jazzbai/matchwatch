@@ -17,6 +17,7 @@ import {
 import { useAuth } from "../../lib/auth-context";
 import { api } from "../../lib/api";
 import { executeRecaptcha, isRecaptchaEnabled } from "../../lib/recaptcha";
+import { FloatingNav } from "../../components/AppShell";
 
 type AccountType = "fan" | "venue";
 
@@ -121,10 +122,11 @@ export default function LoginPage() {
     <div
       className="matchwatch-login-page"
       style={{
-        display: "flex",
+        display: "grid",
+        placeItems: "center",
         minHeight: "100vh",
         width: "100%",
-        paddingTop: 96,
+        padding: "132px 24px 48px",
         backgroundColor: "#0a0b0d",
         color: "#f1ece4",
         fontFamily: "var(--font-body), system-ui, sans-serif",
@@ -138,56 +140,22 @@ export default function LoginPage() {
         ["--primary-foreground" as string]: "#0a0b0d",
       }}
     >
-      <nav
-        style={{
-          position: "fixed",
-          top: 16,
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 50,
-          width: "min(1120px, calc(100vw - 32px))",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          padding: "12px 18px",
-          borderRadius: 999,
-          border: "1px solid var(--border)",
-          background: "color-mix(in oklch, var(--background) 72%, transparent)",
-          backdropFilter: "blur(20px)",
-        }}
-      >
-        <Link href="/" style={{ textDecoration: "none", display: "grid", lineHeight: 1.05 }}>
-          <span style={{ fontFamily: "var(--font-display), sans-serif", fontWeight: 900, fontSize: 20, color: "var(--foreground)" }}>
-            matchwatch
-          </span>
-          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: 9, letterSpacing: "0.22em", color: "var(--primary)", fontWeight: 800, textTransform: "uppercase" }}>
-            Watchparty Hub
-          </span>
-        </Link>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", scrollbarWidth: "none" }}>
-          <Link href="/" style={{ color: "var(--muted-foreground)", fontWeight: 700, fontSize: 13, textDecoration: "none", padding: "8px 10px", whiteSpace: "nowrap" }}>Home</Link>
-          <Link href="/matches" style={{ color: "var(--muted-foreground)", fontWeight: 700, fontSize: 13, textDecoration: "none", padding: "8px 10px", whiteSpace: "nowrap" }}>Matches</Link>
-          <Link href="/world-cup" style={{ color: "var(--muted-foreground)", fontWeight: 700, fontSize: 13, textDecoration: "none", padding: "8px 10px", whiteSpace: "nowrap" }}>World Cup</Link>
-          <Link href="/venues" style={{ color: "var(--muted-foreground)", fontWeight: 700, fontSize: 13, textDecoration: "none", padding: "8px 10px", whiteSpace: "nowrap" }}>Venues</Link>
-          <Link href="/for-venues" style={{ color: "var(--muted-foreground)", fontWeight: 700, fontSize: 13, textDecoration: "none", padding: "8px 10px", whiteSpace: "nowrap" }}>For venues</Link>
-          <Link href="/for-venues/register" style={{ color: "var(--primary-foreground)", background: "var(--primary)", fontWeight: 800, fontSize: 13, textDecoration: "none", padding: "8px 14px", borderRadius: 999, whiteSpace: "nowrap" }}>List your venue</Link>
-        </div>
-      </nav>
+      <FloatingNav />
       {/* ===== LEFT PANE — FORM ===== */}
       <div
         style={{
           width: "100%",
-          maxWidth: 540,
+          maxWidth: 620,
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           padding: "48px 40px",
           position: "relative",
           zIndex: 10,
-          flexShrink: 0,
-          borderRight: "1px solid var(--border)",
+          border: "1px solid var(--border)",
+          borderRadius: 24,
           backgroundColor: "var(--card)",
+          boxShadow: "0 28px 90px rgba(0,0,0,0.36)",
         }}
       >
         {/* Brand */}
@@ -434,13 +402,15 @@ export default function LoginPage() {
       {/* ===== RIGHT PANE — IMAGE ===== */}
       <div
         style={{
-          flex: 1,
+          flex: "1 1 560px",
+          maxWidth: 760,
+          minWidth: 460,
           position: "relative",
           display: "none",
           backgroundColor: "#000",
           overflow: "hidden",
         }}
-        className="lg:!flex"
+        className="matchwatch-login-hero"
       >
         <Image
           src="/assets/login-hero.png"
@@ -458,10 +428,10 @@ export default function LoginPage() {
         <div
           style={{
             position: "absolute",
-            bottom: 48,
-            left: 48,
-            right: 48,
-            padding: 32,
+            bottom: 40,
+            left: 40,
+            right: 40,
+            padding: 28,
             borderRadius: 24,
             backgroundColor: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(24px)",
@@ -472,7 +442,7 @@ export default function LoginPage() {
           <div style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
             <UserPlus size={24} style={{ color: "var(--primary-foreground)" }} />
           </div>
-          <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 32, fontWeight: 800, color: "#fff", marginBottom: 12, lineHeight: 1.2 }}>
+          <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(28px, 2.4vw, 38px)", fontWeight: 800, color: "#fff", marginBottom: 12, lineHeight: 1.12 }}>
             Join the action. Never miss a moment.
           </h2>
           <p style={{ fontSize: 16, color: "rgba(255,255,255,0.75)", lineHeight: 1.6 }}>
