@@ -11,6 +11,7 @@
 :root {
   --site-nav-content-offset: 132px;
   --site-nav-content-offset-mobile: 108px;
+  --site-nav-accent: #FF4B4B;
 
   /* ── Light Mode ──────────────────────────────── */
   --background: oklch(0.985 0 0);
@@ -360,13 +361,13 @@ body:has(.matchwatch-login-page) {
 }
 
 .site-nav__link[data-active="true"] {
-  border: 1px solid color-mix(in oklch, #F97316 48%, var(--border));
-  background: color-mix(in oklch, #F97316 18%, transparent);
+  border: 1px solid color-mix(in oklch, var(--site-nav-accent) 48%, var(--border));
+  background: color-mix(in oklch, var(--site-nav-accent) 18%, transparent);
   color: var(--foreground);
 }
 
 .dark .site-nav__link[data-active="true"] {
-  background: color-mix(in oklch, #F97316 22%, transparent);
+  background: color-mix(in oklch, var(--site-nav-accent) 22%, transparent);
   color: var(--foreground);
 }
 
@@ -425,13 +426,13 @@ body:has(.matchwatch-login-page) {
   justify-content: center;
   gap: 7px;
   padding: 0 15px;
-  border-color: color-mix(in oklch, #F97316 68%, transparent);
-  background: #F97316;
+  border-color: color-mix(in oklch, var(--site-nav-accent) 68%, transparent);
+  background: var(--site-nav-accent);
   color: white;
 }
 
 .site-nav__cta:hover {
-  background: #ea580c;
+  background: #ef3f3f;
   transform: translateY(-1px);
 }
 
@@ -1506,8 +1507,8 @@ body:has(.matchwatch-login-page) {
 .bl-nav a.active,
 .bp-nav a.active,
 .wc-nav a.active {
-  border: 1px solid color-mix(in oklch, #F97316 48%, var(--border, #23272f)) !important;
-  background: color-mix(in oklch, #F97316 18%, transparent) !important;
+  border: 1px solid color-mix(in oklch, var(--site-nav-accent) 48%, var(--border, #23272f)) !important;
+  background: color-mix(in oklch, var(--site-nav-accent) 18%, transparent) !important;
   color: var(--foreground, #f1ece4) !important;
 }
 
@@ -1541,8 +1542,8 @@ body:has(.matchwatch-login-page) {
   min-height: 40px !important;
   padding: 0 15px !important;
   border-radius: 999px !important;
-  border: 1px solid color-mix(in oklch, #F97316 68%, transparent) !important;
-  background: #F97316 !important;
+  border: 1px solid color-mix(in oklch, var(--site-nav-accent) 68%, transparent) !important;
+  background: var(--site-nav-accent) !important;
   color: #fff !important;
   font-size: 0.82rem !important;
   font-weight: 800 !important;
