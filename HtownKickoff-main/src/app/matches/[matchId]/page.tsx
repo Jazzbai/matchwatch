@@ -127,7 +127,7 @@ const MD_CSS = `
   .md-ticket .p-now{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:22px;color:var(--md-accent);}
   .md-ticket .p-was{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:12px;color:var(--md-fg-mute);text-decoration:line-through;}
   .md-ticket .p-meta{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--md-fg-dim);}
-  .md-topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 28px;background:rgba(10,11,13,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--md-line);}
+  .md-topbar{display:none!important;}
   .md-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;text-decoration:none;color:var(--md-fg);}
   .md-brand-logo{display:block;width:148px;height:auto;max-height:40px;object-fit:contain;}
   .md-brand em{font-style:normal;color:var(--md-accent);}

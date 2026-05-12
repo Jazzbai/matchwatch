@@ -27,7 +27,7 @@ const MT_CSS = `
 body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 .mt-wrap{min-height:100vh;background:radial-gradient(1200px 600px at 20% -10%,rgba(255,120,60,0.08),transparent 60%),radial-gradient(900px 500px at 100% 10%,rgba(80,180,255,0.05),transparent 60%),var(--mt-bg);}
 /* topbar */
-.mt-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;}
+.mt-topbar{display:none!important;}
 .mt-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1080px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,0.8);box-shadow:0 2px 20px rgba(0,0,0,0.25);}
 .mt-brand{display:flex;flex-direction:column;align-items:flex-start;text-decoration:none;color:var(--mt-fg);}
 .mt-brand-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:900;font-size:18px;letter-spacing:-0.02em;line-height:1.1;}

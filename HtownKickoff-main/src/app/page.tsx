@@ -125,7 +125,7 @@ const CSS = `
   .mw-iconbtn:hover{color:var(--mw-fg);border-color:var(--mw-line-2);}
   .mw-avatar{width:32px;height:32px;background:linear-gradient(135deg,#5a4a3a,#a07a52);display:grid;place-items:center;font-weight:600;font-size:12px;color:#1a1108;border:1px solid var(--mw-line-2);flex-shrink:0;}
   .mw-ribbon{display:none;}
-  .mw-topbar{position:sticky;top:0;z-index:30;display:block;padding:0 24px;background:rgba(10,11,13,0.94);backdrop-filter:blur(18px);border-bottom:1px solid var(--mw-line);}
+  .mw-topbar{display:none!important;}
   .mw-topbar-inner{display:grid;grid-template-columns:220px minmax(0,1fr) auto;align-items:center;gap:24px;width:100%;height:72px;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;}
   .mw-brand{display:flex;align-items:center;text-decoration:none;color:var(--mw-fg);min-width:0;}
   .mw-brand-logo{display:block;width:132px;height:auto;max-height:38px;object-fit:contain;}

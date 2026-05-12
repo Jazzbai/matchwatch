@@ -59,7 +59,7 @@ const VP_CSS = `
 body{background:var(--vp-bg)!important;color:var(--vp-fg)!important;}
 .vp-wrap{min-height:100vh;background:var(--vp-bg);}
 /* topbar */
-.vp-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;}
+.vp-topbar{display:none!important;}
 .vp-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:920px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,0.8);box-shadow:0 2px 20px rgba(0,0,0,0.25);}
 .vp-brand{display:flex;flex-direction:column;align-items:flex-start;text-decoration:none;color:var(--vp-fg);}
 .vp-brand-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:900;font-size:18px;letter-spacing:-0.02em;line-height:1.1;}
