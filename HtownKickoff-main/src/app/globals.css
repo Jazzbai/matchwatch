@@ -568,6 +568,20 @@ body:has(.matchwatch-login-page) {
   z-index: 1;
 }
 
+.matchwatch-login-page > .site-nav-wrap {
+  position: fixed !important;
+  inset: 0 0 auto !important;
+  z-index: 50 !important;
+}
+
+.matchwatch-login-page .site-nav {
+  width: min(100%, 1140px) !important;
+}
+
+.matchwatch-login-page .site-nav__actions {
+  gap: 10px !important;
+}
+
 .venue-register-crumb {
   display: flex;
   align-items: center;
