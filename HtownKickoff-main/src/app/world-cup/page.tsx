@@ -2,8 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
-import { useAuth } from "../../lib/auth-context";
+import { X } from "lucide-react";
 import { FloatingNav } from "../../components/AppShell";
 
 // ─── Static WC2026 Data ─────────────────────────
@@ -136,7 +135,7 @@ body { background: var(--wc-bg) !important; color: var(--wc-fg) !important; }
 .wc-top-notice button:hover { background: rgba(255,255,255,0.09); border-color: var(--wc-line-2); }
 
 /* ── Hero ── */
-.wc-hero { max-width: 1080px; margin: 0 auto 32px; position: relative; overflow: hidden; border: 1px solid var(--wc-line); background: linear-gradient(120deg, rgba(255,95,45,0.10), transparent 60%), linear-gradient(0deg, #0c0e12, #131720); }
+.wc-hero { max-width: 1080px; margin: 132px auto 32px; position: relative; overflow: hidden; border: 1px solid var(--wc-line); background: linear-gradient(120deg, rgba(255,95,45,0.10), transparent 60%), linear-gradient(0deg, #0c0e12, #131720); }
 .wc-hero::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 48px 48px; pointer-events: none; }
 .wc-hero-inner { position: relative; z-index: 1; display: grid; grid-template-columns: 1.3fr 1fr; min-height: 340px; gap: 0; align-items: stretch; }
 .wc-hero-left { padding: 28px 32px; display: flex; flex-direction: column; gap: 22px; }
@@ -224,11 +223,11 @@ body { background: var(--wc-bg) !important; color: var(--wc-fg) !important; }
   .wc-menu-toggle { display: inline-flex; justify-self: end; }
   .wc-mobile-nav { grid-column: 1 / -1; display: none; flex-direction: column; gap: 8px; padding-top: 8px; }
   .wc-mobile-nav.open { display: flex; }
-  .wc-top-notice { top: 86px; }
+  .wc-top-notice { top: 84px; }
   .wc-btn-pill { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
   .wc-groups-grid { grid-template-columns: repeat(2, 1fr); }
   .wc-stadiums-grid { grid-template-columns: repeat(2, 1fr); }
-  .wc-hero { margin: 0 10px 24px; }
+  .wc-hero { margin: 122px 10px 24px; }
   .wc-hero-inner { grid-template-columns: 1fr; }
   .wc-hero-right { border-left: 0; border-top: 1px solid var(--wc-line); }
   .wc-hero-meta { grid-template-columns: repeat(2, 1fr); gap: 14px 0; }
@@ -267,10 +266,8 @@ type Tab = "groups" | "schedule" | "stadiums";
 const WORLD_CUP_NOTICE_SESSION_KEY = "matchwatch:world-cup-notice:v1";
 
 export default function WorldCupPage() {
-    const { user } = useAuth();
     const [tab, setTab] = useState<Tab>("groups");
     const [groupFilter, setGroupFilter] = useState<string>("all");
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [showNotice, setShowNotice] = useState(false);
 
     React.useEffect(() => {
@@ -315,56 +312,6 @@ export default function WorldCupPage() {
                     </button>
                 </div>
             )}
-
-            {/* Topbar */}
-            <header className="wc-topbar">
-                <div className="wc-topbar-inner">
-                    <Link href="/" className="wc-brand">
-                        <img className="wc-brand-logo" src="/logo.svg" alt="MatchWatch" />
-                    </Link>
-                    <nav className="wc-nav">
-                        <Link href="/">Home</Link>
-                        <Link href="/matches">Matches</Link>
-                        <Link href="/world-cup" className="active">World Cup</Link>
-                        <Link href="/venues">Venues</Link>
-                        {user && <Link href="/dashboard">My bookings</Link>}
-                    </nav>
-                    <button
-                        type="button"
-                        className="wc-menu-toggle"
-                        aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-                        aria-expanded={mobileMenuOpen}
-                        onClick={() => setMobileMenuOpen((open) => !open)}
-                    >
-                        {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                    </button>
-                    <nav className={`wc-mobile-nav${mobileMenuOpen ? " open" : ""}`}>
-                        <Link href="/" onClick={() => setMobileMenuOpen(false)}>Home</Link>
-                        <Link href="/matches" onClick={() => setMobileMenuOpen(false)}>Matches</Link>
-                        <Link href="/world-cup" className="active" onClick={() => setMobileMenuOpen(false)}>World Cup</Link>
-                        <Link href="/venues" onClick={() => setMobileMenuOpen(false)}>Venues</Link>
-                        <Link href="/for-venues" onClick={() => setMobileMenuOpen(false)}>For venues</Link>
-                        {user ? (
-                            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>My bookings</Link>
-                        ) : (
-                            <>
-                                <Link href="/for-venues/register" onClick={() => setMobileMenuOpen(false)}>List venue</Link>
-                                <Link href="/login" className="primary" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
-                            </>
-                        )}
-                    </nav>
-                    <div className="wc-top-right">
-                        {user ? (
-                            <Link href="/dashboard" className="wc-btn-pill ghost">{user.name?.split(" ")[0]}</Link>
-                        ) : (
-                            <>
-                                <Link href="/for-venues/register" className="wc-btn-pill ghost">List venue</Link>
-                                <Link href="/login" className="wc-btn-pill">Log in</Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </header>
 
             {/* Hero */}
             <div className="wc-hero">
