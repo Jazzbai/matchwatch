@@ -1,541 +1,410 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { X } from "lucide-react";
-import { FloatingNav } from "../../components/AppShell";
+import { usePathname } from "next/navigation";
+import { useAuth } from "../../lib/auth-context";
+import { Menu, X, Building2, Star, Trophy, ChevronRight, Globe } from "lucide-react";
 
-// ─── Static WC2026 Data ─────────────────────────
-
-const GROUPS: { name: string; teams: { iso2: string; name: string; fifa: string }[] }[] = [
-    { name: "A", teams: [{ iso2: "US", name: "United States", fifa: "USA" }, { iso2: "GB", name: "England", fifa: "ENG" }, { iso2: "DZ", name: "Algeria", fifa: "ALG" }, { iso2: "JO", name: "Jordan", fifa: "JOR" }] },
-    { name: "B", teams: [{ iso2: "MX", name: "Mexico", fifa: "MEX" }, { iso2: "AR", name: "Argentina", fifa: "ARG" }, { iso2: "MA", name: "Morocco", fifa: "MAR" }, { iso2: "NZ", name: "New Zealand", fifa: "NZL" }] },
-    { name: "C", teams: [{ iso2: "CA", name: "Canada", fifa: "CAN" }, { iso2: "BR", name: "Brazil", fifa: "BRA" }, { iso2: "BE", name: "Belgium", fifa: "BEL" }, { iso2: "PA", name: "Panama", fifa: "PAN" }] },
-    { name: "D", teams: [{ iso2: "FR", name: "France", fifa: "FRA" }, { iso2: "KR", name: "South Korea", fifa: "KOR" }, { iso2: "UY", name: "Uruguay", fifa: "URU" }, { iso2: "HN", name: "Honduras", fifa: "HON" }] },
-    { name: "E", teams: [{ iso2: "DE", name: "Germany", fifa: "GER" }, { iso2: "JP", name: "Japan", fifa: "JPN" }, { iso2: "ZA", name: "South Africa", fifa: "RSA" }, { iso2: "CR", name: "Costa Rica", fifa: "CRC" }] },
-    { name: "F", teams: [{ iso2: "ES", name: "Spain", fifa: "ESP" }, { iso2: "AU", name: "Australia", fifa: "AUS" }, { iso2: "CO", name: "Colombia", fifa: "COL" }, { iso2: "TN", name: "Tunisia", fifa: "TUN" }] },
-    { name: "G", teams: [{ iso2: "PT", name: "Portugal", fifa: "POR" }, { iso2: "NL", name: "Netherlands", fifa: "NED" }, { iso2: "SN", name: "Senegal", fifa: "SEN" }, { iso2: "GH", name: "Ghana", fifa: "GHA" }] },
-    { name: "H", teams: [{ iso2: "IT", name: "Italy", fifa: "ITA" }, { iso2: "EG", name: "Egypt", fifa: "EGY" }, { iso2: "EC", name: "Ecuador", fifa: "ECU" }, { iso2: "RS", name: "Serbia", fifa: "SRB" }] },
-    { name: "I", teams: [{ iso2: "HR", name: "Croatia", fifa: "CRO" }, { iso2: "IR", name: "Iran", fifa: "IRN" }, { iso2: "VE", name: "Venezuela", fifa: "VEN" }, { iso2: "SK", name: "Slovakia", fifa: "SVK" }] },
-    { name: "J", teams: [{ iso2: "CH", name: "Switzerland", fifa: "SUI" }, { iso2: "NG", name: "Nigeria", fifa: "NGA" }, { iso2: "CL", name: "Chile", fifa: "CHI" }, { iso2: "ML", name: "Mali", fifa: "MLI" }] },
-    { name: "K", teams: [{ iso2: "HU", name: "Hungary", fifa: "HUN" }, { iso2: "CM", name: "Cameroon", fifa: "CMR" }, { iso2: "SA", name: "Saudi Arabia", fifa: "KSA" }, { iso2: "UZ", name: "Uzbekistan", fifa: "UZB" }] },
-    { name: "L", teams: [{ iso2: "SC", name: "Scotland", fifa: "SCO" }, { iso2: "QA", name: "Qatar", fifa: "QAT" }, { iso2: "DK", name: "Denmark", fifa: "DEN" }, { iso2: "AT", name: "Austria", fifa: "AUT" }] },
+const NAV_LINKS = [
+  { label: "Home",       href: "/" },
+  { label: "Matches",    href: "/matches" },
+  { label: "World Cup",  href: "/world-cup" },
+  { label: "Venues",     href: "/venues" },
+  { label: "For venues", href: "/for-venues" },
 ];
 
-const STADIUMS = [
-    { name: "MetLife Stadium",              city: "East Rutherford",  country: "USA",    capacity: 82_500, flag: "us" },
-    { name: "AT&T Stadium",                 city: "Arlington, TX",    country: "USA",    capacity: 80_000, flag: "us" },
-    { name: "SoFi Stadium",                 city: "Inglewood, CA",    country: "USA",    capacity: 70_240, flag: "us" },
-    { name: "Levi's Stadium",               city: "Santa Clara, CA",  country: "USA",    capacity: 68_500, flag: "us" },
-    { name: "Lincoln Financial Field",      city: "Philadelphia, PA", country: "USA",    capacity: 69_800, flag: "us" },
-    { name: "Arrowhead Stadium",            city: "Kansas City, MO",  country: "USA",    capacity: 76_416, flag: "us" },
-    { name: "Empower Field at Mile High",   city: "Denver, CO",       country: "USA",    capacity: 76_125, flag: "us" },
-    { name: "Hard Rock Stadium",            city: "Miami Gardens, FL",country: "USA",    capacity: 65_326, flag: "us" },
-    { name: "Allegiant Stadium",            city: "Las Vegas, NV",    country: "USA",    capacity: 65_000, flag: "us" },
-    { name: "NRG Stadium",                  city: "Houston, TX",      country: "USA",    capacity: 72_220, flag: "us" },
-    { name: "Lumen Field",                  city: "Seattle, WA",      country: "USA",    capacity: 68_740, flag: "us" },
-    { name: "Estadio Azteca",               city: "Mexico City",      country: "Mexico", capacity: 87_523, flag: "mx" },
-    { name: "Estadio BBVA",                 city: "Monterrey",        country: "Mexico", capacity: 53_500, flag: "mx" },
-    { name: "Estadio Akron",                city: "Guadalajara",      country: "Mexico", capacity: 49_850, flag: "mx" },
-    { name: "BMO Field",                    city: "Toronto",          country: "Canada", capacity: 45_736, flag: "ca" },
-    { name: "BC Place",                     city: "Vancouver",        country: "Canada", capacity: 54_500, flag: "ca" },
+const CITIES = [
+  { name: "New York / New Jersey", short: "NY/NJ", stadium: "MetLife Stadium",         cap: "82,500", matches: 9, badge: "THE FINAL",       g: "linear-gradient(145deg,#001840 0%,#8b0000 100%)" },
+  { name: "Los Angeles",           short: "LA",    stadium: "SoFi Stadium",             cap: "70,240", matches: 9, badge: "SEMIFINAL",       g: "linear-gradient(145deg,#2d0a6e 0%,#c8a200 100%)" },
+  { name: "Dallas",                short: "DAL",   stadium: "AT&T Stadium",             cap: "80,000", matches: 8, badge: "TOP HOST",        g: "linear-gradient(145deg,#001a40 0%,#7a5500 100%)" },
+  { name: "Houston",               short: "HOU",   stadium: "NRG Stadium",              cap: "72,220", matches: 7, badge: "OPENING",         g: "linear-gradient(145deg,#001840 0%,#b84a00 100%)" },
+  { name: "Miami",                 short: "MIA",   stadium: "Hard Rock Stadium",         cap: "65,326", matches: 7, badge: "BEACH CITY",     g: "linear-gradient(145deg,#003060 0%,#a83200 100%)" },
+  { name: "Atlanta",               short: "ATL",   stadium: "Mercedes-Benz Stadium",    cap: "71,000", matches: 7, badge: "SOCCER CITY",    g: "linear-gradient(145deg,#0a0000 0%,#7a0020 100%)" },
+  { name: "San Francisco Bay Area",short: "SF",    stadium: "Levi's Stadium",           cap: "68,500", matches: 7, badge: "TECH CITY",      g: "linear-gradient(145deg,#5a0000 0%,#6a5000 100%)" },
+  { name: "Philadelphia",          short: "PHI",   stadium: "Lincoln Financial Field",  cap: "69,800", matches: 7, badge: "LIBERTY CITY",   g: "linear-gradient(145deg,#002030 0%,#3a4a50 100%)" },
+  { name: "Seattle",               short: "SEA",   stadium: "Lumen Field",              cap: "68,740", matches: 6, badge: "SOCCER CAPITAL", g: "linear-gradient(145deg,#001030 0%,#1a4a00 100%)" },
+  { name: "Boston",                short: "BOS",   stadium: "Gillette Stadium",         cap: "65,000", matches: 6, badge: "HISTORIC CITY",  g: "linear-gradient(145deg,#6a0010 0%,#001030 100%)" },
+  { name: "Kansas City",           short: "KC",    stadium: "Arrowhead Stadium",        cap: "76,416", matches: 6, badge: "HEART OF USA",   g: "linear-gradient(145deg,#6a0010 0%,#7a5000 100%)" },
 ];
 
-// Hard-coded WC2026 group stage schedule
-const WC_FIXTURES = [
-    // ── Matchday 1 ──
-    { date: "2026-06-11", time: "18:00", home: "US", away: "JO", homeN: "United States", awayN: "Jordan",       group: "A", stadium: "MetLife Stadium",            city: "East Rutherford" },
-    { date: "2026-06-12", time: "15:00", home: "GB", away: "DZ", homeN: "England",       awayN: "Algeria",      group: "A", stadium: "AT&T Stadium",                city: "Arlington, TX" },
-    { date: "2026-06-13", time: "18:00", home: "MX", away: "NZ", homeN: "Mexico",        awayN: "New Zealand",  group: "B", stadium: "Estadio Azteca",              city: "Mexico City" },
-    { date: "2026-06-13", time: "21:00", home: "AR", away: "MA", homeN: "Argentina",     awayN: "Morocco",      group: "B", stadium: "SoFi Stadium",                city: "Inglewood, CA" },
-    { date: "2026-06-14", time: "15:00", home: "CA", away: "BE", homeN: "Canada",        awayN: "Belgium",      group: "C", stadium: "BMO Field",                   city: "Toronto" },
-    { date: "2026-06-14", time: "18:00", home: "BR", away: "PA", homeN: "Brazil",        awayN: "Panama",       group: "C", stadium: "Hard Rock Stadium",           city: "Miami Gardens, FL" },
-    { date: "2026-06-15", time: "15:00", home: "FR", away: "HN", homeN: "France",        awayN: "Honduras",     group: "D", stadium: "MetLife Stadium",            city: "East Rutherford" },
-    { date: "2026-06-15", time: "18:00", home: "KR", away: "UY", homeN: "South Korea",   awayN: "Uruguay",      group: "D", stadium: "Lincoln Financial Field",     city: "Philadelphia, PA" },
-    { date: "2026-06-16", time: "18:00", home: "DE", away: "CR", homeN: "Germany",       awayN: "Costa Rica",   group: "E", stadium: "Levi's Stadium",              city: "Santa Clara, CA" },
-    { date: "2026-06-16", time: "21:00", home: "JP", away: "ZA", homeN: "Japan",         awayN: "South Africa", group: "E", stadium: "Lumen Field",                 city: "Seattle, WA" },
-    { date: "2026-06-17", time: "15:00", home: "ES", away: "TN", homeN: "Spain",         awayN: "Tunisia",      group: "F", stadium: "AT&T Stadium",                city: "Arlington, TX" },
-    { date: "2026-06-17", time: "18:00", home: "CO", away: "AU", homeN: "Colombia",      awayN: "Australia",    group: "F", stadium: "NRG Stadium",                 city: "Houston, TX" },
-    { date: "2026-06-18", time: "18:00", home: "PT", away: "GH", homeN: "Portugal",      awayN: "Ghana",        group: "G", stadium: "Allegiant Stadium",           city: "Las Vegas, NV" },
-    { date: "2026-06-18", time: "21:00", home: "NL", away: "SN", homeN: "Netherlands",   awayN: "Senegal",      group: "G", stadium: "Empower Field at Mile High",  city: "Denver, CO" },
-    { date: "2026-06-19", time: "15:00", home: "IT", away: "EC", homeN: "Italy",         awayN: "Ecuador",      group: "H", stadium: "BC Place",                    city: "Vancouver" },
-    { date: "2026-06-19", time: "18:00", home: "EG", away: "RS", homeN: "Egypt",         awayN: "Serbia",       group: "H", stadium: "Estadio BBVA",                city: "Monterrey" },
-    { date: "2026-06-20", time: "18:00", home: "HR", away: "SK", homeN: "Croatia",       awayN: "Slovakia",     group: "I", stadium: "Empower Field at Mile High",  city: "Denver, CO" },
-    { date: "2026-06-20", time: "21:00", home: "IR", away: "VE", homeN: "Iran",          awayN: "Venezuela",    group: "I", stadium: "Estadio Akron",               city: "Guadalajara" },
-    { date: "2026-06-21", time: "15:00", home: "CH", away: "CL", homeN: "Switzerland",   awayN: "Chile",        group: "J", stadium: "Lincoln Financial Field",     city: "Philadelphia, PA" },
-    { date: "2026-06-21", time: "18:00", home: "NG", away: "ML", homeN: "Nigeria",       awayN: "Mali",         group: "J", stadium: "NRG Stadium",                 city: "Houston, TX" },
-    { date: "2026-06-22", time: "18:00", home: "HU", away: "UZ", homeN: "Hungary",       awayN: "Uzbekistan",   group: "K", stadium: "Levi's Stadium",              city: "Santa Clara, CA" },
-    { date: "2026-06-22", time: "21:00", home: "CM", away: "SA", homeN: "Cameroon",      awayN: "Saudi Arabia", group: "K", stadium: "Arrowhead Stadium",           city: "Kansas City, MO" },
-    { date: "2026-06-23", time: "18:00", home: "SC", away: "AT", homeN: "Scotland",      awayN: "Austria",      group: "L", stadium: "Arrowhead Stadium",           city: "Kansas City, MO" },
-    { date: "2026-06-23", time: "21:00", home: "QA", away: "DK", homeN: "Qatar",         awayN: "Denmark",      group: "L", stadium: "MetLife Stadium",            city: "East Rutherford" },
-    // ── Matchday 2 ──
-    { date: "2026-06-25", time: "15:00", home: "US", away: "DZ", homeN: "United States", awayN: "Algeria",      group: "A", stadium: "NRG Stadium",                city: "Houston, TX" },
-    { date: "2026-06-25", time: "18:00", home: "GB", away: "JO", homeN: "England",       awayN: "Jordan",       group: "A", stadium: "Hard Rock Stadium",           city: "Miami Gardens, FL" },
-    { date: "2026-06-26", time: "15:00", home: "MX", away: "MA", homeN: "Mexico",        awayN: "Morocco",      group: "B", stadium: "Estadio BBVA",                city: "Monterrey" },
-    { date: "2026-06-26", time: "18:00", home: "AR", away: "NZ", homeN: "Argentina",     awayN: "New Zealand",  group: "B", stadium: "AT&T Stadium",                city: "Arlington, TX" },
-    { date: "2026-06-27", time: "15:00", home: "BR", away: "BE", homeN: "Brazil",        awayN: "Belgium",      group: "C", stadium: "SoFi Stadium",                city: "Inglewood, CA" },
-    { date: "2026-06-27", time: "18:00", home: "CA", away: "PA", homeN: "Canada",        awayN: "Panama",       group: "C", stadium: "BC Place",                    city: "Vancouver" },
-    { date: "2026-06-28", time: "15:00", home: "FR", away: "KR", homeN: "France",        awayN: "South Korea",  group: "D", stadium: "Allegiant Stadium",           city: "Las Vegas, NV" },
-    { date: "2026-06-28", time: "18:00", home: "UY", away: "HN", homeN: "Uruguay",       awayN: "Honduras",     group: "D", stadium: "Estadio Azteca",              city: "Mexico City" },
-    { date: "2026-06-29", time: "15:00", home: "DE", away: "JP", homeN: "Germany",       awayN: "Japan",        group: "E", stadium: "MetLife Stadium",            city: "East Rutherford" },
-    { date: "2026-06-29", time: "18:00", home: "ZA", away: "CR", homeN: "South Africa",  awayN: "Costa Rica",   group: "E", stadium: "Arrowhead Stadium",           city: "Kansas City, MO" },
-    { date: "2026-06-30", time: "15:00", home: "ES", away: "CO", homeN: "Spain",         awayN: "Colombia",     group: "F", stadium: "Lincoln Financial Field",     city: "Philadelphia, PA" },
-    { date: "2026-06-30", time: "18:00", home: "AU", away: "TN", homeN: "Australia",     awayN: "Tunisia",      group: "F", stadium: "Lumen Field",                 city: "Seattle, WA" },
-    { date: "2026-07-01", time: "15:00", home: "PT", away: "SN", homeN: "Portugal",      awayN: "Senegal",      group: "G", stadium: "Empower Field at Mile High",  city: "Denver, CO" },
-    { date: "2026-07-01", time: "18:00", home: "NL", away: "GH", homeN: "Netherlands",   awayN: "Ghana",        group: "G", stadium: "AT&T Stadium",                city: "Arlington, TX" },
+const VENUES = [
+  { city: "Houston",     name: "Midtown Soccer Hub",  type: "Sports Bar · Watch Party Venue" },
+  { city: "Dallas",      name: "Deep Ellum Sports",   type: "Premium Sports Pub · Big Screen" },
+  { city: "Miami",       name: "Wynwood Soccer Bar",  type: "Craft Sports Bar · DJ Nights" },
+  { city: "Los Angeles", name: "The Rooftop LA",      type: "Rooftop Bar · Live Match Screens" },
+  { city: "NY / NJ",     name: "Hoboken Sports Bar",  type: "Classic Sports Pub · Big Screen" },
+  { city: "Atlanta",     name: "Midtown Sports Pub",  type: "Sports Bar · Watch Party Host" },
 ];
 
-const WC_VARS = `
-:root {
-  --wc-bg: #0a0b0d;
-  --wc-bg-1: #101217;
-  --wc-bg-2: #14171d;
-  --wc-line: #23272f;
-  --wc-line-2: #2f3540;
-  --wc-fg: #f1ece4;
-  --wc-fg-dim: #a8a59d;
-  --wc-fg-mute: #6c6a64;
-  --wc-accent: oklch(0.72 0.19 28);
-  --wc-gold: var(--wc-accent);
-}
+const CSS = `
+  .wc-page{background:#0a0b0d;min-height:100vh;color:#f1ece4;}
+
+  /* ── Nav ── */
+  .wc-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;}
+  .wc-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1080px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,#0a0b0d 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,.8);box-shadow:0 2px 20px rgba(0,0,0,.25);}
+  .wc-logo{display:block;width:156px;height:auto;max-height:44px;object-fit:contain;}
+  .wc-nav{display:flex;align-items:center;gap:2px;}
+  .wc-nav a{padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:rgba(241,236,228,.55);transition:all .18s;text-decoration:none;}
+  .wc-nav a:hover{background:rgba(255,255,255,.07);color:#f1ece4;}
+  .wc-nav a.on{background:color-mix(in srgb,#F97316 18%,transparent);color:#f1ece4;}
+  .wc-tr{display:flex;gap:8px;align-items:center;}
+  .wc-ghost{padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;color:rgba(241,236,228,.7);text-decoration:none;}
+  .wc-ghost:hover{background:rgba(255,255,255,.07);color:#f1ece4;}
+  .wc-orange{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;background:#F97316;color:#fff;transition:all .18s;}
+  .wc-orange:hover{opacity:.88;transform:translateY(-1px);}
+  .wc-hmbg{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid rgba(35,39,47,.8);border-radius:999px;background:rgba(255,255,255,.04);color:#f1ece4;cursor:pointer;}
+
+  /* ── Hero ── */
+  .wc-hero{position:relative;overflow:hidden;min-height:580px;display:flex;align-items:center;background:linear-gradient(160deg,#0a0b0d 0%,#0d1520 40%,#1a0a05 100%);border-bottom:1px solid #23272f;}
+  .wc-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 70% 50%,rgba(249,115,22,.12),transparent 70%),radial-gradient(ellipse 60% 80% at 20% 30%,rgba(0,80,160,.15),transparent 70%);pointer-events:none;}
+  .wc-hero-orb{position:absolute;right:-80px;top:50%;transform:translateY(-50%);width:520px;height:520px;border-radius:50%;border:1px solid rgba(249,115,22,.07);}
+  .wc-hero-inner{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:80px 24px 60px;width:100%;}
+  .wc-kicker{display:inline-flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#F97316;font-weight:700;margin-bottom:20px;border:1px solid rgba(249,115,22,.3);padding:5px 12px;border-radius:999px;}
+  .wc-kicker .bd{width:6px;height:6px;background:#F97316;border-radius:50%;animation:bd 1.4s ease-in-out infinite;}
+  @keyframes bd{0%,100%{opacity:.4;}50%{opacity:1;}}
+  .wc-h1{font-size:clamp(2.4rem,6vw,4.4rem);font-weight:900;line-height:1.0;color:#f1ece4;margin:0 0 16px;letter-spacing:-.02em;max-width:660px;}
+  .wc-h1 b{color:#F97316;font-weight:900;}
+  .wc-sub{font-size:1.05rem;color:rgba(241,236,228,.65);line-height:1.6;max-width:540px;margin-bottom:36px;}
+  .wc-btns{display:flex;flex-wrap:wrap;gap:12px;}
+  .wc-btn-p{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border-radius:999px;font-size:14px;font-weight:800;text-decoration:none;background:#F97316;color:#fff;transition:all .2s;}
+  .wc-btn-p:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(249,115,22,.35);}
+  .wc-btn-g{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border-radius:999px;font-size:14px;font-weight:700;text-decoration:none;border:1px solid rgba(241,236,228,.22);color:rgba(241,236,228,.8);transition:all .2s;}
+  .wc-btn-g:hover{border-color:rgba(241,236,228,.45);color:#f1ece4;}
+  .wc-stats{display:flex;gap:40px;margin-top:52px;padding-top:40px;border-top:1px solid #23272f;}
+  .wc-sv{font-size:2rem;font-weight:900;color:#f1ece4;line-height:1;}
+  .wc-sv span{color:#F97316;}
+  .wc-sl{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(241,236,228,.45);}
+
+  /* ── Shared layout ── */
+  .wc-wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+  .wc-sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:28px;}
+  .wc-st{font-family:"Space Grotesk",sans-serif;font-weight:900;font-size:1.6rem;color:#f1ece4;letter-spacing:-.01em;display:flex;align-items:center;gap:12px;}
+  .wc-sb{font-family:"JetBrains Mono",monospace;font-size:10px;color:#F97316;letter-spacing:.1em;border:1px solid rgba(249,115,22,.35);padding:3px 8px;border-radius:4px;font-weight:700;}
+  .wc-sl2{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(241,236,228,.5);text-decoration:none;display:inline-flex;align-items:center;gap:4px;}
+  .wc-sl2:hover{color:#F97316;}
+
+  /* ── City cards ── */
+  .wc-cw{padding:64px 0 80px;}
+  .wc-cg{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .wc-cc{position:relative;overflow:hidden;border:1px solid rgba(35,39,47,.7);cursor:pointer;transition:all .2s;text-decoration:none;display:block;min-height:196px;}
+  .wc-cc:hover{transform:translateY(-3px);box-shadow:0 20px 48px rgba(0,0,0,.55);border-color:rgba(249,115,22,.35);}
+  .wc-cbg{position:absolute;inset:0;opacity:.9;transition:opacity .2s;}
+  .wc-cc:hover .wc-cbg{opacity:1;}
+  .wc-cov{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.1) 55%,transparent 100%);}
+  .wc-ci{position:relative;z-index:2;padding:18px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;min-height:196px;}
+  .wc-cbadge{display:inline-flex;font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.9);background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.15);padding:3px 7px;margin-bottom:8px;align-self:flex-start;backdrop-filter:blur(4px);}
+  .wc-cn{font-family:"Space Grotesk",sans-serif;font-size:1.35rem;font-weight:900;color:#fff;line-height:1.1;margin-bottom:4px;}
+  .wc-cs{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.07em;color:rgba(255,255,255,.6);text-transform:uppercase;margin-bottom:10px;}
+  .wc-cm{display:flex;gap:12px;align-items:center;}
+  .wc-cmn{font-family:"JetBrains Mono",monospace;font-size:11px;color:rgba(255,255,255,.8);}
+  .wc-cmn .n{font-weight:700;color:#F97316;font-size:14px;}
+  .wc-cex{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:3px;margin-left:auto;transition:color .16s;}
+  .wc-cc:hover .wc-cex{color:#F97316;}
+
+  /* ── Venue cards ── */
+  .wc-vw{padding:0 0 80px;}
+  .wc-vg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .wc-vc{border:1px solid #23272f;background:#101217;padding:20px;transition:all .16s;}
+  .wc-vc:hover{border-color:rgba(249,115,22,.3);background:#14171d;}
+  .wc-vcity{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#F97316;margin-bottom:8px;}
+  .wc-vname{font-family:"Space Grotesk",sans-serif;font-size:16px;font-weight:700;color:#f1ece4;margin-bottom:4px;}
+  .wc-vtype{font-size:12px;color:rgba(241,236,228,.5);margin-bottom:14px;}
+  .wc-vf{display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px dashed #23272f;}
+  .wc-vs{color:#F97316;font-size:12px;letter-spacing:2px;}
+  .wc-vl{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(241,236,228,.5);text-decoration:none;}
+  .wc-vl:hover{color:#F97316;}
+
+  /* ── Sponsor CTA ── */
+  .wc-spw{padding:0 0 80px;}
+  .wc-sp{border:1px solid #23272f;background:linear-gradient(130deg,rgba(249,115,22,.08),transparent 60%),#0d1016;padding:52px 48px;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center;}
+  .wc-spk{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#F97316;margin-bottom:12px;font-weight:700;}
+  .wc-sph2{font-family:"Space Grotesk",sans-serif;font-size:1.9rem;font-weight:900;color:#f1ece4;margin-bottom:12px;line-height:1.1;}
+  .wc-spp{font-size:14px;color:rgba(241,236,228,.6);line-height:1.65;max-width:540px;}
+  .wc-spb{display:flex;flex-direction:column;gap:10px;min-width:196px;}
+  .wc-spbtn{display:flex;justify-content:center;align-items:center;gap:6px;padding:12px 20px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;border:1px solid rgba(241,236,228,.2);color:rgba(241,236,228,.7);transition:all .18s;}
+  .wc-spbtn:hover{border-color:rgba(241,236,228,.4);color:#f1ece4;}
+
+  /* ── Fan Festival ── */
+  .wc-fw{padding:0 0 80px;}
+  .wc-fb{border:1px solid #23272f;background:linear-gradient(160deg,rgba(0,60,120,.1),transparent 60%),#0d1016;padding:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;}
+  .wc-fh2{font-family:"Space Grotesk",sans-serif;font-size:1.5rem;font-weight:900;color:#f1ece4;margin-bottom:14px;}
+  .wc-fp{font-size:13px;color:rgba(241,236,228,.62);line-height:1.7;margin-bottom:20px;}
+  .wc-fcg{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .wc-fci{border:1px solid #23272f;padding:9px 12px;font-size:12px;color:rgba(241,236,228,.7);display:flex;align-items:center;gap:8px;}
+  .wc-fci .d{width:6px;height:6px;background:#F97316;border-radius:50%;flex-shrink:0;}
+
+  /* ── Responsive ── */
+  @media(max-width:1024px){
+    .wc-cg,.wc-vg{grid-template-columns:repeat(2,1fr);}
+    .wc-sp{grid-template-columns:1fr;gap:24px;}
+    .wc-fb{grid-template-columns:1fr;}
+  }
+  @media(max-width:900px){
+    .wc-nav,.wc-ghost{display:none !important;}
+    .wc-hmbg{display:inline-flex;}
+    .wc-logo{width:120px;}
+    .wc-stats{gap:24px;}
+  }
+  @media(max-width:640px){
+    .wc-cg,.wc-vg,.wc-fcg{grid-template-columns:1fr;}
+    .wc-h1{font-size:2rem;}
+    .wc-sp{padding:28px 20px;}
+  }
 `;
-
-const WC_CSS = `
-body { background: var(--wc-bg) !important; color: var(--wc-fg) !important; }
-
-/* ── Topbar ── */
-.wc-topbar { display: none !important; }
-.wc-topbar-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1080px; padding: 10px 20px; border-radius: 999px; background: color-mix(in srgb, #0a0b0d 75%, transparent); backdrop-filter: blur(16px); border: 1px solid rgba(35,39,47,0.8); box-shadow: 0 2px 20px rgba(0,0,0,0.25); }
-.wc-brand { display: flex; flex-direction: column; align-items: flex-start; text-decoration: none; color: var(--wc-fg); }
-.wc-brand-name { font-family: 'Space Grotesk', sans-serif; font-weight: 900; font-size: 18px; letter-spacing: -0.02em; line-height: 1.1; }
-.wc-brand-name em { font-style: normal; color: var(--wc-accent); }
-.wc-brand-tag { font-family: monospace; font-size: 9px; letter-spacing: 0.22em; color: var(--wc-accent); font-weight: 700; text-transform: uppercase; margin-top: 1px; opacity: 0.8; }
-.wc-nav { display: flex; align-items: center; gap: 2px; }
-.wc-nav a { padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--wc-fg-dim); transition: all .18s; text-decoration: none; }
-.wc-nav a:hover { background: rgba(255,255,255,0.06); color: var(--wc-fg); }
-.wc-nav a.active { background: rgba(255,255,255,0.1); color: var(--wc-fg); }
-.wc-top-right { display: flex; gap: 10px; align-items: center; }
-.wc-btn-pill { display: inline-flex; align-items: center; padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none; background: var(--wc-accent); color: #060709; transition: all .18s; }
-.wc-btn-pill:hover { opacity: 0.88; transform: translateY(-1px); }
-.wc-btn-pill.ghost { background: rgba(255,255,255,0.07); color: var(--wc-fg); }
-.wc-menu-toggle { display: none; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid var(--wc-line); border-radius: 999px; background: rgba(255,255,255,0.04); color: var(--wc-fg); cursor: pointer; }
-.wc-mobile-nav { display: none; }
-.wc-mobile-nav a { padding: 12px 14px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--wc-fg); background: rgba(255,255,255,0.04); text-decoration: none; transition: all .18s; white-space: nowrap; }
-.wc-mobile-nav a:hover,.wc-mobile-nav a.active { background: rgba(255,255,255,0.08); color: var(--wc-fg); }
-.wc-mobile-nav .primary { background: var(--wc-accent); color: #0a0b0d; }
-
-@keyframes wcNoticeIn {
-  from { opacity: 0; transform: translate(-50%, -16px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-.wc-top-notice { position: fixed; top: 104px; left: 50%; z-index: 45; width: min(640px, calc(100vw - 24px)); display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--wc-line-2); border-left: 3px solid var(--wc-accent); background: color-mix(in srgb, var(--wc-bg-1) 94%, transparent); color: var(--wc-fg); backdrop-filter: blur(18px); box-shadow: 0 16px 42px rgba(0,0,0,0.28); animation: wcNoticeIn .28s ease-out both; }
-.wc-top-notice-title { font-family: 'Space Grotesk', var(--font-space), sans-serif; font-weight: 700; font-size: 14px; line-height: 1.2; }
-.wc-top-notice-msg { margin-top: 2px; font-size: 12px; line-height: 1.45; color: var(--wc-fg-dim); }
-.wc-top-notice button { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid var(--wc-line); border-radius: 999px; background: rgba(255,255,255,0.05); color: var(--wc-fg); cursor: pointer; transition: background .16s, border-color .16s; }
-.wc-top-notice button:hover { background: rgba(255,255,255,0.09); border-color: var(--wc-line-2); }
-
-/* ── Hero ── */
-.wc-hero { max-width: 1080px; margin: var(--site-nav-content-offset, 132px) auto 32px; position: relative; overflow: hidden; border: 1px solid var(--wc-line); background: linear-gradient(120deg, rgba(255,95,45,0.10), transparent 60%), linear-gradient(0deg, #0c0e12, #131720); }
-.wc-hero::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 48px 48px; pointer-events: none; }
-.wc-hero-inner { position: relative; z-index: 1; display: grid; grid-template-columns: 1.3fr 1fr; min-height: 340px; gap: 0; align-items: stretch; }
-.wc-hero-left { padding: 28px 32px; display: flex; flex-direction: column; gap: 22px; }
-.wc-hero-right { border-left: 1px solid var(--wc-line); padding: 20px; background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent); display: flex; flex-direction: column; justify-content: space-between; gap: 16px; }
-.wc-live-chip { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.08em; padding: 5px 8px; background: var(--wc-accent); color: #0a0b0d; font-weight: 600; text-transform: uppercase; }
-.wc-live-chip .bd { width: 6px; height: 6px; background: #0a0b0d; border-radius: 50%; }
-.wc-hero-kicker { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--wc-fg-dim); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.wc-h1 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: clamp(36px, 5vw, 64px); line-height: 0.95; letter-spacing: -0.025em; margin: 0; text-wrap: balance; }
-.wc-h1 em { font-style: normal; color: var(--wc-gold); }
-.wc-hero-copy { max-width: 520px; font-size: 16px; color: var(--wc-fg-dim); line-height: 1.5; margin: 0; }
-.wc-hero-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 1px solid var(--wc-line); padding-top: 18px; margin-top: 4px; }
-.wc-hero-stat { display: flex; flex-direction: column; gap: 2px; }
-.wc-hero-stat .v { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 32px; letter-spacing: -0.02em; color: var(--wc-fg); line-height: 1; }
-.wc-hero-stat .l { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--wc-fg-mute); }
-.wc-hosts { display: flex; gap: 8px; flex-direction: column; }
-.wc-host-flag { display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.06em; color: var(--wc-fg-dim); }
-.wc-host-flag img { width: 28px; height: 18px; object-fit: cover; border-radius: 2px; }
-.wc-countdown { border: 1px solid var(--wc-line); background: var(--wc-bg-1); padding: 20px; min-width: 180px; }
-.wc-countdown .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--wc-fg-mute); margin-bottom: 10px; }
-.wc-countdown .days { font-family: 'Space Grotesk', sans-serif; font-weight: 900; font-size: 52px; letter-spacing: -0.04em; color: var(--wc-gold); line-height: 1; }
-.wc-countdown .days-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--wc-fg-mute); letter-spacing: 0.1em; margin-top: 4px; }
-.wc-countdown .opening { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--wc-fg-dim); margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--wc-line-2); letter-spacing: 0.04em; }
-
-/* ── Tabs ── */
-.wc-tabs { display: flex; gap: 0; border: 1px solid var(--wc-line); border-bottom: 0; background: var(--wc-bg-1); max-width: 1080px; margin: 0 auto; }
-.wc-tab { padding: 14px 24px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--wc-fg-dim); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; transition: all .14s; display: flex; align-items: center; gap: 7px; }
-.wc-tab:hover { color: var(--wc-fg); }
-.wc-tab.on { color: var(--wc-fg); border-bottom-color: var(--wc-gold); }
-
-/* ── Content ── */
-.wc-body { max-width: 1080px; margin: 0 auto; padding: 32px 0 80px; }
-
-/* ── Groups ── */
-.wc-groups-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.wc-group { border: 1px solid var(--wc-line); background: var(--wc-bg-1); }
-.wc-group-hd { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--wc-line); }
-.wc-group-letter { font-family: 'Space Grotesk', sans-serif; font-weight: 900; font-size: 22px; letter-spacing: -0.02em; color: var(--wc-gold); }
-.wc-group-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--wc-fg-mute); }
-.wc-group-teams { display: flex; flex-direction: column; }
-.wc-group-team { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--wc-line); font-size: 13px; color: var(--wc-fg); }
-.wc-group-team:last-child { border-bottom: 0; }
-.wc-group-team img { width: 22px; height: 14px; object-fit: cover; border-radius: 2px; flex-shrink: 0; }
-.wc-group-team .team-name { font-family: 'Space Grotesk', sans-serif; font-weight: 500; font-size: 13px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wc-group-team .fifa-code { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--wc-fg-mute); letter-spacing: 0.06em; flex-shrink: 0; }
-
-/* ── Schedule ── */
-.wc-schedule { display: flex; flex-direction: column; gap: 0; }
-.wc-date-block { margin-bottom: 24px; }
-.wc-date-hd { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--wc-fg-mute); padding: 12px 0 10px; border-bottom: 1px solid var(--wc-line); margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
-.wc-date-hd .dot { width: 6px; height: 6px; background: var(--wc-gold); border-radius: 50%; }
-.wc-fixture { display: grid; grid-template-columns: 80px 1fr 100px 1fr 140px 48px; gap: 14px; padding: 14px 12px; align-items: center; border-bottom: 1px dashed var(--wc-line); cursor: pointer; transition: background .12s; text-decoration: none; color: inherit; }
-.wc-fixture:hover { background: var(--wc-bg-1); }
-.wc-fixture:last-child { border-bottom: 0; }
-.wc-fix-time { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--wc-fg-dim); letter-spacing: 0.06em; }
-.wc-fix-time .group-badge { display: block; font-size: 9px; letter-spacing: 0.1em; color: var(--wc-fg-mute); text-transform: uppercase; margin-top: 2px; }
-.wc-fix-team { display: flex; align-items: center; gap: 10px; }
-.wc-fix-team.right { justify-content: flex-end; flex-direction: row-reverse; }
-.wc-fix-team img { width: 26px; height: 17px; object-fit: cover; border-radius: 2px; flex-shrink: 0; }
-.wc-fix-team .nm { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wc-fix-vs { text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--wc-fg-mute); }
-.wc-fix-venue { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--wc-fg-mute); letter-spacing: 0.04em; line-height: 1.5; }
-.wc-fix-venue .stadium-name { display: block; color: var(--wc-fg-dim); font-size: 11px; }
-.wc-watch-btn { display: flex; align-items: center; justify-content: center; padding: 8px; border: 1px solid var(--wc-line); color: var(--wc-fg-mute); font-size: 14px; transition: all .12s; }
-.wc-watch-btn:hover { border-color: var(--wc-accent); color: var(--wc-accent); background: rgba(255,95,45,0.05); }
-
-/* ── Stadiums ── */
-.wc-stadiums-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.wc-stadium { border: 1px solid var(--wc-line); background: var(--wc-bg-1); padding: 20px; transition: border-color .14s; }
-.wc-stadium:hover { border-color: var(--wc-line-2); }
-.wc-stadium .s-country { display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--wc-fg-mute); margin-bottom: 10px; }
-.wc-stadium .s-country img { width: 20px; height: 13px; object-fit: cover; border-radius: 2px; }
-.wc-stadium .s-name { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; color: var(--wc-fg); margin-bottom: 4px; line-height: 1.2; }
-.wc-stadium .s-city { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--wc-fg-mute); letter-spacing: 0.06em; margin-bottom: 12px; }
-.wc-stadium .s-cap { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: var(--wc-gold); letter-spacing: -0.01em; }
-.wc-stadium .s-cap-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--wc-fg-mute); }
-
-/* ── Responsive ── */
-@media (max-width: 900px) {
-  .wc-topbar { display: none !important; }
-  .wc-topbar-inner { max-width: none; border-radius: 18px; padding: 9px 10px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 10px; }
-  .wc-brand { min-width: 0; }
-  .wc-brand-tag { display: none; }
-  .wc-nav { display: none; }
-  .wc-top-right { display: none; }
-  .wc-menu-toggle { display: inline-flex; justify-self: end; }
-  .wc-mobile-nav { grid-column: 1 / -1; display: none; flex-direction: column; gap: 8px; padding-top: 8px; }
-  .wc-mobile-nav.open { display: flex; }
-  .wc-top-notice { top: 84px; }
-  .wc-btn-pill { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
-  .wc-groups-grid { grid-template-columns: repeat(2, 1fr); }
-  .wc-stadiums-grid { grid-template-columns: repeat(2, 1fr); }
-  .wc-hero { margin: var(--site-nav-content-offset-mobile, 108px) 10px 24px; }
-  .wc-hero-inner { grid-template-columns: 1fr; }
-  .wc-hero-right { border-left: 0; border-top: 1px solid var(--wc-line); }
-  .wc-hero-meta { grid-template-columns: repeat(2, 1fr); gap: 14px 0; }
-  .wc-fixture { grid-template-columns: 64px 1fr 60px 1fr 100px; }
-  .wc-watch-btn { display: none; }
-}
-@media (max-width: 600px) {
-  .wc-hero-left { padding: 20px 16px; }
-  .wc-hero-right { padding: 16px; }
-  .wc-h1 { font-size: 36px; }
-  .wc-groups-grid { grid-template-columns: 1fr 1fr; }
-  .wc-stadiums-grid { grid-template-columns: 1fr; }
-  .wc-body { padding: 20px 16px 60px; }
-  .wc-fixture { grid-template-columns: 52px 1fr 40px 1fr; gap: 8px; }
-  .wc-fix-venue { display: none; }
-}
-`;
-
-function flagUrl(iso2: string) {
-    return `https://flagcdn.com/${iso2.toLowerCase()}.svg`;
-}
-
-function daysUntil(dateStr: string) {
-    const target = new Date(dateStr + "T00:00:00");
-    const now = new Date();
-    const diff = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(0, diff);
-}
-
-function formatDate(dateStr: string) {
-    const d = new Date(dateStr + "T12:00:00");
-    return d.toLocaleDateString("en-US", { weekday: "short", month: "long", day: "numeric", year: "numeric" });
-}
-
-type Tab = "groups" | "schedule" | "stadiums";
-const WORLD_CUP_NOTICE_SESSION_KEY = "matchwatch:world-cup-notice:v1";
 
 export default function WorldCupPage() {
-    const [tab, setTab] = useState<Tab>("groups");
-    const [groupFilter, setGroupFilter] = useState<string>("all");
-    const [showNotice, setShowNotice] = useState(false);
+  const pathname = usePathname();
+  const { isAuthenticated, user } = useAuth();
+  const [open, setOpen] = useState(false);
 
-    React.useEffect(() => {
-        try {
-            if (window.sessionStorage.getItem(WORLD_CUP_NOTICE_SESSION_KEY)) return;
-            window.sessionStorage.setItem(WORLD_CUP_NOTICE_SESSION_KEY, "1");
-            setShowNotice(true);
-        } catch {
-            setShowNotice(true);
-        }
-    }, []);
+  const dash =
+    user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" ? "/admin"
+    : user?.role === "BUSINESS" || user?.role === "VENUE_OWNER" ? "/admin"
+    : "/account";
 
-    const daysToOpen = daysUntil("2026-06-11");
+  return (
+    <div className="wc-page">
+      <style>{CSS}</style>
 
-    const fixturesByDate = useMemo(() => {
-        const filtered = groupFilter === "all"
-            ? WC_FIXTURES
-            : WC_FIXTURES.filter(f => f.group === groupFilter);
-        const map = new Map<string, typeof WC_FIXTURES>();
-        for (const f of filtered) {
-            if (!map.has(f.date)) map.set(f.date, []);
-            map.get(f.date)!.push(f);
-        }
-        return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-    }, [groupFilter]);
+      {/* ── Sticky Nav ── */}
+      <header className="wc-topbar">
+        <div className="wc-topbar-inner">
+          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+            <img src="/logo.svg" alt="MatchWatch" className="wc-logo" />
+          </Link>
 
-    return (
-        <>
-            <style dangerouslySetInnerHTML={{ __html: WC_VARS + WC_CSS }} />
-            <FloatingNav />
+          <nav className="wc-nav">
+            {NAV_LINKS.map(l => {
+              const on = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
+              return (
+                <Link key={l.href} href={l.href} className={on ? "on" : ""}>
+                  {l.label}
+                </Link>
+              );
+            })}
+          </nav>
 
-            {showNotice && (
-                <div className="wc-top-notice" role="status" aria-live="polite">
-                    <div>
-                        <div className="wc-top-notice-title">World Cup hub is live</div>
-                        <div className="wc-top-notice-msg">
-                            Browse groups, fixtures, and host cities, then find watch parties near you.
-                        </div>
-                    </div>
-                    <button type="button" aria-label="Close notification" onClick={() => setShowNotice(false)}>
-                        <X size={16} />
-                    </button>
-                </div>
-            )}
+          <div className="wc-tr">
+            {isAuthenticated
+              ? <Link href={dash} className="wc-ghost">Dashboard</Link>
+              : <Link href="/login" className="wc-ghost">Log in</Link>
+            }
+            <Link href="/for-venues/register" className="wc-orange">
+              <Building2 size={14} /> List your venue
+            </Link>
+            <button className="wc-hmbg" onClick={() => setOpen(!open)} style={{ border: "none" }}>
+              {open ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+        </div>
 
-            {/* Hero */}
-            <div className="wc-hero">
-                <div className="wc-hero-inner">
-                    <div className="wc-hero-left">
-                        <div className="wc-hero-kicker">
-                            <span className="wc-live-chip"><span className="bd" />World Cup</span>
-                            <span>Official tournament - June 11 to July 19, 2026</span>
-                        </div>
-                        <h1 className="wc-h1">FIFA World Cup<br /><em>2026</em></h1>
-                        <p className="wc-hero-copy">
-                            48 teams. 12 groups. 3 nations. 16 stadiums across the United States, Mexico, and Canada.
-                            Find where to watch every match.
-                        </p>
-                        <div className="wc-hero-meta">
-                            <div className="wc-hero-stat"><span className="v">48</span><span className="l">Teams</span></div>
-                            <div className="wc-hero-stat"><span className="v">12</span><span className="l">Groups</span></div>
-                            <div className="wc-hero-stat"><span className="v">104</span><span className="l">Matches</span></div>
-                            <div className="wc-hero-stat"><span className="v">16</span><span className="l">Stadiums</span></div>
-                        </div>
-                        <div className="wc-hosts" style={{ marginTop: "auto" }}>
-                            {[
-                                { iso2: "us", name: "United States - 11 venues" },
-                                { iso2: "mx", name: "Mexico - 3 venues" },
-                                { iso2: "ca", name: "Canada - 2 venues" },
-                            ].map(h => (
-                                <div key={h.iso2} className="wc-host-flag">
-                                    <img src={`https://flagcdn.com/${h.iso2}.svg`} alt={h.iso2} />
-                                    {h.name}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="wc-hero-right">
-                        <div className="wc-countdown">
-                            <div className="label">Kickoff countdown</div>
-                            <div className="days">{daysToOpen}</div>
-                            <div className="days-label">days to go</div>
-                            <div className="opening">Opening - Jun 11, 2026<br />MetLife Stadium, New Jersey</div>
-                        </div>
-                        <div style={{ border: "1px solid var(--wc-line)", background: "var(--wc-bg-1)", padding: 14 }}>
-                            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--wc-fg-mute)", marginBottom: 10 }}>
-                                Watch party hub
-                            </div>
-                            <div style={{ fontFamily: "'Space Grotesk', var(--font-space), sans-serif", fontWeight: 600, fontSize: 16, color: "var(--wc-fg)", marginBottom: 6 }}>
-                                Find bars showing every tournament match.
-                            </div>
-                            <div style={{ fontSize: 12, color: "var(--wc-fg-dim)", lineHeight: 1.5 }}>
-                                Browse fixtures, groups, and host cities, then jump into venues ready for World Cup crowds.
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        {/* Mobile menu */}
+        {open && (
+          <div style={{
+            position: "absolute", top: "calc(100% + 4px)", left: 16, right: 16, zIndex: 50,
+            background: "color-mix(in srgb,#0a0b0d 97%,transparent)",
+            backdropFilter: "blur(24px)", border: "1px solid rgba(35,39,47,.8)", borderRadius: 16,
+            padding: 16, display: "flex", flexDirection: "column", gap: 8,
+            boxShadow: "0 16px 48px rgba(0,0,0,.4)",
+          }}>
+            {NAV_LINKS.map(l => (
+              <Link key={l.href} href={l.href} onClick={() => setOpen(false)} style={{
+                padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,.04)",
+                color: "#f1ece4", fontWeight: 600, fontSize: 14, textDecoration: "none",
+              }}>
+                {l.label}
+              </Link>
+            ))}
+            {isAuthenticated
+              ? <Link href={dash} onClick={() => setOpen(false)} style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,.04)", color: "#f1ece4", fontWeight: 600, fontSize: 14, textDecoration: "none" }}>Dashboard</Link>
+              : <Link href="/login" onClick={() => setOpen(false)} style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,.04)", color: "#f1ece4", fontWeight: 600, fontSize: 14, textDecoration: "none" }}>Log in</Link>
+            }
+            <Link href="/for-venues/register" onClick={() => setOpen(false)} style={{
+              padding: "12px 16px", borderRadius: 12, background: "#F97316", color: "#fff",
+              fontWeight: 700, fontSize: 14, textDecoration: "none", display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <Building2 size={16} /> List your venue
+            </Link>
+          </div>
+        )}
+      </header>
+
+      {/* ── Hero ── */}
+      <section className="wc-hero">
+        <div className="wc-hero-orb" />
+        <div className="wc-hero-inner">
+          <div className="wc-kicker">
+            <span className="bd" />FIFA World Cup 2026 · Official Fan Hub
+          </div>
+          <h1 className="wc-h1">
+            World Cup 2026<br />
+            <b>Watch Parties</b> &amp;<br />
+            Fan Festivals
+          </h1>
+          <p className="wc-sub">
+            Discover the best soccer venues, fan festivals, and match-day experiences across all 11 U.S. host cities.
+            From Houston to New York — find your perfect watch party.
+          </p>
+          <div className="wc-btns">
+            <a href="#cities" className="wc-btn-p">
+              <Trophy size={18} /> Explore Host Cities
+            </a>
+            <Link href="/venues" className="wc-btn-g">Find Watch Parties</Link>
+            <Link href="/for-venues/register" className="wc-btn-g">
+              <Building2 size={16} /> Become a Featured Venue
+            </Link>
+          </div>
+          <div className="wc-stats">
+            <div>
+              <div className="wc-sv"><span>11</span></div>
+              <div className="wc-sl">U.S. Host Cities</div>
             </div>
-
-            {/* Tab bar */}
-            <div style={{ borderBottom: "1px solid var(--wc-line)" }}>
-                <div className="wc-tabs">
-                    {([
-                        { id: "groups" as Tab, label: "Groups", icon: "🏆" },
-                        { id: "schedule" as Tab, label: "Schedule", icon: "📅" },
-                        { id: "stadiums" as Tab, label: "Stadiums", icon: "🏟" },
-                    ] as { id: Tab; label: string; icon: string }[]).map(t => (
-                        <button
-                            key={t.id}
-                            className={`wc-tab${tab === t.id ? " on" : ""}`}
-                            onClick={() => setTab(t.id)}
-                        >
-                            <span>{t.icon}</span> {t.label}
-                        </button>
-                    ))}
-                </div>
+            <div>
+              <div className="wc-sv"><span>104</span></div>
+              <div className="wc-sl">Total Matches</div>
             </div>
-
-            {/* Body */}
-            <div style={{ padding: "0 24px" }}>
-                <div className="wc-body">
-
-                    {/* ── Groups tab ── */}
-                    {tab === "groups" && (
-                        <div>
-                            <div style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--wc-fg-mute)", marginBottom: 20 }}>
-                                Group Stage — 12 groups of 4 teams
-                            </div>
-                            <div className="wc-groups-grid">
-                                {GROUPS.map(g => (
-                                    <div key={g.name} className="wc-group">
-                                        <div className="wc-group-hd">
-                                            <span className="wc-group-letter">Group {g.name}</span>
-                                            <span className="wc-group-label">4 teams</span>
-                                        </div>
-                                        <div className="wc-group-teams">
-                                            {g.teams.map(t => (
-                                                <div key={t.iso2} className="wc-group-team">
-                                                    <img
-                                                        src={flagUrl(t.iso2 === "SC" ? "gb-sct" : t.iso2)}
-                                                        alt={t.name}
-                                                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                                                    />
-                                                    <span className="team-name">{t.name}</span>
-                                                    <span className="fifa-code">{t.fifa}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── Schedule tab ── */}
-                    {tab === "schedule" && (
-                        <div>
-                            {/* Group filter */}
-                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 24 }}>
-                                <button
-                                    onClick={() => setGroupFilter("all")}
-                                    style={{
-                                        fontFamily: "var(--font-mono, monospace)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase",
-                                        padding: "6px 14px", border: "1px solid", cursor: "pointer", background: "none", transition: "all .12s",
-                                        borderColor: groupFilter === "all" ? "var(--wc-gold)" : "var(--wc-line)",
-                                        color: groupFilter === "all" ? "var(--wc-gold)" : "var(--wc-fg-dim)",
-                                    }}
-                                >All</button>
-                                {"ABCDEFGHIJKL".split("").map(g => (
-                                    <button
-                                        key={g}
-                                        onClick={() => setGroupFilter(g)}
-                                        style={{
-                                            fontFamily: "var(--font-mono, monospace)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase",
-                                            padding: "6px 12px", border: "1px solid", cursor: "pointer", background: "none", transition: "all .12s",
-                                            borderColor: groupFilter === g ? "var(--wc-gold)" : "var(--wc-line)",
-                                            color: groupFilter === g ? "var(--wc-gold)" : "var(--wc-fg-dim)",
-                                        }}
-                                    >Group {g}</button>
-                                ))}
-                            </div>
-
-                            <div className="wc-schedule">
-                                {fixturesByDate.map(([date, fixtures]) => (
-                                    <div key={date} className="wc-date-block">
-                                        <div className="wc-date-hd">
-                                            <span className="dot" />
-                                            {formatDate(date)}
-                                        </div>
-                                        {fixtures.map((f, i) => (
-                                            <Link
-                                                key={i}
-                                                href={`/matches?league=WC`}
-                                                className="wc-fixture"
-                                            >
-                                                <div className="wc-fix-time">
-                                                    {f.time} CT
-                                                    <span className="group-badge">Grp {f.group} · MD{date <= "2026-06-24" ? "1" : "2"}</span>
-                                                </div>
-                                                <div className="wc-fix-team" style={{ justifyContent: "flex-end", flexDirection: "row-reverse" }}>
-                                                    <img
-                                                        src={flagUrl(f.home === "SC" ? "gb-sct" : f.home)}
-                                                        alt={f.homeN}
-                                                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                                                    />
-                                                    <span className="nm" style={{ textAlign: "right" }}>{f.homeN}</span>
-                                                </div>
-                                                <div className="wc-fix-vs">vs</div>
-                                                <div className="wc-fix-team">
-                                                    <img
-                                                        src={flagUrl(f.away === "SC" ? "gb-sct" : f.away)}
-                                                        alt={f.awayN}
-                                                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                                                    />
-                                                    <span className="nm">{f.awayN}</span>
-                                                </div>
-                                                <div className="wc-fix-venue">
-                                                    <span className="stadium-name">{f.stadium}</span>
-                                                    {f.city}
-                                                </div>
-                                                <div className="wc-watch-btn" title="Find watch party">🍺</div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── Stadiums tab ── */}
-                    {tab === "stadiums" && (
-                        <div>
-                            {["USA", "Mexico", "Canada"].map(country => {
-                                const stadiums = STADIUMS.filter(s => s.country === country);
-                                return (
-                                    <div key={country} style={{ marginBottom: 36 }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                                            <img
-                                                src={flagUrl(country === "USA" ? "us" : country === "Mexico" ? "mx" : "ca")}
-                                                alt={country}
-                                                style={{ width: 28, height: 18, objectFit: "cover", borderRadius: 3 }}
-                                            />
-                                            <span style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 700, fontSize: 18 }}>{country}</span>
-                                            <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, color: "var(--wc-fg-mute)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                                                {stadiums.length} venue{stadiums.length > 1 ? "s" : ""}
-                                            </span>
-                                        </div>
-                                        <div className="wc-stadiums-grid">
-                                            {stadiums.map(s => (
-                                                <div key={s.name} className="wc-stadium">
-                                                    <div className="s-country">
-                                                        <img src={flagUrl(s.flag)} alt={s.country} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                                                        {s.country}
-                                                    </div>
-                                                    <div className="s-name">{s.name}</div>
-                                                    <div className="s-city">{s.city}</div>
-                                                    <div className="s-cap">{s.capacity.toLocaleString()}</div>
-                                                    <div className="s-cap-label">capacity</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
+            <div>
+              <div className="wc-sv">Jun <span>11</span></div>
+              <div className="wc-sl">Opening Match</div>
             </div>
-        </>
-    );
+            <div>
+              <div className="wc-sv">Jul <span>19</span></div>
+              <div className="wc-sl">The Final · NYC</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 11 Host Cities ── */}
+      <section className="wc-cw" id="cities">
+        <div className="wc-wrap">
+          <div className="wc-sh">
+            <div className="wc-st">
+              11 Host Cities <span className="wc-sb">WC 2026</span>
+            </div>
+            <Link href="/venues" className="wc-sl2">
+              All Venues <ChevronRight size={14} />
+            </Link>
+          </div>
+          <div className="wc-cg">
+            {CITIES.map(c => (
+              <Link
+                key={c.short}
+                href={"/venues?city=" + encodeURIComponent(c.name)}
+                className="wc-cc"
+              >
+                <div className="wc-cbg" style={{ background: c.g }} />
+                <div className="wc-cov" />
+                <div className="wc-ci">
+                  <span className="wc-cbadge">{c.badge}</span>
+                  <div className="wc-cn">{c.name}</div>
+                  <div className="wc-cs">{c.stadium} · {c.cap}</div>
+                  <div className="wc-cm">
+                    <div className="wc-cmn">
+                      <span className="n">{c.matches}</span> matches
+                    </div>
+                    <div className="wc-cex">
+                      Explore <ChevronRight size={12} />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Featured Watch Party Venues ── */}
+      <section className="wc-vw">
+        <div className="wc-wrap">
+          <div className="wc-sh">
+            <div className="wc-st">
+              Featured Watch Party Venues <span className="wc-sb">SPONSOR SPOTS</span>
+            </div>
+            <Link href="/venues" className="wc-sl2">
+              View all <ChevronRight size={14} />
+            </Link>
+          </div>
+          <div className="wc-vg">
+            {VENUES.map((v, i) => (
+              <div key={i} className="wc-vc">
+                <div className="wc-vcity">{v.city}</div>
+                <div className="wc-vname">{v.name}</div>
+                <div className="wc-vtype">{v.type}</div>
+                <div className="wc-vf">
+                  <div className="wc-vs">★★★★★</div>
+                  <Link href="/venues" className="wc-vl">View venue →</Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Sponsor CTA ── */}
+      <section className="wc-spw">
+        <div className="wc-wrap">
+          <div className="wc-sp">
+            <div>
+              <div className="wc-spk">Limited Sponsor Spots Available</div>
+              <div className="wc-sph2">Own Your City&apos;s World Cup Page</div>
+              <p className="wc-spp">
+                Get your venue or brand featured as the exclusive sponsor for one of the 11 U.S. host city pages.
+                Reach thousands of soccer fans searching for match-day experiences in your city.
+              </p>
+            </div>
+            <div className="wc-spb">
+              <Link href="/for-venues/register" className="wc-orange" style={{ justifyContent: "center" }}>
+                <Star size={15} /> Become a Featured Venue
+              </Link>
+              <Link href="/contact" className="wc-spbtn">Sponsor This City Page</Link>
+              <Link href="/for-venues" className="wc-spbtn">List Your Venue</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FIFA Fan Festival ── */}
+      <section className="wc-fw">
+        <div className="wc-wrap">
+          <div className="wc-fb">
+            <div>
+              <div className="wc-spk">Official Events</div>
+              <div className="wc-fh2">FIFA Fan Festivals™</div>
+              <p className="wc-fp">
+                FIFA Fan Festivals are free, official events held in host cities throughout the tournament —
+                live match screenings, entertainment, food, and activities for all fans.
+              </p>
+              <a
+                href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="wc-orange"
+                style={{ textDecoration: "none" }}
+              >
+                <Globe size={14} /> Official FIFA Site
+              </a>
+            </div>
+            <div>
+              <div style={{
+                fontFamily: '"JetBrains Mono",monospace', fontSize: 10, letterSpacing: ".14em",
+                textTransform: "uppercase", color: "#F97316", marginBottom: 14, fontWeight: 700,
+              }}>
+                Fan Festival Host Cities
+              </div>
+              <div className="wc-fcg">
+                {CITIES.map(c => (
+                  <div key={c.short} className="wc-fci">
+                    <div className="d" />
+                    {c.name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 }
