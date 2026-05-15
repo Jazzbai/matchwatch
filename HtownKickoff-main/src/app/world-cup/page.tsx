@@ -70,87 +70,98 @@ const SCHEDULE = {
 
 const TrophyImg = () => (
   <svg viewBox="0 0 200 310" fill="none" xmlns="http://www.w3.org/2000/svg"
-    style={{ width: "100%", maxWidth: 260, height: "auto", filter: "drop-shadow(0 0 28px rgba(212,160,20,0.55)) drop-shadow(0 0 60px rgba(212,140,10,0.25))" }}>
+    style={{ width: "100%", maxWidth: 240, height: "auto", filter: "drop-shadow(0 0 30px rgba(212,160,20,0.6)) drop-shadow(0 0 70px rgba(212,140,10,0.28))" }}>
     <defs>
-      <linearGradient id="gA" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%"   stopColor="#FAE97A"/>
-        <stop offset="35%"  stopColor="#D4A017"/>
-        <stop offset="65%"  stopColor="#F0C040"/>
+      <linearGradient id="gBody" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%"   stopColor="#7A4E00"/>
+        <stop offset="20%"  stopColor="#E8A010"/>
+        <stop offset="45%"  stopColor="#FAE880"/>
+        <stop offset="70%"  stopColor="#D09A14"/>
+        <stop offset="100%" stopColor="#7A4E00"/>
+      </linearGradient>
+      <linearGradient id="gBase" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%"   stopColor="#FAE880"/>
+        <stop offset="40%"  stopColor="#D4A017"/>
         <stop offset="100%" stopColor="#8B5E00"/>
       </linearGradient>
-      <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%"   stopColor="#F5E070"/>
-        <stop offset="50%"  stopColor="#C08010"/>
-        <stop offset="100%" stopColor="#7A5000"/>
-      </linearGradient>
       <linearGradient id="gGreen" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%"   stopColor="#064A2A"/>
+        <stop offset="0%"   stopColor="#063C22"/>
         <stop offset="50%"  stopColor="#1A7A48"/>
-        <stop offset="100%" stopColor="#064A2A"/>
+        <stop offset="100%" stopColor="#063C22"/>
       </linearGradient>
-      <radialGradient id="gGlobe" cx="36%" cy="32%" r="65%">
+      <radialGradient id="gGlobe" cx="36%" cy="30%" r="65%">
         <stop offset="0%"   stopColor="#FAE880"/>
-        <stop offset="45%"  stopColor="#D09C14"/>
-        <stop offset="100%" stopColor="#6A4400"/>
+        <stop offset="45%"  stopColor="#C89010"/>
+        <stop offset="100%" stopColor="#5A3800"/>
       </radialGradient>
+      <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     </defs>
 
-    {/* ── Base bottom plate ── */}
-    <rect x="22" y="276" width="156" height="22" rx="4" fill="url(#gA)"/>
-    <rect x="22" y="274" width="156" height="4"  rx="2" fill="#FAF0A0" opacity="0.5"/>
+    {/* ── Trophy body: proper double-hourglass silhouette of two figures ── */}
+    {/* Outer filled shape */}
+    <path d="
+      M 92 88
+      C 80 96 54 112 50 126
+      C 44 144 58 158 62 172
+      C 66 186 44 204 40 218
+      L 38 226 L 162 226
+      L 160 218
+      C 156 204 134 186 138 172
+      C 142 158 156 144 150 126
+      C 146 112 120 96 108 88
+      Z
+    " fill="url(#gBody)"/>
+    {/* Left-edge shading */}
+    <path d="M 92 88 C 80 96 54 112 50 126 C 44 144 58 158 62 172 C 66 186 44 204 40 218"
+          stroke="#5A3800" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.55"/>
+    {/* Right-edge shading */}
+    <path d="M 108 88 C 120 96 146 112 150 126 C 156 144 142 158 138 172 C 134 186 156 204 160 218"
+          stroke="#5A3800" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.55"/>
+    {/* Center highlight */}
+    <path d="M 100 94 C 99 120 100 146 100 172 C 100 192 100 212 100 224"
+          stroke="rgba(255,245,180,0.45)" strokeWidth="10" strokeLinecap="round" fill="none"/>
+    {/* Horizontal detail lines — body segments */}
+    <path d="M 56 128 C 72 122 100 120 128 122 C 138 124 146 128 146 128"
+          stroke="#8B5E00" strokeWidth="2.5" fill="none" opacity="0.5"/>
+    <path d="M 60 160 C 76 154 100 152 124 154 C 134 156 142 160 140 160"
+          stroke="#8B5E00" strokeWidth="2.5" fill="none" opacity="0.5"/>
+    <path d="M 46 204 C 64 198 100 196 136 198 C 148 200 156 204 154 204"
+          stroke="#8B5E00" strokeWidth="2.5" fill="none" opacity="0.5"/>
+
+    {/* ── Pedestal top ── */}
+    <rect x="35" y="224" width="130" height="14" rx="2" fill="url(#gBase)"/>
+    <rect x="35" y="224" width="130" height="3"  fill="rgba(255,245,150,0.4)"/>
 
     {/* ── Malachite green bands ── */}
-    <rect x="30" y="248" width="140" height="30" rx="2" fill="url(#gGreen)"/>
-    {/* gold trim top & bottom of green */}
-    <rect x="28" y="246" width="144" height="5"  rx="1" fill="url(#gA)"/>
-    <rect x="28" y="274" width="144" height="5"  rx="1" fill="url(#gA)"/>
+    <rect x="26" y="238" width="148" height="28" rx="2" fill="url(#gGreen)"/>
+    <rect x="24" y="236" width="152" height="5"  rx="1" fill="url(#gBase)"/>
+    <rect x="24" y="263" width="152" height="5"  rx="1" fill="url(#gBase)"/>
 
-    {/* ── FIFA WORLD CUP inscription band ── */}
-    <rect x="24" y="238" width="152" height="12" rx="2" fill="url(#gA)"/>
-    <text x="100" y="248" textAnchor="middle" fontFamily="serif" fontWeight="700"
-          fontSize="7" fill="#5A3800" letterSpacing="1.5">FIFA WORLD CUP</text>
+    {/* ── FIFA WORLD CUP text ── */}
+    <rect x="22" y="268" width="156" height="12" rx="1" fill="url(#gBase)"/>
+    <text x="100" y="278" textAnchor="middle" fontFamily="Georgia,serif" fontWeight="700"
+          fontSize="7.5" fill="#4A3000" letterSpacing="2">FIFA WORLD CUP</text>
 
-    {/* ── Upper pedestal ── */}
-    <rect x="40" y="222" width="120" height="18" rx="2" fill="url(#gB)"/>
-    <rect x="40" y="222" width="120" height="3"  fill="#FAF0A0" opacity="0.4"/>
+    {/* ── Bottom base ── */}
+    <rect x="16" y="278" width="168" height="22" rx="4" fill="url(#gBase)"/>
+    <rect x="16" y="278" width="168" height="3"  fill="rgba(255,245,150,0.4)"/>
 
-    {/* ── Body — two intertwined human figures ── */}
-    {/* Left figure */}
-    <path d="M72 222 C68 210 56 198 50 182 C44 166 47 148 56 134 C65 120 76 113 84 107 C92 101 98 95 100 86"
-          stroke="url(#gA)" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-    {/* Right figure */}
-    <path d="M128 222 C132 210 144 198 150 182 C156 166 153 148 144 134 C135 120 124 113 116 107 C108 101 102 95 100 86"
-          stroke="url(#gA)" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-    {/* shading crease on left */}
-    <path d="M72 222 C68 210 56 198 50 182 C44 166 47 148 56 134 C65 120 76 113 84 107 C92 101 98 95 100 86"
-          stroke="#8B5E00" strokeWidth="6" strokeLinecap="round" opacity="0.35" fill="none"/>
-    {/* shading crease on right */}
-    <path d="M128 222 C132 210 144 198 150 182 C156 166 153 148 144 134 C135 120 124 113 116 107 C108 101 102 95 100 86"
-          stroke="#8B5E00" strokeWidth="6" strokeLinecap="round" opacity="0.35" fill="none"/>
-    {/* cross-brace detail between figures */}
-    <path d="M62 194 C80 188 100 185 120 188 C132 190 140 193 148 196"
-          stroke="#C89010" strokeWidth="3" strokeLinecap="round" opacity="0.5" fill="none"/>
-    <path d="M57 165 C76 159 100 156 124 159 C136 161 144 165 148 168"
-          stroke="#C89010" strokeWidth="3" strokeLinecap="round" opacity="0.5" fill="none"/>
-    <path d="M60 138 C78 132 100 129 122 132 C134 134 142 138 146 141"
-          stroke="#C89010" strokeWidth="3" strokeLinecap="round" opacity="0.5" fill="none"/>
-
-    {/* ── Globe on top ── */}
-    <circle cx="100" cy="56" r="40" fill="url(#gGlobe)"/>
-    {/* globe highlight */}
-    <ellipse cx="86" cy="42" rx="13" ry="9" fill="rgba(255,245,180,0.32)" transform="rotate(-25,86,42)"/>
-    {/* latitude lines */}
-    <path d="M62 56 Q100 46 138 56" stroke="rgba(0,0,0,0.18)" strokeWidth="1.2" fill="none"/>
-    <path d="M64 70 Q100 62 136 70" stroke="rgba(0,0,0,0.12)" strokeWidth="1"   fill="none"/>
-    <path d="M68 42 Q100 34 132 42" stroke="rgba(0,0,0,0.12)" strokeWidth="1"   fill="none"/>
-    {/* longitude line */}
-    <path d="M100 16 Q95 36 100 56 Q105 76 100 96" stroke="rgba(0,0,0,0.18)" strokeWidth="1.2" fill="none"/>
-    <path d="M82 18 Q76 37 82 56 Q88 75 84 95"     stroke="rgba(0,0,0,0.12)" strokeWidth="1"   fill="none"/>
-    <path d="M118 18 Q124 37 118 56 Q112 75 116 95" stroke="rgba(0,0,0,0.12)" strokeWidth="1"   fill="none"/>
-    {/* continent blobs */}
-    <ellipse cx="88"  cy="48" rx="8"  ry="6"  fill="rgba(0,0,0,0.1)" transform="rotate(-10,88,48)"/>
-    <ellipse cx="112" cy="52" rx="7"  ry="5"  fill="rgba(0,0,0,0.1)" transform="rotate(15,112,52)"/>
-    <ellipse cx="96"  cy="68" rx="6"  ry="4"  fill="rgba(0,0,0,0.08)"/>
+    {/* ── Globe ── */}
+    <circle cx="100" cy="54" r="40" fill="url(#gGlobe)" filter="url(#glow)"/>
+    {/* highlight */}
+    <ellipse cx="86" cy="41" rx="13" ry="9" fill="rgba(255,248,190,0.35)" transform="rotate(-25,86,41)"/>
+    {/* lat lines */}
+    <path d="M 62 54 Q 100 44 138 54" stroke="rgba(0,0,0,0.2)"  strokeWidth="1.2" fill="none"/>
+    <path d="M 64 67 Q 100 59 136 67" stroke="rgba(0,0,0,0.13)" strokeWidth="1"   fill="none"/>
+    <path d="M 66 41 Q 100 33 134 41" stroke="rgba(0,0,0,0.13)" strokeWidth="1"   fill="none"/>
+    {/* lon lines */}
+    <path d="M 100 14 Q 94 34 100 54 Q 106 74 100 94" stroke="rgba(0,0,0,0.2)"  strokeWidth="1.2" fill="none"/>
+    <path d="M 82 17  Q 76 36 82 54  Q 88 72 84 91"   stroke="rgba(0,0,0,0.12)" strokeWidth="1"   fill="none"/>
+    <path d="M 118 17 Q 124 36 118 54 Q 112 72 116 91" stroke="rgba(0,0,0,0.12)" strokeWidth="1"  fill="none"/>
+    {/* continents */}
+    <ellipse cx="88"  cy="47" rx="9" ry="6" fill="rgba(0,0,0,0.13)" transform="rotate(-15,88,47)"/>
+    <ellipse cx="114" cy="51" rx="7" ry="5" fill="rgba(0,0,0,0.11)" transform="rotate(12,114,51)"/>
+    <ellipse cx="97"  cy="66" rx="6" ry="4" fill="rgba(0,0,0,0.09)"/>
   </svg>
 );
 
