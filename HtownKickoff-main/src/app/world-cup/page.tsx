@@ -68,6 +68,45 @@ const SCHEDULE = {
   ],
 };
 
+const TROPHY_SVG = (
+  <svg viewBox="0 0 200 268" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%", filter: "drop-shadow(0 0 32px rgba(232,160,32,0.45))" }}>
+    <defs>
+      <linearGradient id="tgold" x1="0%" y1="0%" x2="60%" y2="100%">
+        <stop offset="0%"   stopColor="#F9E17A"/>
+        <stop offset="40%"  stopColor="#E8A020"/>
+        <stop offset="100%" stopColor="#9A6010"/>
+      </linearGradient>
+      <radialGradient id="globeg" cx="38%" cy="32%" r="60%">
+        <stop offset="0%"   stopColor="#FAE98A"/>
+        <stop offset="100%" stopColor="#B87010"/>
+      </radialGradient>
+    </defs>
+
+    {/* Base — two steps */}
+    <rect x="38"  y="235" width="124" height="19" rx="4" fill="url(#tgold)"/>
+    <rect x="54"  y="216" width="92"  height="21" rx="3" fill="url(#tgold)"/>
+
+    {/* Stem */}
+    <rect x="87"  y="178" width="26"  height="40" rx="3" fill="url(#tgold)"/>
+
+    {/* Left figure arm */}
+    <path d="M87 178 C87 178 68 166 55 148 C42 130 42 106 50 90 C58 74 70 66 82 70 L100 56"
+          stroke="url(#tgold)" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+
+    {/* Right figure arm */}
+    <path d="M113 178 C113 178 132 166 145 148 C158 130 158 106 150 90 C142 74 130 66 118 70 L100 56"
+          stroke="url(#tgold)" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+
+    {/* Globe */}
+    <circle cx="100" cy="38" r="34" fill="url(#globeg)"/>
+    {/* Globe lines */}
+    <path d="M100 4 C116 18 116 58 100 72 C84 58 84 18 100 4" stroke="rgba(0,0,0,0.22)" strokeWidth="1.5" fill="none"/>
+    <ellipse cx="100" cy="38" rx="34" ry="17" stroke="rgba(0,0,0,0.18)" strokeWidth="1.5" fill="none"/>
+    <path d="M67 28 Q84 20 100 28 Q116 36 133 28" stroke="rgba(0,0,0,0.18)" strokeWidth="1.5" fill="none"/>
+    <path d="M67 48 Q84 56 100 48 Q116 40 133 48" stroke="rgba(0,0,0,0.18)" strokeWidth="1.5" fill="none"/>
+  </svg>
+);
+
 const FLAGS: Record<string, string> = {
   "Mexico": "🇲🇽", "Ecuador": "🇪🇨", "USA": "🇺🇸", "Bolivia": "🇧🇴",
   "Canada": "🇨🇦", "Chile": "🇨🇱", "Brazil": "🇧🇷", "Japan": "🇯🇵",
@@ -115,7 +154,9 @@ const CSS = `
   .wc-hero{position:relative;overflow:hidden;min-height:560px;display:flex;align-items:center;background:linear-gradient(160deg,var(--mw-bg) 0%,#0d1520 40%,#1a0a05 100%);border-bottom:1px solid var(--mw-line);}
   .wc-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 70% 50%,color-mix(in srgb,var(--mw-accent) 12%,transparent),transparent 70%),radial-gradient(ellipse 60% 80% at 20% 30%,rgba(0,80,160,.15),transparent 70%);pointer-events:none;}
   .wc-hero-orb{position:absolute;right:-80px;top:50%;transform:translateY(-50%);width:520px;height:520px;border-radius:50%;border:1px solid color-mix(in srgb,var(--mw-accent) 7%,transparent);}
-  .wc-hero-inner{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:80px 24px 60px;width:100%;}
+  .wc-hero-inner{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:72px 24px 56px;width:100%;display:grid;grid-template-columns:1fr 300px;gap:48px;align-items:center;}
+  .wc-hero-text{display:flex;flex-direction:column;}
+  .wc-hero-trophy{display:flex;align-items:center;justify-content:center;height:320px;}
   .wc-kicker{display:inline-flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mw-accent);font-weight:700;margin-bottom:20px;border:1px solid color-mix(in srgb,var(--mw-accent) 30%,transparent);padding:5px 12px;border-radius:999px;}
   .wc-kicker .bd{width:6px;height:6px;background:var(--mw-accent);border-radius:50%;animation:bd 1.4s ease-in-out infinite;}
   @keyframes bd{0%,100%{opacity:.4;}50%{opacity:1;}}
@@ -227,12 +268,15 @@ const CSS = `
     .wc-hmbg{display:inline-flex;}
     .wc-logo{width:120px;}
     .wc-stats{gap:24px;}
+    .wc-hero-inner{grid-template-columns:1fr;gap:0;}
+    .wc-hero-trophy{height:220px;}
   }
   @media(max-width:640px){
     .wc-cg,.wc-vg,.wc-mg,.wc-fcg{grid-template-columns:1fr;}
     .wc-h1{font-size:2rem;}
     .wc-sp{padding:28px 20px;}
     .wc-final-team{font-size:1.4rem;}
+    .wc-hero-trophy{display:none;}
   }
 `;
 
@@ -321,50 +365,55 @@ export default function WorldCupPage() {
       <section className="wc-hero">
         <div className="wc-hero-orb" />
         <div className="wc-hero-inner">
-          <div className="wc-kicker">
-            <span className="bd" />FIFA World Cup 2026 · Official Fan Hub
+          <div className="wc-hero-text">
+            <div className="wc-kicker">
+              <span className="bd" />FIFA World Cup 2026 · Official Fan Hub
+            </div>
+            <h1 className="wc-h1">
+              World Cup 2026<br />
+              <b>Watch Parties</b> &amp;<br />
+              Fan Festivals
+            </h1>
+            <p className="wc-sub">
+              Discover the best soccer venues, fan festivals, and match-day experiences across all 11 U.S. host cities.
+              From Houston to New York — find your perfect watch party.
+            </p>
+            <div className="wc-btns">
+              <a href="#cities" className="wc-btn-p">
+                <Trophy size={18} /> Explore Host Cities
+              </a>
+              <a href="#schedule" className="wc-btn-g">
+                <Calendar size={16} /> Match Schedule
+              </a>
+              <Link href="/for-venues/register" className="wc-btn-g">
+                <Building2 size={16} /> Become a Featured Venue
+              </Link>
+            </div>
+            <div className="wc-stats">
+              <div>
+                <div className="wc-sv"><span>11</span></div>
+                <div className="wc-sl">U.S. Host Cities</div>
+              </div>
+              <div>
+                <div className="wc-sv"><span>104</span></div>
+                <div className="wc-sl">Total Matches</div>
+              </div>
+              <div>
+                <div className="wc-sv"><span>48</span></div>
+                <div className="wc-sl">Nations</div>
+              </div>
+              <div>
+                <div className="wc-sv">Jun <span>11</span></div>
+                <div className="wc-sl">Opening Match</div>
+              </div>
+              <div>
+                <div className="wc-sv">Jul <span>19</span></div>
+                <div className="wc-sl">The Final · NYC</div>
+              </div>
+            </div>
           </div>
-          <h1 className="wc-h1">
-            World Cup 2026<br />
-            <b>Watch Parties</b> &amp;<br />
-            Fan Festivals
-          </h1>
-          <p className="wc-sub">
-            Discover the best soccer venues, fan festivals, and match-day experiences across all 11 U.S. host cities.
-            From Houston to New York — find your perfect watch party.
-          </p>
-          <div className="wc-btns">
-            <a href="#cities" className="wc-btn-p">
-              <Trophy size={18} /> Explore Host Cities
-            </a>
-            <a href="#schedule" className="wc-btn-g">
-              <Calendar size={16} /> Match Schedule
-            </a>
-            <Link href="/for-venues/register" className="wc-btn-g">
-              <Building2 size={16} /> Become a Featured Venue
-            </Link>
-          </div>
-          <div className="wc-stats">
-            <div>
-              <div className="wc-sv"><span>11</span></div>
-              <div className="wc-sl">U.S. Host Cities</div>
-            </div>
-            <div>
-              <div className="wc-sv"><span>104</span></div>
-              <div className="wc-sl">Total Matches</div>
-            </div>
-            <div>
-              <div className="wc-sv"><span>48</span></div>
-              <div className="wc-sl">Nations</div>
-            </div>
-            <div>
-              <div className="wc-sv">Jun <span>11</span></div>
-              <div className="wc-sl">Opening Match</div>
-            </div>
-            <div>
-              <div className="wc-sv">Jul <span>19</span></div>
-              <div className="wc-sl">The Final · NYC</div>
-            </div>
+          <div className="wc-hero-trophy">
+            {TROPHY_SVG}
           </div>
         </div>
       </section>
