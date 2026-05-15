@@ -68,6 +68,15 @@ const SCHEDULE = {
   ],
 };
 
+const FLAGS: Record<string, string> = {
+  "Mexico": "🇲🇽", "Ecuador": "🇪🇨", "USA": "🇺🇸", "Bolivia": "🇧🇴",
+  "Canada": "🇨🇦", "Chile": "🇨🇱", "Brazil": "🇧🇷", "Japan": "🇯🇵",
+  "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Senegal": "🇸🇳", "Germany": "🇩🇪", "Korea Rep.": "🇰🇷",
+  "Argentina": "🇦🇷", "Australia": "🇦🇺", "France": "🇫🇷", "Morocco": "🇲🇦",
+  "Spain": "🇪🇸", "Sweden": "🇸🇪", "Portugal": "🇵🇹", "Panama": "🇵🇦",
+  "Netherlands": "🇳🇱", "Uruguay": "🇺🇾", "Italy": "🇮🇹", "TBD": "🏆",
+};
+
 /* ── shared design tokens (matches home page exactly) ── */
 const MW_VARS = `
   :root{
@@ -143,8 +152,9 @@ const CSS = `
   .wc-mc-top{display:flex;justify-content:space-between;font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.1em;color:var(--mw-fg-mute);text-transform:uppercase;margin-bottom:10px;}
   .wc-mc-tag{color:var(--mw-accent);font-weight:700;}
   .wc-mc-teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:10px;}
-  .wc-mc-team{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:15px;color:var(--mw-fg);}
-  .wc-mc-team.away{text-align:right;}
+  .wc-mc-team{display:flex;align-items:center;gap:6px;font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:14px;color:var(--mw-fg);}
+  .wc-mc-team.away{flex-direction:row-reverse;justify-content:flex-start;}
+  .wc-mc-flag{font-size:18px;line-height:1;flex-shrink:0;}
   .wc-mc-vs{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--mw-fg-mute);text-align:center;font-weight:700;}
   .wc-mc-foot{display:flex;justify-content:space-between;padding-top:10px;border-top:1px dashed var(--mw-line);font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--mw-fg-mute);letter-spacing:.06em;}
   .wc-mc-foot .city{color:var(--mw-accent);}
@@ -385,9 +395,15 @@ export default function WorldCupPage() {
                 <div key={i} className="wc-final-card">
                   <div className="wc-final-top">{m.group} · {m.date} · {m.time}</div>
                   <div className="wc-final-teams">
-                    <div className="wc-final-team">{m.home}</div>
+                    <div className="wc-final-team" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      {FLAGS[m.home] && <span style={{ fontSize: 28 }}>{FLAGS[m.home]}</span>}
+                      {m.home}
+                    </div>
                     <div className="wc-final-vs">VS</div>
-                    <div className="wc-final-team" style={{ textAlign: "right" }}>{m.away}</div>
+                    <div className="wc-final-team" style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "flex-end" }}>
+                      {m.away}
+                      {FLAGS[m.away] && <span style={{ fontSize: 28 }}>{FLAGS[m.away]}</span>}
+                    </div>
                   </div>
                   <div className="wc-final-meta">
                     <div>{m.venue}</div>
@@ -406,9 +422,15 @@ export default function WorldCupPage() {
                     {m.tag ? <span className="wc-mc-tag">{m.tag}</span> : <span>{m.date}</span>}
                   </div>
                   <div className="wc-mc-teams">
-                    <div className="wc-mc-team">{m.home}</div>
+                    <div className="wc-mc-team">
+                      {FLAGS[m.home] && <span className="wc-mc-flag">{FLAGS[m.home]}</span>}
+                      {m.home}
+                    </div>
                     <div className="wc-mc-vs">VS</div>
-                    <div className="wc-mc-team away">{m.away}</div>
+                    <div className="wc-mc-team away">
+                      {FLAGS[m.away] && <span className="wc-mc-flag">{FLAGS[m.away]}</span>}
+                      {m.away}
+                    </div>
                   </div>
                   <div className="wc-mc-foot">
                     <span>{m.date} · {m.time}</span>
