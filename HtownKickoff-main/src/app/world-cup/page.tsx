@@ -69,17 +69,89 @@ const SCHEDULE = {
 };
 
 const TrophyImg = () => (
-  <img
-    src="/wc-trophy.png"
-    alt="FIFA World Cup Trophy"
-    style={{
-      width: "100%",
-      maxWidth: 280,
-      height: "auto",
-      objectFit: "contain",
-      filter: "drop-shadow(0 0 40px rgba(232,160,32,0.5)) drop-shadow(0 0 80px rgba(232,160,32,0.2))",
-    }}
-  />
+  <svg viewBox="0 0 200 310" fill="none" xmlns="http://www.w3.org/2000/svg"
+    style={{ width: "100%", maxWidth: 260, height: "auto", filter: "drop-shadow(0 0 28px rgba(212,160,20,0.55)) drop-shadow(0 0 60px rgba(212,140,10,0.25))" }}>
+    <defs>
+      <linearGradient id="gA" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%"   stopColor="#FAE97A"/>
+        <stop offset="35%"  stopColor="#D4A017"/>
+        <stop offset="65%"  stopColor="#F0C040"/>
+        <stop offset="100%" stopColor="#8B5E00"/>
+      </linearGradient>
+      <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"   stopColor="#F5E070"/>
+        <stop offset="50%"  stopColor="#C08010"/>
+        <stop offset="100%" stopColor="#7A5000"/>
+      </linearGradient>
+      <linearGradient id="gGreen" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%"   stopColor="#064A2A"/>
+        <stop offset="50%"  stopColor="#1A7A48"/>
+        <stop offset="100%" stopColor="#064A2A"/>
+      </linearGradient>
+      <radialGradient id="gGlobe" cx="36%" cy="32%" r="65%">
+        <stop offset="0%"   stopColor="#FAE880"/>
+        <stop offset="45%"  stopColor="#D09C14"/>
+        <stop offset="100%" stopColor="#6A4400"/>
+      </radialGradient>
+    </defs>
+
+    {/* ── Base bottom plate ── */}
+    <rect x="22" y="276" width="156" height="22" rx="4" fill="url(#gA)"/>
+    <rect x="22" y="274" width="156" height="4"  rx="2" fill="#FAF0A0" opacity="0.5"/>
+
+    {/* ── Malachite green bands ── */}
+    <rect x="30" y="248" width="140" height="30" rx="2" fill="url(#gGreen)"/>
+    {/* gold trim top & bottom of green */}
+    <rect x="28" y="246" width="144" height="5"  rx="1" fill="url(#gA)"/>
+    <rect x="28" y="274" width="144" height="5"  rx="1" fill="url(#gA)"/>
+
+    {/* ── FIFA WORLD CUP inscription band ── */}
+    <rect x="24" y="238" width="152" height="12" rx="2" fill="url(#gA)"/>
+    <text x="100" y="248" textAnchor="middle" fontFamily="serif" fontWeight="700"
+          fontSize="7" fill="#5A3800" letterSpacing="1.5">FIFA WORLD CUP</text>
+
+    {/* ── Upper pedestal ── */}
+    <rect x="40" y="222" width="120" height="18" rx="2" fill="url(#gB)"/>
+    <rect x="40" y="222" width="120" height="3"  fill="#FAF0A0" opacity="0.4"/>
+
+    {/* ── Body — two intertwined human figures ── */}
+    {/* Left figure */}
+    <path d="M72 222 C68 210 56 198 50 182 C44 166 47 148 56 134 C65 120 76 113 84 107 C92 101 98 95 100 86"
+          stroke="url(#gA)" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    {/* Right figure */}
+    <path d="M128 222 C132 210 144 198 150 182 C156 166 153 148 144 134 C135 120 124 113 116 107 C108 101 102 95 100 86"
+          stroke="url(#gA)" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    {/* shading crease on left */}
+    <path d="M72 222 C68 210 56 198 50 182 C44 166 47 148 56 134 C65 120 76 113 84 107 C92 101 98 95 100 86"
+          stroke="#8B5E00" strokeWidth="6" strokeLinecap="round" opacity="0.35" fill="none"/>
+    {/* shading crease on right */}
+    <path d="M128 222 C132 210 144 198 150 182 C156 166 153 148 144 134 C135 120 124 113 116 107 C108 101 102 95 100 86"
+          stroke="#8B5E00" strokeWidth="6" strokeLinecap="round" opacity="0.35" fill="none"/>
+    {/* cross-brace detail between figures */}
+    <path d="M62 194 C80 188 100 185 120 188 C132 190 140 193 148 196"
+          stroke="#C89010" strokeWidth="3" strokeLinecap="round" opacity="0.5" fill="none"/>
+    <path d="M57 165 C76 159 100 156 124 159 C136 161 144 165 148 168"
+          stroke="#C89010" strokeWidth="3" strokeLinecap="round" opacity="0.5" fill="none"/>
+    <path d="M60 138 C78 132 100 129 122 132 C134 134 142 138 146 141"
+          stroke="#C89010" strokeWidth="3" strokeLinecap="round" opacity="0.5" fill="none"/>
+
+    {/* ── Globe on top ── */}
+    <circle cx="100" cy="56" r="40" fill="url(#gGlobe)"/>
+    {/* globe highlight */}
+    <ellipse cx="86" cy="42" rx="13" ry="9" fill="rgba(255,245,180,0.32)" transform="rotate(-25,86,42)"/>
+    {/* latitude lines */}
+    <path d="M62 56 Q100 46 138 56" stroke="rgba(0,0,0,0.18)" strokeWidth="1.2" fill="none"/>
+    <path d="M64 70 Q100 62 136 70" stroke="rgba(0,0,0,0.12)" strokeWidth="1"   fill="none"/>
+    <path d="M68 42 Q100 34 132 42" stroke="rgba(0,0,0,0.12)" strokeWidth="1"   fill="none"/>
+    {/* longitude line */}
+    <path d="M100 16 Q95 36 100 56 Q105 76 100 96" stroke="rgba(0,0,0,0.18)" strokeWidth="1.2" fill="none"/>
+    <path d="M82 18 Q76 37 82 56 Q88 75 84 95"     stroke="rgba(0,0,0,0.12)" strokeWidth="1"   fill="none"/>
+    <path d="M118 18 Q124 37 118 56 Q112 75 116 95" stroke="rgba(0,0,0,0.12)" strokeWidth="1"   fill="none"/>
+    {/* continent blobs */}
+    <ellipse cx="88"  cy="48" rx="8"  ry="6"  fill="rgba(0,0,0,0.1)" transform="rotate(-10,88,48)"/>
+    <ellipse cx="112" cy="52" rx="7"  ry="5"  fill="rgba(0,0,0,0.1)" transform="rotate(15,112,52)"/>
+    <ellipse cx="96"  cy="68" rx="6"  ry="4"  fill="rgba(0,0,0,0.08)"/>
+  </svg>
 );
 
 /* ISO 3166-1 alpha-2 codes for flagcdn.com */
