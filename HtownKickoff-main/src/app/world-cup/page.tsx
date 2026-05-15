@@ -68,53 +68,39 @@ const SCHEDULE = {
   ],
 };
 
-const TROPHY_SVG = (
-  <svg viewBox="0 0 200 268" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%", filter: "drop-shadow(0 0 32px rgba(232,160,32,0.45))" }}>
-    <defs>
-      <linearGradient id="tgold" x1="0%" y1="0%" x2="60%" y2="100%">
-        <stop offset="0%"   stopColor="#F9E17A"/>
-        <stop offset="40%"  stopColor="#E8A020"/>
-        <stop offset="100%" stopColor="#9A6010"/>
-      </linearGradient>
-      <radialGradient id="globeg" cx="38%" cy="32%" r="60%">
-        <stop offset="0%"   stopColor="#FAE98A"/>
-        <stop offset="100%" stopColor="#B87010"/>
-      </radialGradient>
-    </defs>
-
-    {/* Base — two steps */}
-    <rect x="38"  y="235" width="124" height="19" rx="4" fill="url(#tgold)"/>
-    <rect x="54"  y="216" width="92"  height="21" rx="3" fill="url(#tgold)"/>
-
-    {/* Stem */}
-    <rect x="87"  y="178" width="26"  height="40" rx="3" fill="url(#tgold)"/>
-
-    {/* Left figure arm */}
-    <path d="M87 178 C87 178 68 166 55 148 C42 130 42 106 50 90 C58 74 70 66 82 70 L100 56"
-          stroke="url(#tgold)" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-
-    {/* Right figure arm */}
-    <path d="M113 178 C113 178 132 166 145 148 C158 130 158 106 150 90 C142 74 130 66 118 70 L100 56"
-          stroke="url(#tgold)" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-
-    {/* Globe */}
-    <circle cx="100" cy="38" r="34" fill="url(#globeg)"/>
-    {/* Globe lines */}
-    <path d="M100 4 C116 18 116 58 100 72 C84 58 84 18 100 4" stroke="rgba(0,0,0,0.22)" strokeWidth="1.5" fill="none"/>
-    <ellipse cx="100" cy="38" rx="34" ry="17" stroke="rgba(0,0,0,0.18)" strokeWidth="1.5" fill="none"/>
-    <path d="M67 28 Q84 20 100 28 Q116 36 133 28" stroke="rgba(0,0,0,0.18)" strokeWidth="1.5" fill="none"/>
-    <path d="M67 48 Q84 56 100 48 Q116 40 133 48" stroke="rgba(0,0,0,0.18)" strokeWidth="1.5" fill="none"/>
-  </svg>
+const TrophyImg = () => (
+  <img
+    src="/wc-trophy.png"
+    alt="FIFA World Cup Trophy"
+    style={{
+      width: "100%",
+      maxWidth: 280,
+      height: "auto",
+      objectFit: "contain",
+      filter: "drop-shadow(0 0 40px rgba(232,160,32,0.5)) drop-shadow(0 0 80px rgba(232,160,32,0.2))",
+    }}
+  />
 );
 
+/* ISO 3166-1 alpha-2 codes for flagcdn.com */
 const FLAGS: Record<string, string> = {
-  "Mexico": "🇲🇽", "Ecuador": "🇪🇨", "USA": "🇺🇸", "Bolivia": "🇧🇴",
-  "Canada": "🇨🇦", "Chile": "🇨🇱", "Brazil": "🇧🇷", "Japan": "🇯🇵",
-  "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Senegal": "🇸🇳", "Germany": "🇩🇪", "Korea Rep.": "🇰🇷",
-  "Argentina": "🇦🇷", "Australia": "🇦🇺", "France": "🇫🇷", "Morocco": "🇲🇦",
-  "Spain": "🇪🇸", "Sweden": "🇸🇪", "Portugal": "🇵🇹", "Panama": "🇵🇦",
-  "Netherlands": "🇳🇱", "Uruguay": "🇺🇾", "Italy": "🇮🇹", "TBD": "🏆",
+  "Mexico": "mx", "Ecuador": "ec", "USA": "us", "Bolivia": "bo",
+  "Canada": "ca", "Chile": "cl", "Brazil": "br", "Japan": "jp",
+  "England": "gb-eng", "Senegal": "sn", "Germany": "de", "Korea Rep.": "kr",
+  "Argentina": "ar", "Australia": "au", "France": "fr", "Morocco": "ma",
+  "Spain": "es", "Sweden": "se", "Portugal": "pt", "Panama": "pa",
+  "Netherlands": "nl", "Uruguay": "uy", "Italy": "it",
 };
+
+const Flag = ({ code }: { code: string }) => (
+  <img
+    src={`https://flagcdn.com/24x18/${code}.png`}
+    width={24}
+    height={18}
+    alt={code}
+    style={{ objectFit: "cover", borderRadius: 2, flexShrink: 0 }}
+  />
+);
 
 /* ── shared design tokens (matches home page exactly) ── */
 const MW_VARS = `
@@ -413,7 +399,7 @@ export default function WorldCupPage() {
             </div>
           </div>
           <div className="wc-hero-trophy">
-            {TROPHY_SVG}
+            <TrophyImg />
           </div>
         </div>
       </section>
@@ -444,14 +430,14 @@ export default function WorldCupPage() {
                 <div key={i} className="wc-final-card">
                   <div className="wc-final-top">{m.group} · {m.date} · {m.time}</div>
                   <div className="wc-final-teams">
-                    <div className="wc-final-team" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      {FLAGS[m.home] && <span style={{ fontSize: 28 }}>{FLAGS[m.home]}</span>}
+                    <div className="wc-final-team" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {FLAGS[m.home] && <Flag code={FLAGS[m.home]} />}
                       {m.home}
                     </div>
                     <div className="wc-final-vs">VS</div>
-                    <div className="wc-final-team" style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "flex-end" }}>
+                    <div className="wc-final-team" style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "flex-end" }}>
                       {m.away}
-                      {FLAGS[m.away] && <span style={{ fontSize: 28 }}>{FLAGS[m.away]}</span>}
+                      {FLAGS[m.away] && <Flag code={FLAGS[m.away]} />}
                     </div>
                   </div>
                   <div className="wc-final-meta">
@@ -472,12 +458,12 @@ export default function WorldCupPage() {
                   </div>
                   <div className="wc-mc-teams">
                     <div className="wc-mc-team">
-                      {FLAGS[m.home] && <span className="wc-mc-flag">{FLAGS[m.home]}</span>}
+                      {FLAGS[m.home] && <Flag code={FLAGS[m.home]} />}
                       {m.home}
                     </div>
                     <div className="wc-mc-vs">VS</div>
                     <div className="wc-mc-team away">
-                      {FLAGS[m.away] && <span className="wc-mc-flag">{FLAGS[m.away]}</span>}
+                      {FLAGS[m.away] && <Flag code={FLAGS[m.away]} />}
                       {m.away}
                     </div>
                   </div>
