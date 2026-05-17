@@ -249,7 +249,10 @@ const CSS = `
   .wc-hero-orb{position:absolute;right:-80px;top:50%;transform:translateY(-50%);width:520px;height:520px;border-radius:50%;border:1px solid color-mix(in srgb,var(--mw-accent) 7%,transparent);}
   .wc-hero-inner{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:72px 24px 56px;width:100%;display:grid;grid-template-columns:1fr 300px;gap:48px;align-items:center;}
   .wc-hero-text{display:flex;flex-direction:column;}
-  .wc-hero-trophy{display:flex;align-items:center;justify-content:center;height:320px;}
+  .wc-hero-trophy{display:flex;flex-direction:column;align-items:center;justify-content:center;height:320px;margin:0;}
+  .wc-hero-trophy img{width:min(220px,100%);height:auto;display:block;filter:drop-shadow(0 0 28px rgba(212,160,20,0.55)) drop-shadow(0 0 70px rgba(212,140,10,0.26));}
+  .wc-hero-trophy figcaption{margin-top:8px;font-size:10px;color:var(--mw-fg-mute);text-align:center;}
+  .wc-hero-trophy figcaption a{color:inherit;text-decoration:underline;text-underline-offset:2px;}
   .wc-kicker{display:inline-flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mw-accent);font-weight:700;margin-bottom:20px;border:1px solid color-mix(in srgb,var(--mw-accent) 30%,transparent);padding:5px 12px;border-radius:999px;}
   .wc-kicker .bd{width:6px;height:6px;background:var(--mw-accent);border-radius:50%;animation:bd 1.4s ease-in-out infinite;}
   @keyframes bd{0%,100%{opacity:.4;}50%{opacity:1;}}
@@ -505,9 +508,15 @@ export default function WorldCupPage() {
               </div>
             </div>
           </div>
-          <div className="wc-hero-trophy">
-            <TrophyImg />
-          </div>
+          <figure className="wc-hero-trophy">
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/FIFA_World_Cup_Trophy_cropped.jpg/247px-FIFA_World_Cup_Trophy_cropped.jpg"
+              alt="Real FIFA World Cup Trophy"
+            />
+            <figcaption>
+              Photo: <a href="https://commons.wikimedia.org/wiki/File:FIFA_World_Cup_Trophy_cropped.jpg">Ank Kumar, CC BY-SA 4.0</a>
+            </figcaption>
+          </figure>
         </div>
       </section>
 
