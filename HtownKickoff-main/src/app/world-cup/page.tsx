@@ -69,102 +69,123 @@ const SCHEDULE = {
 };
 
 const TrophyImg = () => (
-  <svg viewBox="0 0 200 305" fill="none" xmlns="http://www.w3.org/2000/svg"
-    style={{ width: "100%", maxWidth: 240, height: "auto", filter: "drop-shadow(0 0 30px rgba(212,160,20,0.6)) drop-shadow(0 0 70px rgba(212,140,10,0.28))" }}>
+  /*
+    FIFA WC Trophy proportions (based on real trophy ~37cm tall, ~16cm wide at arms):
+      Globe:    cy=46 r=36 → bottom y=82
+      Arms:     peak y=102,  width 148 (x=26..174)  — widest, well above y=82
+      Waist:    y=156,       width  54 (x=73..127)  — 36% of arms (very narrow)
+      Hips:     y=204,       width 104 (x=48..152)
+      Collar:   y=220
+      Malachite y=232–264
+      Base:     y=270–294
+  */
+  <svg viewBox="0 0 200 300" fill="none" xmlns="http://www.w3.org/2000/svg"
+    style={{ width: "100%", maxWidth: 240, height: "auto",
+             filter: "drop-shadow(0 0 28px rgba(212,160,20,0.65)) drop-shadow(0 0 70px rgba(212,140,10,0.30))" }}>
     <defs>
       <linearGradient id="gBody" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%"   stopColor="#7A4E00"/>
-        <stop offset="18%"  stopColor="#E8A010"/>
-        <stop offset="45%"  stopColor="#FAE880"/>
-        <stop offset="72%"  stopColor="#D09A14"/>
-        <stop offset="100%" stopColor="#7A4E00"/>
+        <stop offset="0%"   stopColor="#5A3600"/>
+        <stop offset="12%"  stopColor="#C07800"/>
+        <stop offset="38%"  stopColor="#FAE870"/>
+        <stop offset="62%"  stopColor="#E0A010"/>
+        <stop offset="88%"  stopColor="#A06000"/>
+        <stop offset="100%" stopColor="#5A3600"/>
       </linearGradient>
       <linearGradient id="gBase" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%"   stopColor="#FAE880"/>
-        <stop offset="40%"  stopColor="#D4A017"/>
-        <stop offset="100%" stopColor="#8B5E00"/>
+        <stop offset="0%"   stopColor="#FFF0A0"/>
+        <stop offset="35%"  stopColor="#D4A017"/>
+        <stop offset="100%" stopColor="#7A5000"/>
       </linearGradient>
       <linearGradient id="gGreen" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%"   stopColor="#063C22"/>
-        <stop offset="50%"  stopColor="#1A7A48"/>
-        <stop offset="100%" stopColor="#063C22"/>
+        <stop offset="0%"   stopColor="#032010"/>
+        <stop offset="50%"  stopColor="#176B40"/>
+        <stop offset="100%" stopColor="#032010"/>
       </linearGradient>
-      <radialGradient id="gGlobe" cx="36%" cy="30%" r="65%">
-        <stop offset="0%"   stopColor="#FAE880"/>
-        <stop offset="45%"  stopColor="#C89010"/>
-        <stop offset="100%" stopColor="#5A3800"/>
+      <radialGradient id="gGlobe" cx="34%" cy="28%" r="68%">
+        <stop offset="0%"   stopColor="#FFF4B0"/>
+        <stop offset="30%"  stopColor="#E8B020"/>
+        <stop offset="70%"  stopColor="#A07010"/>
+        <stop offset="100%" stopColor="#4A2C00"/>
       </radialGradient>
-      <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="3" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
     </defs>
 
-    {/* ── Trophy body ──
-        Globe: cy=48 r=38 → bottom at y=86
-        Arms peak at y=96 (just below globe), width 132
-        Waist at y=152, width 76
-        Hips at y=206, width 136
-        The globe is drawn last so it appears to rest ON TOP of the raised arms
-    */}
+    {/* ── BODY — left arm ─ waist ─ hip (globe drawn on top) ── */}
     <path d="
-      M 84 76
-      C 68 82 40 88 30 98
-      C 20 110 48 134 62 154
-      C 68 166 34 190 30 210
-      L 28 220 L 172 220
-      L 170 210
-      C 166 190 132 166 138 154
-      C 152 134 180 110 170 98
-      C 160 88 132 82 116 76
+      M 86 76
+      C 68 82 38 90 26 104
+      C 16 118 50 138 73 158
+      C 80 172 50 190 48 206
+      L 44 220  L 156 220
+      L 152 206
+      C 150 190 120 172 127 158
+      C 150 138 184 118 174 104
+      C 162 90 132 82 114 76
       Z
     " fill="url(#gBody)"/>
-    {/* Left shading */}
-    <path d="M 84 76 C 68 82 40 88 30 98 C 20 110 48 134 62 154 C 68 166 34 190 30 210"
-          stroke="#5A3800" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.5"/>
-    {/* Right shading */}
-    <path d="M 116 76 C 132 82 160 88 170 98 C 180 110 152 134 138 154 C 132 166 166 190 170 210"
-          stroke="#5A3800" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.5"/>
-    {/* Center highlight */}
-    <path d="M 100 88 L 100 218" stroke="rgba(255,245,180,0.42)" strokeWidth="12" strokeLinecap="round" fill="none"/>
-    {/* Horizontal detail lines */}
-    <path d="M 38 102 C 60 95 100 93 140 95 C 154 98 162 102 162 102"
-          stroke="#8B5E00" strokeWidth="2" fill="none" opacity="0.5"/>
-    <path d="M 50 150 C 68 143 100 141 132 143 C 148 147 152 151 150 151"
-          stroke="#8B5E00" strokeWidth="2" fill="none" opacity="0.5"/>
-    <path d="M 36 202 C 58 196 100 194 142 196 C 156 199 164 203 162 203"
-          stroke="#8B5E00" strokeWidth="2" fill="none" opacity="0.5"/>
 
-    {/* ── Pedestal collar ── */}
-    <rect x="24" y="218" width="152" height="14" rx="2" fill="url(#gBase)"/>
-    <rect x="24" y="218" width="152" height="3"  fill="rgba(255,245,150,0.4)"/>
+    {/* left edge darkening */}
+    <path d="M 86 76 C 68 82 38 90 26 104 C 16 118 50 138 73 158 C 80 172 50 190 48 206"
+          stroke="rgba(40,20,0,0.55)" strokeWidth="7" strokeLinecap="round" fill="none"/>
+    {/* right edge darkening */}
+    <path d="M 114 76 C 132 82 162 90 174 104 C 184 118 150 138 127 158 C 120 172 150 190 152 206"
+          stroke="rgba(40,20,0,0.55)" strokeWidth="7" strokeLinecap="round" fill="none"/>
 
-    {/* ── Malachite green bands ── */}
-    <rect x="14" y="232" width="172" height="28" rx="2" fill="url(#gGreen)"/>
-    <rect x="12" y="230" width="176" height="5"  rx="1" fill="url(#gBase)"/>
-    <rect x="12" y="257" width="176" height="5"  rx="1" fill="url(#gBase)"/>
+    {/* inner left highlight (3-D curve feel) */}
+    <path d="M 83 82 C 66 90 52 108 68 148 C 72 162 58 182 56 204"
+          stroke="rgba(255,240,140,0.22)" strokeWidth="8" strokeLinecap="round" fill="none"/>
+    {/* centre highlight stripe */}
+    <path d="M 100 86 L 100 218"
+          stroke="rgba(255,248,180,0.50)" strokeWidth="14" strokeLinecap="round" fill="none"/>
 
-    {/* ── FIFA WORLD CUP text on gold band ── */}
-    <rect x="10" y="262" width="180" height="12" rx="1" fill="url(#gBase)"/>
-    <text x="100" y="272" textAnchor="middle" fontFamily="Georgia,serif" fontWeight="700"
-          fontSize="7.5" fill="#4A3000" letterSpacing="2">FIFA WORLD CUP</text>
+    {/* arm-level guide line */}
+    <path d="M 32 108 C 55 100 100 98 145 100 C 159 104 168 108 166 108"
+          stroke="rgba(80,45,0,0.50)" strokeWidth="1.8" fill="none"/>
+    {/* waist guide line */}
+    <path d="M 56 154 C 72 147 100 145 128 147 C 140 151 146 155 144 155"
+          stroke="rgba(80,45,0,0.50)" strokeWidth="1.8" fill="none"/>
+    {/* hip guide line */}
+    <path d="M 52 198 C 68 192 100 190 132 192 C 144 196 152 200 150 200"
+          stroke="rgba(80,45,0,0.50)" strokeWidth="1.8" fill="none"/>
 
-    {/* ── Bottom base ── */}
-    <rect x="4"  y="272" width="192" height="24" rx="4" fill="url(#gBase)"/>
-    <rect x="4"  y="272" width="192" height="3"  fill="rgba(255,245,150,0.4)"/>
+    {/* ── PEDESTAL COLLAR (gold) ── */}
+    <rect x="40" y="218" width="120" height="14" rx="2" fill="url(#gBase)"/>
+    <rect x="40" y="218" width="120" height="3"  fill="rgba(255,248,140,0.50)"/>
 
-    {/* ── Globe — drawn last so it sits ON TOP of arms ── */}
-    <circle cx="100" cy="48" r="38" fill="url(#gGlobe)" filter="url(#glow)"/>
-    <ellipse cx="86" cy="35" rx="12" ry="9" fill="rgba(255,248,190,0.35)" transform="rotate(-25,86,35)"/>
-    {/* lat lines */}
-    <path d="M 64 48 Q 100 38 136 48" stroke="rgba(0,0,0,0.2)"  strokeWidth="1.2" fill="none"/>
-    <path d="M 66 60 Q 100 52 134 60" stroke="rgba(0,0,0,0.13)" strokeWidth="1"   fill="none"/>
-    <path d="M 67 36 Q 100 28 133 36" stroke="rgba(0,0,0,0.13)" strokeWidth="1"   fill="none"/>
-    {/* lon lines */}
-    <path d="M 100 10 Q 93 30 100 48 Q 107 66 100 86" stroke="rgba(0,0,0,0.2)"  strokeWidth="1.2" fill="none"/>
-    <path d="M 82 14  Q 76 33 82 48 Q 88 63 84 82"    stroke="rgba(0,0,0,0.12)" strokeWidth="1"   fill="none"/>
-    <path d="M 118 14 Q 124 33 118 48 Q 112 63 116 82" stroke="rgba(0,0,0,0.12)" strokeWidth="1"  fill="none"/>
-    {/* continents */}
-    <ellipse cx="88"  cy="42" rx="9" ry="6" fill="rgba(0,0,0,0.13)" transform="rotate(-15,88,42)"/>
-    <ellipse cx="113" cy="46" rx="7" ry="5" fill="rgba(0,0,0,0.11)" transform="rotate(12,113,46)"/>
-    <ellipse cx="97"  cy="60" rx="6" ry="4" fill="rgba(0,0,0,0.09)"/>
+    {/* ── MALACHITE BASE ── */}
+    <rect x="20" y="232" width="160" height="32" rx="3" fill="url(#gGreen)"/>
+    <rect x="18" y="230" width="164" height="6"  rx="1" fill="url(#gBase)"/>
+    <rect x="18" y="262" width="164" height="5"  rx="1" fill="url(#gBase)"/>
+
+    {/* ── FIFA WORLD CUP inscription ── */}
+    <rect x="16" y="267" width="168" height="13" rx="1" fill="url(#gBase)"/>
+    <text x="100" y="278" textAnchor="middle" fontFamily="Georgia,serif" fontWeight="700"
+          fontSize="7" fill="#3A2000" letterSpacing="2.5">FIFA WORLD CUP</text>
+
+    {/* ── BOTTOM BASE ── */}
+    <rect x="8"  y="278" width="184" height="18" rx="4" fill="url(#gBase)"/>
+    <rect x="8"  y="278" width="184" height="4"  fill="rgba(255,248,140,0.50)"/>
+
+    {/* ── GLOBE — painted last so it rests ON TOP of the raised arms ── */}
+    <circle cx="100" cy="46" r="36" fill="url(#gGlobe)" filter="url(#glow)"/>
+    {/* specular highlight */}
+    <ellipse cx="87" cy="34" rx="11" ry="8" fill="rgba(255,252,210,0.42)" transform="rotate(-28,87,34)"/>
+    {/* latitude arcs */}
+    <path d="M 66 46 Q 100 36 134 46" stroke="rgba(0,0,0,0.22)" strokeWidth="1.2" fill="none"/>
+    <path d="M 68 58 Q 100 50 132 58" stroke="rgba(0,0,0,0.15)" strokeWidth="1"   fill="none"/>
+    <path d="M 68 34 Q 100 26 132 34" stroke="rgba(0,0,0,0.15)" strokeWidth="1"   fill="none"/>
+    {/* longitude arcs */}
+    <path d="M 100 10 Q 92 28 100 46 Q 108 64 100 82"  stroke="rgba(0,0,0,0.22)" strokeWidth="1.2" fill="none"/>
+    <path d="M 82  14 Q 76 32 82  46 Q 88 60 84  80"   stroke="rgba(0,0,0,0.14)" strokeWidth="1"   fill="none"/>
+    <path d="M 118 14 Q 124 32 118 46 Q 112 60 116 80" stroke="rgba(0,0,0,0.14)" strokeWidth="1"   fill="none"/>
+    {/* continent blobs */}
+    <ellipse cx="88"  cy="40" rx="9" ry="6"  fill="rgba(0,0,0,0.14)" transform="rotate(-15,88,40)"/>
+    <ellipse cx="113" cy="44" rx="7" ry="5"  fill="rgba(0,0,0,0.12)" transform="rotate(10,113,44)"/>
+    <ellipse cx="96"  cy="57" rx="5" ry="3.5" fill="rgba(0,0,0,0.10)"/>
+    <ellipse cx="76"  cy="52" rx="4" ry="3"  fill="rgba(0,0,0,0.09)" transform="rotate(-8,76,52)"/>
   </svg>
 );
 
