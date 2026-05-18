@@ -1,0 +1,216 @@
+"use client";
+
+import React from "react";
+import type { WorldCupCity, CityMatch, CityVenue, VenueSolutionPackage, VendorSolution } from "../types";
+import { CityHero } from "./CityHero";
+import { CityMatchSchedule } from "./CityMatchSchedule";
+import { CityVenueGrid } from "./CityVenueGrid";
+import { CityVenueMap } from "./CityVenueMap";
+import { VenueSolutionPackages } from "./VenueSolutionPackages";
+import { VendorSolutionGrid } from "./VendorSolutionGrid";
+import { FeaturedVenueCTA } from "./FeaturedVenueCTA";
+import { CitySponsorCTA } from "./CitySponsorCTA";
+
+interface Props {
+  city: WorldCupCity;
+  matches: CityMatch[];
+  venues: CityVenue[];
+  packages: VenueSolutionPackage[];
+  vendors: VendorSolution[];
+}
+
+const CSS = `
+  :root {
+    --mw-bg: #0a0b0d;
+    --mw-bg-1: #101217;
+    --mw-bg-2: #14171d;
+    --mw-bg-3: #1b1f26;
+    --mw-line: #23272f;
+    --mw-line-2: #2f3540;
+    --mw-fg: #f1ece4;
+    --mw-fg-dim: #a8a59d;
+    --mw-fg-mute: #6c6a64;
+    --mw-accent: oklch(0.72 0.19 28);
+  }
+
+  /* ── Page ── */
+  .cc-page { background: var(--mw-bg); min-height: 100vh; color: var(--mw-fg); }
+  .cc-wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; width: 100%; }
+
+  /* ── Sections ── */
+  .cc-section { padding: 72px 0; border-bottom: 1px solid var(--mw-line); }
+  .cc-section:last-child { border-bottom: none; }
+  .cc-sh { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 36px; flex-wrap: wrap; }
+  .cc-st { font-family: "Space Grotesk", sans-serif; font-weight: 900; font-size: clamp(1.4rem, 2.8vw, 2rem); color: var(--mw-fg); margin: 0 0 6px; letter-spacing: -0.01em; }
+  .cc-ss { font-size: 0.95rem; color: var(--mw-fg-dim); line-height: 1.55; margin: 0; max-width: 600px; }
+  .cc-link-sm { font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mw-fg-mute); text-decoration: none; white-space: nowrap; transition: color 0.15s; }
+  .cc-link-sm:hover { color: var(--mw-accent); }
+
+  /* ── Buttons ── */
+  .cc-btn-p { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 22px; border-radius: 999px; font-size: 13px; font-weight: 800; text-decoration: none; background: var(--mw-accent); color: #0a0b0d; transition: all 0.2s; border: none; cursor: pointer; }
+  .cc-btn-p:hover { transform: translateY(-1px); box-shadow: 0 10px 28px color-mix(in srgb, var(--mw-accent) 32%, transparent); }
+  .cc-btn-g { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 22px; border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none; border: 1px solid var(--mw-line-2); color: var(--mw-fg-dim); transition: all 0.2s; background: transparent; cursor: pointer; }
+  .cc-btn-g:hover { border-color: var(--mw-fg-dim); color: var(--mw-fg); }
+  .cc-btn-sm { padding: 7px 14px; font-size: 12px; }
+  .cc-btn-full { width: 100%; }
+
+  /* ── Hero ── */
+  .cc-hero { position: relative; overflow: hidden; min-height: 520px; display: flex; align-items: center; background: linear-gradient(160deg, var(--mw-bg) 0%, #0d1520 40%, #1a0a05 100%); border-bottom: 1px solid var(--mw-line); }
+  .cc-hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 70% 50%, color-mix(in srgb, var(--mw-accent) 10%, transparent), transparent 70%), radial-gradient(ellipse 60% 80% at 20% 30%, rgba(0, 80, 160, 0.12), transparent 70%); pointer-events: none; }
+  .cc-hero-inner { position: relative; z-index: 2; max-width: 1080px; margin: 0 auto; padding: 64px 24px 48px; width: 100%; display: grid; grid-template-columns: 1fr 260px; gap: 48px; align-items: center; }
+  .cc-hero-text { display: flex; flex-direction: column; }
+  .cc-kicker { display: inline-flex; align-items: center; gap: 8px; font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--mw-accent); font-weight: 700; margin-bottom: 18px; border: 1px solid color-mix(in srgb, var(--mw-accent) 30%, transparent); padding: 5px 12px; border-radius: 999px; width: fit-content; }
+  .cc-kicker .bd { width: 6px; height: 6px; background: var(--mw-accent); border-radius: 50%; animation: ccbd 1.4s ease-in-out infinite; }
+  @keyframes ccbd { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  .cc-h1 { font-size: clamp(1.9rem, 4.5vw, 3.4rem); font-weight: 900; line-height: 1.05; color: var(--mw-fg); margin: 0 0 14px; letter-spacing: -0.02em; font-family: "Space Grotesk", sans-serif; }
+  .cc-h1 b { color: var(--mw-accent); }
+  .cc-sub { font-size: 1rem; color: var(--mw-fg-dim); line-height: 1.6; max-width: 520px; margin-bottom: 28px; }
+  .cc-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+  .cc-stats { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 44px; padding-top: 32px; border-top: 1px solid var(--mw-line); }
+  .cc-sv { font-size: 1.7rem; font-weight: 900; color: var(--mw-fg); line-height: 1; font-family: "Space Grotesk", sans-serif; }
+  .cc-sv span { color: var(--mw-accent); }
+  .cc-sl { font-size: 0.75rem; color: var(--mw-fg-mute); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .cc-hero-emblem { display: flex; align-items: center; justify-content: center; height: 280px; }
+  .cc-hero-emblem img { width: min(220px, 100%); height: auto; display: block; filter: drop-shadow(0 0 24px rgba(212, 160, 20, 0.35)) drop-shadow(0 0 56px rgba(212, 140, 10, 0.18)); }
+
+  /* ── Match Cards ── */
+  .cc-match-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .cc-match-card { background: var(--mw-bg-1); border: 1px solid var(--mw-line); padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: border-color 0.15s, background 0.15s; }
+  .cc-match-card:hover { border-color: var(--mw-line-2); background: var(--mw-bg-2); }
+  .cc-match-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .cc-stage { font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mw-accent); background: color-mix(in srgb, var(--mw-accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--mw-accent) 20%, transparent); padding: 3px 7px; white-space: nowrap; }
+  .cc-match-dt { font-size: 10px; color: var(--mw-fg-mute); font-family: "JetBrains Mono", monospace; text-align: right; line-height: 1.5; }
+  .cc-match-body { display: flex; flex-direction: column; gap: 8px; }
+  .cc-match-team { display: flex; align-items: center; gap: 8px; }
+  .cc-match-tname { font-size: 14px; font-weight: 700; color: var(--mw-fg); font-family: "Space Grotesk", sans-serif; }
+  .cc-match-tbd { font-size: 13px; font-weight: 600; color: var(--mw-fg-mute); font-style: italic; }
+  .cc-match-vs { font-size: 9px; font-weight: 700; color: var(--mw-fg-mute); text-transform: uppercase; letter-spacing: 0.1em; font-family: "JetBrains Mono", monospace; padding-left: 32px; }
+  .cc-match-stadium { font-size: 10px; color: var(--mw-fg-mute); }
+
+  /* ── Venue Grid ── */
+  .cc-vg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .cc-vc { background: var(--mw-bg-1); border: 1px solid var(--mw-line); padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: border-color 0.15s, background 0.15s; }
+  .cc-vc:hover { border-color: color-mix(in srgb, var(--mw-accent) 30%, transparent); background: var(--mw-bg-2); }
+  .cc-vc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .cc-vc-name { font-size: 15px; font-weight: 800; color: var(--mw-fg); font-family: "Space Grotesk", sans-serif; line-height: 1.2; }
+  .cc-vc-type { display: inline-flex; align-items: center; padding: 3px 8px; font-size: 10px; font-weight: 600; background: var(--mw-bg-3); color: var(--mw-fg-mute); border: 1px solid var(--mw-line); white-space: nowrap; }
+  .cc-vc-addr { font-size: 11px; color: var(--mw-fg-mute); line-height: 1.4; }
+  .cc-vc-feats { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cc-chip { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; font-size: 10px; font-weight: 600; background: var(--mw-bg-3); color: var(--mw-fg-dim); border: 1px solid var(--mw-line); }
+  .cc-wp-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.25); white-space: nowrap; }
+  .cc-vc-btns { display: flex; gap: 7px; margin-top: auto; }
+
+  /* ── Empty state ── */
+  .cc-empty { text-align: center; padding: 64px 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; border: 1px dashed var(--mw-line); }
+  .cc-empty-icon { font-size: 3rem; }
+  .cc-empty-title { font-size: 1.1rem; font-weight: 800; color: var(--mw-fg); font-family: "Space Grotesk", sans-serif; }
+  .cc-empty-body { font-size: 0.9rem; color: var(--mw-fg-dim); max-width: 360px; line-height: 1.5; }
+
+  /* ── Map ── */
+  .cc-map-outer { border: 1px solid var(--mw-line); overflow: hidden; }
+
+  /* ── Packages ── */
+  .cc-pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .cc-pkg { background: var(--mw-bg-1); border: 1px solid var(--mw-line); padding: 24px; display: flex; flex-direction: column; gap: 18px; transition: border-color 0.15s; }
+  .cc-pkg.featured { border-color: color-mix(in srgb, var(--mw-accent) 45%, transparent); background: color-mix(in srgb, var(--mw-accent) 5%, var(--mw-bg-1)); }
+  .cc-pkg-badge { display: inline-flex; align-items: center; gap: 5px; font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mw-accent); border: 1px solid color-mix(in srgb, var(--mw-accent) 30%, transparent); padding: 3px 8px; width: fit-content; }
+  .cc-pkg-head { display: flex; flex-direction: column; gap: 8px; }
+  .cc-pkg-name { font-size: 16px; font-weight: 800; color: var(--mw-fg); font-family: "Space Grotesk", sans-serif; }
+  .cc-pkg-desc { font-size: 13px; color: var(--mw-fg-dim); line-height: 1.5; }
+  .cc-pkg-inc { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 7px; flex: 1; }
+  .cc-pkg-inc li { font-size: 12px; color: var(--mw-fg-dim); display: flex; align-items: flex-start; gap: 7px; }
+  .cc-pkg-inc li::before { content: "✓"; color: #22c55e; font-weight: 800; font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+  .cc-pkg-cta { margin-top: auto; }
+
+  /* ── Vendor Grid ── */
+  .cc-vs-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  .cc-vs { background: var(--mw-bg-1); border: 1px solid var(--mw-line); padding: 18px; display: flex; flex-direction: column; gap: 10px; transition: border-color 0.15s; }
+  .cc-vs:hover { border-color: var(--mw-line-2); }
+  .cc-vs-icon { width: 40px; height: 40px; background: color-mix(in srgb, var(--mw-accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--mw-accent) 20%, transparent); display: flex; align-items: center; justify-content: center; color: var(--mw-accent); }
+  .cc-vs-name { font-size: 13px; font-weight: 700; color: var(--mw-fg); font-family: "Space Grotesk", sans-serif; }
+  .cc-vs-desc { font-size: 11px; color: var(--mw-fg-mute); line-height: 1.4; flex: 1; }
+
+  /* ── CTA Sections ── */
+  .cc-fcta { background: var(--mw-bg-1); border-top: 1px solid var(--mw-line); border-bottom: 1px solid var(--mw-line); }
+  .cc-fcta-inner { max-width: 680px; text-align: center; margin: 0 auto; padding: 72px 24px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .cc-fcta-title { font-size: clamp(1.4rem, 2.8vw, 2.1rem); font-weight: 900; color: var(--mw-fg); font-family: "Space Grotesk", sans-serif; letter-spacing: -0.02em; margin: 0; line-height: 1.15; }
+  .cc-fcta-body { font-size: 0.95rem; color: var(--mw-fg-dim); max-width: 500px; line-height: 1.6; margin: 0; }
+  .cc-fcta-btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 6px; }
+  .cc-scta { background: linear-gradient(135deg, #0d1520 0%, #1a0a05 100%); border-top: 1px solid var(--mw-line); }
+  .cc-scta-inner { max-width: 680px; text-align: center; margin: 0 auto; padding: 72px 24px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .cc-scta-badge { display: inline-flex; align-items: center; gap: 5px; font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mw-accent); border: 1px solid color-mix(in srgb, var(--mw-accent) 30%, transparent); padding: 5px 12px; }
+  .cc-scta-title { font-size: clamp(1.4rem, 2.8vw, 2.1rem); font-weight: 900; color: var(--mw-fg); font-family: "Space Grotesk", sans-serif; letter-spacing: -0.02em; margin: 0; line-height: 1.15; }
+  .cc-scta-body { font-size: 0.95rem; color: var(--mw-fg-dim); max-width: 500px; line-height: 1.6; margin: 0; }
+
+  /* ── Responsive ── */
+  @media (max-width: 1024px) {
+    .cc-pkg-grid { grid-template-columns: repeat(2, 1fr); }
+    .cc-vs-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .cc-hero-inner { grid-template-columns: 1fr; }
+    .cc-hero-emblem { display: none; }
+    .cc-match-grid { grid-template-columns: repeat(2, 1fr); }
+    .cc-vg { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .cc-section { padding: 52px 0; }
+    .cc-match-grid { grid-template-columns: 1fr; }
+    .cc-vg { grid-template-columns: 1fr; }
+    .cc-pkg-grid { grid-template-columns: 1fr; }
+    .cc-vs-grid { grid-template-columns: repeat(2, 1fr); }
+    .cc-sh { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .cc-vc-btns { flex-direction: column; }
+    .cc-btn-full { width: 100%; }
+  }
+`;
+
+export function WorldCupCityClient({ city, matches, venues, packages, vendors }: Props) {
+  return (
+    <>
+      <style>{CSS}</style>
+      <main className="cc-page">
+        <CityHero city={city} />
+
+        <CityMatchSchedule
+          matches={matches}
+          citySlug={city.slug}
+          stadiumName={city.stadiumName}
+          matchCount={city.matchCount}
+          cityName={city.name}
+        />
+
+        <CityVenueGrid
+          venues={venues}
+          citySlug={city.slug}
+          cityName={city.name}
+        />
+
+        <CityVenueMap
+          venues={venues}
+          citySlug={city.slug}
+          cityName={city.name}
+          centerLat={city.lat}
+          centerLng={city.lng}
+          zoom={city.zoom}
+        />
+
+        <VenueSolutionPackages
+          packages={packages}
+          citySlug={city.slug}
+          cityName={city.name}
+        />
+
+        <VendorSolutionGrid
+          vendors={vendors}
+          citySlug={city.slug}
+          cityName={city.name}
+        />
+
+        <FeaturedVenueCTA citySlug={city.slug} cityName={city.name} />
+
+        <CitySponsorCTA citySlug={city.slug} cityName={city.name} />
+      </main>
+    </>
+  );
+}
