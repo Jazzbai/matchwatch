@@ -2,10 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
+import { Search } from "lucide-react";
+import { FloatingNav } from "@/components/AppShell";
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
-
 :root{
   --bg:#0a0b0d;--bg-1:#101217;--bg-2:#14171d;--bg-3:#1b1f26;
   --line:#23272f;--line-2:#2f3540;
@@ -88,18 +88,21 @@ const CSS = `
 .hou-venue .foot{margin-top:auto;padding:12px 18px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;align-items:center;font-family:'JetBrains Mono';font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-mute);}
 .hou-venue .foot .go{color:var(--gold);font-weight:600;}
 
-/* MATCHES */
-.hou-matches{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
-.hou-match{border:1px solid var(--line);background:var(--bg-1);padding:18px 20px;display:grid;grid-template-columns:84px 1fr auto;gap:18px;align-items:center;cursor:pointer;transition:border-color .14s;}
-.hou-match:hover{border-color:var(--cyan);}
-.hou-match.full{grid-column:1 / -1;}
-.hou-match .mdate{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;}
-.hou-match .mdate b{display:block;font-family:'Space Grotesk';font-weight:700;font-size:24px;color:var(--fg);letter-spacing:-0.02em;margin-top:2px;}
-.hou-match .mbody .stage{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.14em;color:var(--fg-mute);text-transform:uppercase;}
-.hou-match .mbody .pair{font-family:'Space Grotesk';font-weight:600;font-size:18px;margin:4px 0;}
-.hou-match .mbody .meta{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--cyan);}
-.hou-match .mbody .meta b{color:var(--fg);font-weight:500;}
-.hou-match .mfind{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-weight:600;text-align:right;line-height:1.4;flex-shrink:0;}
+/* MATCHES — same card style as /world-cup/houston */
+.hou-match-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.hou-mc{background:var(--bg-1);border:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:12px;transition:border-color .15s,background .15s;}
+.hou-mc:hover{border-color:var(--line-2);background:var(--bg-2);}
+.hou-mc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.hou-mc-stage{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);background:rgba(212,168,73,.12);border:1px solid rgba(212,168,73,.2);padding:3px 7px;white-space:nowrap;}
+.hou-mc-dt{font-size:10px;color:var(--fg-mute);font-family:'JetBrains Mono',monospace;text-align:right;line-height:1.5;}
+.hou-mc-body{display:flex;flex-direction:column;gap:8px;}
+.hou-mc-team{display:flex;align-items:center;gap:8px;}
+.hou-mc-tname{font-size:14px;font-weight:700;color:var(--fg);font-family:'Space Grotesk',sans-serif;}
+.hou-mc-tbd{font-size:13px;font-weight:600;color:var(--fg-mute);font-style:italic;}
+.hou-mc-vs{font-size:9px;font-weight:700;color:var(--fg-mute);text-transform:uppercase;letter-spacing:.1em;font-family:'JetBrains Mono',monospace;padding-left:32px;}
+.hou-mc-stadium{font-size:10px;color:var(--fg-mute);}
+.hou-mc-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 16px;border:1px solid var(--line-2);color:var(--fg-dim);font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;transition:border-color .14s,color .14s;border-radius:999px;}
+.hou-mc-btn:hover{border-color:var(--fg);color:var(--fg);}
 
 /* FAN FESTIVAL */
 .hou-festival{padding:64px 80px;background:linear-gradient(135deg,rgba(255,120,60,0.10) 0%,transparent 50%,rgba(80,180,255,0.04) 100%);border-bottom:1px solid var(--line);position:relative;overflow:hidden;}
@@ -173,8 +176,8 @@ const CSS = `
   .hou-festival-inner{grid-template-columns:1fr;}
   .hou-festival-visual{display:none;}
   .hou-pkg-inner{grid-template-columns:1fr;}
-  .hou-matches{grid-template-columns:1fr;}
-  .hou-match.full{grid-column:auto;}
+  .hou-match-grid{grid-template-columns:repeat(2,1fr);}
+  .hou-match-grid{grid-template-columns:1fr;}
 }
 @media(max-width:640px){
   .hou-hero{padding:40px 20px;}
@@ -240,19 +243,20 @@ const VENUES = [
 ];
 
 const MATCHES = [
-  { month: "JUN", day: "12", stage: "MATCH 1 · GROUP B · 4:00 PM CT",    pair: "USA  ·  vs  ·  Bolivia",      meta: "108", knockout: false },
-  { month: "JUN", day: "17", stage: "MATCH 2 · GROUP E · 7:00 PM CT",    pair: "Mexico  ·  vs  ·  Ecuador",   meta: "134", knockout: false },
-  { month: "JUN", day: "20", stage: "MATCH 3 · GROUP C · 4:00 PM CT",    pair: "England  ·  vs  ·  Senegal",  meta: "96",  knockout: false },
-  { month: "JUN", day: "25", stage: "MATCH 4 · GROUP A · 1:00 PM CT",    pair: "Argentina  ·  vs  ·  Chile",  meta: "84",  knockout: false },
-  { month: "JUN", day: "29", stage: "MATCH 5 · GROUP D · 4:00 PM CT",    pair: "Brazil  ·  vs  ·  Japan",     meta: "68",  knockout: false },
-  { month: "JUL", day: "04", stage: "MATCH 6 · ROUND OF 32 · 5:00 PM CT", pair: "Group F Winner  ·  vs  ·  Group E Runner-up", meta: "112", knockout: true },
-  { month: "JUL", day: "08", stage: "MATCH 7 · ROUND OF 16 · 5:00 PM CT · HEADLINE NIGHT", pair: "Group H Winner  ·  vs  ·  Group G Runner-up", meta: "128", knockout: true, headline: true },
+  { id: "hou-1", stage: "Group B",     teamA: "Mexico",    teamB: "Ecuador", date: "Jun 12", time: "4:00 PM CT", flagA: "mx",     flagB: "ec",  tbd: false },
+  { id: "hou-2", stage: "Group E",     teamA: "USA",       teamB: "Bolivia", date: "Jun 17", time: "7:00 PM CT", flagA: "us",     flagB: "bo",  tbd: false },
+  { id: "hou-3", stage: "Group C",     teamA: "England",   teamB: "Senegal", date: "Jun 20", time: "4:00 PM CT", flagA: "gb-eng", flagB: "sn",  tbd: false },
+  { id: "hou-4", stage: "Group A",     teamA: "Argentina", teamB: "Chile",   date: "Jun 25", time: "1:00 PM CT", flagA: "ar",     flagB: "cl",  tbd: false },
+  { id: "hou-5", stage: "Group D",     teamA: "Brazil",    teamB: "Japan",   date: "Jun 29", time: "4:00 PM CT", flagA: "br",     flagB: "jp",  tbd: false },
+  { id: "hou-6", stage: "Round of 32", teamA: "TBD",       teamB: "TBD",     date: "Jul 4",  time: "5:00 PM CT", flagA: "",       flagB: "",    tbd: true  },
+  { id: "hou-7", stage: "Round of 16", teamA: "TBD",       teamB: "TBD",     date: "Jul 8",  time: "5:00 PM CT", flagA: "",       flagB: "",    tbd: true  },
 ];
 
 export function HoustonClient() {
   return (
     <>
       <style>{CSS}</style>
+      <FloatingNav />
       <div className="hou-page">
 
         {/* BREADCRUMB */}
@@ -404,39 +408,66 @@ export function HoustonClient() {
         <section className="hou-section" id="matches">
           <div className="hou-sec-head">
             <div>
-              <h2>World Cup matches <em>in Houston.</em></h2>
+              <h2>NRG Stadium · <em>7 World Cup Matches</em></h2>
               <p className="sub">
-                7 official matches at NRG Stadium across the group stage and round of 16.
-                Tap any match to see the Houston venues hosting watch parties for it.
+                5 confirmed group-stage fixtures + 2 knockout rounds at NRG Stadium.
+                Tap any match to find Houston watch party venues.
               </p>
             </div>
             <div className="hou-sec-right">
-              <Link href="/world-cup/houston#matches">Full Houston schedule →</Link>
+              <Link href="/matches">All Matches →</Link>
             </div>
           </div>
 
-          <div className="hou-matches">
-            {MATCHES.map((m, i) => (
-              <div
-                key={i}
-                className={`hou-match${m.headline ? " full" : ""}`}
-                style={m.headline ? { borderColor: "rgba(212,168,73,0.4)" } : undefined}
-              >
-                <div className="mdate" style={m.headline ? { color: "var(--gold)" } : undefined}>
-                  {m.month}<b>{m.day}</b>
-                </div>
-                <div className="mbody">
-                  <div className="stage" style={m.headline ? { color: "var(--gold)" } : undefined}>
-                    {m.stage}
-                  </div>
-                  <div className="pair">{m.pair}</div>
-                  <div className="meta">
-                    <b>{m.meta}</b> venues hosting parties
-                    {m.knockout ? " · knockout" : ""}
-                    {m.headline ? " · sold-out projected" : ""}
+          <div className="hou-match-grid">
+            {MATCHES.map((m) => (
+              <div key={m.id} className="hou-mc">
+                <div className="hou-mc-head">
+                  <span className="hou-mc-stage">{m.stage}</span>
+                  <div className="hou-mc-dt">
+                    <div>{m.date}</div>
+                    <div>{m.time}</div>
                   </div>
                 </div>
-                <div className="mfind">Find watch<br/>parties →</div>
+
+                <div className="hou-mc-body">
+                  <div className="hou-mc-team">
+                    {m.flagA && !m.tbd && (
+                      <img
+                        src={`https://flagcdn.com/24x18/${m.flagA}.png`}
+                        width={24} height={18}
+                        alt={m.teamA}
+                        style={{ objectFit: "cover", borderRadius: 2, flexShrink: 0 }}
+                      />
+                    )}
+                    {m.tbd
+                      ? <span className="hou-mc-tbd">TBD</span>
+                      : <span className="hou-mc-tname">{m.teamA}</span>
+                    }
+                  </div>
+                  <div className="hou-mc-vs">vs</div>
+                  <div className="hou-mc-team">
+                    {m.flagB && !m.tbd && (
+                      <img
+                        src={`https://flagcdn.com/24x18/${m.flagB}.png`}
+                        width={24} height={18}
+                        alt={m.teamB}
+                        style={{ objectFit: "cover", borderRadius: 2, flexShrink: 0 }}
+                      />
+                    )}
+                    {m.tbd
+                      ? <span className="hou-mc-tbd">TBD</span>
+                      : <span className="hou-mc-tname">{m.teamB}</span>
+                    }
+                  </div>
+                </div>
+
+                <div className="hou-mc-stadium">📍 NRG Stadium</div>
+
+                <a href="#venues" className="hou-mc-btn">
+                  <Search size={12} />
+                  Find Watch Parties
+                </a>
               </div>
             ))}
           </div>
