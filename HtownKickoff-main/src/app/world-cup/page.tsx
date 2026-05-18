@@ -510,12 +510,9 @@ export default function WorldCupPage() {
           </div>
           <figure className="wc-hero-trophy">
             <img
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/FIFA_World_Cup_Trophy_cropped.jpg/247px-FIFA_World_Cup_Trophy_cropped.jpg"
-              alt="Real FIFA World Cup Trophy"
+              src="/world-cup-emblem.png"
+              alt="FIFA World Cup 2026 Official Emblem"
             />
-            <figcaption>
-              Photo: <a href="https://commons.wikimedia.org/wiki/File:FIFA_World_Cup_Trophy_cropped.jpg">Ank Kumar, CC BY-SA 4.0</a>
-            </figcaption>
           </figure>
         </div>
       </section>
