@@ -12,13 +12,13 @@ interface Props {
   cityName: string;
 }
 
-function Flag({ code }: { code: string }) {
+function Flag({ code, name }: { code: string; name: string }) {
   return (
     <img
       src={`https://flagcdn.com/24x18/${code}.png`}
       width={24}
       height={18}
-      alt={code}
+      alt={name}
       style={{ objectFit: "cover", borderRadius: 2, flexShrink: 0 }}
     />
   );
@@ -59,7 +59,7 @@ export function CityMatchSchedule({
 
               <div className="cc-match-body">
                 <div className="cc-match-team">
-                  {match.flagA && !match.tbd && <Flag code={match.flagA} />}
+                  {match.flagA && !match.tbd && <Flag code={match.flagA} name={match.teamA} />}
                   {match.tbd ? (
                     <span className="cc-match-tbd">TBD</span>
                   ) : (
@@ -68,7 +68,7 @@ export function CityMatchSchedule({
                 </div>
                 <div className="cc-match-vs">VS</div>
                 <div className="cc-match-team">
-                  {match.flagB && !match.tbd && <Flag code={match.flagB} />}
+                  {match.flagB && !match.tbd && <Flag code={match.flagB} name={match.teamB} />}
                   {match.tbd ? (
                     <span className="cc-match-tbd">TBD</span>
                   ) : (
