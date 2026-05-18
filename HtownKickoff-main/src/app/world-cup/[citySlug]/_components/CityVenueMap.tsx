@@ -181,10 +181,10 @@ export function CityVenueMap({
             </p>
           </div>
         </div>
-        <div className="cc-map-outer">
+        <div className="cc-map-outer" style={{ height: 480 }}>
           <div
             ref={containerRef}
-            style={{ width: "100%", height: 480 }}
+            style={{ width: "100%", height: "100%", minHeight: 480 }}
           />
         </div>
       </div>

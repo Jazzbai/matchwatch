@@ -1,14 +1,19 @@
 import React from "react";
 import Link from "next/link";
 import { MapPin, Building2, Package } from "lucide-react";
-import type { WorldCupCity } from "../types";
+import type { WorldCupCity, CityMatch } from "../types";
 import { buildVenueRegisterUrl } from "../types";
 
 interface Props {
   city: WorldCupCity;
+  matches: CityMatch[];
 }
 
-export function CityHero({ city }: Props) {
+export function CityHero({ city, matches }: Props) {
+  const sorted = [...matches].filter((m) => !m.tbd).sort((a, b) => a.date.localeCompare(b.date));
+  const firstMatch = sorted[0];
+  const lastMatch = sorted[sorted.length - 1];
+
   return (
     <section className="cc-hero">
       <div className="cc-hero-inner">
@@ -48,14 +53,22 @@ export function CityHero({ city }: Props) {
               <div className="cc-sv"><span>1</span></div>
               <div className="cc-sl">Stadium</div>
             </div>
-            <div>
-              <div className="cc-sv">Jun <span>11</span></div>
-              <div className="cc-sl">First Kickoff</div>
-            </div>
-            <div>
-              <div className="cc-sv">Jul <span>19</span></div>
-              <div className="cc-sl">The Final</div>
-            </div>
+            {firstMatch && (
+              <div>
+                <div className="cc-sv" style={{ fontSize: "1.3rem" }}>
+                  <span>{firstMatch.date}</span>
+                </div>
+                <div className="cc-sl">First Kickoff</div>
+              </div>
+            )}
+            {lastMatch && lastMatch.date !== firstMatch?.date && (
+              <div>
+                <div className="cc-sv" style={{ fontSize: "1.3rem" }}>
+                  <span>{lastMatch.date}</span>
+                </div>
+                <div className="cc-sl">Last Match</div>
+              </div>
+            )}
           </div>
         </div>
 

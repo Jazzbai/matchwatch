@@ -107,7 +107,7 @@ const CSS = `
   .cc-empty-body { font-size: 0.9rem; color: var(--mw-fg-dim); max-width: 360px; line-height: 1.5; }
 
   /* ── Map ── */
-  .cc-map-outer { border: 1px solid var(--mw-line); overflow: hidden; }
+  .cc-map-outer { border: 1px solid var(--mw-line); overflow: hidden; position: relative; }
 
   /* ── Packages ── */
   .cc-pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -170,7 +170,7 @@ export function WorldCupCityClient({ city, matches, venues, packages, vendors }:
     <>
       <style>{CSS}</style>
       <main className="cc-page">
-        <CityHero city={city} />
+        <CityHero city={city} matches={matches} />
 
         <CityMatchSchedule
           matches={matches}
