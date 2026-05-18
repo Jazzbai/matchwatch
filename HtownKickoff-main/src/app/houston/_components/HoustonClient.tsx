@@ -190,46 +190,52 @@ const CSS = `
 
 const VENUES = [
   {
-    glyph: "PH",  area: "MIDTOWN",      nm: "Pitch Houston",
-    type: "Houston's #1 soccer bar · 6 screens + projector",
-    addr: "2020 Bagby St · Midtown",
-    tags: ["◆ WATCH PARTY READY", "6 SCREENS + PROJECTOR", "DJ", "OUTDOOR PATIO"],
-    slug: "pitch-houston",
+    glyph: "SBG", area: "EADO",       nm: "Social Beer Garden",
+    type: "Indoor-outdoor beer garden · food trucks · kid & pet friendly",
+    addr: "3101 San Jacinto St · EaDo",
+    tags: ["◆ WATCH PARTY", "INDOOR / OUTDOOR", "FOOD TRUCKS", "★ 4.7"],
+    slug: "social-beer-garden-qraz9e",
+    rating: "4.7",
   },
   {
-    glyph: "AX",  area: "MIDTOWN",      nm: "Axelrad Beer Garden",
-    type: "Outdoor beer garden · 2 projectors · match day DJ",
-    addr: "1517 Alabama St · Midtown",
-    tags: ["◆ WATCH PARTY READY", "OUTDOOR PROJECTORS", "DJ", "BEER GARDEN"],
-    slug: "axelrad-beer-garden",
+    glyph: "LWE", area: "EADO",       nm: "Little Woodrow's EaDo",
+    type: "Sports bar · craft beer · patio · TVs on every match",
+    addr: "801 Saint Emanuel St · EaDo",
+    tags: ["◆ WATCH PARTY", "SPORTS BAR", "PATIO", "★ 4.2"],
+    slug: "little-woodrows-eado-k0j_i0",
+    rating: "4.2",
   },
   {
-    glyph: "TR",  area: "UPPER KIRBY",  nm: "The Rustic Houston",
-    type: "Restaurant & bar · large outdoor area · 3 screens",
-    addr: "1836 Westheimer Rd · Upper Kirby",
-    tags: ["◆ WATCH PARTY READY", "3 LARGE SCREENS", "500+ CAPACITY", "OUTDOOR"],
-    slug: "rustic-houston",
+    glyph: "PHX", area: "MONTROSE",   nm: "Phoenix on Westheimer",
+    type: "British sports pub · TVs tuned to every match · dinner specials",
+    addr: "1915 Westheimer Rd · Montrose",
+    tags: ["◆ WATCH PARTY", "BRITISH PUB", "SPORTS TVs", "★ 4.5"],
+    slug: "phoenix-on-westheimer-_b9svh",
+    rating: "4.5",
   },
   {
-    glyph: "MN",  area: "NRG DISTRICT", nm: "Marriott NRG Sports Bar",
-    type: "Hotel bar · 5 screens · steps from NRG Stadium",
-    addr: "2100 S Braeswood Blvd · NRG District",
-    tags: ["◆ NRG STADIUM ADJACENT", "5 SCREENS", "HOTEL", "PRIVATE EVENTS"],
-    slug: "marriott-nrg",
+    glyph: "TT",  area: "MIDTOWN",    nm: "Texas Tailgate",
+    type: "Tailgate-style sports bar · match day atmosphere",
+    addr: "2401 Texas Ave · Midtown",
+    tags: ["◆ WATCH PARTY", "SPORTS BAR", "TAILGATE VIBES", "★ 4.4"],
+    slug: "texas-tailgate-yb7baj",
+    rating: "4.4",
   },
   {
-    glyph: "SA",  area: "NEAR NORTHSIDE", nm: "Saint Arnold Brewing Co.",
-    type: "Craft brewery · 800-capacity beer hall · 4 screens",
-    addr: "2000 Lyons Ave · Near Northside",
-    tags: ["◆ WATCH PARTY", "4 SCREENS", "800 CAPACITY", "BREWERY"],
-    slug: "saint-arnold-brewing",
+    glyph: "JBM", area: "EADO",       nm: "JBarM",
+    type: "BBQ restaurant & bar · match-day crowd · outdoor space",
+    addr: "2201 Leeland St · EaDo",
+    tags: ["◆ WATCH PARTY", "BBQ", "OUTDOOR", "★ 4.4"],
+    slug: "jbarm-y0q-5k",
+    rating: "4.4",
   },
   {
-    glyph: "PX",  area: "DOWNTOWN",     nm: "Post HTX",
-    type: "Massive event space · custom LED setup · 1,000+ capacity",
-    addr: "401 Franklin St · Downtown",
-    tags: ["◆ WATCH PARTY", "CUSTOM LED", "1,000+ CAPACITY", "DJ"],
-    slug: "post-htx",
+    glyph: "EH",  area: "THE HEIGHTS", nm: "Eureka Heights Brew Co.",
+    type: "Craft brewery taproom · great for group watch parties",
+    addr: "941 W 18th St · The Heights",
+    tags: ["◆ WATCH PARTY", "BREWERY", "GROUPS", "★ 4.7"],
+    slug: "eureka-heights-t6ria8",
+    rating: "4.7",
   },
 ];
 
@@ -386,7 +392,7 @@ export function HoustonClient() {
                   </div>
                 </div>
                 <div className="foot">
-                  <span>HOUSTON · VERIFIED</span>
+                  <span>★ {v.rating} · HOUSTON</span>
                   <Link href={`/venues/${v.slug}`} className="go">VIEW · BOOK →</Link>
                 </div>
               </article>
@@ -575,13 +581,13 @@ export function HoustonClient() {
             <div className="hou-pin cyan" style={{ left: "30%", top: "32%" }}>
               <div className="dot" /><div className="lbl">🎉 FAN FESTIVAL · DISCOVERY GREEN</div>
             </div>
-            <div className="hou-pin" style={{ left: "62%", top: "36%" }}><div className="dot" /><div className="lbl">PITCH HOUSTON · 6 SCREENS</div></div>
-            <div className="hou-pin" style={{ left: "60%", top: "52%" }}><div className="dot" /><div className="lbl">AXELRAD BEER GARDEN</div></div>
-            <div className="hou-pin" style={{ left: "42%", top: "58%" }}><div className="dot" /><div className="lbl">THE RUSTIC · UPPER KIRBY</div></div>
-            <div className="hou-pin" style={{ left: "48%", top: "74%" }}><div className="dot" /><div className="lbl">MARRIOTT NRG · STEPS FROM STADIUM</div></div>
-            <div className="hou-pin" style={{ left: "26%", top: "30%" }}><div className="dot" /><div className="lbl">SAINT ARNOLD BREWING</div></div>
-            <div className="hou-pin" style={{ left: "32%", top: "44%" }}><div className="dot" /><div className="lbl">POST HTX · 1,000+ CAP</div></div>
-            <div className="hou-pin" style={{ left: "74%", top: "46%" }}><div className="dot" /><div className="lbl">+ 128 MORE VENUES</div></div>
+            <div className="hou-pin" style={{ left: "62%", top: "38%" }}><div className="dot" /><div className="lbl">SOCIAL BEER GARDEN · ★4.7</div></div>
+            <div className="hou-pin" style={{ left: "58%", top: "54%" }}><div className="dot" /><div className="lbl">LITTLE WOODROW'S EADO</div></div>
+            <div className="hou-pin" style={{ left: "38%", top: "44%" }}><div className="dot" /><div className="lbl">PHOENIX ON WESTHEIMER · ★4.5</div></div>
+            <div className="hou-pin" style={{ left: "52%", top: "46%" }}><div className="dot" /><div className="lbl">TEXAS TAILGATE · MIDTOWN</div></div>
+            <div className="hou-pin" style={{ left: "66%", top: "58%" }}><div className="dot" /><div className="lbl">JBARM · BBQ & BAR</div></div>
+            <div className="hou-pin" style={{ left: "28%", top: "28%" }}><div className="dot" /><div className="lbl">EUREKA HEIGHTS · ★4.7</div></div>
+            <div className="hou-pin" style={{ left: "74%", top: "44%" }}><div className="dot" /><div className="lbl">+ 3 MORE VENUES</div></div>
 
             <div className="hou-map-legend">
               <span className="sw"><i style={{ background: "var(--red)" }} />NRG Stadium</span>
