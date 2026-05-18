@@ -81,7 +81,7 @@ export function CityMatchSchedule({
 
               <Link
                 href={buildVenueRegisterUrl({ citySlug, type: "watch-party" })}
-                className="cc-btn-g cc-btn-sm cc-btn-full"
+                className="cc-btn-p cc-btn-sm cc-btn-full"
               >
                 <Search size={12} />
                 Find Watch Parties

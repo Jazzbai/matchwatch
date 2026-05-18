@@ -101,8 +101,8 @@ const CSS = `
 .hou-mc-tbd{font-size:13px;font-weight:600;color:var(--fg-mute);font-style:italic;}
 .hou-mc-vs{font-size:9px;font-weight:700;color:var(--fg-mute);text-transform:uppercase;letter-spacing:.1em;font-family:'JetBrains Mono',monospace;padding-left:32px;}
 .hou-mc-stadium{font-size:10px;color:var(--fg-mute);}
-.hou-mc-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 16px;border:1px solid var(--line-2);color:var(--fg-dim);font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;transition:border-color .14s,color .14s;border-radius:999px;}
-.hou-mc-btn:hover{border-color:var(--fg);color:var(--fg);}
+.hou-mc-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 16px;background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;transition:all .14s;border-radius:999px;}
+.hou-mc-btn:hover{filter:brightness(1.08);box-shadow:0 6px 20px rgba(212,140,10,0.3);}
 
 /* FAN FESTIVAL */
 .hou-festival{padding:64px 80px;background:linear-gradient(135deg,rgba(255,120,60,0.10) 0%,transparent 50%,rgba(80,180,255,0.04) 100%);border-bottom:1px solid var(--line);position:relative;overflow:hidden;}
@@ -243,13 +243,13 @@ const VENUES = [
 ];
 
 const MATCHES = [
-  { id: "hou-1", stage: "Group B",     teamA: "Mexico",    teamB: "Ecuador", date: "Jun 12", time: "4:00 PM CT", flagA: "mx",     flagB: "ec",  tbd: false },
-  { id: "hou-2", stage: "Group E",     teamA: "USA",       teamB: "Bolivia", date: "Jun 17", time: "7:00 PM CT", flagA: "us",     flagB: "bo",  tbd: false },
-  { id: "hou-3", stage: "Group C",     teamA: "England",   teamB: "Senegal", date: "Jun 20", time: "4:00 PM CT", flagA: "gb-eng", flagB: "sn",  tbd: false },
-  { id: "hou-4", stage: "Group A",     teamA: "Argentina", teamB: "Chile",   date: "Jun 25", time: "1:00 PM CT", flagA: "ar",     flagB: "cl",  tbd: false },
-  { id: "hou-5", stage: "Group D",     teamA: "Brazil",    teamB: "Japan",   date: "Jun 29", time: "4:00 PM CT", flagA: "br",     flagB: "jp",  tbd: false },
-  { id: "hou-6", stage: "Round of 32", teamA: "TBD",       teamB: "TBD",     date: "Jul 4",  time: "5:00 PM CT", flagA: "",       flagB: "",    tbd: true  },
-  { id: "hou-7", stage: "Round of 16", teamA: "TBD",       teamB: "TBD",     date: "Jul 8",  time: "5:00 PM CT", flagA: "",       flagB: "",    tbd: true  },
+  { id: "hou-1", stage: "Group E",     teamA: "Germany",      teamB: "Curaçao",      date: "Jun 14", time: "12:00 PM CT", flagA: "de",  flagB: "cw",  tbd: false },
+  { id: "hou-2", stage: "Group K",     teamA: "Portugal",     teamB: "DR Congo",     date: "Jun 17", time: "12:00 PM CT", flagA: "pt",  flagB: "cd",  tbd: false },
+  { id: "hou-3", stage: "Group F",     teamA: "Netherlands",  teamB: "Sweden",       date: "Jun 20", time: "12:00 PM CT", flagA: "nl",  flagB: "se",  tbd: false },
+  { id: "hou-4", stage: "Group K",     teamA: "Portugal",     teamB: "Uzbekistan",   date: "Jun 23", time: "12:00 PM CT", flagA: "pt",  flagB: "uz",  tbd: false },
+  { id: "hou-5", stage: "Group H",     teamA: "Cabo Verde",   teamB: "Saudi Arabia", date: "Jun 26", time: "7:00 PM CT",  flagA: "cv",  flagB: "sa",  tbd: false },
+  { id: "hou-6", stage: "Round of 32", teamA: "TBD",          teamB: "TBD",          date: "Jun 29", time: "TBD",         flagA: "",    flagB: "",    tbd: true  },
+  { id: "hou-7", stage: "Round of 16", teamA: "TBD",          teamB: "TBD",          date: "Jul 4",  time: "TBD",         flagA: "",    flagB: "",    tbd: true  },
 ];
 
 export function HoustonClient() {
@@ -488,7 +488,7 @@ export function HoustonClient() {
 
               <div className="hou-fest-stats">
                 <div className="c"><div className="v">20,000</div><div className="l">Capacity</div></div>
-                <div className="c"><div className="v">JUN 12 – JUL 8</div><div className="l">Open every match day</div></div>
+                <div className="c"><div className="v">JUN 14 – JUL 4</div><div className="l">Open every match day</div></div>
                 <div className="c"><div className="v">Discovery Green</div><div className="l">George R. Brown</div></div>
               </div>
 
