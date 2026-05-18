@@ -189,22 +189,58 @@ const CSS = `
 `;
 
 const VENUES = [
-  { glyph: "TGM", area: "RICE VILLAGE", type: "Pub · 70+ beers on tap",          nm: "The Ginger Man",            addr: "5607 Morningside Dr · Rice Village", tags: ["◆ WATCH PARTY", "CRAFT BEER", "PATIO"],           slug: "the-ginger-man" },
-  { glyph: "P25", area: "EADO",         type: "Soccer bar · sound on every match", nm: "Pitch 25 Soccer Bar",       addr: "2120 Walker St · EaDo",            tags: ["◆ WATCH PARTY", "SUPPORTERS CLUB", "FOOD LATE"],   slug: "pitch-25" },
-  { glyph: "LW",  area: "MIDTOWN",      type: "Sports bar · large patio · 8 scrns",nm: "Little Woodrow's Midtown",  addr: "2306 Brazos St · Midtown",         tags: ["◆ WATCH PARTY", "SOUND ON", "GROUPS"],             slug: "little-woodrows" },
-  { glyph: "FS",  area: "DOWNTOWN",     type: "Multi-screen bar · 24+ TVs",       nm: "The Flying Saucer",         addr: "705 Main St · Downtown",           tags: ["◆ WATCH PARTY", "24+ SCREENS", "CRAFT BEER"],      slug: "flying-saucer" },
-  { glyph: "8RF", area: "HEIGHTS",      type: "Outdoor sports lounge · projector", nm: "Eight Row Flint",           addr: "1039 Yale St · The Heights",       tags: ["◆ WATCH PARTY", "PROJECTOR", "OUTDOOR"],           slug: "eight-row-flint" },
-  { glyph: "BB",  area: "DOWNTOWN",     type: "Sports bar + grill",               nm: "Biggio's at Marriott Marquis",addr: "1777 Walker St · Downtown",       tags: ["◆ WATCH PARTY", "HOTEL", "PRIVATE ROOMS"],         slug: "biggios" },
+  {
+    glyph: "PH",  area: "MIDTOWN",      nm: "Pitch Houston",
+    type: "Houston's #1 soccer bar · 6 screens + projector",
+    addr: "2020 Bagby St · Midtown",
+    tags: ["◆ WATCH PARTY READY", "6 SCREENS + PROJECTOR", "DJ", "OUTDOOR PATIO"],
+    slug: "pitch-houston",
+  },
+  {
+    glyph: "AX",  area: "MIDTOWN",      nm: "Axelrad Beer Garden",
+    type: "Outdoor beer garden · 2 projectors · match day DJ",
+    addr: "1517 Alabama St · Midtown",
+    tags: ["◆ WATCH PARTY READY", "OUTDOOR PROJECTORS", "DJ", "BEER GARDEN"],
+    slug: "axelrad-beer-garden",
+  },
+  {
+    glyph: "TR",  area: "UPPER KIRBY",  nm: "The Rustic Houston",
+    type: "Restaurant & bar · large outdoor area · 3 screens",
+    addr: "1836 Westheimer Rd · Upper Kirby",
+    tags: ["◆ WATCH PARTY READY", "3 LARGE SCREENS", "500+ CAPACITY", "OUTDOOR"],
+    slug: "rustic-houston",
+  },
+  {
+    glyph: "MN",  area: "NRG DISTRICT", nm: "Marriott NRG Sports Bar",
+    type: "Hotel bar · 5 screens · steps from NRG Stadium",
+    addr: "2100 S Braeswood Blvd · NRG District",
+    tags: ["◆ NRG STADIUM ADJACENT", "5 SCREENS", "HOTEL", "PRIVATE EVENTS"],
+    slug: "marriott-nrg",
+  },
+  {
+    glyph: "SA",  area: "NEAR NORTHSIDE", nm: "Saint Arnold Brewing Co.",
+    type: "Craft brewery · 800-capacity beer hall · 4 screens",
+    addr: "2000 Lyons Ave · Near Northside",
+    tags: ["◆ WATCH PARTY", "4 SCREENS", "800 CAPACITY", "BREWERY"],
+    slug: "saint-arnold-brewing",
+  },
+  {
+    glyph: "PX",  area: "DOWNTOWN",     nm: "Post HTX",
+    type: "Massive event space · custom LED setup · 1,000+ capacity",
+    addr: "401 Franklin St · Downtown",
+    tags: ["◆ WATCH PARTY", "CUSTOM LED", "1,000+ CAPACITY", "DJ"],
+    slug: "post-htx",
+  },
 ];
 
 const MATCHES = [
-  { month: "JUN", day: "12", stage: "MATCH 1 · GROUP B · 4:00 PM CT",   pair: "Mexico  ·  vs  ·  Ecuador",   meta: "72",  knockout: false },
-  { month: "JUN", day: "17", stage: "MATCH 2 · GROUP E · 7:00 PM CT",   pair: "USA  ·  vs  ·  Bolivia",      meta: "108", knockout: false },
-  { month: "JUN", day: "20", stage: "MATCH 3 · GROUP C · 4:00 PM CT",   pair: "England  ·  vs  ·  Senegal",  meta: "96",  knockout: false },
-  { month: "JUN", day: "25", stage: "MATCH 4 · GROUP A · 1:00 PM CT",   pair: "Argentina  ·  vs  ·  Chile",  meta: "84",  knockout: false },
-  { month: "JUN", day: "29", stage: "MATCH 5 · GROUP D · 4:00 PM CT",   pair: "Brazil  ·  vs  ·  Japan",     meta: "68",  knockout: false },
-  { month: "JUL", day: "04", stage: "MATCH 6 · ROUND OF 32 · 5:00 PM CT", pair: "1F  ·  vs  ·  2E",          meta: "112", knockout: true  },
-  { month: "JUL", day: "08", stage: "MATCH 7 · ROUND OF 16 · 5:00 PM CT · HEADLINE NIGHT", pair: "1H  ·  vs  ·  2G", meta: "128", knockout: true, headline: true },
+  { month: "JUN", day: "12", stage: "MATCH 1 · GROUP B · 4:00 PM CT",    pair: "USA  ·  vs  ·  Bolivia",      meta: "108", knockout: false },
+  { month: "JUN", day: "17", stage: "MATCH 2 · GROUP E · 7:00 PM CT",    pair: "Mexico  ·  vs  ·  Ecuador",   meta: "134", knockout: false },
+  { month: "JUN", day: "20", stage: "MATCH 3 · GROUP C · 4:00 PM CT",    pair: "England  ·  vs  ·  Senegal",  meta: "96",  knockout: false },
+  { month: "JUN", day: "25", stage: "MATCH 4 · GROUP A · 1:00 PM CT",    pair: "Argentina  ·  vs  ·  Chile",  meta: "84",  knockout: false },
+  { month: "JUN", day: "29", stage: "MATCH 5 · GROUP D · 4:00 PM CT",    pair: "Brazil  ·  vs  ·  Japan",     meta: "68",  knockout: false },
+  { month: "JUL", day: "04", stage: "MATCH 6 · ROUND OF 32 · 5:00 PM CT", pair: "Group F Winner  ·  vs  ·  Group E Runner-up", meta: "112", knockout: true },
+  { month: "JUL", day: "08", stage: "MATCH 7 · ROUND OF 16 · 5:00 PM CT · HEADLINE NIGHT", pair: "Group H Winner  ·  vs  ·  Group G Runner-up", meta: "128", knockout: true, headline: true },
 ];
 
 export function HoustonClient() {
@@ -269,14 +305,15 @@ export function HoustonClient() {
             <div>
               <span className="hou-kicker">
                 <span className="bd">H</span>
-                <em>Houston · NRG Stadium · 7 matches</em>
+                <em>Houston · NRG Stadium · 7 matches · Jun 12 – Jul 8</em>
               </span>
               <h1 className="hou-h1">
-                Find the best <em>World Cup 2026</em><br/>watch parties in Houston.
+                Houston <em>World Cup 2026</em><br/>Watch Parties &amp; Venues.
               </h1>
               <p className="hou-lede">
-                Discover <b>Houston venues</b> hosting World Cup watch parties, explore match-day events,
-                and connect with <b>venue activation packages</b> for World Cup 2026 — all in one place.
+                <b>7 matches at NRG Stadium</b> — find Houston bars, restaurants, and event spaces
+                hosting watch parties, explore the official <b>FIFA Fan Festival</b> at Discovery Green,
+                and register your venue before spots fill up.
               </p>
               <div className="hou-cta-row">
                 <a href="#venues" className="hou-btn primary">Find Houston Venues →</a>
@@ -538,13 +575,13 @@ export function HoustonClient() {
             <div className="hou-pin cyan" style={{ left: "30%", top: "32%" }}>
               <div className="dot" /><div className="lbl">🎉 FAN FESTIVAL · DISCOVERY GREEN</div>
             </div>
-            <div className="hou-pin" style={{ left: "62%", top: "36%" }}><div className="dot" /><div className="lbl">LITTLE WOODROW'S · 8 SCRN</div></div>
-            <div className="hou-pin" style={{ left: "22%", top: "42%" }}><div className="dot" /><div className="lbl">PITCH 25 · OFFICIAL</div></div>
-            <div className="hou-pin" style={{ left: "58%", top: "64%" }}><div className="dot" /><div className="lbl">GINGER MAN · 70 TAPS</div></div>
-            <div className="hou-pin" style={{ left: "42%", top: "30%" }}><div className="dot" /><div className="lbl">EIGHT ROW FLINT</div></div>
-            <div className="hou-pin" style={{ left: "36%", top: "58%" }}><div className="dot" /><div className="lbl">TRUCK YARD EADO</div></div>
-            <div className="hou-pin" style={{ left: "84%", top: "54%" }}><div className="dot" /><div className="lbl">POST OAK · BAR 1979</div></div>
-            <div className="hou-pin" style={{ left: "68%", top: "46%" }}><div className="dot" /><div className="lbl">+ 128 MORE</div></div>
+            <div className="hou-pin" style={{ left: "62%", top: "36%" }}><div className="dot" /><div className="lbl">PITCH HOUSTON · 6 SCREENS</div></div>
+            <div className="hou-pin" style={{ left: "60%", top: "52%" }}><div className="dot" /><div className="lbl">AXELRAD BEER GARDEN</div></div>
+            <div className="hou-pin" style={{ left: "42%", top: "58%" }}><div className="dot" /><div className="lbl">THE RUSTIC · UPPER KIRBY</div></div>
+            <div className="hou-pin" style={{ left: "48%", top: "74%" }}><div className="dot" /><div className="lbl">MARRIOTT NRG · STEPS FROM STADIUM</div></div>
+            <div className="hou-pin" style={{ left: "26%", top: "30%" }}><div className="dot" /><div className="lbl">SAINT ARNOLD BREWING</div></div>
+            <div className="hou-pin" style={{ left: "32%", top: "44%" }}><div className="dot" /><div className="lbl">POST HTX · 1,000+ CAP</div></div>
+            <div className="hou-pin" style={{ left: "74%", top: "46%" }}><div className="dot" /><div className="lbl">+ 128 MORE VENUES</div></div>
 
             <div className="hou-map-legend">
               <span className="sw"><i style={{ background: "var(--red)" }} />NRG Stadium</span>
