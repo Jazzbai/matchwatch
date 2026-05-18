@@ -15,27 +15,19 @@ const NAV_LINKS = [
 ];
 
 const CITIES = [
-  { name: "New York / New Jersey", short: "NY/NJ", stadium: "MetLife Stadium",        cap: "82,500", matches: 9, badge: "THE FINAL",       g: "linear-gradient(145deg,#001840 0%,#8b0000 100%)" },
-  { name: "Los Angeles",           short: "LA",    stadium: "SoFi Stadium",            cap: "70,240", matches: 9, badge: "SEMIFINAL",       g: "linear-gradient(145deg,#2d0a6e 0%,#c8a200 100%)" },
-  { name: "Dallas",                short: "DAL",   stadium: "AT&T Stadium",            cap: "80,000", matches: 8, badge: "TOP HOST",        g: "linear-gradient(145deg,#001a40 0%,#7a5500 100%)" },
-  { name: "Houston",               short: "HOU",   stadium: "NRG Stadium",             cap: "72,220", matches: 7, badge: "OPENING",         g: "linear-gradient(145deg,#001840 0%,#b84a00 100%)" },
-  { name: "Miami",                 short: "MIA",   stadium: "Hard Rock Stadium",        cap: "65,326", matches: 7, badge: "BEACH CITY",     g: "linear-gradient(145deg,#003060 0%,#a83200 100%)" },
-  { name: "Atlanta",               short: "ATL",   stadium: "Mercedes-Benz Stadium",   cap: "71,000", matches: 7, badge: "SOCCER CITY",    g: "linear-gradient(145deg,#0a0000 0%,#7a0020 100%)" },
-  { name: "San Francisco Bay Area",short: "SF",    stadium: "Levi's Stadium",          cap: "68,500", matches: 7, badge: "TECH CITY",      g: "linear-gradient(145deg,#5a0000 0%,#6a5000 100%)" },
-  { name: "Philadelphia",          short: "PHI",   stadium: "Lincoln Financial Field", cap: "69,800", matches: 7, badge: "LIBERTY CITY",   g: "linear-gradient(145deg,#002030 0%,#3a4a50 100%)" },
-  { name: "Seattle",               short: "SEA",   stadium: "Lumen Field",             cap: "68,740", matches: 6, badge: "SOCCER CAPITAL", g: "linear-gradient(145deg,#001030 0%,#1a4a00 100%)" },
-  { name: "Boston",                short: "BOS",   stadium: "Gillette Stadium",        cap: "65,000", matches: 6, badge: "HISTORIC CITY",  g: "linear-gradient(145deg,#6a0010 0%,#001030 100%)" },
-  { name: "Kansas City",           short: "KC",    stadium: "Arrowhead Stadium",       cap: "76,416", matches: 6, badge: "HEART OF USA",   g: "linear-gradient(145deg,#6a0010 0%,#7a5000 100%)" },
+  { name: "New York / New Jersey", slug: "new-york",       short: "NY/NJ", stadium: "MetLife Stadium",        cap: "82,500", matches: 9, badge: "THE FINAL",       g: "linear-gradient(145deg,#001840 0%,#8b0000 100%)" },
+  { name: "Los Angeles",           slug: "los-angeles",    short: "LA",    stadium: "SoFi Stadium",            cap: "70,240", matches: 9, badge: "SEMIFINAL",       g: "linear-gradient(145deg,#2d0a6e 0%,#c8a200 100%)" },
+  { name: "Dallas",                slug: "dallas",         short: "DAL",   stadium: "AT&T Stadium",            cap: "80,000", matches: 8, badge: "TOP HOST",        g: "linear-gradient(145deg,#001a40 0%,#7a5500 100%)" },
+  { name: "Houston",               slug: "houston",        short: "HOU",   stadium: "NRG Stadium",             cap: "72,220", matches: 7, badge: "OPENING",         g: "linear-gradient(145deg,#001840 0%,#b84a00 100%)" },
+  { name: "Miami",                 slug: "miami",          short: "MIA",   stadium: "Hard Rock Stadium",        cap: "65,326", matches: 7, badge: "BEACH CITY",     g: "linear-gradient(145deg,#003060 0%,#a83200 100%)" },
+  { name: "Atlanta",               slug: "atlanta",        short: "ATL",   stadium: "Mercedes-Benz Stadium",   cap: "71,000", matches: 7, badge: "SOCCER CITY",    g: "linear-gradient(145deg,#0a0000 0%,#7a0020 100%)" },
+  { name: "San Francisco Bay Area",slug: "san-francisco",  short: "SF",    stadium: "Levi's Stadium",          cap: "68,500", matches: 7, badge: "TECH CITY",      g: "linear-gradient(145deg,#5a0000 0%,#6a5000 100%)" },
+  { name: "Philadelphia",          slug: "philadelphia",   short: "PHI",   stadium: "Lincoln Financial Field", cap: "69,800", matches: 7, badge: "LIBERTY CITY",   g: "linear-gradient(145deg,#002030 0%,#3a4a50 100%)" },
+  { name: "Seattle",               slug: "seattle",        short: "SEA",   stadium: "Lumen Field",             cap: "68,740", matches: 6, badge: "SOCCER CAPITAL", g: "linear-gradient(145deg,#001030 0%,#1a4a00 100%)" },
+  { name: "Boston",                slug: "boston",         short: "BOS",   stadium: "Gillette Stadium",        cap: "65,000", matches: 6, badge: "HISTORIC CITY",  g: "linear-gradient(145deg,#6a0010 0%,#001030 100%)" },
+  { name: "Kansas City",           slug: "kansas-city",    short: "KC",    stadium: "Arrowhead Stadium",       cap: "76,416", matches: 6, badge: "HEART OF USA",   g: "linear-gradient(145deg,#6a0010 0%,#7a5000 100%)" },
 ];
 
-const VENUES = [
-  { city: "Houston",     name: "Midtown Soccer Hub",  type: "Sports Bar · Watch Party Venue" },
-  { city: "Dallas",      name: "Deep Ellum Sports",   type: "Premium Sports Pub · Big Screen" },
-  { city: "Miami",       name: "Wynwood Soccer Bar",  type: "Craft Sports Bar · DJ Nights" },
-  { city: "Los Angeles", name: "The Rooftop LA",      type: "Rooftop Bar · Live Match Screens" },
-  { city: "NY / NJ",     name: "Hoboken Sports Bar",  type: "Classic Sports Pub · Big Screen" },
-  { city: "Atlanta",     name: "Midtown Sports Pub",  type: "Sports Bar · Watch Party Host" },
-];
 
 const SCHEDULE = {
   group: [
@@ -606,7 +598,7 @@ export default function WorldCupPage() {
             {CITIES.map(c => (
               <Link
                 key={c.short}
-                href={"/venues?city=" + encodeURIComponent(c.name)}
+                href={`/world-cup/${c.slug}`}
                 className="wc-cc"
               >
                 <div className="wc-cbg" style={{ background: c.g }} />
@@ -630,51 +622,26 @@ export default function WorldCupPage() {
         </div>
       </section>
 
-      {/* ── Featured Watch Party Venues ── */}
-      <section className="wc-vw">
-        <div className="wc-wrap">
-          <div className="wc-sh">
-            <div className="wc-st">
-              Featured Watch Party Venues <span className="wc-sb">SPONSOR SPOTS</span>
-            </div>
-            <Link href="/venues" className="wc-sl2">
-              View all <ChevronRight size={14} />
-            </Link>
-          </div>
-          <div className="wc-vg">
-            {VENUES.map((v, i) => (
-              <div key={i} className="wc-vc">
-                <div className="wc-vcity">{v.city}</div>
-                <div className="wc-vname">{v.name}</div>
-                <div className="wc-vtype">{v.type}</div>
-                <div className="wc-vf">
-                  <div className="wc-vs">★★★★★</div>
-                  <Link href="/venues" className="wc-vl">View venue →</Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Sponsor CTA ── */}
+      {/* ── Venue Registration CTA ── */}
       <section className="wc-spw">
         <div className="wc-wrap">
           <div className="wc-sp">
             <div>
-              <div className="wc-spk">Limited Sponsor Spots Available</div>
-              <div className="wc-sph2">Own Your City&apos;s World Cup Page</div>
+              <div className="wc-spk">For Bars, Restaurants &amp; Event Spaces</div>
+              <div className="wc-sph2">Host a World Cup Watch Party</div>
               <p className="wc-spp">
-                Get your venue or brand featured as the exclusive sponsor for one of the 11 U.S. host city pages.
-                Reach thousands of soccer fans searching for match-day experiences in your city.
+                Register your venue on MatchWatch to get discovered by thousands of soccer fans searching for
+                World Cup watch parties across all 11 U.S. host cities. List your events, manage bookings,
+                and fill every seat this summer.
               </p>
             </div>
             <div className="wc-spb">
               <Link href="/for-venues/register" className="wc-orange" style={{ justifyContent: "center" }}>
+                <Building2 size={15} /> Register Your Venue — Free
+              </Link>
+              <Link href="/for-venues" className="wc-spbtn">
                 <Star size={15} /> Become a Featured Venue
               </Link>
-              <Link href="/contact" className="wc-spbtn">Sponsor This City Page</Link>
-              <Link href="/for-venues" className="wc-spbtn">List Your Venue</Link>
             </div>
           </div>
         </div>
