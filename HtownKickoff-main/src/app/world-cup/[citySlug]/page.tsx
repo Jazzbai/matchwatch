@@ -34,8 +34,8 @@ export default async function WorldCupCityPage({ params }: Props) {
 
   const matches = CITY_MATCHES.filter((m) => m.citySlug === city.slug);
 
-  const EXCLUDED_VENDORS = new Set(["sound-lighting", "decor-branding", "security-staffing"]);
-  const vendors = VENDOR_SOLUTIONS.filter((v) => !EXCLUDED_VENDORS.has(v.slug));
+  const KEEP_VENDORS = new Set(["dj-entertainment", "photography-video", "digital-marketing", "ai-receptionist", "qr-campaigns"]);
+  const vendors = VENDOR_SOLUTIONS.filter((v) => KEEP_VENDORS.has(v.slug));
 
   return (
     <WorldCupCityClient

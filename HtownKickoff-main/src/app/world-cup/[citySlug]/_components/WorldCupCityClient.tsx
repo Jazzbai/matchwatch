@@ -80,9 +80,9 @@ const CSS = `
   .cc-btn-full { width: 100%; }
 
   /* ── Hero ── */
-  .cc-hero { position: relative; overflow: hidden; min-height: 520px; display: flex; align-items: center; background: linear-gradient(160deg, var(--mw-bg) 0%, #0d1520 40%, #1a0a05 100%); border-bottom: 1px solid var(--mw-line); }
+  .cc-hero { position: relative; overflow: hidden; min-height: 520px; display: flex; align-items: center; background: linear-gradient(160deg, var(--mw-bg) 0%, #0d1520 40%, #1a0a05 100%); border-bottom: 1px solid var(--mw-line); padding-top: var(--site-nav-height, 64px); }
   .cc-hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 70% 50%, color-mix(in srgb, var(--mw-accent) 10%, transparent), transparent 70%), radial-gradient(ellipse 60% 80% at 20% 30%, rgba(0, 80, 160, 0.12), transparent 70%); pointer-events: none; }
-  .cc-hero-inner { position: relative; z-index: 2; max-width: 1080px; margin: 0 auto; padding: 64px 24px 48px; width: 100%; display: grid; grid-template-columns: 1fr 260px; gap: 48px; align-items: center; }
+  .cc-hero-inner { position: relative; z-index: 2; max-width: 1080px; margin: 0 auto; padding: 80px 24px 56px; width: 100%; display: grid; grid-template-columns: 1fr 260px; gap: 48px; align-items: center; }
   .cc-hero-text { display: flex; flex-direction: column; }
   .cc-kicker { display: inline-flex; align-items: center; gap: 8px; font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--mw-accent); font-weight: 700; margin-bottom: 18px; border: 1px solid color-mix(in srgb, var(--mw-accent) 30%, transparent); padding: 5px 12px; border-radius: 999px; width: fit-content; }
   .cc-kicker .bd { width: 6px; height: 6px; background: var(--mw-accent); border-radius: 50%; animation: ccbd 1.4s ease-in-out infinite; }

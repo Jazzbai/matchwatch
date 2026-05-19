@@ -5,8 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { FloatingNav } from "@/components/AppShell";
 import {
-  Music, Camera, Monitor, Volume2, Palette, Shield,
-  UtensilsCrossed, Megaphone, Bot, QrCode,
+  Music, Camera, Megaphone, Bot, QrCode,
   Send, Check, MapPin, ArrowRight,
 } from "lucide-react";
 
@@ -37,36 +36,6 @@ const SERVICES = [
     title: "Photography & Video",
     description: "Event photos and 2–3 min video recaps ready for social media the same night.",
     icon: Camera,
-  },
-  {
-    slug: "led-screens-av",
-    title: "LED Screens & AV",
-    description: "Large-format LED screens and full AV setup so every seat has a perfect view.",
-    icon: Monitor,
-  },
-  {
-    slug: "sound-lighting",
-    title: "Sound & Lighting",
-    description: "Professional sound and match-day lighting rigs that create an arena atmosphere.",
-    icon: Volume2,
-  },
-  {
-    slug: "decor-branding",
-    title: "Decor & Branding",
-    description: "Flags, banners, branded props, and full fan zone buildouts for your venue.",
-    icon: Palette,
-  },
-  {
-    slug: "security-staffing",
-    title: "Security & Staffing",
-    description: "Crowd management, door staff, and complete event staffing solutions.",
-    icon: Shield,
-  },
-  {
-    slug: "food-catering",
-    title: "Food & Catering",
-    description: "Catering packages and specialty match-day menus tailored for large watch parties.",
-    icon: UtensilsCrossed,
   },
   {
     slug: "digital-marketing",
@@ -117,7 +86,7 @@ body{background:#0a0b0d!important;color:#f1ece4!important;overflow-x:hidden;}
 .sv-sh{margin-bottom:40px;}
 .sv-sh-title{font-family:'Space Grotesk',sans-serif;font-weight:900;font-size:clamp(1.4rem,2.8vw,2rem);color:#f1ece4;margin:0 0 8px;letter-spacing:-0.01em;}
 .sv-sh-sub{font-size:.95rem;color:#a8a59d;line-height:1.55;margin:0;max-width:600px;}
-.sv-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+.sv-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;}
 .sv-card{background:color-mix(in srgb,oklch(0.72 0.19 28) 5%,#101217);border:1px solid color-mix(in srgb,oklch(0.72 0.19 28) 15%,#23272f);padding:20px 16px;display:flex;flex-direction:column;gap:12px;transition:border-color .15s,background .15s,transform .15s;}
 .sv-card:hover{border-color:color-mix(in srgb,oklch(0.72 0.19 28) 40%,#23272f);background:color-mix(in srgb,oklch(0.72 0.19 28) 9%,#101217);transform:translateY(-2px);}
 .sv-icon{width:44px;height:44px;background:color-mix(in srgb,oklch(0.72 0.19 28) 14%,transparent);border:1px solid color-mix(in srgb,oklch(0.72 0.19 28) 22%,transparent);display:flex;align-items:center;justify-content:center;color:oklch(0.72 0.19 28);border-radius:10px;flex-shrink:0;}
@@ -151,8 +120,7 @@ body{background:#0a0b0d!important;color:#f1ece4!important;overflow-x:hidden;}
 .sv-err{font-size:12px;color:#ef4444;margin-top:4px;}
 
 /* responsive */
-@media(max-width:1024px){.sv-grid{grid-template-columns:repeat(4,1fr);}}
-@media(max-width:860px){.sv-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:900px){.sv-grid{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:640px){
   .sv-grid{grid-template-columns:repeat(2,1fr);}
   .sv-row{grid-template-columns:1fr;}
