@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/client';
-import { bookings, venueEvents, venues, matches, users, notifications, auditLogs, waitlist, venuePackages } from '../db/schema';
+import { bookings, venueEvents, venues, matches, users, notifications, auditLogs, waitlist, venuePackages, promotions } from '../db/schema';
 import { eq, and, desc, count, sql, asc } from 'drizzle-orm';
 import { apiResponse, apiError, generateBookingReference, paginationMeta, paginationOffset } from '../lib/utils';
 import { createBookingSchema, bookingQuerySchema } from '@matchwatch/shared';
@@ -24,6 +24,10 @@ bookingRoutes.post('/', async (c) => {
     // Optional party-package selection (parsed outside the shared schema)
     const requestedPackageId = typeof body?.packageId === 'string' && body.packageId.trim().length > 0
         ? body.packageId.trim()
+        : null;
+    // Optional promo code (parsed outside the shared schema)
+    const requestedPromoCode = typeof body?.promoCode === 'string' && body.promoCode.trim().length > 0
+        ? body.promoCode.trim().toUpperCase()
         : null;
 
     // Get venue event with venue info
@@ -64,6 +68,31 @@ bookingRoutes.post('/', async (c) => {
             return c.json(apiError('VALIDATION_ERROR', `This package allows up to ${pkg.maxPartySize} guests`), 400);
         }
         resolvedPackageId = pkg.id;
+    }
+
+    // Validate optional promo code (silently ignored if no longer valid)
+    let appliedPromo: { code: string; title: string; discountType: string; discountValue: string } | null = null;
+    let appliedPromoId: string | null = null;
+    if (requestedPromoCode) {
+        const [promo] = await db.select().from(promotions)
+            .where(and(
+                eq(promotions.venueId, event.venue.id),
+                eq(promotions.code, requestedPromoCode),
+                eq(promotions.isActive, true),
+            ))
+            .limit(1);
+        const now = new Date();
+        if (promo
+            && promo.validFrom <= now && promo.validUntil >= now
+            && (promo.maxUses == null || (promo.usedCount ?? 0) < promo.maxUses)) {
+            appliedPromo = {
+                code: promo.code ?? requestedPromoCode,
+                title: promo.title,
+                discountType: promo.discountType,
+                discountValue: promo.discountValue,
+            };
+            appliedPromoId = promo.id;
+        }
     }
 
     // Check if match hasn't already started
@@ -128,7 +157,15 @@ bookingRoutes.post('/', async (c) => {
         specialRequests,
         status,
         packageId: resolvedPackageId,
+        metadata: appliedPromo ? { promo: appliedPromo } : {},
     }).returning();
+
+    // Count a promo redemption once the booking exists
+    if (appliedPromoId) {
+        await db.update(promotions).set({
+            usedCount: sql`COALESCE(${promotions.usedCount}, 0) + 1`,
+        }).where(eq(promotions.id, appliedPromoId));
+    }
 
     // Update confirmed count if confirmed
     if (status === 'CONFIRMED') {

@@ -36,6 +36,15 @@ interface BookingDrawerProps {
     spotsRemaining: number;
     entryFee?: number;
     venueEventId?: string;
+    venueSlug?: string;
+    packages?: Array<{
+        id: string;
+        name: string;
+        description?: string | null;
+        price: string;
+        maxPartySize?: number | null;
+        inclusions?: string[] | null;
+    }>;
 }
 
 type DrawerBookingResponse = {
@@ -69,6 +78,8 @@ export function BookingDrawer({
     spotsRemaining,
     entryFee,
     venueEventId,
+    venueSlug,
+    packages,
 }: BookingDrawerProps) {
     const isSingleEvent = match.eventFormat === "SINGLE_EVENT";
 
@@ -80,12 +91,36 @@ export function BookingDrawer({
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const [selectedPackageId, setSelectedPackageId] = useState("");
+    const [promoCode, setPromoCode] = useState("");
+    const [promoStatus, setPromoStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+    const [appliedPromo, setAppliedPromo] = useState<{ code: string; title: string; discountType: string; discountValue: string } | null>(null);
+    const selectedPackage = (packages || []).find((p) => p.id === selectedPackageId) || null;
 
     useEffect(() => {
         if (!isOpen) return;
         setError(null);
         setSuccess(null);
+        setSelectedPackageId("");
+        setPromoCode("");
+        setPromoStatus("idle");
+        setAppliedPromo(null);
     }, [isOpen]);
+
+    const applyPromo = async () => {
+        if (!venueSlug || !promoCode.trim()) return;
+        setPromoStatus("checking");
+        try {
+            const res = await api.get<{ code: string; title: string; discountType: string; discountValue: string }>(
+                `/venues/${venueSlug}/promotions/${encodeURIComponent(promoCode.trim().toUpperCase())}`,
+            );
+            setAppliedPromo(res.data);
+            setPromoStatus("valid");
+        } catch {
+            setAppliedPromo(null);
+            setPromoStatus("invalid");
+        }
+    };
 
     useEffect(() => {
         if (!success) return;
@@ -118,6 +153,8 @@ export function BookingDrawer({
                 venueEventId,
                 partySize,
                 specialRequests: requests || undefined,
+                packageId: selectedPackageId || undefined,
+                promoCode: appliedPromo ? appliedPromo.code : undefined,
             });
 
             if (res.data?.waitlisted) {
@@ -286,6 +323,88 @@ export function BookingDrawer({
                             resize: "none", outline: "none",
                         }}
                     />
+                </div>
+
+                {/* Watch-Party Package */}
+                {packages && packages.length > 0 && (
+                    <div style={{ marginBottom: 20 }}>
+                        <label style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)", display: "block", marginBottom: 10 }}>
+                            Watch-Party Package{" "}
+                            <span style={{ fontWeight: 400, color: "var(--muted-foreground)" }}>(optional)</span>
+                        </label>
+                        <select
+                            value={selectedPackageId}
+                            onChange={(e) => setSelectedPackageId(e.target.value)}
+                            style={{
+                                width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid var(--border)",
+                                backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)",
+                                color: "var(--foreground)", fontFamily: "inherit", fontSize: 14, outline: "none",
+                            }}
+                        >
+                            <option value="">No package — standard booking</option>
+                            {packages.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                    {p.name} — ${Number(p.price).toFixed(2)}{p.maxPartySize ? ` (up to ${p.maxPartySize})` : ""}
+                                </option>
+                            ))}
+                        </select>
+                        {selectedPackage && (
+                            <div style={{ marginTop: 8, padding: 12, borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)" }}>
+                                {selectedPackage.description && (
+                                    <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>{selectedPackage.description}</p>
+                                )}
+                                {Array.isArray(selectedPackage.inclusions) && selectedPackage.inclusions.length > 0 && (
+                                    <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12.5, color: "var(--muted-foreground)" }}>
+                                        {selectedPackage.inclusions.map((inc, i) => <li key={i}>{inc}</li>)}
+                                    </ul>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Promo Code */}
+                <div style={{ marginBottom: 20 }}>
+                    <label style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)", display: "block", marginBottom: 10 }}>
+                        Promo Code{" "}
+                        <span style={{ fontWeight: 400, color: "var(--muted-foreground)" }}>(optional)</span>
+                    </label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                            value={promoCode}
+                            onChange={(e) => { setPromoCode(e.target.value); setPromoStatus("idle"); setAppliedPromo(null); }}
+                            placeholder="e.g. DERBY15"
+                            style={{
+                                flex: 1, padding: "12px 14px", borderRadius: 14, border: "1px solid var(--border)",
+                                backgroundColor: "color-mix(in oklch, var(--secondary) 30%, transparent)",
+                                color: "var(--foreground)", fontFamily: "inherit", fontSize: 14, outline: "none",
+                                textTransform: "uppercase",
+                            }}
+                        />
+                        <button
+                            onClick={() => void applyPromo()}
+                            disabled={!promoCode.trim() || promoStatus === "checking" || !venueSlug}
+                            style={{
+                                padding: "0 18px", borderRadius: 14, border: "1px solid var(--border)",
+                                backgroundColor: "var(--secondary)", color: "var(--foreground)",
+                                fontWeight: 700, fontSize: 13, fontFamily: "inherit",
+                                cursor: (!promoCode.trim() || promoStatus === "checking" || !venueSlug) ? "not-allowed" : "pointer",
+                                opacity: (!promoCode.trim() || promoStatus === "checking" || !venueSlug) ? 0.5 : 1,
+                            }}
+                        >
+                            {promoStatus === "checking" ? "..." : "Apply"}
+                        </button>
+                    </div>
+                    {promoStatus === "valid" && appliedPromo && (
+                        <div style={{ marginTop: 8, fontSize: 13, color: "#22c55e", fontWeight: 600 }}>
+                            ✓ {appliedPromo.title} applied to your booking
+                        </div>
+                    )}
+                    {promoStatus === "invalid" && (
+                        <div style={{ marginTop: 8, fontSize: 13, color: "#f59e0b", fontWeight: 600 }}>
+                            That code isn&apos;t valid for this venue.
+                        </div>
+                    )}
                 </div>
 
                 {/* Spots & Entry Fee */}

@@ -3,7 +3,7 @@ import { db } from '../db/client';
 import {
     venues, venueEvents, bookings, matches, posts, menuCategories, menuItems,
     follows, notifications, auditLogs, users, venueCustomEvents, venueClaims, venueAttributes,
-    venuePackages,
+    venuePackages, promotions,
 } from '../db/schema';
 import { eq, and, count, desc, asc, sql, gte, lt } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, generateUniqueSlug } from '../lib/utils';
@@ -1901,6 +1901,120 @@ dashboardRoutes.delete('/packages/:id', async (c) => {
 
     await db.delete(venuePackages).where(eq(venuePackages.id, packageId));
     return c.json(apiResponse({ message: 'Package deleted' }));
+});
+
+// ─── Promotions (discount codes) ────────────────
+
+const promotionSchema = z.object({
+    title: z.string().min(1).max(200),
+    description: z.string().max(2000).nullable().optional(),
+    code: z.string().min(2).max(50),
+    discountType: z.enum(['PERCENTAGE', 'FIXED', 'FREE_ITEM']),
+    discountValue: z.number().nonnegative(),
+    maxUses: z.number().int().positive().max(100000).nullable().optional(),
+    validFrom: z.string().nullable().optional(),
+    validUntil: z.string().nullable().optional(),
+    isActive: z.boolean().optional(),
+});
+
+dashboardRoutes.get('/promotions', async (c) => {
+    const user = c.get('user');
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
+    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+
+    const list = await db.select().from(promotions)
+        .where(eq(promotions.venueId, venue.id))
+        .orderBy(desc(promotions.createdAt));
+
+    return c.json(apiResponse(list));
+});
+
+dashboardRoutes.post('/promotions', async (c) => {
+    const user = c.get('user');
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
+    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+
+    const body = await c.req.json();
+    const parsed = promotionSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const code = parsed.data.code.trim().toUpperCase();
+    const [clash] = await db.select({ id: promotions.id }).from(promotions)
+        .where(eq(promotions.code, code)).limit(1);
+    if (clash) return c.json(apiError('CONFLICT', 'That promo code is already in use'), 409);
+
+    const now = new Date();
+    const [promo] = await db.insert(promotions).values({
+        venueId: venue.id,
+        title: parsed.data.title,
+        description: parsed.data.description ?? null,
+        code,
+        discountType: parsed.data.discountType,
+        discountValue: String(parsed.data.discountValue),
+        maxUses: parsed.data.maxUses ?? null,
+        validFrom: parsed.data.validFrom ? new Date(parsed.data.validFrom) : now,
+        validUntil: parsed.data.validUntil ? new Date(parsed.data.validUntil) : new Date(now.getTime() + 365 * 86400000),
+        isActive: parsed.data.isActive ?? true,
+    }).returning();
+
+    return c.json(apiResponse(promo), 201);
+});
+
+async function updatePromotionHandler(c: any) {
+    const user = c.get('user');
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
+    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+
+    const promoId = c.req.param('id');
+    const body = await c.req.json();
+    const parsed = promotionSchema.partial().safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select().from(promotions)
+        .where(and(eq(promotions.id, promoId), eq(promotions.venueId, venue.id)))
+        .limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Promotion not found'), 404);
+
+    const d = parsed.data;
+    let nextCode: string | undefined;
+    if (d.code !== undefined) {
+        nextCode = d.code.trim().toUpperCase();
+        const [clash] = await db.select({ id: promotions.id }).from(promotions)
+            .where(and(eq(promotions.code, nextCode), sql`${promotions.id} <> ${promoId}`)).limit(1);
+        if (clash) return c.json(apiError('CONFLICT', 'That promo code is already in use'), 409);
+    }
+
+    await db.update(promotions).set({
+        ...(d.title !== undefined ? { title: d.title } : {}),
+        ...(d.description !== undefined ? { description: d.description ?? null } : {}),
+        ...(nextCode !== undefined ? { code: nextCode } : {}),
+        ...(d.discountType !== undefined ? { discountType: d.discountType } : {}),
+        ...(d.discountValue !== undefined ? { discountValue: String(d.discountValue) } : {}),
+        ...(d.maxUses !== undefined ? { maxUses: d.maxUses ?? null } : {}),
+        ...(d.validFrom !== undefined ? { validFrom: d.validFrom ? new Date(d.validFrom) : new Date() } : {}),
+        ...(d.validUntil !== undefined && d.validUntil ? { validUntil: new Date(d.validUntil) } : {}),
+        ...(d.isActive !== undefined ? { isActive: d.isActive } : {}),
+    }).where(eq(promotions.id, promoId));
+
+    return c.json(apiResponse({ message: 'Promotion updated' }));
+}
+
+dashboardRoutes.put('/promotions/:id', updatePromotionHandler);
+dashboardRoutes.patch('/promotions/:id', updatePromotionHandler);
+
+dashboardRoutes.delete('/promotions/:id', async (c) => {
+    const user = c.get('user');
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
+    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+
+    const promoId = c.req.param('id');
+    const [existing] = await db.select().from(promotions)
+        .where(and(eq(promotions.id, promoId), eq(promotions.venueId, venue.id)))
+        .limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Promotion not found'), 404);
+
+    await db.delete(promotions).where(eq(promotions.id, promoId));
+    return c.json(apiResponse({ message: 'Promotion deleted' }));
 });
 
 // ─── Notify Followers ───────────────────────────

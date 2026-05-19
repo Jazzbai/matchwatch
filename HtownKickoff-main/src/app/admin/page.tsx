@@ -250,6 +250,22 @@ type VenuePackage = {
   sortOrder?: number | null;
 };
 
+type DiscountType = "PERCENTAGE" | "FIXED" | "FREE_ITEM";
+
+type Promotion = {
+  id: string;
+  title: string;
+  description?: string | null;
+  code: string | null;
+  discountType: DiscountType;
+  discountValue: string;
+  maxUses?: number | null;
+  usedCount?: number | null;
+  validFrom?: string | null;
+  validUntil?: string | null;
+  isActive: boolean;
+};
+
 type GalleryItem = {
   url: string;
   key: string;
@@ -408,6 +424,7 @@ export default function AdminPage() {
   const [customEvents, setCustomEvents] = React.useState<CustomEvent[]>([]);
   const [menu, setMenu] = React.useState<MenuCategory[]>([]);
   const [packages, setPackages] = React.useState<VenuePackage[]>([]);
+  const [promotions, setPromotions] = React.useState<Promotion[]>([]);
 
   const [showCreateModal, setShowCreateModal] = React.useState(false);
   const [showMatchPicker, setShowMatchPicker] = React.useState(false);
@@ -459,6 +476,14 @@ export default function AdminPage() {
   const [pkgInclusions, setPkgInclusions] = React.useState("");
   const [savingPackage, setSavingPackage] = React.useState(false);
   const [editingPackageId, setEditingPackageId] = React.useState<string | null>(null);
+  const [promoTitle, setPromoTitle] = React.useState("");
+  const [promoCode, setPromoCode] = React.useState("");
+  const [promoDiscountType, setPromoDiscountType] = React.useState<DiscountType>("PERCENTAGE");
+  const [promoDiscountValue, setPromoDiscountValue] = React.useState("");
+  const [promoMaxUses, setPromoMaxUses] = React.useState("");
+  const [promoValidUntil, setPromoValidUntil] = React.useState("");
+  const [savingPromotion, setSavingPromotion] = React.useState(false);
+  const [editingPromotionId, setEditingPromotionId] = React.useState<string | null>(null);
 
   const [venueName, setVenueName] = React.useState("");
   const [venueDescription, setVenueDescription] = React.useState("");
@@ -729,6 +754,7 @@ export default function AdminPage() {
         setCustomEvents([]);
         setMenu([]);
         setPackages([]);
+        setPromotions([]);
         setUpcomingMatches([]);
         setPromotedEventId(null);
         setVenueName("");
@@ -768,6 +794,7 @@ export default function AdminPage() {
         customEventsRes,
         menuRes,
         packagesRes,
+        promotionsRes,
       ] = await Promise.all([
         api.get<DashboardOverview>(dashboardPath("/dashboard", effectiveVenueId)),
         api.get<OwnerEvent[]>(dashboardPath("/dashboard/events", effectiveVenueId)),
@@ -777,6 +804,7 @@ export default function AdminPage() {
         api.get<CustomEvent[]>(dashboardPath("/dashboard/custom-events", effectiveVenueId)),
         api.get<MenuCategory[]>(dashboardPath("/dashboard/menu", effectiveVenueId)),
         api.get<VenuePackage[]>(dashboardPath("/dashboard/packages", effectiveVenueId)),
+        api.get<Promotion[]>(dashboardPath("/dashboard/promotions", effectiveVenueId)),
       ]);
 
       setOverview(overviewRes.data);
@@ -785,6 +813,7 @@ export default function AdminPage() {
       setCustomEvents(customEventsRes.data || []);
       setMenu(menuRes.data || []);
       setPackages(packagesRes.data || []);
+      setPromotions(promotionsRes.data || []);
 
       const profile = venueRes.data || {};
       setVenueName(profile.name || "");
@@ -1227,6 +1256,78 @@ export default function AdminPage() {
     }
   };
 
+  const cancelEditPromotion = () => {
+    setEditingPromotionId(null);
+    setPromoTitle("");
+    setPromoCode("");
+    setPromoDiscountType("PERCENTAGE");
+    setPromoDiscountValue("");
+    setPromoMaxUses("");
+    setPromoValidUntil("");
+  };
+
+  const startEditPromotion = (p: Promotion) => {
+    setEditingPromotionId(p.id);
+    setPromoTitle(p.title);
+    setPromoCode(p.code || "");
+    setPromoDiscountType(p.discountType);
+    setPromoDiscountValue(String(p.discountValue ?? ""));
+    setPromoMaxUses(p.maxUses ? String(p.maxUses) : "");
+    setPromoValidUntil(p.validUntil ? String(p.validUntil).slice(0, 10) : "");
+  };
+
+  const savePromotion = async () => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+    if (!promoTitle.trim() || !promoCode.trim() || !promoDiscountValue.trim()) return;
+
+    setSavingPromotion(true);
+    setError(null);
+    try {
+      const payload = {
+        title: promoTitle.trim(),
+        code: promoCode.trim().toUpperCase(),
+        discountType: promoDiscountType,
+        discountValue: Number(promoDiscountValue),
+        maxUses: promoMaxUses.trim() ? Number(promoMaxUses) : null,
+        validUntil: promoValidUntil.trim() ? new Date(promoValidUntil).toISOString() : null,
+      };
+      if (editingPromotionId) {
+        await api.put(dashboardPath(`/dashboard/promotions/${editingPromotionId}`), payload);
+      } else {
+        await api.post(dashboardPath("/dashboard/promotions"), payload);
+      }
+      cancelEditPromotion();
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save promotion");
+    } finally {
+      setSavingPromotion(false);
+    }
+  };
+
+  const togglePromotionActive = async (p: Promotion) => {
+    setError(null);
+    try {
+      await api.put(dashboardPath(`/dashboard/promotions/${p.id}`), { isActive: !p.isActive });
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update promotion");
+    }
+  };
+
+  const deletePromotion = async (id: string) => {
+    setError(null);
+    try {
+      await api.delete(dashboardPath(`/dashboard/promotions/${id}`));
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to delete promotion");
+    }
+  };
+
   const onUploadCover = async (file: File) => {
     setUploadingCover(true);
     setError(null);
@@ -1542,6 +1643,7 @@ export default function AdminPage() {
     { id: "bookings", label: "Reservations" },
     { id: "menu", label: "Menu" },
     { id: "packages", label: "Packages" },
+    { id: "promotions", label: "Promotions" },
     { id: "settings", label: "Venue Settings" },
   ];
 
@@ -2185,6 +2287,107 @@ export default function AdminPage() {
                               <button style={btnOutline(false)} onClick={() => startEditPackage(pkg)}>Edit</button>
                               <button style={btnOutline(false)} onClick={() => void togglePackageActive(pkg)}>{pkg.isActive ? "Hide" : "Publish"}</button>
                               <button style={btnDestructive(false)} onClick={() => void deletePackage(pkg.id)}>Delete</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TAB: Promotions ═══ */}
+          {activeTab === "promotions" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>
+                    {editingPromotionId ? "Edit promo code" : "Create a promo code"}
+                  </h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+                    Discount codes fans can apply when they reserve a spot or a package.
+                  </p>
+                </div>
+                <div style={cardContentStyle}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 16 }}>
+                    <div>
+                      <label style={labelStyle}>Title</label>
+                      <input value={promoTitle} onChange={(e) => setPromoTitle(e.target.value)} placeholder="Derby Day 15% Off" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Code</label>
+                      <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="DERBY15" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Discount type</label>
+                      <select value={promoDiscountType} onChange={(e) => setPromoDiscountType(e.target.value as DiscountType)} style={inputStyle}>
+                        <option value="PERCENTAGE">Percentage off</option>
+                        <option value="FIXED">Fixed amount off</option>
+                        <option value="FREE_ITEM">Free item</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>{promoDiscountType === "PERCENTAGE" ? "Percent (0–100)" : promoDiscountType === "FIXED" ? "Amount (USD)" : "Value"}</label>
+                      <input type="number" min={0} step="0.01" value={promoDiscountValue} onChange={(e) => setPromoDiscountValue(e.target.value)} placeholder="15" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Max uses (optional)</label>
+                      <input type="number" min={1} value={promoMaxUses} onChange={(e) => setPromoMaxUses(e.target.value)} placeholder="100" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Valid until (optional)</label>
+                      <input type="date" value={promoValidUntil} onChange={(e) => setPromoValidUntil(e.target.value)} style={inputStyle} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={btnPrimary(savingPromotion || !promoTitle.trim() || !promoCode.trim() || !promoDiscountValue.trim())} disabled={savingPromotion || !promoTitle.trim() || !promoCode.trim() || !promoDiscountValue.trim()} onClick={() => void savePromotion()}>
+                      {savingPromotion ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Plus size={14} />}
+                      {editingPromotionId ? "Save Changes" : "Add Promo Code"}
+                    </button>
+                    {editingPromotionId && (
+                      <button style={btnOutline(savingPromotion)} disabled={savingPromotion} onClick={cancelEditPromotion}>Cancel</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Your promo codes</h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Active codes can be redeemed by fans at booking time.</p>
+                </div>
+                <div style={cardContentStyle}>
+                  {promotions.length === 0 ? (
+                    <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No promo codes yet. Create your first one above.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {promotions.map((p) => (
+                        <div key={p.id} style={{ ...eventRowStyle, marginBottom: 0, opacity: p.isActive ? 1 : 0.6 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)" }}>{p.title}</span>
+                                <span style={{ ...badgeStyle, fontFamily: "monospace" }}>{p.code}</span>
+                                <span style={badgeStyle}>
+                                  {p.discountType === "PERCENTAGE"
+                                    ? `${Number(p.discountValue)}% off`
+                                    : p.discountType === "FIXED"
+                                      ? `$${Number(p.discountValue).toFixed(2)} off`
+                                      : "Free item"}
+                                </span>
+                                <span style={{ ...badgeStyle, color: p.isActive ? "#16a34a" : "var(--muted-foreground)" }}>{p.isActive ? "Active" : "Inactive"}</span>
+                              </div>
+                              <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>
+                                Used {p.usedCount ?? 0}{p.maxUses ? ` / ${p.maxUses}` : ""} time{(p.usedCount ?? 0) === 1 ? "" : "s"}
+                                {p.validUntil ? ` · expires ${String(p.validUntil).slice(0, 10)}` : ""}
+                              </p>
+                            </div>
+                            <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                              <button style={btnOutline(false)} onClick={() => startEditPromotion(p)}>Edit</button>
+                              <button style={btnOutline(false)} onClick={() => void togglePromotionActive(p)}>{p.isActive ? "Disable" : "Enable"}</button>
+                              <button style={btnDestructive(false)} onClick={() => void deletePromotion(p.id)}>Delete</button>
                             </div>
                           </div>
                         </div>

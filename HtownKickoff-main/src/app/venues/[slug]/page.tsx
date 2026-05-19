@@ -901,6 +901,8 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
                         }}
                         spotsRemaining={selectedEvent?.bookingLimit ? selectedEvent.bookingLimit - selectedEvent.confirmedBookings : 50}
                         entryFee={selectedEvent?.entryFee || undefined}
+                        venueSlug={venueSlugOrId}
+                        packages={packages}
                     />
                 )}
             </div>

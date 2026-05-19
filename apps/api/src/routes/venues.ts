@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/client';
-import { venues, venueEvents, matches, posts, menuCategories, menuItems, follows, reviews, users, venueCustomEvents, teamFanVenues, teams, leagues, venuePackages } from '../db/schema';
+import { venues, venueEvents, matches, posts, menuCategories, menuItems, follows, reviews, users, venueCustomEvents, teamFanVenues, teams, leagues, venuePackages, promotions } from '../db/schema';
 import { eq, and, count, desc, asc, sql, ilike, inArray, gte } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { venueQuerySchema, paginationSchema } from '@matchwatch/shared';
@@ -687,6 +687,48 @@ venueRoutes.get('/:slugOrId/packages', async (c) => {
         .orderBy(asc(venuePackages.sortOrder), desc(venuePackages.createdAt));
 
     return c.json(apiResponse(list));
+});
+
+// ─── GET /:slugOrId/promotions/:code (validate a discount code) ──
+venueRoutes.get('/:slugOrId/promotions/:code', async (c) => {
+    const slugOrId = c.req.param('slugOrId');
+    const code = (c.req.param('code') || '').trim().toUpperCase();
+
+    const [venue] = await db.select({
+        id: venues.id,
+        approvalStatus: venues.approvalStatus,
+        isActive: venues.isActive,
+    }).from(venues).where(
+        sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
+    ).limit(1);
+    if (!venue || !venue.isActive || venue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
+
+    const [promo] = await db.select().from(promotions)
+        .where(and(
+            eq(promotions.venueId, venue.id),
+            eq(promotions.code, code),
+            eq(promotions.isActive, true),
+        ))
+        .limit(1);
+    if (!promo) return c.json(apiError('NOT_FOUND', 'Promo code is not valid'), 404);
+
+    const now = new Date();
+    if (promo.validFrom > now || promo.validUntil < now) {
+        return c.json(apiError('NOT_FOUND', 'Promo code is not active right now'), 404);
+    }
+    if (promo.maxUses != null && (promo.usedCount ?? 0) >= promo.maxUses) {
+        return c.json(apiError('NOT_FOUND', 'Promo code has reached its usage limit'), 404);
+    }
+
+    return c.json(apiResponse({
+        code: promo.code,
+        title: promo.title,
+        description: promo.description,
+        discountType: promo.discountType,
+        discountValue: promo.discountValue,
+    }));
 });
 
 // ─── GET /:slugOrId/reviews ─────────────────────
