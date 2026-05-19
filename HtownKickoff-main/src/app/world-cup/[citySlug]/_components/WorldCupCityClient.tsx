@@ -6,8 +6,6 @@ import { CityHero } from "./CityHero";
 import { CityMatchSchedule } from "./CityMatchSchedule";
 import { CityVenueGrid } from "./CityVenueGrid";
 import { CityVenueMap } from "./CityVenueMap";
-import { VenueSolutionPackages } from "./VenueSolutionPackages";
-import { VendorSolutionGrid } from "./VendorSolutionGrid";
 import { CityActionCTAs } from "./CityActionCTAs";
 import { FloatingNav } from "@/components/AppShell";
 import { useData, type Venue } from "@/lib/data-provider";
@@ -111,6 +109,8 @@ const CSS = `
   .cc-h1 b { color: var(--mw-accent); }
   .cc-sub { font-size: 1rem; color: var(--mw-fg-dim); line-height: 1.6; max-width: 520px; margin-bottom: 28px; }
   .cc-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+  .cc-hero-biz-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.08em; color: #6c6a64; text-decoration: none; transition: color .15s; width: fit-content; }
+  .cc-hero-biz-link:hover { color: oklch(0.72 0.19 28); }
   .cc-stats { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 44px; padding-top: 32px; border-top: 1px solid var(--mw-line); }
   .cc-sv { font-size: 1.7rem; font-weight: 900; color: var(--mw-fg); line-height: 1; font-family: "Space Grotesk", sans-serif; }
   .cc-sv span { color: var(--mw-accent); }
@@ -249,18 +249,6 @@ export function WorldCupCityClient({ city, matches, packages, vendors }: Props) 
           centerLat={city.lat}
           centerLng={city.lng}
           zoom={city.zoom}
-        />
-
-        <VenueSolutionPackages
-          packages={packages}
-          citySlug={city.slug}
-          cityName={city.name}
-        />
-
-        <VendorSolutionGrid
-          vendors={vendors}
-          citySlug={city.slug}
-          cityName={city.name}
         />
 
         <CityActionCTAs citySlug={city.slug} cityName={city.name} />

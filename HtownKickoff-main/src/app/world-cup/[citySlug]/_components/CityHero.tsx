@@ -1,8 +1,7 @@
 import React from "react";
 import Link from "next/link";
-import { MapPin, Building2, Package } from "lucide-react";
+import { MapPin, ArrowDown } from "lucide-react";
 import type { WorldCupCity, CityMatch } from "../types";
-import { buildVenueRegisterUrl } from "../types";
 
 interface Props {
   city: WorldCupCity;
@@ -29,20 +28,13 @@ export function CityHero({ city, matches }: Props) {
           <div className="cc-btns">
             <a href="#venues" className="cc-btn-p">
               <MapPin size={15} />
-              Find {city.name} Venues
-            </a>
-            <Link
-              href={buildVenueRegisterUrl({ citySlug: city.slug })}
-              className="cc-btn-g"
-            >
-              <Building2 size={15} />
-              Register Your Venue
-            </Link>
-            <a href="#packages" className="cc-btn-g">
-              <Package size={15} />
-              Build Watch Party Package
+              Find {city.name} Watch Party Venues
             </a>
           </div>
+          <a href="#for-business" className="cc-hero-biz-link">
+            <ArrowDown size={12} />
+            Own a venue or planning a corporate event?
+          </a>
 
           <div className="cc-stats">
             <div>
