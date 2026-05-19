@@ -15,18 +15,21 @@ const NAV_LINKS = [
   { label: "For venues", href: "/for-venues" },
 ];
 
+// `image` points at an optional city photo in /public/cities/. When the file
+// is absent the gradient `g` shows through as a designed fallback (no broken
+// image), so the cards look intentional either way.
 const CITIES = [
-  { name: "New York / New Jersey", slug: "new-york",       short: "NY/NJ", stadium: "MetLife Stadium",        cap: "82,500", matches: 9, badge: "THE FINAL",       g: "linear-gradient(145deg,#001840 0%,#8b0000 100%)" },
-  { name: "Los Angeles",           slug: "los-angeles",    short: "LA",    stadium: "SoFi Stadium",            cap: "70,240", matches: 9, badge: "SEMIFINAL",       g: "linear-gradient(145deg,#2d0a6e 0%,#c8a200 100%)" },
-  { name: "Dallas",                slug: "dallas",         short: "DAL",   stadium: "AT&T Stadium",            cap: "80,000", matches: 8, badge: "TOP HOST",        g: "linear-gradient(145deg,#001a40 0%,#7a5500 100%)" },
-  { name: "Houston",               slug: "houston",        short: "HOU",   stadium: "NRG Stadium",             cap: "72,220", matches: 7, badge: "OPENING",         g: "linear-gradient(145deg,#001840 0%,#b84a00 100%)" },
-  { name: "Miami",                 slug: "miami",          short: "MIA",   stadium: "Hard Rock Stadium",        cap: "65,326", matches: 7, badge: "BEACH CITY",     g: "linear-gradient(145deg,#003060 0%,#a83200 100%)" },
-  { name: "Atlanta",               slug: "atlanta",        short: "ATL",   stadium: "Mercedes-Benz Stadium",   cap: "71,000", matches: 7, badge: "SOCCER CITY",    g: "linear-gradient(145deg,#0a0000 0%,#7a0020 100%)" },
-  { name: "San Francisco Bay Area",slug: "san-francisco",  short: "SF",    stadium: "Levi's Stadium",          cap: "68,500", matches: 7, badge: "TECH CITY",      g: "linear-gradient(145deg,#5a0000 0%,#6a5000 100%)" },
-  { name: "Philadelphia",          slug: "philadelphia",   short: "PHI",   stadium: "Lincoln Financial Field", cap: "69,800", matches: 7, badge: "LIBERTY CITY",   g: "linear-gradient(145deg,#002030 0%,#3a4a50 100%)" },
-  { name: "Seattle",               slug: "seattle",        short: "SEA",   stadium: "Lumen Field",             cap: "68,740", matches: 6, badge: "SOCCER CAPITAL", g: "linear-gradient(145deg,#001030 0%,#1a4a00 100%)" },
-  { name: "Boston",                slug: "boston",         short: "BOS",   stadium: "Gillette Stadium",        cap: "65,000", matches: 6, badge: "HISTORIC CITY",  g: "linear-gradient(145deg,#6a0010 0%,#001030 100%)" },
-  { name: "Kansas City",           slug: "kansas-city",    short: "KC",    stadium: "Arrowhead Stadium",       cap: "76,416", matches: 6, badge: "HEART OF USA",   g: "linear-gradient(145deg,#6a0010 0%,#7a5000 100%)" },
+  { name: "New York / New Jersey", slug: "new-york",       short: "NY/NJ", stadium: "MetLife Stadium",        cap: "82,500", matches: 9, badge: "THE FINAL",       g: "linear-gradient(145deg,#001840 0%,#8b0000 100%)", image: "/cities/new-york.webp" },
+  { name: "Los Angeles",           slug: "los-angeles",    short: "LA",    stadium: "SoFi Stadium",            cap: "70,240", matches: 9, badge: "SEMIFINAL",       g: "linear-gradient(145deg,#2d0a6e 0%,#c8a200 100%)", image: "/cities/los-angeles.webp" },
+  { name: "Dallas",                slug: "dallas",         short: "DAL",   stadium: "AT&T Stadium",            cap: "80,000", matches: 8, badge: "TOP HOST",        g: "linear-gradient(145deg,#001a40 0%,#7a5500 100%)", image: "/cities/dallas.webp" },
+  { name: "Houston",               slug: "houston",        short: "HOU",   stadium: "NRG Stadium",             cap: "72,220", matches: 7, badge: "OPENING",         g: "linear-gradient(145deg,#001840 0%,#b84a00 100%)", image: "/cities/houston.webp" },
+  { name: "Miami",                 slug: "miami",          short: "MIA",   stadium: "Hard Rock Stadium",        cap: "65,326", matches: 7, badge: "BEACH CITY",     g: "linear-gradient(145deg,#003060 0%,#a83200 100%)", image: "/cities/miami.webp" },
+  { name: "Atlanta",               slug: "atlanta",        short: "ATL",   stadium: "Mercedes-Benz Stadium",   cap: "71,000", matches: 7, badge: "SOCCER CITY",    g: "linear-gradient(145deg,#0a0000 0%,#7a0020 100%)", image: "/cities/atlanta.webp" },
+  { name: "San Francisco Bay Area",slug: "san-francisco",  short: "SF",    stadium: "Levi's Stadium",          cap: "68,500", matches: 7, badge: "TECH CITY",      g: "linear-gradient(145deg,#5a0000 0%,#6a5000 100%)", image: "/cities/san-francisco.webp" },
+  { name: "Philadelphia",          slug: "philadelphia",   short: "PHI",   stadium: "Lincoln Financial Field", cap: "69,800", matches: 7, badge: "LIBERTY CITY",   g: "linear-gradient(145deg,#002030 0%,#3a4a50 100%)", image: "/cities/philadelphia.webp" },
+  { name: "Seattle",               slug: "seattle",        short: "SEA",   stadium: "Lumen Field",             cap: "68,740", matches: 6, badge: "SOCCER CAPITAL", g: "linear-gradient(145deg,#001030 0%,#1a4a00 100%)", image: "/cities/seattle.webp" },
+  { name: "Boston",                slug: "boston",         short: "BOS",   stadium: "Gillette Stadium",        cap: "65,000", matches: 6, badge: "HISTORIC CITY",  g: "linear-gradient(145deg,#6a0010 0%,#001030 100%)", image: "/cities/boston.webp" },
+  { name: "Kansas City",           slug: "kansas-city",    short: "KC",    stadium: "Arrowhead Stadium",       cap: "76,416", matches: 6, badge: "HEART OF USA",   g: "linear-gradient(145deg,#6a0010 0%,#7a5000 100%)", image: "/cities/kansas-city.webp" },
 ];
 
 
@@ -299,13 +302,13 @@ const CSS = `
   /* ── City cards ── */
   .wc-cw{padding:64px 0 80px;}
   .wc-cg{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
-  .wc-cc{position:relative;overflow:hidden;border:1px solid var(--mw-line);cursor:pointer;transition:all .2s;text-decoration:none;display:block;min-height:196px;}
+  .wc-cc{border-radius:14px;position:relative;overflow:hidden;border:1px solid var(--mw-line);cursor:pointer;transition:all .2s;text-decoration:none;display:block;min-height:196px;}
   .wc-cc:hover{transform:translateY(-3px);box-shadow:0 20px 48px rgba(0,0,0,.55);border-color:color-mix(in srgb,var(--mw-accent) 35%,transparent);}
   .wc-cbg{position:absolute;inset:0;opacity:.9;transition:opacity .2s;}
   .wc-cc:hover .wc-cbg{opacity:1;}
   .wc-cov{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.1) 55%,transparent 100%);}
   .wc-ci{position:relative;z-index:2;padding:18px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;min-height:196px;}
-  .wc-cbadge{display:inline-flex;font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.9);background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.15);padding:3px 7px;margin-bottom:8px;align-self:flex-start;backdrop-filter:blur(4px);}
+  .wc-cbadge{border-radius:999px;display:inline-flex;font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.9);background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.15);padding:3px 7px;margin-bottom:8px;align-self:flex-start;backdrop-filter:blur(4px);}
   .wc-cn{font-family:"Space Grotesk",sans-serif;font-size:1.35rem;font-weight:900;color:#fff;line-height:1.1;margin-bottom:4px;}
   .wc-cs{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.07em;color:rgba(255,255,255,.6);text-transform:uppercase;margin-bottom:10px;}
   .wc-cm{display:flex;gap:12px;align-items:center;}
@@ -605,7 +608,10 @@ export default function WorldCupPage() {
                 href={`/world-cup/${c.slug}`}
                 className="wc-cc"
               >
-                <div className="wc-cbg" style={{ background: c.g }} />
+                <div
+                  className="wc-cbg"
+                  style={{ background: `url(${c.image}) center / cover no-repeat, ${c.g}` }}
+                />
                 <div className="wc-cov" />
                 <div className="wc-ci">
                   <span className="wc-cbadge">{c.badge}</span>

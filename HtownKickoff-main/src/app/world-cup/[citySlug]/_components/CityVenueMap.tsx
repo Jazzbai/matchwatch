@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useMemo } from "react";
 import {
   loadLeafletWithClusters,
+  createVenuePinIcon,
   type ClusterLayer,
   type ClusterLeafletModule,
   type LeafletMap,
@@ -40,6 +41,7 @@ export function CityVenueMap({
   const mapRef = useRef<LeafletMap | null>(null);
   const layerRef = useRef<ClusterLayer | null>(null);
   const leafletRef = useRef<ClusterLeafletModule | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   const validVenues = useMemo(
     () =>
@@ -82,10 +84,19 @@ export function CityVenueMap({
       }).addTo(map);
 
       mapRef.current = map;
+
+      // Leaflet renders blank/mis-sized if the container had no size at init —
+      // invalidate on every container resize so tiles + pins lay out correctly.
+      const ro = new ResizeObserver(() => map.invalidateSize());
+      if (containerRef.current) ro.observe(containerRef.current);
+      resizeObserverRef.current = ro;
+      setTimeout(() => map.invalidateSize(), 0);
     })();
 
     return () => {
       mounted = false;
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -127,6 +138,8 @@ export function CityVenueMap({
     layerRef.current = layer;
     layer.addTo(map);
 
+    map.invalidateSize();
+
     if (validVenues.length === 0) return;
 
     const points: [number, number][] = [];
@@ -155,7 +168,9 @@ export function CityVenueMap({
         </div>
       `;
 
-      const marker = L.marker([venue.lat, venue.lng]);
+      const marker = L.marker([venue.lat, venue.lng], {
+        icon: createVenuePinIcon(L),
+      });
       marker.bindPopup(popupHtml, { maxWidth: 240 });
       layer.addLayer(marker);
       points.push([venue.lat, venue.lng]);

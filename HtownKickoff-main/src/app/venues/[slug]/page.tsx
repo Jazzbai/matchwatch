@@ -94,7 +94,7 @@ body{background:var(--vp-bg)!important;color:var(--vp-fg)!important;overflow-x:h
 /* tabs */
 .vp-tabs{display:flex;gap:0;border-bottom:1px solid var(--vp-line);padding:0 20px;overflow-x:auto;scrollbar-width:none;}
 .vp-tabs::-webkit-scrollbar{display:none;}
-.vp-tab{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:14px 14px;color:var(--vp-fg-mute);border:none;border-bottom:2px solid transparent;background:none;cursor:pointer;white-space:nowrap;transition:all .14s;margin-bottom:-1px;}
+.vp-tab{border-radius:10px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:14px 14px;color:var(--vp-fg-mute);border:none;border-bottom:2px solid transparent;background:none;cursor:pointer;white-space:nowrap;transition:all .14s;margin-bottom:-1px;}
 .vp-tab:hover{color:var(--vp-fg);}
 .vp-tab.on{color:var(--vp-fg);border-bottom-color:var(--vp-accent);}
 /* layout */
@@ -110,7 +110,7 @@ body{background:var(--vp-bg)!important;color:var(--vp-fg)!important;overflow-x:h
 .vp-amenity{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;padding:6px 10px;border:1px solid var(--vp-line);color:var(--vp-fg-dim);}
 /* cuisine chips */
 .vp-chip-row{display:flex;gap:8px;flex-wrap:wrap;}
-.vp-chip{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 10px;border:1px solid var(--vp-line-2);color:var(--vp-fg-dim);}
+.vp-chip{border-radius:999px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 10px;border:1px solid var(--vp-line-2);color:var(--vp-fg-dim);}
 /* facts — 4 col desktop, 2 col mobile */
 .vp-facts{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border:1px solid var(--vp-line);}
 .vp-fact{padding:14px 10px;background:var(--vp-bg-2);text-align:center;min-width:0;}
@@ -128,7 +128,7 @@ body{background:var(--vp-bg)!important;color:var(--vp-fg)!important;overflow-x:h
 /* menu */
 .vp-menu-cat{margin-bottom:24px;}
 .vp-menu-cat-title{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:14px;color:var(--vp-fg-mute);text-transform:uppercase;letter-spacing:0.08em;padding-bottom:10px;border-bottom:1px solid var(--vp-line);margin-bottom:12px;}
-.vp-menu-item{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--vp-line);}
+.vp-menu-item{border-radius:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--vp-line);}
 .vp-menu-item:last-child{border-bottom:0;}
 .vp-menu-name{font-size:14px;font-weight:500;color:var(--vp-fg);}
 .vp-menu-desc{font-size:12px;color:var(--vp-fg-dim);margin-top:3px;line-height:1.4;}
@@ -144,13 +144,13 @@ body{background:var(--vp-bg)!important;color:var(--vp-fg)!important;overflow-x:h
 .vp-review-text{font-size:13px;color:var(--vp-fg-dim);line-height:1.55;margin:0;word-break:break-word;}
 .vp-owner-reply{margin-top:10px;padding:10px;border-left:2px solid var(--vp-accent);font-size:12px;color:var(--vp-fg-dim);font-style:italic;}
 /* posts */
-.vp-post-card{border:1px solid var(--vp-line);background:var(--vp-bg-1);padding:16px;margin-bottom:12px;}
+.vp-post-card{border-radius:14px;border:1px solid var(--vp-line);background:var(--vp-bg-1);padding:16px;margin-bottom:12px;}
 .vp-post-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
 .vp-post-label{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--vp-accent);}
 .vp-post-date{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--vp-fg-mute);white-space:nowrap;}
 .vp-post-text{font-size:13px;color:var(--vp-fg-dim);line-height:1.55;margin:0;word-break:break-word;}
 /* event cards in rail */
-.vp-event-row{border:1px solid var(--vp-line);background:var(--vp-bg-1);padding:12px;margin-bottom:8px;cursor:pointer;transition:border-color .14s;}
+.vp-event-row{border-radius:12px;border:1px solid var(--vp-line);background:var(--vp-bg-1);padding:12px;margin-bottom:8px;cursor:pointer;transition:border-color .14s;}
 .vp-event-row:hover{border-color:var(--vp-line-2);}
 .vp-event-row.sel{border-color:var(--vp-accent);}
 .vp-event-meta{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--vp-fg-mute);margin-bottom:6px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;}

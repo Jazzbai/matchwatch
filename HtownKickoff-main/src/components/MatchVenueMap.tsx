@@ -52,6 +52,7 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
     const markerLayerRef = useRef<ClusterLayer | null>(null);
     const leafletRef = useRef<ClusterLeafletModule | null>(null);
     const spiderfierRef = useRef<MarkerSpiderfierController | null>(null);
+    const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
     const validVenues = useMemo(
         () =>
@@ -93,10 +94,19 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
             }).addTo(map);
 
             mapRef.current = map;
+
+            // Leaflet renders blank/mis-sized if the container had no size at
+            // init — invalidate on every resize so tiles + pins lay out right.
+            const ro = new ResizeObserver(() => map.invalidateSize());
+            if (mapContainerRef.current) ro.observe(mapContainerRef.current);
+            resizeObserverRef.current = ro;
+            setTimeout(() => map.invalidateSize(), 0);
         })();
 
         return () => {
             mounted = false;
+            resizeObserverRef.current?.disconnect();
+            resizeObserverRef.current = null;
             spiderfierRef.current?.destroy();
             spiderfierRef.current = null;
             if (mapRef.current) {
@@ -123,6 +133,8 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
         const layer = createVenueClusterGroup(L, true);
         markerLayerRef.current = layer;
         layer.addTo(map);
+
+        map.invalidateSize();
 
         if (validVenues.length === 0) {
             map.setView(FALLBACK_CENTER, 11, { animate: false });
