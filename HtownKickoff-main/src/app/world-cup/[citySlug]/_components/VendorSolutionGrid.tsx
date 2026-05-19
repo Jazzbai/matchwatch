@@ -14,7 +14,6 @@ import {
   type LucideProps,
 } from "lucide-react";
 import type { VendorSolution } from "../types";
-import { buildVenueRegisterUrl } from "../types";
 
 const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   Music,
@@ -60,11 +59,8 @@ export function VendorSolutionGrid({ vendors, citySlug, cityName }: Props) {
                 <div className="cc-vs-name">{vendor.title}</div>
                 <div className="cc-vs-desc">{vendor.description}</div>
                 <Link
-                  href={buildVenueRegisterUrl({
-                    citySlug,
-                    serviceSlug: vendor.slug,
-                  })}
-                  className="cc-btn-g cc-btn-sm"
+                  href={`/services?service=${vendor.slug}&city=${citySlug}`}
+                  className="cc-btn-p cc-btn-sm"
                 >
                   Request Service
                 </Link>

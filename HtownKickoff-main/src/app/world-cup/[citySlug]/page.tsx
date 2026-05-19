@@ -34,12 +34,15 @@ export default async function WorldCupCityPage({ params }: Props) {
 
   const matches = CITY_MATCHES.filter((m) => m.citySlug === city.slug);
 
+  const EXCLUDED_VENDORS = new Set(["sound-lighting", "decor-branding", "security-staffing"]);
+  const vendors = VENDOR_SOLUTIONS.filter((v) => !EXCLUDED_VENDORS.has(v.slug));
+
   return (
     <WorldCupCityClient
       city={city}
       matches={matches}
       packages={VENUE_SOLUTION_PACKAGES}
-      vendors={VENDOR_SOLUTIONS}
+      vendors={vendors}
     />
   );
 }
