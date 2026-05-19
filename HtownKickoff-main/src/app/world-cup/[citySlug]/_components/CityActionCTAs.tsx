@@ -2,12 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Building2, Users, Send, Check, X } from "lucide-react";
+import { Building2, Users, Send, Check, X, Music, Camera, Megaphone, Bot, QrCode } from "lucide-react";
 
 interface Props {
   citySlug: string;
   cityName: string;
 }
+
+const SERVICES = [
+  { slug: "dj-entertainment",  label: "DJ & Entertainment",    Icon: Music },
+  { slug: "photography-video", label: "Photography & Video",   Icon: Camera },
+  { slug: "digital-marketing", label: "Digital Marketing",     Icon: Megaphone },
+  { slug: "ai-receptionist",   label: "AI Receptionist / CRM", Icon: Bot },
+  { slug: "qr-campaigns",      label: "QR Code Campaigns",     Icon: QrCode },
+];
 
 const COMPANY_TYPES = [
   "Oil & Gas", "Medical / Healthcare", "Tech / Software", "Finance / Banking",
@@ -22,6 +30,37 @@ const TIME_OPTIONS = [
 ];
 
 const CSS = `
+/* ── Quick Service Request ── */
+.cac-qs { padding: 56px 0; border-top: 1px solid var(--mw-line); }
+.cac-qs-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: flex-start; }
+.cac-qs-left {}
+.cac-qs-badge { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mw-accent); border: 1px solid color-mix(in srgb, var(--mw-accent) 28%, transparent); padding: 3px 10px; border-radius: 999px; margin-bottom: 14px; }
+.cac-qs-title { font-family: 'Space Grotesk', sans-serif; font-weight: 900; font-size: clamp(1.1rem, 2vw, 1.4rem); color: var(--mw-fg); margin: 0 0 8px; letter-spacing: -0.01em; }
+.cac-qs-sub { font-size: .88rem; color: var(--mw-fg-dim); line-height: 1.55; margin: 0 0 20px; }
+.cac-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.cac-pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--mw-line-2); background: var(--mw-bg-2); color: var(--mw-fg-dim); cursor: pointer; transition: all .14s; font-family: inherit; }
+.cac-pill:hover { border-color: var(--mw-accent); color: var(--mw-fg); }
+.cac-pill.on { border-color: var(--mw-accent); background: color-mix(in srgb, var(--mw-accent) 12%, var(--mw-bg-2)); color: var(--mw-accent); font-weight: 700; }
+.cac-pill-icon { opacity: .65; }
+.cac-pill.on .cac-pill-icon { opacity: 1; }
+.cac-qs-form { display: flex; flex-direction: column; gap: 12px; background: var(--mw-bg-1); border: 1px solid var(--mw-line); padding: 24px; border-radius: 14px; }
+.cac-qs-hint { font-size: .8rem; color: var(--mw-fg-mute); margin: 0; line-height: 1.45; }
+.cac-qs-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cac-qs-field { display: flex; flex-direction: column; gap: 5px; }
+.cac-qs-lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mw-fg-mute); font-weight: 700; }
+.cac-qs-inp, .cac-qs-ta { width: 100%; background: var(--mw-bg-2); border: 1px solid var(--mw-line-2); color: var(--mw-fg); font-size: 13px; padding: 9px 12px; border-radius: 9px; transition: border-color .14s; font-family: inherit; }
+.cac-qs-inp::placeholder, .cac-qs-ta::placeholder { color: var(--mw-fg-mute); }
+.cac-qs-inp:focus, .cac-qs-ta:focus { outline: none; border-color: var(--mw-accent); }
+.cac-qs-ta { min-height: 72px; resize: vertical; line-height: 1.5; }
+.cac-qs-submit { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 20px; border-radius: 999px; font-size: 12px; font-weight: 800; font-family: 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; background: var(--mw-accent); color: #0a0b0d; border: none; cursor: pointer; transition: all .15s; width: 100%; }
+.cac-qs-submit:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 8px 20px color-mix(in srgb, var(--mw-accent) 28%, transparent); }
+.cac-qs-submit:disabled { opacity: .6; cursor: not-allowed; }
+.cac-qs-ok { display: flex; align-items: center; gap: 10px; padding: 16px; background: color-mix(in srgb, #22c55e 8%, var(--mw-bg-1)); border: 1px solid color-mix(in srgb, #22c55e 22%, transparent); border-radius: 10px; }
+.cac-qs-ok-icon { width: 36px; height: 36px; background: color-mix(in srgb, #22c55e 14%, transparent); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #22c55e; flex-shrink: 0; }
+.cac-qs-ok-title { font-weight: 700; font-size: .9rem; color: var(--mw-fg); margin: 0 0 2px; font-family: 'Space Grotesk', sans-serif; }
+.cac-qs-ok-body { font-size: .8rem; color: var(--mw-fg-dim); margin: 0; }
+.cac-qs-err { font-size: 12px; color: #ef4444; }
+
 /* ── Split section ── */
 .cac-section { padding: 72px 0; background: var(--mw-bg-1); border-top: 1px solid var(--mw-line); }
 .cac-wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; width: 100%; }
@@ -98,9 +137,122 @@ const CSS = `
 .cac-ok-body { font-size: .85rem; color: #a8a59d; max-width: 300px; line-height: 1.5; margin: 0; }
 
 /* responsive */
+@media (max-width: 860px) { .cac-qs-inner { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .cac-grid { grid-template-columns: 1fr; } }
-@media (max-width: 640px) { .cac-section { padding: 52px 0; } .cac-card { padding: 24px; } .cac-row { grid-template-columns: 1fr; } .cac-mhead, .cac-mbody { padding-left: 16px; padding-right: 16px; } }
+@media (max-width: 640px) { .cac-section { padding: 52px 0; } .cac-card { padding: 24px; } .cac-row { grid-template-columns: 1fr; } .cac-mhead, .cac-mbody { padding-left: 16px; padding-right: 16px; } .cac-qs-row { grid-template-columns: 1fr; } }
 `;
+
+function QuickServiceRequest({ cityName }: { cityName: string }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+
+  function toggle(slug: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug); else next.add(slug);
+      return next;
+    });
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(""); setSubmitting(true);
+    const labels = SERVICES.filter((s) => selected.has(s.slug)).map((s) => s.label).join(", ");
+    const topic = labels || "Venue Service Inquiry";
+    const body = [
+      `City: ${cityName}`,
+      form.phone ? `Phone: ${form.phone}` : null,
+      "", form.message,
+    ].filter(Boolean).join("\n");
+    try {
+      const r = await fetch("/api/v1/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: form.name, email: form.email, topic, message: body }) });
+      if (!r.ok) throw new Error();
+      setSubmitted(true);
+    } catch { setError("Something went wrong — please try again."); }
+    finally { setSubmitting(false); }
+  }
+
+  const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  return (
+    <section className="cac-qs">
+      <div className="cac-wrap">
+        <div className="cac-qs-inner">
+          {/* Left: service selector */}
+          <div className="cac-qs-left">
+            <div className="cac-qs-badge">For bars &amp; restaurants</div>
+            <h2 className="cac-qs-title">Quick Service Request</h2>
+            <p className="cac-qs-sub">
+              Select the services you need for your {cityName} watch party and submit a quick inquiry.
+              We&apos;ll connect you with the right vendor within 24 hours.
+            </p>
+            <div className="cac-pills">
+              {SERVICES.map(({ slug, label, Icon }) => (
+                <button
+                  key={slug}
+                  type="button"
+                  className={`cac-pill${selected.has(slug) ? " on" : ""}`}
+                  onClick={() => toggle(slug)}
+                >
+                  <span className="cac-pill-icon"><Icon size={13} /></span>
+                  {selected.has(slug) && <Check size={11} style={{ flexShrink: 0 }} />}
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: quick form */}
+          <div>
+            {submitted ? (
+              <div className="cac-qs-ok">
+                <div className="cac-qs-ok-icon"><Check size={18} /></div>
+                <div>
+                  <p className="cac-qs-ok-title">Request received!</p>
+                  <p className="cac-qs-ok-body">We&apos;ll be in touch within 24 hours to discuss your event.</p>
+                </div>
+              </div>
+            ) : (
+              <form className="cac-qs-form" onSubmit={handleSubmit}>
+                <p className="cac-qs-hint">
+                  {selected.size > 0
+                    ? `Selected: ${SERVICES.filter((s) => selected.has(s.slug)).map((s) => s.label).join(", ")}`
+                    : "Select one or more services on the left, then fill in your details."}
+                </p>
+                <div className="cac-qs-row">
+                  <div className="cac-qs-field">
+                    <label className="cac-qs-lbl">Your name *</label>
+                    <input className="cac-qs-inp" placeholder="Jane Smith" required value={form.name} onChange={f("name")} />
+                  </div>
+                  <div className="cac-qs-field">
+                    <label className="cac-qs-lbl">Email *</label>
+                    <input className="cac-qs-inp" type="email" placeholder="jane@venue.com" required value={form.email} onChange={f("email")} />
+                  </div>
+                </div>
+                <div className="cac-qs-field">
+                  <label className="cac-qs-lbl">Phone</label>
+                  <input className="cac-qs-inp" type="tel" placeholder="+1 (713) 000-0000" value={form.phone} onChange={f("phone")} />
+                </div>
+                <div className="cac-qs-field">
+                  <label className="cac-qs-lbl">Brief message</label>
+                  <textarea className="cac-qs-ta" placeholder="Venue name, expected attendance, event dates…" value={form.message} onChange={f("message")} />
+                </div>
+                {error && <p className="cac-qs-err">{error}</p>}
+                <button type="submit" className="cac-qs-submit" disabled={submitting}>
+                  <Send size={13} />{submitting ? "Sending…" : "Submit Quick Request"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function CorpModal({ cityName, onClose }: { cityName: string; onClose: () => void }) {
   const today = new Date().toISOString().split("T")[0];
@@ -210,6 +362,8 @@ export function CityActionCTAs({ citySlug, cityName }: Props) {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
+
+      <QuickServiceRequest cityName={cityName} />
 
       <section className="cac-section" id="for-business">
         <div className="cac-wrap">
