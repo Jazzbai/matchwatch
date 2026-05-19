@@ -150,7 +150,7 @@ export default function ForVenuesPage() {
                                 Why venues join
                             </div>
                             {stats.map((s) => (
-                                <div key={s.label} style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                                <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                     <span
                                         style={{
                                             fontFamily: "var(--font-display), sans-serif",

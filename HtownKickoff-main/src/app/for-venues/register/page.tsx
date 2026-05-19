@@ -331,7 +331,7 @@ export default function VenueRegisterPage() {
               { value: "$0", label: "listing cost, forever" },
               { value: "2,400+", label: "venues onboard" },
             ].map((stat) => (
-              <div key={stat.value} style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <div key={stat.value} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{
                   fontFamily: "var(--font-display), monospace",
                   fontWeight: 900, fontSize: 30,

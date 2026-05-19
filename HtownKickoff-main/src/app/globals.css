@@ -169,8 +169,19 @@
 *::before,
 *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+}
+
+/* Global margin/padding reset, scoped to @layer base on purpose: Tailwind's
+   utilities live in @layer utilities, so a layered reset still lets px-*, m-*
+   etc. win. An UNLAYERED reset here would override every Tailwind spacing
+   class (layer order beats specificity) and silently break component padding. */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    margin: 0;
+    padding: 0;
+  }
 }
 
 html {
