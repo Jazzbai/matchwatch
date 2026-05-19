@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/client';
-import { venues, venueEvents, matches, posts, menuCategories, menuItems, follows, reviews, users, venueCustomEvents, teamFanVenues, teams, leagues } from '../db/schema';
+import { venues, venueEvents, matches, posts, menuCategories, menuItems, follows, reviews, users, venueCustomEvents, teamFanVenues, teams, leagues, venuePackages } from '../db/schema';
 import { eq, and, count, desc, asc, sql, ilike, inArray, gte } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, haversineDistance } from '../lib/utils';
 import { venueQuerySchema, paginationSchema } from '@matchwatch/shared';
@@ -665,6 +665,28 @@ venueRoutes.get('/:slugOrId/menu', async (c) => {
     }));
 
     return c.json(apiResponse(menu));
+});
+
+// ─── GET /:slugOrId/packages ────────────────────
+venueRoutes.get('/:slugOrId/packages', async (c) => {
+    const slugOrId = c.req.param('slugOrId');
+
+    const [venue] = await db.select({
+        id: venues.id,
+        approvalStatus: venues.approvalStatus,
+        isActive: venues.isActive,
+    }).from(venues).where(
+        sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
+    ).limit(1);
+    if (!venue || !venue.isActive || venue.approvalStatus !== 'APPROVED') {
+        return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+    }
+
+    const list = await db.select().from(venuePackages)
+        .where(and(eq(venuePackages.venueId, venue.id), eq(venuePackages.isActive, true)))
+        .orderBy(asc(venuePackages.sortOrder), desc(venuePackages.createdAt));
+
+    return c.json(apiResponse(list));
 });
 
 // ─── GET /:slugOrId/reviews ─────────────────────

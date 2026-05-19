@@ -238,6 +238,18 @@ type MenuCategory = {
   }>;
 };
 
+type VenuePackage = {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: string;
+  currency?: string | null;
+  maxPartySize?: number | null;
+  inclusions?: string[] | null;
+  isActive: boolean;
+  sortOrder?: number | null;
+};
+
 type GalleryItem = {
   url: string;
   key: string;
@@ -395,6 +407,7 @@ export default function AdminPage() {
   const [upcomingMatches, setUpcomingMatches] = React.useState<UpcomingMatch[]>([]);
   const [customEvents, setCustomEvents] = React.useState<CustomEvent[]>([]);
   const [menu, setMenu] = React.useState<MenuCategory[]>([]);
+  const [packages, setPackages] = React.useState<VenuePackage[]>([]);
 
   const [showCreateModal, setShowCreateModal] = React.useState(false);
   const [showMatchPicker, setShowMatchPicker] = React.useState(false);
@@ -439,6 +452,13 @@ export default function AdminPage() {
   const [newMenuItemName, setNewMenuItemName] = React.useState("");
   const [newMenuItemDescription, setNewMenuItemDescription] = React.useState("");
   const [newMenuItemPrice, setNewMenuItemPrice] = React.useState("");
+  const [pkgName, setPkgName] = React.useState("");
+  const [pkgDescription, setPkgDescription] = React.useState("");
+  const [pkgPrice, setPkgPrice] = React.useState("");
+  const [pkgMaxParty, setPkgMaxParty] = React.useState("");
+  const [pkgInclusions, setPkgInclusions] = React.useState("");
+  const [savingPackage, setSavingPackage] = React.useState(false);
+  const [editingPackageId, setEditingPackageId] = React.useState<string | null>(null);
 
   const [venueName, setVenueName] = React.useState("");
   const [venueDescription, setVenueDescription] = React.useState("");
@@ -708,6 +728,7 @@ export default function AdminPage() {
         setBookingsByEvent([]);
         setCustomEvents([]);
         setMenu([]);
+        setPackages([]);
         setUpcomingMatches([]);
         setPromotedEventId(null);
         setVenueName("");
@@ -746,6 +767,7 @@ export default function AdminPage() {
         upcomingMatchesRes,
         customEventsRes,
         menuRes,
+        packagesRes,
       ] = await Promise.all([
         api.get<DashboardOverview>(dashboardPath("/dashboard", effectiveVenueId)),
         api.get<OwnerEvent[]>(dashboardPath("/dashboard/events", effectiveVenueId)),
@@ -754,6 +776,7 @@ export default function AdminPage() {
         api.get<Record<string, UpcomingMatch[]>>("/matches/upcoming"),
         api.get<CustomEvent[]>(dashboardPath("/dashboard/custom-events", effectiveVenueId)),
         api.get<MenuCategory[]>(dashboardPath("/dashboard/menu", effectiveVenueId)),
+        api.get<VenuePackage[]>(dashboardPath("/dashboard/packages", effectiveVenueId)),
       ]);
 
       setOverview(overviewRes.data);
@@ -761,6 +784,7 @@ export default function AdminPage() {
       setBookingsByEvent(bookingsByEventRes.data || []);
       setCustomEvents(customEventsRes.data || []);
       setMenu(menuRes.data || []);
+      setPackages(packagesRes.data || []);
 
       const profile = venueRes.data || {};
       setVenueName(profile.name || "");
@@ -1134,6 +1158,75 @@ export default function AdminPage() {
     }
   };
 
+  const cancelEditPackage = () => {
+    setEditingPackageId(null);
+    setPkgName("");
+    setPkgDescription("");
+    setPkgPrice("");
+    setPkgMaxParty("");
+    setPkgInclusions("");
+  };
+
+  const startEditPackage = (pkg: VenuePackage) => {
+    setEditingPackageId(pkg.id);
+    setPkgName(pkg.name);
+    setPkgDescription(pkg.description || "");
+    setPkgPrice(String(pkg.price ?? ""));
+    setPkgMaxParty(pkg.maxPartySize ? String(pkg.maxPartySize) : "");
+    setPkgInclusions(Array.isArray(pkg.inclusions) ? pkg.inclusions.join("\n") : "");
+  };
+
+  const savePackage = async () => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+    if (!pkgName.trim() || !pkgPrice.trim()) return;
+
+    setSavingPackage(true);
+    setError(null);
+    try {
+      const payload = {
+        name: pkgName.trim(),
+        description: pkgDescription.trim() || null,
+        price: Number(pkgPrice),
+        maxPartySize: pkgMaxParty.trim() ? Number(pkgMaxParty) : null,
+        inclusions: pkgInclusions.split("\n").map((s) => s.trim()).filter(Boolean),
+      };
+      if (editingPackageId) {
+        await api.put(dashboardPath(`/dashboard/packages/${editingPackageId}`), payload);
+      } else {
+        await api.post(dashboardPath("/dashboard/packages"), payload);
+      }
+      cancelEditPackage();
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save package");
+    } finally {
+      setSavingPackage(false);
+    }
+  };
+
+  const togglePackageActive = async (pkg: VenuePackage) => {
+    setError(null);
+    try {
+      await api.put(dashboardPath(`/dashboard/packages/${pkg.id}`), { isActive: !pkg.isActive });
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update package");
+    }
+  };
+
+  const deletePackage = async (id: string) => {
+    setError(null);
+    try {
+      await api.delete(dashboardPath(`/dashboard/packages/${id}`));
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to delete package");
+    }
+  };
+
   const onUploadCover = async (file: File) => {
     setUploadingCover(true);
     setError(null);
@@ -1448,6 +1541,7 @@ export default function AdminPage() {
     { id: "events", label: "Events" },
     { id: "bookings", label: "Reservations" },
     { id: "menu", label: "Menu" },
+    { id: "packages", label: "Packages" },
     { id: "settings", label: "Venue Settings" },
   ];
 
@@ -2002,6 +2096,101 @@ export default function AdminPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TAB: Packages ═══ */}
+          {activeTab === "packages" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>
+                    {editingPackageId ? "Edit watch-party package" : "Create a watch-party package"}
+                  </h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+                    Bookable bundles fans reserve for a match — e.g. a table for 8 with food and a reserved screen.
+                  </p>
+                </div>
+                <div style={cardContentStyle}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 16 }}>
+                    <div>
+                      <label style={labelStyle}>Package name</label>
+                      <input value={pkgName} onChange={(e) => setPkgName(e.target.value)} placeholder="Derby Day Booth" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Price (USD)</label>
+                      <input type="number" min={0} step="0.01" value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="199.00" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Max party size (optional)</label>
+                      <input type="number" min={1} value={pkgMaxParty} onChange={(e) => setPkgMaxParty(e.target.value)} placeholder="8" style={inputStyle} />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={labelStyle}>Description (optional)</label>
+                    <input value={pkgDescription} onChange={(e) => setPkgDescription(e.target.value)} placeholder="Reserved booth with the best view of the main screen" style={inputStyle} />
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={labelStyle}>What&apos;s included — one per line</label>
+                    <textarea
+                      value={pkgInclusions}
+                      onChange={(e) => setPkgInclusions(e.target.value)}
+                      placeholder={"Reserved booth\nFood platter for the table\nTwo drink rounds\nGuaranteed screen view"}
+                      rows={4}
+                      style={{ ...inputStyle, resize: "vertical" }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={btnPrimary(savingPackage || !pkgName.trim() || !pkgPrice.trim())} disabled={savingPackage || !pkgName.trim() || !pkgPrice.trim()} onClick={() => void savePackage()}>
+                      {savingPackage ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Plus size={14} />}
+                      {editingPackageId ? "Save Changes" : "Add Package"}
+                    </button>
+                    {editingPackageId && (
+                      <button style={btnOutline(savingPackage)} disabled={savingPackage} onClick={cancelEditPackage}>Cancel</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Your packages</h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Live packages appear on your public venue page for fans to book.</p>
+                </div>
+                <div style={cardContentStyle}>
+                  {packages.length === 0 ? (
+                    <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No packages yet. Create your first one above.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {packages.map((pkg) => (
+                        <div key={pkg.id} style={{ ...eventRowStyle, marginBottom: 0, opacity: pkg.isActive ? 1 : 0.6 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)" }}>{pkg.name}</span>
+                                <span style={badgeStyle}>${Number(pkg.price).toFixed(2)}</span>
+                                {pkg.maxPartySize ? <span style={badgeStyle}>Up to {pkg.maxPartySize}</span> : null}
+                                <span style={{ ...badgeStyle, color: pkg.isActive ? "#16a34a" : "var(--muted-foreground)" }}>{pkg.isActive ? "Live" : "Hidden"}</span>
+                              </div>
+                              {pkg.description && <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)" }}>{pkg.description}</p>}
+                              {Array.isArray(pkg.inclusions) && pkg.inclusions.length > 0 && (
+                                <ul style={{ marginTop: 6, paddingLeft: 16, fontSize: 12, color: "var(--muted-foreground)" }}>
+                                  {pkg.inclusions.map((inc, i) => <li key={i}>{inc}</li>)}
+                                </ul>
+                              )}
+                            </div>
+                            <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                              <button style={btnOutline(false)} onClick={() => startEditPackage(pkg)}>Edit</button>
+                              <button style={btnOutline(false)} onClick={() => void togglePackageActive(pkg)}>{pkg.isActive ? "Hide" : "Publish"}</button>
+                              <button style={btnDestructive(false)} onClick={() => void deletePackage(pkg.id)}>Delete</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

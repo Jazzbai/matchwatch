@@ -3,6 +3,7 @@ import { db } from '../db/client';
 import {
     venues, venueEvents, bookings, matches, posts, menuCategories, menuItems,
     follows, notifications, auditLogs, users, venueCustomEvents, venueClaims, venueAttributes,
+    venuePackages,
 } from '../db/schema';
 import { eq, and, count, desc, asc, sql, gte, lt } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, generateUniqueSlug } from '../lib/utils';
@@ -1790,6 +1791,116 @@ dashboardRoutes.delete('/menu/items/:id', async (c) => {
         .where(and(eq(menuItems.id, itemId), eq(menuItems.venueId, venue.id)));
     await db.update(venues).set({ menuSource: 'MANUAL', updatedAt: new Date() }).where(eq(venues.id, venue.id));
     return c.json(apiResponse({ message: 'Menu item deleted' }));
+});
+
+// ─── Venue Packages (bookable watch-party bundles) ──
+
+const venuePackageSchema = z.object({
+    name: z.string().min(1).max(150),
+    description: z.string().max(2000).nullable().optional(),
+    price: z.number().nonnegative(),
+    currency: z.string().length(3).optional(),
+    maxPartySize: z.number().int().positive().max(500).nullable().optional(),
+    inclusions: z.array(z.string().min(1).max(200)).max(20).optional(),
+    imageUrl: z.string().url().max(500).nullable().optional(),
+    isActive: z.boolean().optional(),
+    sortOrder: z.number().int().optional(),
+});
+
+dashboardRoutes.get('/packages', async (c) => {
+    const user = c.get('user');
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
+    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+
+    const list = await db.select().from(venuePackages)
+        .where(eq(venuePackages.venueId, venue.id))
+        .orderBy(asc(venuePackages.sortOrder), desc(venuePackages.createdAt));
+
+    return c.json(apiResponse(list));
+});
+
+dashboardRoutes.post('/packages', async (c) => {
+    const user = c.get('user');
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
+    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+
+    const body = await c.req.json();
+    const parsed = venuePackageSchema.safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [pkg] = await db.insert(venuePackages).values({
+        venueId: venue.id,
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+        price: String(parsed.data.price),
+        currency: parsed.data.currency ?? 'USD',
+        maxPartySize: parsed.data.maxPartySize ?? null,
+        inclusions: parsed.data.inclusions ?? [],
+        imageUrl: parsed.data.imageUrl ?? null,
+        isActive: parsed.data.isActive ?? true,
+        sortOrder: parsed.data.sortOrder ?? 0,
+    }).returning();
+
+    return c.json(apiResponse(pkg), 201);
+});
+
+async function updateVenuePackageHandler(c: any) {
+    const user = c.get('user');
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
+    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+
+    const packageId = c.req.param('id');
+    const body = await c.req.json();
+    const parsed = venuePackageSchema.partial().safeParse(body);
+    if (!parsed.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+
+    const [existing] = await db.select().from(venuePackages)
+        .where(and(eq(venuePackages.id, packageId), eq(venuePackages.venueId, venue.id)))
+        .limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Package not found'), 404);
+
+    const d = parsed.data;
+    await db.update(venuePackages).set({
+        ...(d.name !== undefined ? { name: d.name } : {}),
+        ...(d.description !== undefined ? { description: d.description ?? null } : {}),
+        ...(d.price !== undefined ? { price: String(d.price) } : {}),
+        ...(d.currency !== undefined ? { currency: d.currency } : {}),
+        ...(d.maxPartySize !== undefined ? { maxPartySize: d.maxPartySize ?? null } : {}),
+        ...(d.inclusions !== undefined ? { inclusions: d.inclusions } : {}),
+        ...(d.imageUrl !== undefined ? { imageUrl: d.imageUrl ?? null } : {}),
+        ...(d.isActive !== undefined ? { isActive: d.isActive } : {}),
+        ...(d.sortOrder !== undefined ? { sortOrder: d.sortOrder } : {}),
+        updatedAt: new Date(),
+    }).where(eq(venuePackages.id, packageId));
+
+    return c.json(apiResponse({ message: 'Package updated' }));
+}
+
+dashboardRoutes.put('/packages/:id', updateVenuePackageHandler);
+dashboardRoutes.patch('/packages/:id', updateVenuePackageHandler);
+
+dashboardRoutes.delete('/packages/:id', async (c) => {
+    const user = c.get('user');
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
+    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+
+    const packageId = c.req.param('id');
+    const [existing] = await db.select().from(venuePackages)
+        .where(and(eq(venuePackages.id, packageId), eq(venuePackages.venueId, venue.id)))
+        .limit(1);
+    if (!existing) return c.json(apiError('NOT_FOUND', 'Package not found'), 404);
+
+    // If any booking references this package, deactivate instead of hard-deleting
+    const [used] = await db.select({ id: bookings.id }).from(bookings)
+        .where(eq(bookings.packageId, packageId)).limit(1);
+    if (used) {
+        await db.update(venuePackages).set({ isActive: false, updatedAt: new Date() })
+            .where(eq(venuePackages.id, packageId));
+        return c.json(apiResponse({ message: 'Package has bookings — deactivated instead of deleted' }));
+    }
+
+    await db.delete(venuePackages).where(eq(venuePackages.id, packageId));
+    return c.json(apiResponse({ message: 'Package deleted' }));
 });
 
 // ─── Notify Followers ───────────────────────────

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/client';
-import { bookings, venueEvents, venues, matches, users, notifications, auditLogs, waitlist } from '../db/schema';
+import { bookings, venueEvents, venues, matches, users, notifications, auditLogs, waitlist, venuePackages } from '../db/schema';
 import { eq, and, desc, count, sql, asc } from 'drizzle-orm';
 import { apiResponse, apiError, generateBookingReference, paginationMeta, paginationOffset } from '../lib/utils';
 import { createBookingSchema, bookingQuerySchema } from '@matchwatch/shared';
@@ -21,6 +21,10 @@ bookingRoutes.post('/', async (c) => {
     }
 
     const { venueEventId, partySize, specialRequests } = parsed.data;
+    // Optional party-package selection (parsed outside the shared schema)
+    const requestedPackageId = typeof body?.packageId === 'string' && body.packageId.trim().length > 0
+        ? body.packageId.trim()
+        : null;
 
     // Get venue event with venue info
     const [event] = await db.select({
@@ -41,6 +45,25 @@ bookingRoutes.post('/', async (c) => {
 
     if (!event) {
         return c.json(apiError('NOT_FOUND', 'Event not found or inactive'), 404);
+    }
+
+    // Validate optional party-package selection
+    let resolvedPackageId: string | null = null;
+    if (requestedPackageId) {
+        const [pkg] = await db.select().from(venuePackages)
+            .where(and(
+                eq(venuePackages.id, requestedPackageId),
+                eq(venuePackages.venueId, event.venue.id),
+                eq(venuePackages.isActive, true),
+            ))
+            .limit(1);
+        if (!pkg) {
+            return c.json(apiError('NOT_FOUND', 'Selected package is not available at this venue'), 404);
+        }
+        if (pkg.maxPartySize && partySize > pkg.maxPartySize) {
+            return c.json(apiError('VALIDATION_ERROR', `This package allows up to ${pkg.maxPartySize} guests`), 400);
+        }
+        resolvedPackageId = pkg.id;
     }
 
     // Check if match hasn't already started
@@ -104,6 +127,7 @@ bookingRoutes.post('/', async (c) => {
         partySize,
         specialRequests,
         status,
+        packageId: resolvedPackageId,
     }).returning();
 
     // Update confirmed count if confirmed

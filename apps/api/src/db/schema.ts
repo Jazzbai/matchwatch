@@ -793,6 +793,8 @@ export const bookings = pgTable('bookings', {
     reminderSentAt: timestamp('reminder_sent_at'),
     checkInAt: timestamp('check_in_at'),
     metadata: jsonb('metadata').default({}),
+    packageId: uuid('package_id').references(() => venuePackages.id),
+    paymentStatus: varchar('payment_status', { length: 20 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => [
@@ -838,6 +840,26 @@ export const menuItems = pgTable('menu_items', {
 }, (table) => [
     index('menu_items_cat_idx').on(table.categoryId),
     index('menu_items_venue_idx').on(table.venueId),
+]);
+
+// ─── Venue Packages (bookable watch-party bundles) ──
+
+export const venuePackages = pgTable('venue_packages', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    venueId: uuid('venue_id').notNull().references(() => venues.id),
+    name: varchar('name', { length: 150 }).notNull(),
+    description: text('description'),
+    price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).default('USD'),
+    maxPartySize: integer('max_party_size'),
+    inclusions: jsonb('inclusions').$type<string[]>().default([]),
+    imageUrl: varchar('image_url'),
+    isActive: boolean('is_active').default(true).notNull(),
+    sortOrder: integer('sort_order').default(0),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('venue_packages_venue_idx').on(table.venueId),
 ]);
 
 // ─── Posts ───────────────────────────────────────

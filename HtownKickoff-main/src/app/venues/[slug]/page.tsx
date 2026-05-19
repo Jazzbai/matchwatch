@@ -307,6 +307,7 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
     const [menu, setMenu] = useState<VenueMenuCategory[]>([]);
     const [menuLoading, setMenuLoading] = useState(false);
     const [menuError, setMenuError] = useState<string | null>(null);
+    const [packages, setPackages] = useState<Array<{ id: string; name: string; description?: string | null; price: string; currency?: string | null; maxPartySize?: number | null; inclusions?: string[] | null }>>([]);
     const [localMatchEvents, setLocalMatchEvents] = useState<(ReturnType<typeof getVenueMatchEvents>[number])[]>([]);
     const [followBusy, setFollowBusy] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -339,12 +340,14 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
             setMenuLoading(true);
             setMenuError(null);
             setMenu([]);
+            setPackages([]);
             setLocalMatchEvents([]);
             setFanTeams([]);
-            const [venueResult, menuResult, eventsResult] = await Promise.allSettled([
+            const [venueResult, menuResult, eventsResult, packagesResult] = await Promise.allSettled([
                 api.get<{ followerCount: number; isFollowing: boolean; fanTeams?: VenueFanTeam[] }>(`/venues/${venueSlugOrId}`),
                 api.get<VenueMenuCategory[]>(`/venues/${venueSlugOrId}/menu`),
                 api.get<any[]>(`/venues/${venueSlugOrId}/events?limit=20`),
+                api.get<Array<{ id: string; name: string; description?: string | null; price: string; currency?: string | null; maxPartySize?: number | null; inclusions?: string[] | null }>>(`/venues/${venueSlugOrId}/packages`),
             ]);
             if (!active) return;
             if (venueResult.status === "fulfilled") {
@@ -356,6 +359,9 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
                 setMenu(menuResult.value.data || []);
             } else {
                 setMenuError(menuResult.reason instanceof Error ? menuResult.reason.message : "Failed to load menu");
+            }
+            if (packagesResult.status === "fulfilled") {
+                setPackages(packagesResult.value.data || []);
             }
             if (eventsResult.status === "fulfilled") {
                 const rawEvents: any[] = eventsResult.value.data || [];
@@ -623,6 +629,31 @@ function VenueProfilePageContent({ params }: { params: Promise<{ slug: string }>
                                     <h2 className="vp-panel-title">About</h2>
                                     <p className="vp-panel-sub">{venue.description || venue.shortDescription || "No description available."}</p>
                                 </div>
+
+                                {packages.length > 0 && (
+                                    <div className="vp-panel" style={{ marginTop: 16 }}>
+                                        <h2 className="vp-panel-title">Watch-Party Packages</h2>
+                                        <p className="vp-panel-sub" style={{ marginBottom: 12 }}>Bookable bundles for your group on match day.</p>
+                                        <div style={{ display: "grid", gap: 10 }}>
+                                            {packages.map((pkg) => (
+                                                <div key={pkg.id} style={{ border: "1px solid var(--vp-line)", borderRadius: 12, padding: 14 }}>
+                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+                                                        <span style={{ fontWeight: 700, color: "var(--vp-fg)" }}>{pkg.name}</span>
+                                                        <span style={{ fontWeight: 700, color: "var(--vp-accent)", whiteSpace: "nowrap" }}>
+                                                            ${Number(pkg.price).toFixed(2)}{pkg.maxPartySize ? ` · up to ${pkg.maxPartySize}` : ""}
+                                                        </span>
+                                                    </div>
+                                                    {pkg.description && <p style={{ marginTop: 4, fontSize: 13, color: "var(--vp-fg-dim)" }}>{pkg.description}</p>}
+                                                    {Array.isArray(pkg.inclusions) && pkg.inclusions.length > 0 && (
+                                                        <ul style={{ marginTop: 8, paddingLeft: 18, fontSize: 12.5, color: "var(--vp-fg-dim)", display: "grid", gap: 2 }}>
+                                                            {pkg.inclusions.map((inc, i) => <li key={i}>{inc}</li>)}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="vp-facts">
                                     <div className="vp-fact"><span className="vp-fact-val">{venue.capacity || "—"}</span><span className="vp-fact-lbl">Capacity</span></div>
