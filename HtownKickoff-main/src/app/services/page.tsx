@@ -46,15 +46,17 @@ body{background:#0a0b0d!important;color:#f1ece4!important;overflow-x:hidden;}
 .sv-wrap{max-width:1200px;margin:0 auto;padding:0 24px;width:100%;}
 
 /* hero */
-.sv-hero{position:relative;overflow:hidden;padding:calc(var(--site-nav-height,64px) + 56px) 0 56px;border-bottom:1px solid #23272f;background:linear-gradient(160deg,#0a0b0d 0%,#0d1520 50%,#1a0a05 100%);}
-.sv-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 65% 50%,color-mix(in srgb,oklch(0.72 0.19 28) 10%,transparent),transparent 70%);pointer-events:none;}
+.sv-hero{position:relative;overflow:hidden;padding:calc(var(--site-nav-height,64px) + 72px) 0 72px;border-bottom:1px solid #23272f;}
+.sv-hero-bg{position:absolute;inset:0;background-image:url('/assets/services-hero.jpg'),url('/match-hero.webp');background-size:cover;background-position:center 30%;filter:brightness(.38) saturate(1.1);}
+.sv-hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,11,13,.45) 0%,rgba(10,11,13,.62) 60%,rgba(10,11,13,.92) 100%);}
+.sv-hero-overlay2{position:absolute;inset:0;background:radial-gradient(ellipse 80% 70% at 50% 110%,color-mix(in srgb,oklch(0.72 0.19 28) 18%,transparent),transparent 70%);}
 .sv-hero-inner{position:relative;z-index:2;max-width:1200px;margin:0 auto;padding:0 24px;text-align:center;}
-.sv-kicker{display:inline-flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:oklch(0.72 0.19 28);border:1px solid color-mix(in srgb,oklch(0.72 0.19 28) 30%,transparent);padding:5px 12px;border-radius:999px;margin-bottom:20px;}
+.sv-kicker{display:inline-flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:oklch(0.72 0.19 28);border:1px solid color-mix(in srgb,oklch(0.72 0.19 28) 40%,transparent);padding:5px 14px;border-radius:999px;margin-bottom:24px;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);}
 .sv-kicker .bd{width:6px;height:6px;background:oklch(0.72 0.19 28);border-radius:50%;animation:svbd 1.4s ease-in-out infinite;}
 @keyframes svbd{0%,100%{opacity:.4;}50%{opacity:1;}}
-.sv-hero-h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.8rem,4vw,3rem);font-weight:900;line-height:1.05;letter-spacing:-0.02em;margin:0 0 14px;color:#f1ece4;}
+.sv-hero-h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(2rem,5vw,3.6rem);font-weight:900;line-height:1.02;letter-spacing:-0.025em;margin:0 0 16px;color:#fff;text-shadow:0 2px 24px rgba(0,0,0,.5);}
 .sv-hero-h1 b{color:oklch(0.72 0.19 28);}
-.sv-hero-sub{font-size:1rem;color:#a8a59d;line-height:1.6;max-width:540px;margin:0 auto 36px;}
+.sv-hero-sub{font-size:1.05rem;color:rgba(241,236,228,.82);line-height:1.6;max-width:560px;margin:0 auto 40px;text-shadow:0 1px 8px rgba(0,0,0,.4);}
 
 /* mode tabs */
 .sv-tabs{display:inline-flex;background:#101217;border:1px solid #23272f;border-radius:14px;padding:4px;gap:4px;margin-bottom:0;}
@@ -571,6 +573,9 @@ function ServicesInner() {
     <div className="sv-page">
       {/* Hero */}
       <section className="sv-hero">
+        <div className="sv-hero-bg" aria-hidden="true" />
+        <div className="sv-hero-overlay" aria-hidden="true" />
+        <div className="sv-hero-overlay2" aria-hidden="true" />
         <div className="sv-hero-inner">
           <div className="sv-kicker"><span className="bd" />FIFA World Cup 2026 · Event Services</div>
           <h1 className="sv-hero-h1">World Cup <b>Watch Party</b> Services</h1>
