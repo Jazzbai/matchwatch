@@ -8,8 +8,7 @@ import { CityVenueGrid } from "./CityVenueGrid";
 import { CityVenueMap } from "./CityVenueMap";
 import { VenueSolutionPackages } from "./VenueSolutionPackages";
 import { VendorSolutionGrid } from "./VendorSolutionGrid";
-import { FeaturedVenueCTA } from "./FeaturedVenueCTA";
-import { CitySponsorCTA } from "./CitySponsorCTA";
+import { CityActionCTAs } from "./CityActionCTAs";
 import { FloatingNav } from "@/components/AppShell";
 import { useData, type Venue } from "@/lib/data-provider";
 
@@ -45,7 +44,8 @@ interface Props {
 }
 
 const CSS = `
-  :root {
+  /* Dark-by-default theme vars — scoped to .cc-page so they don't leak */
+  .cc-page {
     --mw-bg: #0a0b0d;
     --mw-bg-1: #101217;
     --mw-bg-2: #14171d;
@@ -56,6 +56,20 @@ const CSS = `
     --mw-fg-dim: #a8a59d;
     --mw-fg-mute: #6c6a64;
     --mw-accent: oklch(0.72 0.19 28);
+    color-scheme: dark;
+  }
+  /* Light mode overrides — applied when ThemeProvider adds .light to <html> */
+  .light .cc-page {
+    --mw-bg: #f4f5f7;
+    --mw-bg-1: #ffffff;
+    --mw-bg-2: #eef0f3;
+    --mw-bg-3: #e4e7ec;
+    --mw-line: #d0d5dd;
+    --mw-line-2: #b8bec9;
+    --mw-fg: #111317;
+    --mw-fg-dim: #3d4350;
+    --mw-fg-mute: #717788;
+    color-scheme: light;
   }
 
   /* ── Page ── */
@@ -79,8 +93,14 @@ const CSS = `
   .cc-btn-sm { padding: 7px 14px; font-size: 12px; }
   .cc-btn-full { width: 100%; }
 
-  /* ── Hero ── */
-  .cc-hero { position: relative; overflow: hidden; min-height: 520px; display: flex; align-items: center; background: linear-gradient(160deg, var(--mw-bg) 0%, #0d1520 40%, #1a0a05 100%); border-bottom: 1px solid var(--mw-line); padding-top: var(--site-nav-height, 64px); }
+  /* ── Hero — always dark regardless of theme ── */
+  .cc-hero { position: relative; overflow: hidden; min-height: 520px; display: flex; align-items: center; background: linear-gradient(160deg, #0a0b0d 0%, #0d1520 40%, #1a0a05 100%); border-bottom: 1px solid #23272f; padding-top: var(--site-nav-height, 64px); }
+  .cc-hero .cc-h1 { color: #f1ece4; }
+  .cc-hero .cc-sub { color: #a8a59d; }
+  .cc-hero .cc-kicker { color: oklch(0.72 0.19 28); border-color: color-mix(in srgb, oklch(0.72 0.19 28) 30%, transparent); }
+  .cc-hero .cc-stats { border-color: #23272f; }
+  .cc-hero .cc-sv { color: #f1ece4; }
+  .cc-hero .cc-sl { color: #6c6a64; }
   .cc-hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 70% 50%, color-mix(in srgb, var(--mw-accent) 10%, transparent), transparent 70%), radial-gradient(ellipse 60% 80% at 20% 30%, rgba(0, 80, 160, 0.12), transparent 70%); pointer-events: none; }
   .cc-hero-inner { position: relative; z-index: 2; max-width: 1080px; margin: 0 auto; padding: 80px 24px 56px; width: 100%; display: grid; grid-template-columns: 1fr 260px; gap: 48px; align-items: center; }
   .cc-hero-text { display: flex; flex-direction: column; }
@@ -131,8 +151,8 @@ const CSS = `
   .cc-empty-title { font-size: 1.1rem; font-weight: 800; color: var(--mw-fg); font-family: "Space Grotesk", sans-serif; }
   .cc-empty-body { font-size: 0.9rem; color: var(--mw-fg-dim); max-width: 360px; line-height: 1.5; }
 
-  /* ── Map ── */
-  .cc-map-outer { border: 1px solid var(--mw-line); overflow: hidden; position: relative; }
+  /* ── Map — isolation contains Leaflet's high z-indexes (200–600) ── */
+  .cc-map-outer { border: 1px solid var(--mw-line); overflow: hidden; position: relative; isolation: isolate; z-index: 0; }
 
   /* ── Packages ── */
   .cc-pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -243,9 +263,7 @@ export function WorldCupCityClient({ city, matches, packages, vendors }: Props) 
           cityName={city.name}
         />
 
-        <FeaturedVenueCTA citySlug={city.slug} cityName={city.name} />
-
-        <CitySponsorCTA citySlug={city.slug} cityName={city.name} />
+        <CityActionCTAs citySlug={city.slug} cityName={city.name} />
       </main>
     </>
   );
