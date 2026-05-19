@@ -1,8 +1,7 @@
 import React from "react";
 import Link from "next/link";
-import { CheckCircle, Users, Monitor, Music, MapPin, ExternalLink } from "lucide-react";
+import { CheckCircle, MapPin, CalendarCheck } from "lucide-react";
 import type { CityVenue } from "../types";
-import { buildVenueRegisterUrl } from "../types";
 
 interface Props {
   venues: CityVenue[];
@@ -59,20 +58,10 @@ function VenueCard({ venue, citySlug }: { venue: CityVenue; citySlug: string }) 
       <div className="cc-vc-btns">
         <Link
           href={`/venues/${venue.slug}`}
-          className="cc-btn-g cc-btn-sm"
+          className="cc-btn-p cc-btn-sm cc-btn-full"
         >
-          <ExternalLink size={12} />
-          View Venue
-        </Link>
-        <Link
-          href={buildVenueRegisterUrl({
-            citySlug,
-            venueSlug: venue.slug,
-            type: "claim",
-          })}
-          className="cc-btn-p cc-btn-sm"
-        >
-          Claim / Register
+          <CalendarCheck size={13} />
+          Book Watch Party
         </Link>
       </div>
     </div>
@@ -92,7 +81,7 @@ export function CityVenueGrid({ venues, citySlug, cityName }: Props) {
             </p>
           </div>
           <Link
-            href={buildVenueRegisterUrl({ citySlug })}
+            href="/for-venues/register"
             className="cc-link-sm"
           >
             + List Your Venue
@@ -113,7 +102,7 @@ export function CityVenueGrid({ venues, citySlug, cityName }: Props) {
               Be the first venue in {cityName} to get listed on MatchWatch.
             </p>
             <Link
-              href={buildVenueRegisterUrl({ citySlug })}
+              href="/for-venues/register"
               className="cc-btn-p"
             >
               Register Your Venue

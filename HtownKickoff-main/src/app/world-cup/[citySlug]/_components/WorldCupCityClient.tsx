@@ -75,18 +75,18 @@ const CSS = `
   .cc-hero-emblem img { width: min(220px, 100%); height: auto; display: block; filter: drop-shadow(0 0 24px rgba(212, 160, 20, 0.35)) drop-shadow(0 0 56px rgba(212, 140, 10, 0.18)); }
 
   /* ── Match Cards ── */
-  .cc-match-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  .cc-match-card { background: var(--mw-bg-1); border: 1px solid var(--mw-line); padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: border-color 0.15s, background 0.15s; }
-  .cc-match-card:hover { border-color: var(--mw-line-2); background: var(--mw-bg-2); }
+  .cc-match-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .cc-match-card { background: color-mix(in srgb, var(--mw-accent) 7%, var(--mw-bg-1)); border: 1px solid color-mix(in srgb, var(--mw-accent) 22%, var(--mw-line)); border-left: 3px solid var(--mw-accent); padding: 18px; display: flex; flex-direction: column; gap: 14px; transition: border-color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s; }
+  .cc-match-card:hover { border-color: color-mix(in srgb, var(--mw-accent) 55%, var(--mw-line)); background: color-mix(in srgb, var(--mw-accent) 11%, var(--mw-bg-1)); transform: translateY(-2px); box-shadow: 0 8px 28px color-mix(in srgb, var(--mw-accent) 15%, transparent); }
   .cc-match-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-  .cc-stage { font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mw-accent); background: color-mix(in srgb, var(--mw-accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--mw-accent) 20%, transparent); padding: 3px 7px; white-space: nowrap; }
-  .cc-match-dt { font-size: 10px; color: var(--mw-fg-mute); font-family: "JetBrains Mono", monospace; text-align: right; line-height: 1.5; }
-  .cc-match-body { display: flex; flex-direction: column; gap: 8px; }
+  .cc-stage { font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mw-accent); background: color-mix(in srgb, var(--mw-accent) 15%, transparent); border: 1px solid color-mix(in srgb, var(--mw-accent) 28%, transparent); padding: 3px 8px; white-space: nowrap; }
+  .cc-match-dt { font-size: 10px; color: var(--mw-fg-dim); font-family: "JetBrains Mono", monospace; text-align: right; line-height: 1.5; font-weight: 700; }
+  .cc-match-body { display: flex; flex-direction: column; gap: 10px; }
   .cc-match-team { display: flex; align-items: center; gap: 8px; }
-  .cc-match-tname { font-size: 14px; font-weight: 700; color: var(--mw-fg); font-family: "Space Grotesk", sans-serif; }
+  .cc-match-tname { font-size: 15px; font-weight: 800; color: var(--mw-fg); font-family: "Space Grotesk", sans-serif; }
   .cc-match-tbd { font-size: 13px; font-weight: 600; color: var(--mw-fg-mute); font-style: italic; }
   .cc-match-vs { font-size: 9px; font-weight: 700; color: var(--mw-fg-mute); text-transform: uppercase; letter-spacing: 0.1em; font-family: "JetBrains Mono", monospace; padding-left: 32px; }
-  .cc-match-stadium { font-size: 10px; color: var(--mw-fg-mute); }
+  .cc-match-stadium { font-size: 10px; color: var(--mw-fg-dim); font-weight: 600; }
 
   /* ── Venue Grid ── */
   .cc-vg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
