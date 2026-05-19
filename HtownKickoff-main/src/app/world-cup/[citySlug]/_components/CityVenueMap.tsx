@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import {
   loadLeafletWithClusters,
   createVenuePinIcon,
@@ -42,6 +42,7 @@ export function CityVenueMap({
   const layerRef = useRef<ClusterLayer | null>(null);
   const leafletRef = useRef<ClusterLeafletModule | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   const validVenues = useMemo(
     () =>
@@ -91,6 +92,10 @@ export function CityVenueMap({
       if (containerRef.current) ro.observe(containerRef.current);
       resizeObserverRef.current = ro;
       setTimeout(() => map.invalidateSize(), 0);
+
+      // Refs don't trigger re-renders, so the marker effect would never re-run
+      // once the async map init finishes — flag readiness to re-run it.
+      if (mounted) setMapReady(true);
     })();
 
     return () => {
@@ -182,7 +187,7 @@ export function CityVenueMap({
       const bounds = L.latLngBounds(points);
       map.fitBounds(bounds, { padding: [40, 40] });
     }
-  }, [validVenues, citySlug]);
+  }, [validVenues, citySlug, mapReady]);
 
   return (
     <section className="cc-section" id="map">

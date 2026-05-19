@@ -266,7 +266,7 @@ export default function VenueRegisterPage() {
   };
 
   const inputCls =
-    "h-11 rounded-xl border-[var(--border)] bg-[var(--secondary)] px-4 text-sm text-[var(--foreground)] shadow-none focus-visible:ring-1 focus-visible:ring-[var(--primary)]";
+    "h-11 rounded-lg border-[var(--border)] bg-[var(--secondary)] px-4 text-sm text-[var(--foreground)] shadow-none focus-visible:ring-1 focus-visible:ring-[var(--primary)]";
   const labelCls =
     "text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]";
 
@@ -428,7 +428,7 @@ export default function VenueRegisterPage() {
             {/* STEP 2: Find venue */}
             <SectionCard num="02" title="Find your venue" subtitle="We pull address, phone & ratings from Google automatically">
               <GooglePlacePicker
-                buttonClassName="h-10 rounded-xl border border-[var(--border)] bg-[var(--secondary)] px-5 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--secondary)] inline-flex items-center gap-2"
+                buttonClassName="h-10 rounded-lg border border-[var(--border)] bg-[var(--secondary)] px-5 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--secondary)] inline-flex items-center gap-2"
                 inputClassName={inputCls}
                 initialPlaceId={venueForm.googlePlaceId}
                 variant="archive"
@@ -492,11 +492,11 @@ export default function VenueRegisterPage() {
                   <div style={{ display: "grid", gap: 16 }}>
                     <div style={{ display: "grid", gap: 6 }}>
                       <label htmlFor="claim-notes" className={labelCls}>Why are you claiming this venue?</label>
-                      <Textarea id="claim-notes" className="rounded-xl border-[var(--border)] bg-[var(--secondary)] px-4 py-3 text-sm text-[var(--foreground)] shadow-none" value={claimNotes} onChange={(e) => setClaimNotes(e.target.value)} placeholder="Explain your relationship to the venue and what proof you can provide." rows={4} />
+                      <Textarea id="claim-notes" className="rounded-lg border-[var(--border)] bg-[var(--secondary)] px-4 py-3 text-sm text-[var(--foreground)] shadow-none" value={claimNotes} onChange={(e) => setClaimNotes(e.target.value)} placeholder="Explain your relationship to the venue and what proof you can provide." rows={4} />
                     </div>
                     <div style={{ display: "grid", gap: 6 }}>
                       <label htmlFor="claim-docs" className={labelCls}>Verification document URLs (one per line)</label>
-                      <Textarea id="claim-docs" className="rounded-xl border-[var(--border)] bg-[var(--secondary)] px-4 py-3 text-sm text-[var(--foreground)] shadow-none" value={claimDocs} onChange={(e) => setClaimDocs(e.target.value)} placeholder="https://example.com/document.pdf" rows={3} />
+                      <Textarea id="claim-docs" className="rounded-lg border-[var(--border)] bg-[var(--secondary)] px-4 py-3 text-sm text-[var(--foreground)] shadow-none" value={claimDocs} onChange={(e) => setClaimDocs(e.target.value)} placeholder="https://example.com/document.pdf" rows={3} />
                     </div>
                   </div>
                 ) : (
@@ -555,11 +555,11 @@ export default function VenueRegisterPage() {
                     </div>
                     <div style={{ display: "grid", gap: 6 }}>
                       <label htmlFor="venue-short" className={labelCls}>Tagline <span style={{ color: "var(--muted-foreground)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(shown on venue cards)</span></label>
-                      <Textarea id="venue-short" className="rounded-xl border-[var(--border)] bg-[var(--secondary)] px-4 py-3 text-sm text-[var(--foreground)] shadow-none" rows={2} placeholder="e.g. Houston's loudest soccer bar with 12 screens and cold craft beer" value={venueForm.shortDescription} onChange={set("shortDescription")} />
+                      <Textarea id="venue-short" className="rounded-lg border-[var(--border)] bg-[var(--secondary)] px-4 py-3 text-sm text-[var(--foreground)] shadow-none" rows={2} placeholder="e.g. Houston's loudest soccer bar with 12 screens and cold craft beer" value={venueForm.shortDescription} onChange={set("shortDescription")} />
                     </div>
                     <div style={{ display: "grid", gap: 6 }}>
                       <label htmlFor="venue-description" className={labelCls}>Full description <span style={{ color: "var(--muted-foreground)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
-                      <Textarea id="venue-description" className="rounded-xl border-[var(--border)] bg-[var(--secondary)] px-4 py-3 text-sm text-[var(--foreground)] shadow-none" rows={4} placeholder="Tell fans about your venue's atmosphere, screens, food & drinks, specials..." value={venueForm.description} onChange={set("description")} />
+                      <Textarea id="venue-description" className="rounded-lg border-[var(--border)] bg-[var(--secondary)] px-4 py-3 text-sm text-[var(--foreground)] shadow-none" rows={4} placeholder="Tell fans about your venue's atmosphere, screens, food & drinks, specials..." value={venueForm.description} onChange={set("description")} />
                     </div>
                   </div>
                 )}
@@ -583,7 +583,7 @@ export default function VenueRegisterPage() {
                           onClick={() => toggleSport(sport.id)}
                           style={{
                             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                            gap: 8, padding: "16px 8px", borderRadius: 16, cursor: "pointer",
+                            gap: 8, padding: "16px 8px", borderRadius: 12, cursor: "pointer",
                             border: `1px solid ${sel ? "var(--primary)" : "var(--border)"}`,
                             background: sel ? "color-mix(in oklch, var(--primary) 12%, transparent)" : "var(--secondary)",
                             transition: "all 0.15s", position: "relative",
@@ -702,7 +702,7 @@ export default function VenueRegisterPage() {
           <div style={{ position: "sticky", top: 108, display: "grid", gap: 16 }}>
 
             {/* Live preview card */}
-            <div style={{ borderRadius: 20, border: "1px solid var(--border)", background: "var(--card)", overflow: "hidden" }}>
+            <div style={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)", overflow: "hidden" }}>
               <div style={{ padding: "13px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Live Preview</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "color-mix(in oklch, var(--primary) 10%, transparent)", border: "1px solid color-mix(in oklch, var(--primary) 25%, transparent)" }}>
@@ -719,7 +719,7 @@ export default function VenueRegisterPage() {
                   </span>
                 )}
                 {googleDefaults?.rating && (
-                  <div style={{ position: "absolute", bottom: 10, right: 12, background: "rgba(0,0,0,0.65)", borderRadius: 8, padding: "3px 8px", display: "flex", alignItems: "center", gap: 4 }}>
+                  <div style={{ position: "absolute", bottom: 10, right: 12, background: "rgba(0,0,0,0.65)", borderRadius: 12, padding: "3px 8px", display: "flex", alignItems: "center", gap: 4 }}>
                     <span style={{ fontSize: 12 }}>⭐</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{googleDefaults.rating}</span>
                   </div>
@@ -773,7 +773,7 @@ export default function VenueRegisterPage() {
             </div>
 
             {/* What you get */}
-            <div style={{ borderRadius: 20, border: "1px solid var(--border)", background: "var(--card)", padding: "18px 20px" }}>
+            <div style={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)", padding: "18px 20px" }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--foreground)", marginBottom: 13 }}>What you get</div>
               {[
                 { emoji: "🎯", text: "Listed on the #1 watch party platform" },
@@ -790,7 +790,7 @@ export default function VenueRegisterPage() {
             </div>
 
             {/* Testimonial */}
-            <div style={{ borderRadius: 20, border: "1px solid color-mix(in oklch, var(--primary) 20%, var(--border))", background: "color-mix(in oklch, var(--primary) 5%, var(--card))", padding: "18px 20px" }}>
+            <div style={{ borderRadius: 12, border: "1px solid color-mix(in oklch, var(--primary) 20%, var(--border))", background: "color-mix(in oklch, var(--primary) 5%, var(--card))", padding: "18px 20px" }}>
               <div style={{ fontSize: 16, marginBottom: 10 }}>⭐⭐⭐⭐⭐</div>
               <p style={{ fontSize: 13, color: "var(--foreground)", lineHeight: 1.65, marginBottom: 12, fontStyle: "italic" }}>
                 &ldquo;We went from empty tables on match days to fully booked every Champions League night. MatchWatch changed our business.&rdquo;
@@ -831,10 +831,10 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ borderRadius: 20, border: "1px solid var(--border)", background: "var(--card)", overflow: "hidden" }}>
+    <div style={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)", overflow: "hidden" }}>
       <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "color-mix(in oklch, var(--primary) 15%, transparent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "var(--primary)", flexShrink: 0 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: "color-mix(in oklch, var(--primary) 15%, transparent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "var(--primary)", flexShrink: 0 }}>
             {num}
           </div>
           <div>

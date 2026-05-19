@@ -148,7 +148,7 @@ export default function LoginPage() {
           position: "relative",
           zIndex: 10,
           border: "1px solid var(--border)",
-          borderRadius: 20,
+          borderRadius: 12,
           backgroundColor: "var(--card)",
           boxShadow: "0 24px 70px color-mix(in oklch, var(--foreground) 14%, transparent)",
         }}
@@ -175,7 +175,7 @@ export default function LoginPage() {
             onClick={() => { setAccountType("fan"); setFormError(null); }}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              padding: "10px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+              padding: "10px 16px", borderRadius: 12, border: "none", cursor: "pointer",
               fontWeight: 700, fontSize: 14, fontFamily: "inherit",
               backgroundColor: accountType === "fan" ? "var(--primary)" : "transparent",
               color: accountType === "fan" ? "var(--primary-foreground)" : "var(--muted-foreground)",
@@ -189,7 +189,7 @@ export default function LoginPage() {
             onClick={() => { setAccountType("venue"); setFormError(null); }}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              padding: "10px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+              padding: "10px 16px", borderRadius: 12, border: "none", cursor: "pointer",
               fontWeight: 700, fontSize: 14, fontFamily: "inherit",
               backgroundColor: accountType === "venue" ? "var(--primary)" : "transparent",
               color: accountType === "venue" ? "var(--primary-foreground)" : "var(--muted-foreground)",
@@ -310,7 +310,7 @@ export default function LoginPage() {
         {authTab === "signup" && (
           <>
             {accountType === "venue" ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: 32, textAlign: "center", borderRadius: 16, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: 32, textAlign: "center", borderRadius: 12, border: "1px solid var(--border)", backgroundColor: "var(--secondary)" }}>
                 <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
                   <Building2 size={28} style={{ color: "var(--primary)" }} />
                 </div>
@@ -360,7 +360,7 @@ export default function LoginPage() {
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                         {pwChecks.map((c) => (
                           <span key={c.label} style={{
-                            fontSize: 11, padding: "3px 8px", borderRadius: 6,
+                            fontSize: 11, padding: "3px 8px", borderRadius: 12,
                             backgroundColor: c.pass ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.1)",
                             color: c.pass ? "#22c55e" : "var(--muted-foreground)",
                             fontWeight: 600, border: `1px solid ${c.pass ? "rgba(34,197,94,0.3)" : "transparent"}`,
@@ -427,14 +427,14 @@ export default function LoginPage() {
             left: 40,
             right: 40,
             padding: 28,
-            borderRadius: 24,
+            borderRadius: 12,
             backgroundColor: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(24px)",
             border: "1px solid rgba(255,255,255,0.1)",
             zIndex: 10,
           }}
         >
-          <div style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
             <UserPlus size={24} style={{ color: "var(--primary-foreground)" }} />
           </div>
           <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(28px, 2.4vw, 38px)", fontWeight: 800, color: "#fff", marginBottom: 12, lineHeight: 1.12 }}>

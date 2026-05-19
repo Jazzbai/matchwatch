@@ -302,7 +302,7 @@ const CSS = `
   /* ── City cards ── */
   .wc-cw{padding:64px 0 80px;}
   .wc-cg{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
-  .wc-cc{border-radius:14px;position:relative;overflow:hidden;border:1px solid var(--mw-line);cursor:pointer;transition:all .2s;text-decoration:none;display:block;min-height:196px;}
+  .wc-cc{border-radius:12px;position:relative;overflow:hidden;border:1px solid var(--mw-line);cursor:pointer;transition:all .2s;text-decoration:none;display:block;min-height:196px;}
   .wc-cc:hover{transform:translateY(-3px);box-shadow:0 20px 48px rgba(0,0,0,.55);border-color:color-mix(in srgb,var(--mw-accent) 35%,transparent);}
   .wc-cbg{position:absolute;inset:0;opacity:.9;transition:opacity .2s;}
   .wc-cc:hover .wc-cbg{opacity:1;}
@@ -430,7 +430,7 @@ export default function WorldCupPage() {
           <div style={{
             position: "absolute", top: "calc(100% + 4px)", left: 16, right: 16, zIndex: 50,
             background: "color-mix(in srgb,var(--mw-bg) 97%,transparent)",
-            backdropFilter: "blur(24px)", border: "1px solid var(--mw-line)", borderRadius: 16,
+            backdropFilter: "blur(24px)", border: "1px solid var(--mw-line)", borderRadius: 12,
             padding: 16, display: "flex", flexDirection: "column", gap: 8,
             boxShadow: "0 16px 48px rgba(0,0,0,.4)",
           }}>

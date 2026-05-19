@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     createMarkerSpiderfier,
     createVenueClusterGroup,
@@ -53,6 +53,7 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
     const leafletRef = useRef<ClusterLeafletModule | null>(null);
     const spiderfierRef = useRef<MarkerSpiderfierController | null>(null);
     const resizeObserverRef = useRef<ResizeObserver | null>(null);
+    const [mapReady, setMapReady] = useState(false);
 
     const validVenues = useMemo(
         () =>
@@ -101,6 +102,11 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
             if (mapContainerRef.current) ro.observe(mapContainerRef.current);
             resizeObserverRef.current = ro;
             setTimeout(() => map.invalidateSize(), 0);
+
+            // Signal readiness so the marker effect re-runs once the map
+            // exists — refs alone don't trigger a re-render, so without this
+            // markers are never added if data settled before init finished.
+            if (mounted) setMapReady(true);
         })();
 
         return () => {
@@ -196,7 +202,7 @@ export function MatchVenueMap({ venues, onSelectVenue, height = 360 }: MatchVenu
             spiderfierRef.current?.destroy();
             spiderfierRef.current = null;
         };
-    }, [validVenues, onSelectVenue]);
+    }, [validVenues, onSelectVenue, mapReady]);
 
     return (
         <div

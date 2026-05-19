@@ -15,7 +15,7 @@ const TOPICS = [
 const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "12px 16px",
-    borderRadius: "10px",
+    borderRadius: "12px",
     border: "1px solid var(--border)",
     background: "var(--card)",
     color: "var(--foreground)",
@@ -99,7 +99,7 @@ export default function ContactPage() {
                             alignItems: "flex-start",
                             gap: "12px",
                             padding: "20px",
-                            borderRadius: "14px",
+                            borderRadius: "12px",
                             border: "1px solid color-mix(in oklch, var(--primary) 35%, var(--border))",
                             background: "color-mix(in oklch, var(--primary) 10%, var(--card))",
                             color: "var(--foreground)",
@@ -178,7 +178,7 @@ export default function ContactPage() {
                                     alignItems: "flex-start",
                                     gap: "10px",
                                     padding: "12px 14px",
-                                    borderRadius: "10px",
+                                    borderRadius: "12px",
                                     border: "1px solid color-mix(in oklch, var(--destructive) 40%, var(--border))",
                                     background: "color-mix(in oklch, var(--destructive) 12%, transparent)",
                                     color: "var(--destructive)",
@@ -215,7 +215,7 @@ export default function ContactPage() {
                     style={{
                         padding: "20px",
                         marginTop: "28px",
-                        borderRadius: "14px",
+                        borderRadius: "12px",
                         border: "1px solid var(--border)",
                         background: "var(--card)",
                     }}

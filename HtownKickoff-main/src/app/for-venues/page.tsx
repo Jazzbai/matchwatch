@@ -40,7 +40,7 @@ export default function ForVenuesPage() {
     const cardStyle: React.CSSProperties = {
         background: "var(--card)",
         border: "1px solid var(--border)",
-        borderRadius: 16,
+        borderRadius: 12,
     };
 
     return (
@@ -198,7 +198,7 @@ export default function ForVenuesPage() {
                                 <span
                                     style={{
                                         display: "inline-flex", alignItems: "center", justifyContent: "center",
-                                        width: 42, height: 42, borderRadius: 11, marginBottom: 14,
+                                        width: 42, height: 42, borderRadius: 12, marginBottom: 14,
                                         background: "color-mix(in oklch, var(--primary) 14%, transparent)",
                                         color: "var(--primary)",
                                     }}

@@ -94,7 +94,7 @@ body{background:var(--vp-bg)!important;color:var(--vp-fg)!important;overflow-x:h
 /* tabs */
 .vp-tabs{display:flex;gap:0;border-bottom:1px solid var(--vp-line);padding:0 20px;overflow-x:auto;scrollbar-width:none;}
 .vp-tabs::-webkit-scrollbar{display:none;}
-.vp-tab{border-radius:10px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:14px 14px;color:var(--vp-fg-mute);border:none;border-bottom:2px solid transparent;background:none;cursor:pointer;white-space:nowrap;transition:all .14s;margin-bottom:-1px;}
+.vp-tab{border-radius:12px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:14px 14px;color:var(--vp-fg-mute);border:none;border-bottom:2px solid transparent;background:none;cursor:pointer;white-space:nowrap;transition:all .14s;margin-bottom:-1px;}
 .vp-tab:hover{color:var(--vp-fg);}
 .vp-tab.on{color:var(--vp-fg);border-bottom-color:var(--vp-accent);}
 /* layout */
@@ -144,7 +144,7 @@ body{background:var(--vp-bg)!important;color:var(--vp-fg)!important;overflow-x:h
 .vp-review-text{font-size:13px;color:var(--vp-fg-dim);line-height:1.55;margin:0;word-break:break-word;}
 .vp-owner-reply{margin-top:10px;padding:10px;border-left:2px solid var(--vp-accent);font-size:12px;color:var(--vp-fg-dim);font-style:italic;}
 /* posts */
-.vp-post-card{border-radius:14px;border:1px solid var(--vp-line);background:var(--vp-bg-1);padding:16px;margin-bottom:12px;}
+.vp-post-card{border-radius:12px;border:1px solid var(--vp-line);background:var(--vp-bg-1);padding:16px;margin-bottom:12px;}
 .vp-post-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
 .vp-post-label{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--vp-accent);}
 .vp-post-date{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--vp-fg-mute);white-space:nowrap;}
