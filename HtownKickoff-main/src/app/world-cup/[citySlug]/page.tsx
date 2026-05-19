@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import {
   CITIES,
   CITY_MATCHES,
-  CITY_VENUES,
   VENUE_SOLUTION_PACKAGES,
   VENDOR_SOLUTIONS,
 } from "./data";
@@ -34,13 +33,11 @@ export default async function WorldCupCityPage({ params }: Props) {
   if (!city) notFound();
 
   const matches = CITY_MATCHES.filter((m) => m.citySlug === city.slug);
-  const venues = CITY_VENUES.filter((v) => v.citySlug === city.slug);
 
   return (
     <WorldCupCityClient
       city={city}
       matches={matches}
-      venues={venues}
       packages={VENUE_SOLUTION_PACKAGES}
       vendors={VENDOR_SOLUTIONS}
     />

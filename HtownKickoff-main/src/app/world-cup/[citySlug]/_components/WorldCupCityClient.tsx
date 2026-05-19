@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import type { WorldCupCity, CityMatch, CityVenue, VenueSolutionPackage, VendorSolution } from "../types";
 import { CityHero } from "./CityHero";
 import { CityMatchSchedule } from "./CityMatchSchedule";
@@ -11,11 +11,35 @@ import { VendorSolutionGrid } from "./VendorSolutionGrid";
 import { FeaturedVenueCTA } from "./FeaturedVenueCTA";
 import { CitySponsorCTA } from "./CitySponsorCTA";
 import { FloatingNav } from "@/components/AppShell";
+import { useData, type Venue } from "@/lib/data-provider";
+
+function toStaticVenue(v: Venue, citySlug: string): CityVenue {
+  const ams = v.amenities.map((a) => a.toLowerCase());
+  const hasDj = ams.some((a) => a.includes("dj") || a.includes("entertain") || a.includes("music") || a.includes("live"));
+  const hasFood = ams.some((a) => a.includes("food") || a.includes("bar") || a.includes("drink") || a.includes("restaurant") || a.includes("kitchen") || a.includes("pub"));
+  const hasOutdoor = ams.some((a) => a.includes("outdoor") || a.includes("patio") || a.includes("roof") || a.includes("garden") || a.includes("terrace"));
+  const hasIndoor = ams.some((a) => a.includes("indoor") || a.includes("inside"));
+  const indoorOutdoor = hasOutdoor && hasIndoor ? "Both" : hasOutdoor ? "Outdoor" : "Indoor";
+  return {
+    id: v.id,
+    citySlug,
+    name: v.name,
+    slug: v.slug,
+    type: v.cuisineTags?.[0] || "Venue",
+    address: v.addressLine1 || v.city,
+    lat: v.lat,
+    lng: v.lng,
+    capacity: v.capacity || undefined,
+    foodAndDrink: hasFood,
+    djAvailable: hasDj,
+    indoorOutdoor,
+    watchPartyReady: v.isVerified || v.isFeatured,
+  };
+}
 
 interface Props {
   city: WorldCupCity;
   matches: CityMatch[];
-  venues: CityVenue[];
   packages: VenueSolutionPackage[];
   vendors: VendorSolution[];
 }
@@ -166,7 +190,17 @@ const CSS = `
   }
 `;
 
-export function WorldCupCityClient({ city, matches, venues, packages, vendors }: Props) {
+export function WorldCupCityClient({ city, matches, packages, vendors }: Props) {
+  const { venues: allVenues } = useData();
+
+  const cityVenues = useMemo(
+    () =>
+      allVenues
+        .filter((v) => v.city?.toLowerCase().includes(city.name.toLowerCase()))
+        .map((v) => toStaticVenue(v, city.slug)),
+    [allVenues, city.name, city.slug],
+  );
+
   return (
     <>
       <style>{CSS}</style>
@@ -183,13 +217,13 @@ export function WorldCupCityClient({ city, matches, venues, packages, vendors }:
         />
 
         <CityVenueGrid
-          venues={venues}
+          venues={cityVenues}
           citySlug={city.slug}
           cityName={city.name}
         />
 
         <CityVenueMap
-          venues={venues}
+          venues={cityVenues}
           citySlug={city.slug}
           cityName={city.name}
           centerLat={city.lat}
