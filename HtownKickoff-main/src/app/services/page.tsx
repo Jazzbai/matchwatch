@@ -118,6 +118,10 @@ body{background:#0a0b0d!important;color:#f1ece4!important;overflow-x:hidden;}
 .sv-success-title{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:1.3rem;color:#f1ece4;margin:0;}
 .sv-success-body{font-size:.9rem;color:#a8a59d;max-width:360px;line-height:1.5;margin:0;}
 .sv-err{font-size:12px;color:#ef4444;margin-top:4px;}
+.sv-pill-group{display:flex;flex-wrap:wrap;gap:8px;}
+.sv-pill{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid #2f3540;background:#14171d;color:#a8a59d;cursor:pointer;transition:all .15s;font-family:inherit;}
+.sv-pill:hover{border-color:oklch(0.72 0.19 28);color:#f1ece4;}
+.sv-pill.on{border-color:oklch(0.72 0.19 28);background:color-mix(in srgb,oklch(0.72 0.19 28) 15%,#14171d);color:oklch(0.72 0.19 28);font-weight:700;}
 
 /* responsive */
 @media(max-width:900px){.sv-grid{grid-template-columns:repeat(3,1fr);}}
@@ -140,7 +144,9 @@ function ServicesInner() {
   const initialService = searchParams.get("service") || "";
 
   const [selectedCity, setSelectedCity] = useState(initialCity);
-  const [formService, setFormService] = useState(initialService);
+  const [selectedServices, setSelectedServices] = useState<Set<string>>(
+    initialService ? new Set([initialService]) : new Set(),
+  );
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -160,8 +166,16 @@ function ServicesInner() {
     router.replace(`/services?${params.toString()}`, { scroll: false });
   }
 
+  function toggleService(slug: string) {
+    setSelectedServices((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug); else next.add(slug);
+      return next;
+    });
+  }
+
   function requestService(slug: string) {
-    setFormService(slug);
+    setSelectedServices(new Set([slug]));
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -169,9 +183,12 @@ function ServicesInner() {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-    const serviceLabel = SERVICES.find((s) => s.slug === formService)?.title || formService;
-    const body = [
-      serviceLabel ? `Service: ${serviceLabel}` : null,
+    const serviceLabels = SERVICES
+      .filter((s) => selectedServices.has(s.slug))
+      .map((s) => s.title)
+      .join(", ");
+    const topic = serviceLabels || "Watch Party Service Inquiry";
+    const msgBody = [
       cityLabel ? `City: ${cityLabel}` : null,
       form.phone ? `Phone: ${form.phone}` : null,
       "",
@@ -183,7 +200,7 @@ function ServicesInner() {
       const res = await fetch("/api/v1/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, email: form.email, message: body }),
+        body: JSON.stringify({ name: form.name, email: form.email, topic, message: msgBody }),
       });
       if (!res.ok) throw new Error("failed");
       setSubmitted(true);
@@ -347,17 +364,22 @@ function ServicesInner() {
                 </div>
 
                 <div className="sv-field">
-                  <label className="sv-label">Service needed</label>
-                  <select
-                    className="sv-select sv-input"
-                    value={formService}
-                    onChange={(e) => setFormService(e.target.value)}
-                  >
-                    <option value="">Select a service…</option>
+                  <label className="sv-label">Service needed <span style={{ color: "#6c6a64", fontWeight: 400 }}>(select one or more)</span></label>
+                  <div className="sv-pill-group">
                     {SERVICES.map((s) => (
-                      <option key={s.slug} value={s.slug}>{s.title}</option>
+                      <button
+                        key={s.slug}
+                        type="button"
+                        className={`sv-pill${selectedServices.has(s.slug) ? " on" : ""}`}
+                        onClick={() => toggleService(s.slug)}
+                      >
+                        {selectedServices.has(s.slug) && (
+                          <Check size={11} style={{ flexShrink: 0 }} />
+                        )}
+                        {s.title}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
 
                 <div className="sv-field">
