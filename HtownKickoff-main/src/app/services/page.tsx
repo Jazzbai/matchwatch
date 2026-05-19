@@ -103,14 +103,14 @@ body{background:#0a0b0d!important;color:#f1ece4!important;overflow-x:hidden;}
 .sv-corp-cta:hover{filter:brightness(1.1);box-shadow:0 12px 32px color-mix(in srgb,oklch(0.72 0.19 28) 32%,transparent);transform:translateY(-2px);}
 
 /* modal overlay */
-.sv-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1000;display:flex;align-items:flex-end;justify-content:flex-end;backdrop-filter:blur(3px);animation:sv-fade-in .18s ease;}
+.sv-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1000;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);animation:sv-fade-in .18s ease;}
 @keyframes sv-fade-in{from{opacity:0;}to{opacity:1;}}
 
 /* modal panel */
 .sv-modal{position:relative;width:100%;max-width:540px;max-height:92vh;background:#101217;border:1px solid #2f3540;border-radius:20px 20px 0 0;overflow-y:auto;display:flex;flex-direction:column;animation:sv-slide-up .22s cubic-bezier(.25,.8,.25,1);}
 @keyframes sv-slide-up{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
 @media(min-width:640px){
-  .sv-overlay{align-items:center;justify-content:flex-end;padding:24px;}
+  .sv-overlay{align-items:center;justify-content:center;padding:24px;}
   .sv-modal{border-radius:20px;max-height:90vh;}
 }
 

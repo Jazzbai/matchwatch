@@ -107,11 +107,11 @@ const CSS = `
 .cac-btn-g:hover { border-color: var(--mw-fg); color: var(--mw-fg); }
 
 /* ── Modal ── */
-.cac-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 1100; display: flex; align-items: flex-end; justify-content: flex-end; backdrop-filter: blur(4px); animation: cac-fi .18s ease; }
+.cac-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 1100; display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(4px); animation: cac-fi .18s ease; }
 @keyframes cac-fi { from { opacity: 0; } to { opacity: 1; } }
 .cac-modal { width: 100%; max-width: 560px; max-height: 92vh; background: #101217; border: 1px solid #2f3540; border-radius: 20px 20px 0 0; overflow-y: auto; display: flex; flex-direction: column; animation: cac-su .22s cubic-bezier(.25,.8,.25,1); }
 @keyframes cac-su { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@media (min-width: 640px) { .cac-overlay { align-items: center; padding: 24px; } .cac-modal { border-radius: 20px; max-height: 88vh; } }
+@media (min-width: 640px) { .cac-overlay { align-items: center; justify-content: center; padding: 24px; } .cac-modal { border-radius: 20px; max-height: 88vh; } }
 .cac-mhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 24px 24px 0; flex-shrink: 0; }
 .cac-mtitle { font-family: 'Space Grotesk', sans-serif; font-weight: 900; font-size: 1.05rem; color: #f1ece4; margin: 0 0 3px; }
 .cac-msub { font-size: .82rem; color: #a8a59d; margin: 0; line-height: 1.45; }
