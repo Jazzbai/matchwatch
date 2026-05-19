@@ -147,9 +147,9 @@ const MD_CSS = `
 
 const MD_VARS = `
   :root {
-    --md-bg:#0a0b0d; --md-bg-1:#101217; --md-bg-2:#14171d;
-    --md-line:#23272f; --md-line-2:#2f3540;
-    --md-fg:#f1ece4; --md-fg-dim:#a8a59d; --md-fg-mute:#6c6a64;
+    --md-bg:var(--background); --md-bg-1:var(--card); --md-bg-2:var(--card);
+    --md-line:var(--border); --md-line-2:var(--border);
+    --md-fg:var(--foreground); --md-fg-dim:var(--muted-foreground); --md-fg-mute:var(--muted-foreground);
     --md-accent:oklch(0.72 0.19 28); --md-accent-ink:#0a0b0d;
   }
 `;
@@ -315,9 +315,9 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                     {user ? <Link href="/dashboard">Dashboard</Link> : <Link href="/for-venues/register">List venue</Link>}
                 </nav>
                 <div className="md-top-right">
-                    <button className="md-iconbtn" aria-label="Search">
+                    <Link href="/matches" className="md-iconbtn" aria-label="Search matches">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-                    </button>
+                    </Link>
                     {user
                         ? <Link href="/dashboard"><div className="md-avatar">{initials}</div></Link>
                         : <Link href="/login" className="md-btn" style={{ padding: "8px 14px", fontSize: 11 }}>Sign in</Link>
@@ -386,7 +386,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                                             </div>
                                             {isLive && (
                                                 <div className="md-minute">
-                                                    <div className="m">LIVE<em>'</em></div>
+                                                    <div className="m">LIVE<em>&apos;</em></div>
                                                     <div className="h">IN PROGRESS</div>
                                                 </div>
                                             )}
@@ -418,7 +418,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                         )}
 
                         <div className="md-hero-foot">
-                            <button className="md-btn primary">Join watch party</button>
+                            <Link href={`/venues?matchId=${matchId}`} className="md-btn primary">Join a watch party</Link>
                             <Link href={`/venues?matchId=${matchId}`} className="md-btn">Find a bar near you</Link>
                             <Link href="/" className="md-btn">← Back to home</Link>
                             {!isSingleEvent && (
@@ -435,9 +435,21 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                             <div className="md-sec-head">
                                 <div className="md-sec-title">Match stats <span className="tag">{isLive ? "LIVE" : "FT"}</span></div>
                                 <div className="md-filters">
-                                    {["Overview", "xG", "Passing", "Defense"].map((f) => (
-                                        <button key={f} className={`md-filter${f === "Overview" ? " on" : ""}`}>{f}</button>
-                                    ))}
+                                    {["Overview", "xG", "Passing", "Defense"].map((f) => {
+                                        const enabled = f === "Overview";
+                                        return (
+                                            <button
+                                                key={f}
+                                                type="button"
+                                                className={`md-filter${enabled ? " on" : ""}`}
+                                                disabled={!enabled}
+                                                title={enabled ? undefined : "Detailed stat views coming soon"}
+                                                style={enabled ? undefined : { opacity: 0.45, cursor: "not-allowed" }}
+                                            >
+                                                {f}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                             <div className="md-stats">
@@ -459,6 +471,9 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                                     </div>
                                 ))}
                             </div>
+                            <p style={{ marginTop: 10, fontSize: 11, color: "var(--md-fg-mute)", letterSpacing: "0.04em" }}>
+                                Detailed stats are illustrative — live stat feeds are coming soon.
+                            </p>
                         </>
                     )}
 
@@ -657,7 +672,10 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
 
                 {/* ── Right rail ── */}
                 <aside className="md-rail">
-                    <h3>Watch parties <span className="n">· {venuesToShow.length > 0 ? venuesToShow.length : "1,284"} in room</span></h3>
+                    <h3>Watch parties</h3>
+                    <p style={{ margin: "-6px 0 14px", fontSize: 11, color: "var(--md-fg-mute)", lineHeight: 1.5 }}>
+                        Live watch-party rooms are coming soon — the cards below are a preview.
+                    </p>
 
                     {[
                         { time: "LIVE", count: "1,284 IN ROOM", title: `${matchTitle} · tactics room`, hc: "JM", host: "Jordan M. · hosting" },
@@ -668,11 +686,11 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                             <div className="md-p-head"><span>{time} · LIVE</span><span>{count}</span></div>
                             <div className="md-p-title">{title}</div>
                             <div className="md-p-host"><span className="md-hc">{hc}</span>{host}</div>
-                            <button className="md-p-join">Join room →</button>
+                            <button className="md-p-join" disabled title="Live rooms coming soon" style={{ opacity: 0.5, cursor: "not-allowed" }}>Join room →</button>
                         </div>
                     ))}
 
-                    <h4>Live chat · supporters room</h4>
+                    <h4>Live chat · coming soon</h4>
                     <div className="md-chat">
                         <div className="md-msgs">
                             {msgs.map((m, i) => (
@@ -687,33 +705,46 @@ export default function MatchDetailPage({ params }: { params: Promise<{ matchId:
                         </div>
                         <div className="md-reactions">
                             {["🔥", "⚽", "😱", "👏", "💪", "😤"].map((emoji) => (
-                                <button key={emoji} onClick={() => setMsgs(prev => [...prev, { av: "#5a4a3a", init: "YOU", name: "You", host: false, body: emoji }])}>{emoji}</button>
+                                <button
+                                    key={emoji}
+                                    disabled
+                                    style={{ opacity: 0.5, cursor: "not-allowed" }}
+                                    onClick={() => setMsgs(prev => [...prev, { av: "#5a4a3a", init: "YOU", name: "You", host: false, body: emoji }])}
+                                >
+                                    {emoji}
+                                </button>
                             ))}
                         </div>
                         <div className="md-chat-inp">
                             <input
-                                placeholder="Say something…"
+                                placeholder="Live chat opens on match day — coming soon"
+                                disabled
                                 value={chatInput}
                                 onChange={(e) => setChatInput(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && sendMsg()}
                             />
-                            <button className="md-btn primary" style={{ padding: "7px 10px" }} onClick={sendMsg}>Send</button>
+                            <button
+                                className="md-btn primary"
+                                style={{ padding: "7px 10px", opacity: 0.5, cursor: "not-allowed" }}
+                                disabled
+                                onClick={sendMsg}
+                            >
+                                Send
+                            </button>
                         </div>
                     </div>
 
-                    <h4>Ticket drop · Last minute</h4>
+                    <h4>Ticket drop · coming soon</h4>
                     <div className="md-ticket">
                         <div className="t-top">
                             <span>{dateStr} · {timeStr}{match.stadiumName ? ` · ${match.stadiumName.split(",")[0]}` : ""}</span>
-                            <span className="off">−24%</span>
+                            <span className="off">PREVIEW</span>
                         </div>
-                        <div className="t-nm">{matchTitle} · Section 114</div>
-                        <div className="prices">
-                            <span className="p-now">$76</span>
-                            <span className="p-was">$100</span>
-                            <span className="p-meta">ROW M · BLOCK 114</span>
-                        </div>
-                        <button className="md-p-join">Grab seat →</button>
+                        <div className="t-nm">{matchTitle}</div>
+                        <p style={{ fontSize: 11, color: "var(--md-fg-mute)", lineHeight: 1.5, margin: "6px 0 10px" }}>
+                            Last-minute ticket deals will appear here once ticketing partners are live.
+                        </p>
+                        <button className="md-p-join" disabled title="Ticketing coming soon" style={{ opacity: 0.5, cursor: "not-allowed" }}>Grab seat →</button>
                     </div>
                 </aside>
             </div>

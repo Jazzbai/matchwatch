@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "../../lib/auth-context";
 import { Menu, X, Building2, Star, Trophy, ChevronRight, Globe, Calendar } from "lucide-react";
+import { FloatingNav } from "../../components/AppShell";
 
 const NAV_LINKS = [
   { label: "Home",       href: "/" },
@@ -204,15 +205,15 @@ const Flag = ({ code }: { code: string }) => (
 /* ── shared design tokens (matches home page exactly) ── */
 const MW_VARS = `
   :root{
-    --mw-bg:#0a0b0d;
-    --mw-bg-1:#101217;
-    --mw-bg-2:#14171d;
-    --mw-bg-3:#1b1f26;
-    --mw-line:#23272f;
-    --mw-line-2:#2f3540;
-    --mw-fg:#f1ece4;
-    --mw-fg-dim:#a8a59d;
-    --mw-fg-mute:#6c6a64;
+    --mw-bg:var(--background);
+    --mw-bg-1:var(--card);
+    --mw-bg-2:var(--card);
+    --mw-bg-3:var(--secondary);
+    --mw-line:var(--border);
+    --mw-line-2:var(--border);
+    --mw-fg:var(--foreground);
+    --mw-fg-dim:var(--muted-foreground);
+    --mw-fg-mute:var(--muted-foreground);
     --mw-accent:oklch(0.72 0.19 28);
   }
 `;
@@ -239,7 +240,7 @@ const CSS = `
   .wc-hero{position:relative;overflow:hidden;min-height:560px;display:flex;align-items:center;background:linear-gradient(160deg,var(--mw-bg) 0%,#0d1520 40%,#1a0a05 100%);border-bottom:1px solid var(--mw-line);}
   .wc-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 70% 50%,color-mix(in srgb,var(--mw-accent) 12%,transparent),transparent 70%),radial-gradient(ellipse 60% 80% at 20% 30%,rgba(0,80,160,.15),transparent 70%);pointer-events:none;}
   .wc-hero-orb{position:absolute;right:-80px;top:50%;transform:translateY(-50%);width:520px;height:520px;border-radius:50%;border:1px solid color-mix(in srgb,var(--mw-accent) 7%,transparent);}
-  .wc-hero-inner{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:72px 24px 56px;width:100%;display:grid;grid-template-columns:1fr 300px;gap:48px;align-items:center;}
+  .wc-hero-inner{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:148px 24px 64px;width:100%;display:grid;grid-template-columns:1fr 300px;gap:48px;align-items:center;}
   .wc-hero-text{display:flex;flex-direction:column;}
   .wc-hero-trophy{display:flex;flex-direction:column;align-items:center;justify-content:center;height:320px;margin:0;}
   .wc-hero-trophy img{width:min(220px,100%);height:auto;display:block;filter:drop-shadow(0 0 28px rgba(212,160,20,0.55)) drop-shadow(0 0 70px rgba(212,140,10,0.26));}
@@ -365,6 +366,7 @@ const CSS = `
     .wc-sp{padding:28px 20px;}
     .wc-final-team{font-size:1.4rem;}
     .wc-hero-trophy{display:none;}
+    .wc-hero-inner{padding:120px 20px 48px;}
   }
 `;
 
@@ -387,8 +389,10 @@ export default function WorldCupPage() {
     <div className="wc-page">
       <style dangerouslySetInnerHTML={{ __html: MW_VARS + CSS + `body{background:var(--mw-bg)!important;color:var(--mw-fg)!important;}` }} />
 
-      {/* ── Sticky Nav ── */}
-      <header className="wc-topbar">
+      <FloatingNav />
+
+      {/* ── Legacy nav (hidden — replaced by shared FloatingNav) ── */}
+      <header className="wc-topbar" hidden aria-hidden="true">
         <div className="wc-topbar-inner">
           <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
             <img src="/logo.svg" alt="MatchWatch" className="wc-logo" />

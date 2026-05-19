@@ -7,14 +7,14 @@ import { FloatingNav } from "../../components/AppShell";
 
 const PP_VARS = `
   :root {
-    --pp-bg: #0a0b0d;
-    --pp-bg-1: #101217;
-    --pp-bg-2: #14171d;
-    --pp-line: #23272f;
-    --pp-line-2: #2f3540;
-    --pp-fg: #f1ece4;
-    --pp-fg-dim: #a8a59d;
-    --pp-fg-mute: #6c6a64;
+    --pp-bg: var(--background);
+    --pp-bg-1: var(--card);
+    --pp-bg-2: var(--card);
+    --pp-line: var(--border);
+    --pp-line-2: var(--border);
+    --pp-fg: var(--foreground);
+    --pp-fg-dim: var(--muted-foreground);
+    --pp-fg-mute: var(--muted-foreground);
     --pp-accent: oklch(0.72 0.19 28);
   }
 `;

@@ -1326,3 +1326,13 @@ export const sponsorInquiries = pgTable('sponsor_inquiries', {
     status: varchar('status', { length: 30 }).notNull().default('new'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const contactMessages = pgTable('contact_messages', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: varchar('name', { length: 120 }).notNull(),
+    email: varchar('email', { length: 255 }).notNull(),
+    topic: varchar('topic', { length: 60 }).notNull(),
+    message: text('message').notNull(),
+    status: varchar('status', { length: 30 }).notNull().default('new'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});

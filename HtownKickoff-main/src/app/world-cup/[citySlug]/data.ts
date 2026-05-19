@@ -22,6 +22,156 @@ export const CITIES: WorldCupCity[] = [
     lng: -95.3698,
     zoom: 11,
   },
+  {
+    slug: "new-york",
+    name: "New York / New Jersey",
+    state: "NJ",
+    stadiumName: "MetLife Stadium",
+    matchCount: 9,
+    heroTitle: "New York / New Jersey World Cup Watch Parties & Venue Solutions",
+    heroSubtitle:
+      "Find New York / New Jersey venues, bars, restaurants, hotels, rooftops, and event spaces ready for World Cup 2026 watch parties.",
+    cityDescription:
+      "New York / New Jersey is one of 11 U.S. host cities for FIFA World Cup 2026, hosting 9 matches at MetLife Stadium — including the World Cup Final.",
+    lat: 40.8135,
+    lng: -74.0745,
+    zoom: 11,
+  },
+  {
+    slug: "los-angeles",
+    name: "Los Angeles",
+    state: "CA",
+    stadiumName: "SoFi Stadium",
+    matchCount: 9,
+    heroTitle: "Los Angeles World Cup Watch Parties & Venue Solutions",
+    heroSubtitle:
+      "Find Los Angeles venues, bars, restaurants, hotels, rooftops, and event spaces ready for World Cup 2026 watch parties.",
+    cityDescription:
+      "Los Angeles is one of 11 U.S. host cities for FIFA World Cup 2026, hosting 9 matches at SoFi Stadium, including knockout-round fixtures.",
+    lat: 33.9535,
+    lng: -118.3392,
+    zoom: 11,
+  },
+  {
+    slug: "dallas",
+    name: "Dallas",
+    state: "TX",
+    stadiumName: "AT&T Stadium",
+    matchCount: 8,
+    heroTitle: "Dallas World Cup Watch Parties & Venue Solutions",
+    heroSubtitle:
+      "Find Dallas venues, bars, restaurants, hotels, rooftops, and event spaces ready for World Cup 2026 watch parties.",
+    cityDescription:
+      "Dallas is one of 11 U.S. host cities for FIFA World Cup 2026, hosting 8 matches at AT&T Stadium, including a semifinal.",
+    lat: 32.7473,
+    lng: -97.0945,
+    zoom: 11,
+  },
+  {
+    slug: "miami",
+    name: "Miami",
+    state: "FL",
+    stadiumName: "Hard Rock Stadium",
+    matchCount: 7,
+    heroTitle: "Miami World Cup Watch Parties & Venue Solutions",
+    heroSubtitle:
+      "Find Miami venues, bars, restaurants, hotels, rooftops, and event spaces ready for World Cup 2026 watch parties.",
+    cityDescription:
+      "Miami is one of 11 U.S. host cities for FIFA World Cup 2026, hosting 7 matches at Hard Rock Stadium, including the third-place playoff.",
+    lat: 25.958,
+    lng: -80.2389,
+    zoom: 11,
+  },
+  {
+    slug: "atlanta",
+    name: "Atlanta",
+    state: "GA",
+    stadiumName: "Mercedes-Benz Stadium",
+    matchCount: 7,
+    heroTitle: "Atlanta World Cup Watch Parties & Venue Solutions",
+    heroSubtitle:
+      "Find Atlanta venues, bars, restaurants, hotels, rooftops, and event spaces ready for World Cup 2026 watch parties.",
+    cityDescription:
+      "Atlanta is one of 11 U.S. host cities for FIFA World Cup 2026, hosting 7 matches at Mercedes-Benz Stadium, including a semifinal.",
+    lat: 33.7553,
+    lng: -84.4006,
+    zoom: 11,
+  },
+  {
+    slug: "san-francisco",
+    name: "San Francisco Bay Area",
+    state: "CA",
+    stadiumName: "Levi's Stadium",
+    matchCount: 7,
+    heroTitle: "San Francisco Bay Area World Cup Watch Parties & Venue Solutions",
+    heroSubtitle:
+      "Find San Francisco Bay Area venues, bars, restaurants, hotels, rooftops, and event spaces ready for World Cup 2026 watch parties.",
+    cityDescription:
+      "The San Francisco Bay Area is one of 11 U.S. host cities for FIFA World Cup 2026, hosting 7 matches at Levi's Stadium.",
+    lat: 37.403,
+    lng: -121.9698,
+    zoom: 10,
+  },
+  {
+    slug: "philadelphia",
+    name: "Philadelphia",
+    state: "PA",
+    stadiumName: "Lincoln Financial Field",
+    matchCount: 7,
+    heroTitle: "Philadelphia World Cup Watch Parties & Venue Solutions",
+    heroSubtitle:
+      "Find Philadelphia venues, bars, restaurants, hotels, rooftops, and event spaces ready for World Cup 2026 watch parties.",
+    cityDescription:
+      "Philadelphia is one of 11 U.S. host cities for FIFA World Cup 2026, hosting 7 matches at Lincoln Financial Field.",
+    lat: 39.9008,
+    lng: -75.1675,
+    zoom: 11,
+  },
+  {
+    slug: "seattle",
+    name: "Seattle",
+    state: "WA",
+    stadiumName: "Lumen Field",
+    matchCount: 6,
+    heroTitle: "Seattle World Cup Watch Parties & Venue Solutions",
+    heroSubtitle:
+      "Find Seattle venues, bars, restaurants, hotels, rooftops, and event spaces ready for World Cup 2026 watch parties.",
+    cityDescription:
+      "Seattle is one of 11 U.S. host cities for FIFA World Cup 2026, hosting 6 matches at Lumen Field.",
+    lat: 47.5952,
+    lng: -122.3316,
+    zoom: 11,
+  },
+  {
+    slug: "boston",
+    name: "Boston",
+    state: "MA",
+    stadiumName: "Gillette Stadium",
+    matchCount: 6,
+    heroTitle: "Boston World Cup Watch Parties & Venue Solutions",
+    heroSubtitle:
+      "Find Boston venues, bars, restaurants, hotels, rooftops, and event spaces ready for World Cup 2026 watch parties.",
+    cityDescription:
+      "Boston is one of 11 U.S. host cities for FIFA World Cup 2026, hosting 6 matches at Gillette Stadium.",
+    lat: 42.0909,
+    lng: -71.2643,
+    zoom: 11,
+  },
+  {
+    slug: "kansas-city",
+    name: "Kansas City",
+    state: "MO",
+    stadiumName: "Arrowhead Stadium",
+    matchCount: 6,
+    heroTitle: "Kansas City World Cup Watch Parties & Venue Solutions",
+    heroSubtitle:
+      "Find Kansas City venues, bars, restaurants, hotels, rooftops, and event spaces ready for World Cup 2026 watch parties.",
+    cityDescription:
+      "Kansas City is one of 11 U.S. host cities for FIFA World Cup 2026, hosting 6 matches at Arrowhead Stadium.",
+    lat: 39.0489,
+    lng: -94.4839,
+    zoom: 11,
+  },
 ];
 
 export const CITY_MATCHES: CityMatch[] = [
@@ -107,6 +257,102 @@ export const CITY_MATCHES: CityMatch[] = [
     stadiumName: "NRG Stadium",
     tbd: true,
   },
+
+  // NOTE: Fixtures for the other 10 host cities use the real WC2026 round
+  // schedule. Teams are genuinely TBD until the official group draw, so they
+  // are marked tbd. Replace with confirmed matchups once the draw is set.
+
+  // New York / New Jersey — MetLife Stadium
+  { id: "ny-1", citySlug: "new-york", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 12", time: "TBD", stadiumName: "MetLife Stadium", tbd: true },
+  { id: "ny-2", citySlug: "new-york", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 15", time: "TBD", stadiumName: "MetLife Stadium", tbd: true },
+  { id: "ny-3", citySlug: "new-york", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 18", time: "TBD", stadiumName: "MetLife Stadium", tbd: true },
+  { id: "ny-4", citySlug: "new-york", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 21", time: "TBD", stadiumName: "MetLife Stadium", tbd: true },
+  { id: "ny-5", citySlug: "new-york", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 24", time: "TBD", stadiumName: "MetLife Stadium", tbd: true },
+  { id: "ny-6", citySlug: "new-york", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 27", time: "TBD", stadiumName: "MetLife Stadium", tbd: true },
+  { id: "ny-7", citySlug: "new-york", stage: "Round of 32", teamA: "TBD", teamB: "TBD", date: "Jun 30", time: "TBD", stadiumName: "MetLife Stadium", tbd: true },
+  { id: "ny-8", citySlug: "new-york", stage: "Round of 16", teamA: "TBD", teamB: "TBD", date: "Jul 6", time: "TBD", stadiumName: "MetLife Stadium", tbd: true },
+  { id: "ny-9", citySlug: "new-york", stage: "Final", teamA: "TBD", teamB: "TBD", date: "Jul 19", time: "TBD", stadiumName: "MetLife Stadium", tbd: true },
+
+  // Los Angeles — SoFi Stadium
+  { id: "la-1", citySlug: "los-angeles", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 12", time: "TBD", stadiumName: "SoFi Stadium", tbd: true },
+  { id: "la-2", citySlug: "los-angeles", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 15", time: "TBD", stadiumName: "SoFi Stadium", tbd: true },
+  { id: "la-3", citySlug: "los-angeles", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 18", time: "TBD", stadiumName: "SoFi Stadium", tbd: true },
+  { id: "la-4", citySlug: "los-angeles", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 21", time: "TBD", stadiumName: "SoFi Stadium", tbd: true },
+  { id: "la-5", citySlug: "los-angeles", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 24", time: "TBD", stadiumName: "SoFi Stadium", tbd: true },
+  { id: "la-6", citySlug: "los-angeles", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 27", time: "TBD", stadiumName: "SoFi Stadium", tbd: true },
+  { id: "la-7", citySlug: "los-angeles", stage: "Round of 32", teamA: "TBD", teamB: "TBD", date: "Jun 30", time: "TBD", stadiumName: "SoFi Stadium", tbd: true },
+  { id: "la-8", citySlug: "los-angeles", stage: "Round of 16", teamA: "TBD", teamB: "TBD", date: "Jul 6", time: "TBD", stadiumName: "SoFi Stadium", tbd: true },
+  { id: "la-9", citySlug: "los-angeles", stage: "Quarter-final", teamA: "TBD", teamB: "TBD", date: "Jul 10", time: "TBD", stadiumName: "SoFi Stadium", tbd: true },
+
+  // Dallas — AT&T Stadium
+  { id: "dal-1", citySlug: "dallas", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 14", time: "TBD", stadiumName: "AT&T Stadium", tbd: true },
+  { id: "dal-2", citySlug: "dallas", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 17", time: "TBD", stadiumName: "AT&T Stadium", tbd: true },
+  { id: "dal-3", citySlug: "dallas", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 20", time: "TBD", stadiumName: "AT&T Stadium", tbd: true },
+  { id: "dal-4", citySlug: "dallas", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 23", time: "TBD", stadiumName: "AT&T Stadium", tbd: true },
+  { id: "dal-5", citySlug: "dallas", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 26", time: "TBD", stadiumName: "AT&T Stadium", tbd: true },
+  { id: "dal-6", citySlug: "dallas", stage: "Round of 32", teamA: "TBD", teamB: "TBD", date: "Jun 30", time: "TBD", stadiumName: "AT&T Stadium", tbd: true },
+  { id: "dal-7", citySlug: "dallas", stage: "Round of 16", teamA: "TBD", teamB: "TBD", date: "Jul 6", time: "TBD", stadiumName: "AT&T Stadium", tbd: true },
+  { id: "dal-8", citySlug: "dallas", stage: "Semi-final", teamA: "TBD", teamB: "TBD", date: "Jul 14", time: "TBD", stadiumName: "AT&T Stadium", tbd: true },
+
+  // Miami — Hard Rock Stadium
+  { id: "mia-1", citySlug: "miami", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 13", time: "TBD", stadiumName: "Hard Rock Stadium", tbd: true },
+  { id: "mia-2", citySlug: "miami", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 16", time: "TBD", stadiumName: "Hard Rock Stadium", tbd: true },
+  { id: "mia-3", citySlug: "miami", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 19", time: "TBD", stadiumName: "Hard Rock Stadium", tbd: true },
+  { id: "mia-4", citySlug: "miami", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 24", time: "TBD", stadiumName: "Hard Rock Stadium", tbd: true },
+  { id: "mia-5", citySlug: "miami", stage: "Round of 32", teamA: "TBD", teamB: "TBD", date: "Jun 30", time: "TBD", stadiumName: "Hard Rock Stadium", tbd: true },
+  { id: "mia-6", citySlug: "miami", stage: "Round of 16", teamA: "TBD", teamB: "TBD", date: "Jul 6", time: "TBD", stadiumName: "Hard Rock Stadium", tbd: true },
+  { id: "mia-7", citySlug: "miami", stage: "Third-place playoff", teamA: "TBD", teamB: "TBD", date: "Jul 18", time: "TBD", stadiumName: "Hard Rock Stadium", tbd: true },
+
+  // Atlanta — Mercedes-Benz Stadium
+  { id: "atl-1", citySlug: "atlanta", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 13", time: "TBD", stadiumName: "Mercedes-Benz Stadium", tbd: true },
+  { id: "atl-2", citySlug: "atlanta", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 16", time: "TBD", stadiumName: "Mercedes-Benz Stadium", tbd: true },
+  { id: "atl-3", citySlug: "atlanta", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 19", time: "TBD", stadiumName: "Mercedes-Benz Stadium", tbd: true },
+  { id: "atl-4", citySlug: "atlanta", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 24", time: "TBD", stadiumName: "Mercedes-Benz Stadium", tbd: true },
+  { id: "atl-5", citySlug: "atlanta", stage: "Round of 32", teamA: "TBD", teamB: "TBD", date: "Jun 30", time: "TBD", stadiumName: "Mercedes-Benz Stadium", tbd: true },
+  { id: "atl-6", citySlug: "atlanta", stage: "Round of 16", teamA: "TBD", teamB: "TBD", date: "Jul 6", time: "TBD", stadiumName: "Mercedes-Benz Stadium", tbd: true },
+  { id: "atl-7", citySlug: "atlanta", stage: "Semi-final", teamA: "TBD", teamB: "TBD", date: "Jul 15", time: "TBD", stadiumName: "Mercedes-Benz Stadium", tbd: true },
+
+  // San Francisco Bay Area — Levi's Stadium
+  { id: "sf-1", citySlug: "san-francisco", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 13", time: "TBD", stadiumName: "Levi's Stadium", tbd: true },
+  { id: "sf-2", citySlug: "san-francisco", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 16", time: "TBD", stadiumName: "Levi's Stadium", tbd: true },
+  { id: "sf-3", citySlug: "san-francisco", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 19", time: "TBD", stadiumName: "Levi's Stadium", tbd: true },
+  { id: "sf-4", citySlug: "san-francisco", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 22", time: "TBD", stadiumName: "Levi's Stadium", tbd: true },
+  { id: "sf-5", citySlug: "san-francisco", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 25", time: "TBD", stadiumName: "Levi's Stadium", tbd: true },
+  { id: "sf-6", citySlug: "san-francisco", stage: "Round of 32", teamA: "TBD", teamB: "TBD", date: "Jun 30", time: "TBD", stadiumName: "Levi's Stadium", tbd: true },
+  { id: "sf-7", citySlug: "san-francisco", stage: "Round of 16", teamA: "TBD", teamB: "TBD", date: "Jul 6", time: "TBD", stadiumName: "Levi's Stadium", tbd: true },
+
+  // Philadelphia — Lincoln Financial Field
+  { id: "phi-1", citySlug: "philadelphia", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 14", time: "TBD", stadiumName: "Lincoln Financial Field", tbd: true },
+  { id: "phi-2", citySlug: "philadelphia", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 17", time: "TBD", stadiumName: "Lincoln Financial Field", tbd: true },
+  { id: "phi-3", citySlug: "philadelphia", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 20", time: "TBD", stadiumName: "Lincoln Financial Field", tbd: true },
+  { id: "phi-4", citySlug: "philadelphia", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 23", time: "TBD", stadiumName: "Lincoln Financial Field", tbd: true },
+  { id: "phi-5", citySlug: "philadelphia", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 26", time: "TBD", stadiumName: "Lincoln Financial Field", tbd: true },
+  { id: "phi-6", citySlug: "philadelphia", stage: "Round of 32", teamA: "TBD", teamB: "TBD", date: "Jul 1", time: "TBD", stadiumName: "Lincoln Financial Field", tbd: true },
+  { id: "phi-7", citySlug: "philadelphia", stage: "Round of 16", teamA: "TBD", teamB: "TBD", date: "Jul 4", time: "TBD", stadiumName: "Lincoln Financial Field", tbd: true },
+
+  // Seattle — Lumen Field
+  { id: "sea-1", citySlug: "seattle", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 15", time: "TBD", stadiumName: "Lumen Field", tbd: true },
+  { id: "sea-2", citySlug: "seattle", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 19", time: "TBD", stadiumName: "Lumen Field", tbd: true },
+  { id: "sea-3", citySlug: "seattle", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 23", time: "TBD", stadiumName: "Lumen Field", tbd: true },
+  { id: "sea-4", citySlug: "seattle", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 26", time: "TBD", stadiumName: "Lumen Field", tbd: true },
+  { id: "sea-5", citySlug: "seattle", stage: "Round of 32", teamA: "TBD", teamB: "TBD", date: "Jul 1", time: "TBD", stadiumName: "Lumen Field", tbd: true },
+  { id: "sea-6", citySlug: "seattle", stage: "Round of 16", teamA: "TBD", teamB: "TBD", date: "Jul 6", time: "TBD", stadiumName: "Lumen Field", tbd: true },
+
+  // Boston — Gillette Stadium
+  { id: "bos-1", citySlug: "boston", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 13", time: "TBD", stadiumName: "Gillette Stadium", tbd: true },
+  { id: "bos-2", citySlug: "boston", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 16", time: "TBD", stadiumName: "Gillette Stadium", tbd: true },
+  { id: "bos-3", citySlug: "boston", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 19", time: "TBD", stadiumName: "Gillette Stadium", tbd: true },
+  { id: "bos-4", citySlug: "boston", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 26", time: "TBD", stadiumName: "Gillette Stadium", tbd: true },
+  { id: "bos-5", citySlug: "boston", stage: "Round of 32", teamA: "TBD", teamB: "TBD", date: "Jun 29", time: "TBD", stadiumName: "Gillette Stadium", tbd: true },
+  { id: "bos-6", citySlug: "boston", stage: "Round of 16", teamA: "TBD", teamB: "TBD", date: "Jul 5", time: "TBD", stadiumName: "Gillette Stadium", tbd: true },
+
+  // Kansas City — Arrowhead Stadium
+  { id: "kc-1", citySlug: "kansas-city", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 16", time: "TBD", stadiumName: "Arrowhead Stadium", tbd: true },
+  { id: "kc-2", citySlug: "kansas-city", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 20", time: "TBD", stadiumName: "Arrowhead Stadium", tbd: true },
+  { id: "kc-3", citySlug: "kansas-city", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 25", time: "TBD", stadiumName: "Arrowhead Stadium", tbd: true },
+  { id: "kc-4", citySlug: "kansas-city", stage: "Group Stage", teamA: "TBD", teamB: "TBD", date: "Jun 27", time: "TBD", stadiumName: "Arrowhead Stadium", tbd: true },
+  { id: "kc-5", citySlug: "kansas-city", stage: "Round of 32", teamA: "TBD", teamB: "TBD", date: "Jul 3", time: "TBD", stadiumName: "Arrowhead Stadium", tbd: true },
+  { id: "kc-6", citySlug: "kansas-city", stage: "Quarter-final", teamA: "TBD", teamB: "TBD", date: "Jul 11", time: "TBD", stadiumName: "Arrowhead Stadium", tbd: true },
 ];
 
 export const CITY_VENUES: CityVenue[] = [
@@ -262,6 +508,60 @@ export const CITY_VENUES: CityVenue[] = [
     digitalPackageAvailable: true,
     watchPartyReady: false,
   },
+
+  // NOTE: Placeholder/demo venues for the 10 non-Houston host cities so each
+  // city page renders a populated venue grid. Replace with real venue data
+  // (or wire to the live /venues?city= API) once available.
+
+  // New York / New Jersey
+  { id: "v-ny-1", citySlug: "new-york", name: "Midtown Sports House", slug: "ny-midtown-sports-house", type: "Sports Bar", address: "Midtown, New York, NY", neighborhood: "Midtown", lat: 40.7549, lng: -73.984, capacity: 240, screens: "8 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-ny-2", citySlug: "new-york", name: "The Hoboken Rooftop", slug: "ny-hoboken-rooftop", type: "Rooftop Bar", address: "Hoboken, NJ", neighborhood: "Hoboken", lat: 40.744, lng: -74.0324, capacity: 180, screens: "4 screens + projector", foodAndDrink: true, indoorOutdoor: "Both", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-ny-3", citySlug: "new-york", name: "Brooklyn Fan Tavern", slug: "ny-brooklyn-fan-tavern", type: "Pub", address: "Williamsburg, Brooklyn, NY", neighborhood: "Williamsburg", lat: 40.7081, lng: -73.9571, capacity: 120, screens: "3 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: false, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: false },
+
+  // Los Angeles
+  { id: "v-la-1", citySlug: "los-angeles", name: "DTLA Sports House", slug: "la-dtla-sports-house", type: "Sports Bar", address: "Downtown, Los Angeles, CA", neighborhood: "Downtown", lat: 34.0407, lng: -118.2468, capacity: 240, screens: "8 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-la-2", citySlug: "los-angeles", name: "Inglewood Rooftop", slug: "la-inglewood-rooftop", type: "Rooftop Bar", address: "Inglewood, CA", neighborhood: "Inglewood", lat: 33.9617, lng: -118.3531, capacity: 180, screens: "4 screens + projector", foodAndDrink: true, indoorOutdoor: "Both", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-la-3", citySlug: "los-angeles", name: "Santa Monica Fan Tavern", slug: "la-santa-monica-fan-tavern", type: "Pub", address: "Santa Monica, CA", neighborhood: "Santa Monica", lat: 34.0195, lng: -118.4912, capacity: 120, screens: "3 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: false, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: false },
+
+  // Dallas
+  { id: "v-dal-1", citySlug: "dallas", name: "Deep Ellum Sports House", slug: "dal-deep-ellum-sports-house", type: "Sports Bar", address: "Deep Ellum, Dallas, TX", neighborhood: "Deep Ellum", lat: 32.7843, lng: -96.7836, capacity: 240, screens: "8 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-dal-2", citySlug: "dallas", name: "Arlington Rooftop", slug: "dal-arlington-rooftop", type: "Rooftop Bar", address: "Arlington, TX", neighborhood: "Arlington", lat: 32.7357, lng: -97.1081, capacity: 180, screens: "4 screens + projector", foodAndDrink: true, indoorOutdoor: "Both", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-dal-3", citySlug: "dallas", name: "Uptown Dallas Fan Tavern", slug: "dal-uptown-fan-tavern", type: "Pub", address: "Uptown, Dallas, TX", neighborhood: "Uptown", lat: 32.7975, lng: -96.8017, capacity: 120, screens: "3 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: false, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: false },
+
+  // Miami
+  { id: "v-mia-1", citySlug: "miami", name: "Wynwood Sports House", slug: "mia-wynwood-sports-house", type: "Sports Bar", address: "Wynwood, Miami, FL", neighborhood: "Wynwood", lat: 25.801, lng: -80.199, capacity: 240, screens: "8 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-mia-2", citySlug: "miami", name: "South Beach Rooftop", slug: "mia-south-beach-rooftop", type: "Rooftop Bar", address: "South Beach, Miami Beach, FL", neighborhood: "South Beach", lat: 25.7907, lng: -80.13, capacity: 180, screens: "4 screens + projector", foodAndDrink: true, indoorOutdoor: "Both", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-mia-3", citySlug: "miami", name: "Brickell Fan Tavern", slug: "mia-brickell-fan-tavern", type: "Pub", address: "Brickell, Miami, FL", neighborhood: "Brickell", lat: 25.7617, lng: -80.1918, capacity: 120, screens: "3 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: false, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: false },
+
+  // Atlanta
+  { id: "v-atl-1", citySlug: "atlanta", name: "Midtown ATL Sports House", slug: "atl-midtown-sports-house", type: "Sports Bar", address: "Midtown, Atlanta, GA", neighborhood: "Midtown", lat: 33.7838, lng: -84.383, capacity: 240, screens: "8 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-atl-2", citySlug: "atlanta", name: "Buckhead Rooftop", slug: "atl-buckhead-rooftop", type: "Rooftop Bar", address: "Buckhead, Atlanta, GA", neighborhood: "Buckhead", lat: 33.8484, lng: -84.3733, capacity: 180, screens: "4 screens + projector", foodAndDrink: true, indoorOutdoor: "Both", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-atl-3", citySlug: "atlanta", name: "Old Fourth Ward Fan Tavern", slug: "atl-o4w-fan-tavern", type: "Pub", address: "Old Fourth Ward, Atlanta, GA", neighborhood: "Old Fourth Ward", lat: 33.7676, lng: -84.3636, capacity: 120, screens: "3 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: false, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: false },
+
+  // San Francisco Bay Area
+  { id: "v-sf-1", citySlug: "san-francisco", name: "SoMa Sports House", slug: "sf-soma-sports-house", type: "Sports Bar", address: "SoMa, San Francisco, CA", neighborhood: "SoMa", lat: 37.7785, lng: -122.395, capacity: 240, screens: "8 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-sf-2", citySlug: "san-francisco", name: "Santa Clara Rooftop", slug: "sf-santa-clara-rooftop", type: "Rooftop Bar", address: "Santa Clara, CA", neighborhood: "Santa Clara", lat: 37.3541, lng: -121.9552, capacity: 180, screens: "4 screens + projector", foodAndDrink: true, indoorOutdoor: "Both", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-sf-3", citySlug: "san-francisco", name: "Mission Fan Tavern", slug: "sf-mission-fan-tavern", type: "Pub", address: "Mission District, San Francisco, CA", neighborhood: "Mission District", lat: 37.7599, lng: -122.4148, capacity: 120, screens: "3 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: false, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: false },
+
+  // Philadelphia
+  { id: "v-phi-1", citySlug: "philadelphia", name: "Center City Sports House", slug: "phi-center-city-sports-house", type: "Sports Bar", address: "Center City, Philadelphia, PA", neighborhood: "Center City", lat: 39.951, lng: -75.1652, capacity: 240, screens: "8 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-phi-2", citySlug: "philadelphia", name: "Fishtown Rooftop", slug: "phi-fishtown-rooftop", type: "Rooftop Bar", address: "Fishtown, Philadelphia, PA", neighborhood: "Fishtown", lat: 39.9709, lng: -75.13, capacity: 180, screens: "4 screens + projector", foodAndDrink: true, indoorOutdoor: "Both", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-phi-3", citySlug: "philadelphia", name: "South Philly Fan Tavern", slug: "phi-south-philly-fan-tavern", type: "Pub", address: "South Philadelphia, PA", neighborhood: "South Philadelphia", lat: 39.9215, lng: -75.17, capacity: 120, screens: "3 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: false, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: false },
+
+  // Seattle
+  { id: "v-sea-1", citySlug: "seattle", name: "Pioneer Square Sports House", slug: "sea-pioneer-square-sports-house", type: "Sports Bar", address: "Pioneer Square, Seattle, WA", neighborhood: "Pioneer Square", lat: 47.6015, lng: -122.3343, capacity: 240, screens: "8 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-sea-2", citySlug: "seattle", name: "Capitol Hill Rooftop", slug: "sea-capitol-hill-rooftop", type: "Rooftop Bar", address: "Capitol Hill, Seattle, WA", neighborhood: "Capitol Hill", lat: 47.623, lng: -122.321, capacity: 180, screens: "4 screens + projector", foodAndDrink: true, indoorOutdoor: "Both", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-sea-3", citySlug: "seattle", name: "Ballard Fan Tavern", slug: "sea-ballard-fan-tavern", type: "Pub", address: "Ballard, Seattle, WA", neighborhood: "Ballard", lat: 47.668, lng: -122.3845, capacity: 120, screens: "3 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: false, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: false },
+
+  // Boston
+  { id: "v-bos-1", citySlug: "boston", name: "Seaport Sports House", slug: "bos-seaport-sports-house", type: "Sports Bar", address: "Seaport, Boston, MA", neighborhood: "Seaport", lat: 42.3519, lng: -71.044, capacity: 240, screens: "8 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-bos-2", citySlug: "boston", name: "Fenway Rooftop", slug: "bos-fenway-rooftop", type: "Rooftop Bar", address: "Fenway, Boston, MA", neighborhood: "Fenway", lat: 42.3467, lng: -71.0972, capacity: 180, screens: "4 screens + projector", foodAndDrink: true, indoorOutdoor: "Both", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-bos-3", citySlug: "boston", name: "Foxborough Fan Tavern", slug: "bos-foxborough-fan-tavern", type: "Pub", address: "Foxborough, MA", neighborhood: "Foxborough", lat: 42.0654, lng: -71.2478, capacity: 120, screens: "3 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: false, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: false },
+
+  // Kansas City
+  { id: "v-kc-1", citySlug: "kansas-city", name: "Power & Light Sports House", slug: "kc-power-light-sports-house", type: "Sports Bar", address: "Power & Light District, Kansas City, MO", neighborhood: "Power & Light District", lat: 39.0997, lng: -94.5833, capacity: 240, screens: "8 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-kc-2", citySlug: "kansas-city", name: "Westport Rooftop", slug: "kc-westport-rooftop", type: "Rooftop Bar", address: "Westport, Kansas City, MO", neighborhood: "Westport", lat: 39.053, lng: -94.591, capacity: 180, screens: "4 screens + projector", foodAndDrink: true, indoorOutdoor: "Both", djAvailable: true, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: true },
+  { id: "v-kc-3", citySlug: "kansas-city", name: "Crossroads Fan Tavern", slug: "kc-crossroads-fan-tavern", type: "Pub", address: "Crossroads, Kansas City, MO", neighborhood: "Crossroads", lat: 39.0911, lng: -94.5825, capacity: 120, screens: "3 screens", foodAndDrink: true, indoorOutdoor: "Indoor", djAvailable: false, videoRecapAvailable: false, digitalPackageAvailable: true, watchPartyReady: false },
 ];
 
 export const VENUE_SOLUTION_PACKAGES: VenueSolutionPackage[] = [

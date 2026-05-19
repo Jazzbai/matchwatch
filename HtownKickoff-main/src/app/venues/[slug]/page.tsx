@@ -49,9 +49,9 @@ type ActiveTab = "overview" | "menu" | "google-reviews" | "reviews" | "posts";
 /* ── CSS ── */
 const VP_VARS = `
 :root{
-  --vp-bg:#0a0b0d;--vp-bg-1:#101217;--vp-bg-2:#14171d;--vp-bg-3:#1b1f26;
-  --vp-line:#23272f;--vp-line-2:#2f3540;
-  --vp-fg:#f1ece4;--vp-fg-dim:#a8a59d;--vp-fg-mute:#6c6a64;
+  --vp-bg:var(--background);--vp-bg-1:var(--card);--vp-bg-2:var(--card);--vp-bg-3:var(--secondary);
+  --vp-line:var(--border);--vp-line-2:var(--border);
+  --vp-fg:var(--foreground);--vp-fg-dim:var(--muted-foreground);--vp-fg-mute:var(--muted-foreground);
   --vp-accent:oklch(0.72 0.19 28);--vp-accent-ink:#0a0b0d;
 }
 `;

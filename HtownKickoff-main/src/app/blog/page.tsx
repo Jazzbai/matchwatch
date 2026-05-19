@@ -9,9 +9,9 @@ import { FloatingNav } from "../../components/AppShell";
 
 const BL_VARS = `
 :root {
-  --bl-bg:#0a0b0d; --bl-bg-1:#101217; --bl-bg-2:#14171d;
-  --bl-line:#23272f; --bl-line-2:#2f3540;
-  --bl-fg:#f1ece4; --bl-fg-dim:#a8a59d; --bl-fg-mute:#6c6a64;
+  --bl-bg:var(--background); --bl-bg-1:var(--card); --bl-bg-2:var(--card);
+  --bl-line:var(--border); --bl-line-2:var(--border);
+  --bl-fg:var(--foreground); --bl-fg-dim:var(--muted-foreground); --bl-fg-mute:var(--muted-foreground);
   --bl-accent:oklch(0.72 0.19 28); --bl-accent-ink:#0a0b0d;
 }
 `;

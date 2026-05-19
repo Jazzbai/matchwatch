@@ -122,40 +122,35 @@ export default function LoginPage() {
     <div
       className="matchwatch-login-page"
       style={{
-        display: "grid",
-        placeItems: "center",
-        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100dvh",
         width: "100%",
-        padding: "132px 24px 48px",
-        backgroundColor: "#0a0b0d",
-        color: "#f1ece4",
+        padding: "120px 20px 56px",
+        color: "var(--foreground)",
         fontFamily: "var(--font-body), system-ui, sans-serif",
-        ["--background" as string]: "#0a0b0d",
-        ["--foreground" as string]: "#f1ece4",
-        ["--card" as string]: "#101217",
-        ["--secondary" as string]: "#14171d",
-        ["--muted-foreground" as string]: "#a8a59d",
-        ["--border" as string]: "#23272f",
         ["--primary" as string]: "oklch(0.72 0.19 28)",
-        ["--primary-foreground" as string]: "#0a0b0d",
+        ["--primary-foreground" as string]: "oklch(0.99 0 0)",
       }}
     >
       <FloatingNav />
       {/* ===== LEFT PANE — FORM ===== */}
       <div
+        className="matchwatch-login-card"
         style={{
           width: "100%",
-          maxWidth: 620,
+          maxWidth: 460,
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
-          padding: "48px 40px",
+          padding: "40px 36px",
           position: "relative",
           zIndex: 10,
           border: "1px solid var(--border)",
-          borderRadius: 24,
+          borderRadius: 20,
           backgroundColor: "var(--card)",
-          boxShadow: "0 28px 90px rgba(0,0,0,0.36)",
+          boxShadow: "0 24px 70px color-mix(in oklch, var(--foreground) 14%, transparent)",
         }}
       >
         {/* Brand */}

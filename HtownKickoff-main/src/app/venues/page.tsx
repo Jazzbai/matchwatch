@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useData, type Venue } from "../../lib/data-provider";
 import { useAuth } from "../../lib/auth-context";
@@ -14,9 +14,9 @@ import { FloatingNav } from "../../components/AppShell";
 /* ── CSS ── */
 const VN_VARS = `
 :root{
-  --vn-bg:#0a0b0d;--vn-bg-1:#101217;--vn-bg-2:#14171d;--vn-bg-3:#1b1f26;
-  --vn-line:#23272f;--vn-line-2:#2f3540;
-  --vn-fg:#f1ece4;--vn-fg-dim:#a8a59d;--vn-fg-mute:#6c6a64;
+  --vn-bg:var(--background);--vn-bg-1:var(--card);--vn-bg-2:var(--card);--vn-bg-3:var(--secondary);
+  --vn-line:var(--border);--vn-line-2:var(--border);
+  --vn-fg:var(--foreground);--vn-fg-dim:var(--muted-foreground);--vn-fg-mute:var(--muted-foreground);
   --vn-accent:oklch(0.72 0.19 28);--vn-accent-ink:#0a0b0d;
   --vn-live:oklch(0.78 0.14 200);
 }
@@ -42,10 +42,10 @@ body{background:var(--vn-bg)!important;color:var(--vn-fg)!important;}
 .vn-menu-toggle{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--vn-line);border-radius:999px;background:rgba(255,255,255,0.04);color:var(--vn-fg);cursor:pointer;}
 .vn-mobile-nav{display:none;}
 /* crumb */
-.vn-crumb{padding:14px 32px;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--vn-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--vn-line);}
+.vn-crumb{max-width:1560px;margin-inline:auto;padding:14px clamp(16px,4vw,32px);font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;color:var(--vn-fg-mute);text-transform:uppercase;border-bottom:1px solid var(--vn-line);}
 .vn-crumb a:hover{color:var(--vn-fg);}.vn-crumb .sep{margin:0 8px;color:var(--vn-line-2);}.vn-crumb b{color:var(--vn-fg-dim);font-weight:500;}
 /* band */
-.vn-band{padding:36px 32px 48px;border-bottom:1px solid var(--vn-line);position:relative;overflow:hidden;}
+.vn-band{max-width:1560px;margin-inline:auto;padding:36px clamp(16px,4vw,32px) 48px;border-bottom:1px solid var(--vn-line);position:relative;overflow:hidden;}
 .vn-band::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;}
 .vn-band-grid{display:grid;grid-template-columns:1.3fr .9fr;gap:48px;align-items:end;position:relative;z-index:1;}
 .vn-kicker{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.16em;color:var(--vn-fg-mute);text-transform:uppercase;margin-bottom:14px;}
@@ -57,24 +57,24 @@ body{background:var(--vn-bg)!important;color:var(--vn-fg)!important;}
 .vn-metric .v{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:30px;color:var(--vn-fg);line-height:1;}
 .vn-metric .v em{font-style:normal;color:var(--vn-accent);}
 /* search bar */
-.vn-search-wrap{padding:0 32px;margin-top:-28px;position:relative;z-index:2;}
-.vn-search{background:var(--vn-bg-2);border:1px solid var(--vn-line-2);padding:8px;display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;box-shadow:0 12px 40px rgba(0,0,0,.35);}
+.vn-search-wrap{max-width:1560px;margin-inline:auto;padding:0 clamp(16px,4vw,32px);margin-top:-28px;position:relative;z-index:2;}
+.vn-search{background:var(--vn-bg-2);border:1px solid var(--vn-line-2);border-radius:14px;padding:8px;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:8px;align-items:center;box-shadow:0 12px 40px rgba(0,0,0,.18);}
 .vn-search .ic{padding:0 12px;color:var(--vn-fg-mute);}
 .vn-search input{background:transparent;border:0;color:var(--vn-fg);font-family:'Space Grotesk',var(--font-space),sans-serif;font-size:16px;padding:12px 4px;outline:0;width:100%;}
 .vn-search input::placeholder{color:var(--vn-fg-mute);}
 .vn-search-sep{width:1px;background:var(--vn-line);align-self:stretch;}
 .vn-search-go{padding:12px 18px;background:var(--vn-accent);color:var(--vn-accent-ink);font-family:'JetBrains Mono',var(--font-mono),monospace;font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:12px;display:inline-flex;gap:8px;align-items:center;border:none;cursor:pointer;}
 /* chips */
-.vn-chips{padding:20px 32px 0;display:flex;gap:8px;flex-wrap:wrap;}
+.vn-chips{max-width:1560px;margin-inline:auto;padding:20px clamp(16px,4vw,32px) 0;display:flex;gap:8px;flex-wrap:wrap;}
 .vn-chip{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:8px 12px;border:1px solid var(--vn-line);color:var(--vn-fg-dim);cursor:pointer;background:none;}
 .vn-chip:hover{color:var(--vn-fg);border-color:var(--vn-line-2);}
 .vn-chip.on{background:var(--vn-fg);color:var(--vn-bg);border-color:var(--vn-fg);}
 .vn-chip .n{color:var(--vn-fg-mute);margin-left:6px;}
 .vn-chip.on .n{color:rgba(10,11,13,.55);}
 /* layout */
-.vn-page{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:20px;}
-.vn-list{padding:20px 32px 60px;min-width:0;}
-.vn-map-wrap{position:sticky;top:61px;height:calc(100vh - 61px);padding:20px 20px 20px 0;display:flex;flex-direction:column;}
+.vn-page{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:0;margin:20px auto 0;max-width:1560px;}
+.vn-list{padding:20px clamp(16px,4vw,32px) 60px;min-width:0;}
+.vn-map-wrap{position:sticky;top:96px;height:calc(100dvh - 116px);padding:20px clamp(16px,4vw,32px) 20px 0;display:flex;flex-direction:column;min-width:0;}
 .vn-map-wrap > div{flex:1;border-radius:0!important;}
 /* list head */
 .vn-list-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
@@ -205,8 +205,6 @@ function VenueListImage({ src, alt }: { src?: string; alt: string }) {
 function VenuesPageContent() {
     const { venues: VENUES, isLoading } = useData();
     const { user } = useAuth();
-    const pathname = usePathname();
-    const router = useRouter();
     const searchParams = useSearchParams();
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -218,7 +216,6 @@ function VenuesPageContent() {
     const [visibleCount, setVisibleCount] = useState(12);
 
     const requestedPage = parsePageParam(searchParams.get("page"));
-    const syncPageRef = useRef<(n: number) => void>(() => {});
 
     const activeVenues = useMemo(() => VENUES.filter(v => v.isActive), [VENUES]);
 
@@ -229,13 +226,6 @@ function VenuesPageContent() {
             .slice(0, 8),
         [activeVenues]
     );
-
-    syncPageRef.current = (n: number) => {
-        const p = new URLSearchParams(searchParams.toString());
-        if (n <= 1) p.delete("page"); else p.set("page", String(n));
-        const q = p.toString();
-        router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
-    };
 
     const filtered = useMemo(() =>
         activeVenues

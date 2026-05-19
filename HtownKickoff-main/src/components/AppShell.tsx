@@ -33,7 +33,7 @@ export function FloatingNav() {
     { label: "Matches", href: "/matches", icon: Trophy },
     { label: "World Cup", href: "/world-cup", icon: Trophy },
     { label: "Venues", href: "/venues", icon: Store },
-    { label: "For venues", href: "/for-venues", icon: Building2 },
+    { label: "For Venues", href: "/for-venues", icon: Building2 },
   ];
 
   return (
@@ -82,11 +82,11 @@ export function FloatingNav() {
           ) : (
             <div className="site-nav__auth">
               <Link href="/login" className="site-nav__auth-link">
-                Sign in
+                Sign In
               </Link>
               <Link href="/for-venues/register" className="site-nav__cta">
                 <Building2 size={14} />
-                List your venue
+                List Your Venue
               </Link>
             </div>
           )}

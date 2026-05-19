@@ -11,8 +11,8 @@ import { FloatingNav } from "../components/AppShell";
 
 /* ── CSS-in-JS style block injected once ── */
 const CSS = `
-  .mw-page{display:grid;grid-template-columns:220px 1fr 320px;gap:0;min-height:calc(100vh - 72px);}
-  .mw-side{border-right:1px solid var(--mw-line);padding:24px 20px;background:linear-gradient(180deg,rgba(255,255,255,0.015),transparent 200px);position:sticky;top:72px;height:calc(100vh - 72px);overflow-y:auto;}
+  .mw-page{display:grid;grid-template-columns:220px minmax(0,1fr) 320px;gap:0;min-height:calc(100dvh - 96px);max-width:1560px;margin-inline:auto;}
+  .mw-side{border-right:1px solid var(--mw-line);padding:24px 20px;background:linear-gradient(180deg,color-mix(in oklch,var(--mw-fg) 2%,transparent),transparent 200px);position:sticky;top:96px;height:calc(100dvh - 96px);overflow-y:auto;}
   .mw-side h4{font-family:'Space Grotesk',var(--font-space),sans-serif;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mw-fg-mute);margin:18px 0 10px;font-weight:500;}
   .mw-side h4:first-child{margin-top:0;}
   .mw-side-list{display:flex;flex-direction:column;}
@@ -28,7 +28,7 @@ const CSS = `
   .mw-form{margin-left:auto;display:flex;gap:2px;}
   .mw-dot{width:6px;height:6px;}
   .mw-main{padding:28px 32px 60px;min-width:0;}
-  .mw-hero{position:relative;overflow:hidden;border:1px solid var(--mw-line);background:linear-gradient(120deg,rgba(255,95,45,0.10),transparent 60%),linear-gradient(0deg,#0c0e12,#131720);margin-bottom:32px;}
+  .mw-hero{position:relative;overflow:hidden;border:1px solid var(--mw-line);border-radius:16px;background:linear-gradient(120deg,rgba(255,95,45,0.10),transparent 60%),linear-gradient(0deg,var(--mw-bg-1),var(--mw-bg-2));margin-bottom:32px;}
   .mw-hero-inner{display:grid;grid-template-columns:1.3fr 1fr;min-height:340px;}
   .mw-hero-left{padding:28px 32px;display:flex;flex-direction:column;gap:22px;}
   .mw-hero-right{border-left:1px solid var(--mw-line);padding:20px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);display:flex;flex-direction:column;gap:12px;}
@@ -40,7 +40,7 @@ const CSS = `
   .mw-btn.primary{background:var(--mw-accent);color:#0a0b0d;border-color:var(--mw-accent);font-weight:600;}
   .mw-btn.primary:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--mw-fg);}
   .mw-btn.ghost{background:rgba(255,255,255,0.02);}
-  .mw-section{border:1px solid var(--mw-line);background:radial-gradient(600px 200px at 10% 0%,rgba(255,95,45,0.08),transparent 70%),linear-gradient(180deg,#0d1016,#0a0b0d);margin-bottom:36px;}
+  .mw-section{border:1px solid var(--mw-line);border-radius:16px;overflow:hidden;background:radial-gradient(600px 200px at 10% 0%,rgba(255,95,45,0.08),transparent 70%),linear-gradient(180deg,var(--mw-bg-1),var(--mw-bg));margin-bottom:36px;}
   .mw-sec-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--mw-line);}
   .mw-sec-mark{display:flex;align-items:center;gap:14px;font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.01em;}
   .mw-sec-mark .trophy{width:28px;height:28px;display:grid;place-items:center;background:var(--mw-accent);color:#0a0b0d;flex-shrink:0;}
@@ -106,7 +106,7 @@ const CSS = `
   .mw-filter{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;color:var(--mw-fg-dim);padding:6px 10px;border:1px solid var(--mw-line);letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;background:none;transition:all .12s;}
   .mw-filter.on{color:#0a0b0d;background:var(--mw-accent);border-color:var(--mw-accent);}
   .mw-filter:hover:not(.on){color:var(--mw-fg);border-color:var(--mw-line-2);}
-  .mw-rail{border-left:1px solid var(--mw-line);padding:24px 22px;background:linear-gradient(180deg,rgba(255,255,255,0.015),transparent 200px);position:sticky;top:72px;height:calc(100vh - 72px);overflow-y:auto;}
+  .mw-rail{border-left:1px solid var(--mw-line);padding:24px 22px;background:linear-gradient(180deg,color-mix(in oklch,var(--mw-fg) 2%,transparent),transparent 200px);position:sticky;top:96px;height:calc(100dvh - 96px);overflow-y:auto;}
   .mw-rail h3{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:15px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
   .mw-rail h3 .n{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;color:var(--mw-fg-mute);font-weight:400;}
   .mw-rail h4{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--mw-fg-mute);margin:22px 0 10px;font-weight:500;}
@@ -148,129 +148,23 @@ const CSS = `
 
 const MW_VARS = `
   :root {
-    --mw-bg: #0a0b0d;
-    --mw-bg-1: #101217;
-    --mw-bg-2: #14171d;
-    --mw-bg-3: #1b1f26;
-    --mw-line: #23272f;
-    --mw-line-2: #2f3540;
-    --mw-fg: #f1ece4;
-    --mw-fg-dim: #a8a59d;
-    --mw-fg-mute: #6c6a64;
+    --mw-bg: var(--background);
+    --mw-bg-1: var(--card);
+    --mw-bg-2: var(--card);
+    --mw-bg-3: var(--secondary);
+    --mw-line: var(--border);
+    --mw-line-2: var(--border);
+    --mw-fg: var(--foreground);
+    --mw-fg-dim: var(--muted-foreground);
+    --mw-fg-mute: var(--muted-foreground);
     --mw-accent: oklch(0.72 0.19 28);
   }
 `;
-
-/* ── Static watch-party data (no API yet) ── */
-const WATCH_PARTIES = [
-  { id: 1, match: "Arsenal vs Liverpool", sport: "⚽", host: "Jordan M.", hc: "JM", venue: "The Long Bar", city: "Brooklyn", capacity: "42/50", time: "NOW" },
-  { id: 2, match: "Warriors vs Lakers", sport: "🏀", host: "Ana S.", hc: "AS", venue: "Stoppage Time", city: "Williamsburg", capacity: "28/40", time: "NOW" },
-  { id: 3, match: "Bayern vs PSG", sport: "⚽", host: "Rohan K.", hc: "RK", venue: "The Pitch", city: "Hoboken", capacity: "12/30", time: "IN 42M" },
-];
-
-const LIVE_FALLBACK = [
-  { id: 1, sport: "soccer", league: "Premier League", home: "Tottenham", away: "Brighton", hs: "1", as_: "2", time: "78'", watchers: 834 },
-  { id: 2, sport: "soccer", league: "La Liga", home: "Real Madrid", away: "Sevilla", hs: "3", as_: "0", time: "63'", watchers: 2104 },
-  { id: 3, sport: "basketball", league: "NBA", home: "Warriors", away: "Lakers", hs: "88", as_: "92", time: "Q3 · 4:12", watchers: 5218 },
-  { id: 4, sport: "nfl", league: "NFL", home: "49ers", away: "Cowboys", hs: "21", as_: "17", time: "Q3 · 09:22", watchers: 1782 },
-];
-
-const UPCOMING_FALLBACK = [
-  { sport: "soccer", league: "Champions League", home: "Bayern München", away: "Paris S-G", kick: "IN 42 MIN", watchers: 18211, homeImg: "https://crests.football-data.org/5.png", awayImg: "https://crests.football-data.org/524.png" },
-  { sport: "soccer", league: "Premier League", home: "Arsenal", away: "Liverpool", kick: "IN 2H 12M", watchers: 9103, homeImg: "https://crests.football-data.org/57.png", awayImg: "https://crests.football-data.org/64.png" },
-  { sport: "soccer", league: "La Liga", home: "Real Madrid", away: "Barcelona", kick: "IN 4H 08M", watchers: 31200, homeImg: "https://crests.football-data.org/86.png", awayImg: "https://crests.football-data.org/81.png" },
-  { sport: "soccer", league: "Serie A", home: "Inter", away: "AC Milan", kick: "IN 5H 30M", watchers: 6440, homeImg: "https://crests.football-data.org/108.png", awayImg: "https://crests.football-data.org/98.png" },
-];
-
-const SPORT_COLORS: Record<string, string> = {
-  soccer: "#22c55e", football: "#22c55e", basketball: "#f97316", nfl: "#3b82f6", cricket: "#eab308", tennis: "#a78bfa",
-};
 
 function CrestBox({ label, color }: { label: string; color: string }) {
   return (
     <div className="mw-crest" style={{ background: color, color: "#fff" }}>
       {label.substring(0, 2).toUpperCase()}
-    </div>
-  );
-}
-
-function LiveMatchCard({ match }: { match: typeof LIVE_FALLBACK[0] }) {
-  const accentColor = SPORT_COLORS[match.sport] || "var(--mw-accent)";
-  return (
-    <div className="mw-match-card live">
-      <div className="mw-mc-top">
-        <div className="mw-mc-league">
-          <div className="mw-mc-swatch" style={{ background: accentColor }} />
-          {match.league}
-        </div>
-        <div className="mw-mc-status live">
-          <span className="dot" />
-          {match.time}
-        </div>
-      </div>
-      <div className="mw-mc-teams">
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <div className="mw-mc-team">
-            <CrestBox label={match.home.substring(0, 2)} color={accentColor} />
-            <span className="mw-mc-name">{match.home}</span>
-          </div>
-          <div className="mw-mc-team">
-            <CrestBox label={match.away.substring(0, 2)} color="#374151" />
-            <span className="mw-mc-name">{match.away}</span>
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-end" }}>
-          <div className="mw-mc-score">{match.hs}</div>
-          <div className="mw-mc-score" style={{ color: "var(--mw-fg-dim)", fontWeight: 400 }}>{match.as_}</div>
-        </div>
-      </div>
-      <div className="mw-mc-foot">
-        <span>{match.watchers.toLocaleString()} watching</span>
-        <Link href="/venues" className="mw-join">Find a bar →</Link>
-      </div>
-    </div>
-  );
-}
-
-function TeamCrest({ img, label, color }: { img?: string; label: string; color: string }) {
-  const [failed, setFailed] = React.useState(false);
-  if (img && !failed) {
-    return <img src={img} alt={label} style={{ width: 28, height: 28, objectFit: "contain", flexShrink: 0 }} onError={() => setFailed(true)} />;
-  }
-  return <CrestBox label={label.substring(0, 2)} color={color} />;
-}
-
-function UpcomingMatchCard({ match }: { match: typeof UPCOMING_FALLBACK[0] }) {
-  const accentColor = SPORT_COLORS[match.sport] || "var(--mw-accent)";
-  return (
-    <div className="mw-match-card upcoming">
-      <div className="mw-mc-top">
-        <div className="mw-mc-league">
-          <div className="mw-mc-swatch" style={{ background: accentColor }} />
-          {match.league}
-        </div>
-        <div className="mw-mc-status upcoming">{match.kick}</div>
-      </div>
-      <div className="mw-mc-teams">
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <div className="mw-mc-team">
-            <TeamCrest img={match.homeImg} label={match.home} color={accentColor} />
-            <span className="mw-mc-name">{match.home}</span>
-          </div>
-          <div className="mw-mc-team">
-            <TeamCrest img={match.awayImg} label={match.away} color="#374151" />
-            <span className="mw-mc-name">{match.away}</span>
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-end" }}>
-          <div className="mw-mc-score" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, color: "var(--mw-fg-dim)", fontWeight: 500 }}>—</div>
-          <div className="mw-mc-score" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, color: "var(--mw-fg-dim)", fontWeight: 500 }}>—</div>
-        </div>
-      </div>
-      <div className="mw-mc-foot">
-        <span>{match.watchers.toLocaleString()} interested</span>
-        <Link href="/matches" className="mw-join">View venues →</Link>
-      </div>
     </div>
   );
 }
@@ -402,7 +296,7 @@ export default function HomePage() {
             <Link href="/" className="mw-side-item active">
               <span className="ico" style={{ color: "var(--mw-accent)" }}>◆</span>
               <span>Home</span>
-              <span className="badge">{upcomingMatches.length || 42}</span>
+              <span className="badge">{upcomingMatches.length}</span>
             </Link>
             <Link href="/venues" className="mw-side-item">
               <span className="ico">🍺</span>
@@ -749,7 +643,21 @@ export default function HomePage() {
                   </div>
                 );
               })
-              : UPCOMING_FALLBACK.map((m, i) => <UpcomingMatchCard key={i} match={m} />)
+              : (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    padding: "36px 20px",
+                    textAlign: "center",
+                    border: "1px dashed var(--mw-line)",
+                    borderRadius: 12,
+                    color: "var(--mw-fg-mute)",
+                    fontSize: 14,
+                  }}
+                >
+                  No upcoming matches scheduled right now — check back soon.
+                </div>
+              )
             }
           </div>
 
@@ -768,7 +676,7 @@ export default function HomePage() {
                   <div className="mw-partner-wordmark">Team<em>Houston</em></div>
                 </div>
                 <div className="mw-partner-desc">
-                  The premier platform for Houston's amateur and semi-pro football scene. Leagues, tournaments, and community events — all in one place.
+                  The premier platform for Houston&apos;s amateur and semi-pro football scene. Leagues, tournaments, and community events — all in one place.
                 </div>
                 <a href="https://www.team-houston.com/" target="_blank" rel="noopener noreferrer" className="mw-partner-link">
                   Visit Team Houston →
@@ -780,7 +688,7 @@ export default function HomePage() {
                   <div className="mw-partner-wordmark"><em>Activent</em></div>
                 </div>
                 <div className="mw-partner-desc">
-                  Discover local sports events and activities near you. From pickup games to watch parties, Activent connects Houston's active community.
+                  Discover local sports events and activities near you. From pickup games to watch parties, Activent connects Houston&apos;s active community.
                 </div>
                 <a href="https://www.getactivent.com/" target="_blank" rel="noopener noreferrer" className="mw-partner-link">
                   Visit Activent →
@@ -796,26 +704,15 @@ export default function HomePage() {
 
         {/* Right rail */}
         <aside className="mw-rail">
-          <h3>Watch parties <span className="n">· {WATCH_PARTIES.length} near you</span></h3>
+          <h3>Watch parties</h3>
 
-          {WATCH_PARTIES.map((p) => (
-            <div key={p.id} className="mw-party">
-              <div className="mw-party-head">
-                <span>{p.sport} {p.match.split(" vs ")[0].substring(0, 12).toUpperCase()}</span>
-                <span style={{ color: p.time === "NOW" ? "var(--mw-accent)" : "var(--mw-fg-dim)" }}>{p.time}</span>
-              </div>
-              <div className="mw-party-title">{p.match}</div>
-              <div className="mw-party-host">
-                <div className="hc">{p.hc}</div>
-                <span>Hosted by {p.host} · {p.venue}</span>
-              </div>
-              <div className="mw-party-meta">
-                <span>📍 {p.city}</span>
-                <span>👥 {p.capacity}</span>
-              </div>
-              <Link href="/venues" className="mw-party-join">Join party →</Link>
+          <div className="mw-party" style={{ gap: 10 }}>
+            <div className="mw-party-title">Live watch-party rooms are coming soon</div>
+            <div style={{ fontSize: 12, color: "var(--mw-fg-dim)", lineHeight: 1.5 }}>
+              For now, find a venue hosting your match and reserve a spot.
             </div>
-          ))}
+            <Link href="/venues" className="mw-party-join">Browse venues →</Link>
+          </div>
 
           <h4>Friends are watching</h4>
           <div className="mw-create-party">

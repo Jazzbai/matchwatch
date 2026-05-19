@@ -281,14 +281,8 @@ export default function VenueRegisterPage() {
           maxWidth: 1240,
           margin: "0 auto",
           padding: "8px 20px 80px",
-          ["--background" as string]: "#0a0b0d",
-          ["--foreground" as string]: "#f1ece4",
-          ["--card" as string]: "#101217",
-          ["--secondary" as string]: "#14171d",
-          ["--muted-foreground" as string]: "#a8a59d",
-          ["--border" as string]: "#23272f",
           ["--primary" as string]: "oklch(0.72 0.19 28)",
-          ["--primary-foreground" as string]: "#0a0b0d",
+          ["--primary-foreground" as string]: "oklch(0.99 0 0)",
         }}
       >
 
