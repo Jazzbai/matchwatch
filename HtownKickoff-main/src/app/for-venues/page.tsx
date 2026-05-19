@@ -55,7 +55,7 @@ export default function ForVenuesPage() {
                 {/* ── HERO ── */}
                 <div
                     style={{
-                        maxWidth: 1200,
+                        maxWidth: 1440,
                         margin: "0 auto",
                         padding: "32px clamp(16px, 4vw, 32px) 8px",
                     }}
@@ -171,7 +171,7 @@ export default function ForVenuesPage() {
                 </div>
 
                 {/* ── BENEFITS GRID ── */}
-                <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px clamp(16px, 4vw, 32px) 8px" }}>
+                <div style={{ maxWidth: 1440, margin: "0 auto", padding: "48px clamp(16px, 4vw, 32px) 8px" }}>
                     <h2
                         className="font-display"
                         style={{
@@ -223,7 +223,7 @@ export default function ForVenuesPage() {
                 </div>
 
                 {/* ── HOW IT WORKS ── */}
-                <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px clamp(16px, 4vw, 32px) 8px" }}>
+                <div style={{ maxWidth: 1440, margin: "0 auto", padding: "48px clamp(16px, 4vw, 32px) 8px" }}>
                     <h2
                         className="font-display"
                         style={{
@@ -269,7 +269,7 @@ export default function ForVenuesPage() {
                 </div>
 
                 {/* ── FINAL CTA ── */}
-                <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px clamp(16px, 4vw, 32px) 64px" }}>
+                <div style={{ maxWidth: 1440, margin: "0 auto", padding: "48px clamp(16px, 4vw, 32px) 64px" }}>
                     <div
                         style={{
                             ...cardStyle,

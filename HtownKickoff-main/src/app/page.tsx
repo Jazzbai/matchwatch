@@ -11,7 +11,7 @@ import { FloatingNav } from "../components/AppShell";
 
 /* ── CSS-in-JS style block injected once ── */
 const CSS = `
-  .mw-page{display:grid;grid-template-columns:220px minmax(0,1fr) 320px;gap:0;min-height:calc(100dvh - 96px);max-width:1560px;margin-inline:auto;}
+  .mw-page{display:grid;grid-template-columns:220px minmax(0,1fr) 320px;gap:0;min-height:calc(100dvh - 96px);max-width:1440px;margin-inline:auto;}
   .mw-side{border-right:1px solid var(--mw-line);padding:24px 20px;background:linear-gradient(180deg,color-mix(in oklch,var(--mw-fg) 2%,transparent),transparent 200px);position:sticky;top:96px;height:calc(100dvh - 96px);overflow-y:auto;}
   .mw-side h4{font-family:'Space Grotesk',var(--font-space),sans-serif;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mw-fg-mute);margin:18px 0 10px;font-weight:500;}
   .mw-side h4:first-child{margin-top:0;}

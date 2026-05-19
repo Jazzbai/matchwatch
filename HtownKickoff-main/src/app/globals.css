@@ -283,7 +283,7 @@ body:has(.matchwatch-login-page) {
   grid-template-columns: minmax(132px, 0.82fr) minmax(0, auto) minmax(210px, 0.82fr);
   align-items: center;
   gap: 16px;
-  width: min(100%, 1140px);
+  width: min(100%, 1440px);
   min-height: 64px;
   padding: 8px 12px;
   border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
@@ -606,7 +606,7 @@ body:has(.matchwatch-login-page) {
 }
 
 .matchwatch-login-page .site-nav {
-  width: min(100%, 1140px) !important;
+  width: min(100%, 1440px) !important;
 }
 
 .matchwatch-login-page .site-nav__actions {
@@ -1360,8 +1360,8 @@ body:has(.matchwatch-login-page) {
   grid-template-columns: minmax(132px, 0.82fr) minmax(0, auto) minmax(210px, 0.82fr) !important;
   align-items: center !important;
   gap: 16px !important;
-  width: min(100%, 1140px) !important;
-  max-width: 1140px !important;
+  width: min(100%, 1440px) !important;
+  max-width: 1440px !important;
   min-height: 64px !important;
   height: auto !important;
   padding: 8px 12px !important;

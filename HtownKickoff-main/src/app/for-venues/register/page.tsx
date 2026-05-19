@@ -278,7 +278,7 @@ export default function VenueRegisterPage() {
       <div
         className="venue-register-page"
         style={{
-          maxWidth: 1240,
+          maxWidth: 1440,
           margin: "0 auto",
           padding: "8px 20px 80px",
           ["--primary" as string]: "oklch(0.72 0.19 28)",
