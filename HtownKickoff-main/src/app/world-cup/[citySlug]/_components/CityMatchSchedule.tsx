@@ -1,8 +1,7 @@
 import React from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { MapPin } from "lucide-react";
 import type { CityMatch } from "../types";
-import { buildVenueRegisterUrl } from "../types";
 
 interface Props {
   matches: CityMatch[];
@@ -80,10 +79,11 @@ export function CityMatchSchedule({
               <div className="cc-match-stadium">📍 {match.stadiumName}</div>
 
               <Link
-                href={buildVenueRegisterUrl({ citySlug, type: "watch-party" })}
-                className="cc-btn-p cc-btn-sm cc-btn-full"
+                href={`/venues?city=${citySlug}`}
+                className="cc-btn-p cc-btn-full"
+                style={{ marginTop: "auto", fontSize: "13px", fontWeight: 800, padding: "13px 18px" }}
               >
-                <Search size={12} />
+                <MapPin size={14} />
                 Find Watch Parties
               </Link>
             </div>

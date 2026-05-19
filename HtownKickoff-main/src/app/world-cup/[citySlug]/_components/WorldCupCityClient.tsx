@@ -10,6 +10,7 @@ import { VenueSolutionPackages } from "./VenueSolutionPackages";
 import { VendorSolutionGrid } from "./VendorSolutionGrid";
 import { FeaturedVenueCTA } from "./FeaturedVenueCTA";
 import { CitySponsorCTA } from "./CitySponsorCTA";
+import { FloatingNav } from "@/components/AppShell";
 
 interface Props {
   city: WorldCupCity;
@@ -169,6 +170,7 @@ export function WorldCupCityClient({ city, matches, venues, packages, vendors }:
   return (
     <>
       <style>{CSS}</style>
+      <FloatingNav />
       <main className="cc-page">
         <CityHero city={city} matches={matches} />
 

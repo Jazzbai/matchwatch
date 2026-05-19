@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { FloatingNav } from "@/components/AppShell";
 
 const CSS = `
@@ -101,8 +101,8 @@ const CSS = `
 .hou-mc-tbd{font-size:13px;font-weight:600;color:var(--fg-mute);font-style:italic;}
 .hou-mc-vs{font-size:9px;font-weight:700;color:var(--fg-mute);text-transform:uppercase;letter-spacing:.1em;font-family:'JetBrains Mono',monospace;padding-left:32px;}
 .hou-mc-stadium{font-size:10px;color:var(--fg-mute);}
-.hou-mc-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 16px;background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;transition:all .14s;border-radius:999px;}
-.hou-mc-btn:hover{filter:brightness(1.08);box-shadow:0 6px 20px rgba(212,140,10,0.3);}
+.hou-mc-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 18px;width:100%;background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);font-size:13px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;transition:all .14s;border-radius:999px;margin-top:auto;}
+.hou-mc-btn:hover{filter:brightness(1.08);box-shadow:0 8px 24px rgba(212,140,10,0.35);transform:translateY(-1px);}
 
 /* FAN FESTIVAL */
 .hou-festival{padding:64px 80px;background:linear-gradient(135deg,rgba(255,120,60,0.10) 0%,transparent 50%,rgba(80,180,255,0.04) 100%);border-bottom:1px solid var(--line);position:relative;overflow:hidden;}
@@ -464,10 +464,10 @@ export function HoustonClient() {
 
                 <div className="hou-mc-stadium">📍 NRG Stadium</div>
 
-                <a href="#venues" className="hou-mc-btn">
-                  <Search size={12} />
+                <Link href="/venues?city=houston" className="hou-mc-btn">
+                  <MapPin size={14} />
                   Find Watch Parties
-                </a>
+                </Link>
               </div>
             ))}
           </div>
