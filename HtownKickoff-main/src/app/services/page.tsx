@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FloatingNav } from "@/components/AppShell";
 import {
-  Music, Camera, Megaphone, Bot, QrCode,
+  Music, Camera, Trophy, Bot, QrCode,
   Send, Check, MapPin, ArrowRight, Building2, Utensils, X,
 } from "lucide-react";
 
@@ -31,11 +31,11 @@ const COMPANY_TYPES = [
 const CAPACITY_OPTIONS = ["Under 50", "50 – 100", "100 – 250", "250 – 500", "500+"];
 
 const SERVICES = [
-  { slug: "dj-entertainment",  title: "DJ & Entertainment",    description: "Hype your crowd with live DJs before and after every match.", icon: Music },
-  { slug: "photography-video", title: "Photography & Video",   description: "Professional event photos and video recaps for social media.", icon: Camera },
-  { slug: "digital-marketing", title: "Digital Marketing",     description: "Paid ads, social promotion, and email campaigns to fill seats.", icon: Megaphone },
-  { slug: "ai-receptionist",   title: "AI Receptionist / CRM", description: "AI phone agent that handles reservations and inquiries 24/7.", icon: Bot },
-  { slug: "qr-campaigns",      title: "QR Code Campaigns",     description: "QR-driven fan experiences, contests, and giveaways.", icon: QrCode },
+  { slug: "dj-entertainment",   title: "DJ & Entertainment",         description: "Hype your crowd with live DJs before and after every match.", icon: Music },
+  { slug: "photography-video", title: "Photography & Video",        description: "Professional event photos and video recaps for social media.", icon: Camera },
+  { slug: "watchparty-listing",title: "World Cup Watch Party Page", description: "Get your venue featured on the World Cup city page for your market.", icon: Trophy },
+  { slug: "ai-receptionist",   title: "AI Receptionist / CRM",      description: "AI phone agent that handles reservations and inquiries 24/7.", icon: Bot },
+  { slug: "qr-campaigns",      title: "QR Code Campaigns",          description: "QR-driven fan experiences, contests, and giveaways.", icon: QrCode },
 ];
 
 /* ── CSS ── */
@@ -187,7 +187,7 @@ function VenueForm({
   const [selectedServices, setSelectedServices] = useState<Set<string>>(
     preselectedService ? new Set([preselectedService]) : new Set(),
   );
-  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", website: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -209,7 +209,8 @@ function VenueForm({
     const topic = serviceLabels || "Venue Service Inquiry";
     const msgBody = [
       cityLabel ? `City: ${cityLabel}` : null,
-      form.phone ? `Phone: ${form.phone}` : null,
+      `Phone: ${form.phone}`,
+      form.website ? `Website: ${form.website}` : null,
       "",
       form.message,
     ].filter((l) => l !== null).join("\n");
@@ -241,8 +242,8 @@ function VenueForm({
       </div>
       <div className="sv-row">
         <div className="sv-field">
-          <label className="sv-label">Phone</label>
-          <input className="sv-input" type="tel" placeholder="+1 (713) 000-0000" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+          <label className="sv-label">Phone *</label>
+          <input className="sv-input" type="tel" placeholder="+1 (713) 000-0000" required value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
         </div>
         <div className="sv-field">
           <label className="sv-label">Host city</label>
@@ -251,6 +252,10 @@ function VenueForm({
             {CITIES.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
           </select>
         </div>
+      </div>
+      <div className="sv-field">
+        <label className="sv-label">Website <span style={{ color: "#6c6a64", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+        <input className="sv-input" type="url" placeholder="https://myvenue.com" value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} />
       </div>
       <div className="sv-field">
         <label className="sv-label">Services needed <span style={{ color: "#6c6a64", fontWeight: 400 }}>(select one or more)</span></label>

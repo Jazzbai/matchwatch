@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Building2, Users, Send, Check, X, Music, Camera, Megaphone, Bot, QrCode } from "lucide-react";
+import { Building2, Users, Send, Check, X, Music, Camera, Trophy, Bot, QrCode } from "lucide-react";
 
 interface Props {
   citySlug: string;
@@ -10,11 +10,11 @@ interface Props {
 }
 
 const SERVICES = [
-  { slug: "dj-entertainment",  label: "DJ & Entertainment",    Icon: Music },
-  { slug: "photography-video", label: "Photography & Video",   Icon: Camera },
-  { slug: "digital-marketing", label: "Digital Marketing",     Icon: Megaphone },
-  { slug: "ai-receptionist",   label: "AI Receptionist / CRM", Icon: Bot },
-  { slug: "qr-campaigns",      label: "QR Code Campaigns",     Icon: QrCode },
+  { slug: "dj-entertainment",  label: "DJ & Entertainment",         Icon: Music },
+  { slug: "photography-video", label: "Photography & Video",        Icon: Camera },
+  { slug: "watchparty-listing",label: "World Cup Watch Party Page", Icon: Trophy },
+  { slug: "ai-receptionist",   label: "AI Receptionist / CRM",      Icon: Bot },
+  { slug: "qr-campaigns",      label: "QR Code Campaigns",          Icon: QrCode },
 ];
 
 const COMPANY_TYPES = [
@@ -144,7 +144,7 @@ const CSS = `
 
 function QuickServiceRequest({ cityName }: { cityName: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", website: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -164,7 +164,8 @@ function QuickServiceRequest({ cityName }: { cityName: string }) {
     const topic = labels || "Venue Service Inquiry";
     const body = [
       `City: ${cityName}`,
-      form.phone ? `Phone: ${form.phone}` : null,
+      `Phone: ${form.phone}`,
+      form.website ? `Website: ${form.website}` : null,
       "", form.message,
     ].filter(Boolean).join("\n");
     try {
@@ -233,9 +234,15 @@ function QuickServiceRequest({ cityName }: { cityName: string }) {
                     <input className="cac-qs-inp" type="email" placeholder="jane@venue.com" required value={form.email} onChange={f("email")} />
                   </div>
                 </div>
-                <div className="cac-qs-field">
-                  <label className="cac-qs-lbl">Phone</label>
-                  <input className="cac-qs-inp" type="tel" placeholder="+1 (713) 000-0000" value={form.phone} onChange={f("phone")} />
+                <div className="cac-qs-row">
+                  <div className="cac-qs-field">
+                    <label className="cac-qs-lbl">Phone *</label>
+                    <input className="cac-qs-inp" type="tel" placeholder="+1 (713) 000-0000" required value={form.phone} onChange={f("phone")} />
+                  </div>
+                  <div className="cac-qs-field">
+                    <label className="cac-qs-lbl">Website <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "var(--mw-fg-mute)" }}>(optional)</span></label>
+                    <input className="cac-qs-inp" type="url" placeholder="https://myvenue.com" value={form.website} onChange={f("website")} />
+                  </div>
                 </div>
                 <div className="cac-qs-field">
                   <label className="cac-qs-lbl">Brief message</label>
