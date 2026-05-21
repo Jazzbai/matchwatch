@@ -58,6 +58,14 @@ body{background:#0a0b0d!important;color:#f1ece4!important;overflow-x:hidden;}
 .sv-hero-h1 b{color:oklch(0.72 0.19 28);}
 .sv-hero-sub{font-size:1.05rem;color:rgba(241,236,228,.82);line-height:1.6;max-width:560px;margin:0 auto 40px;text-shadow:0 1px 8px rgba(0,0,0,.4);}
 
+/* ai strip */
+.sv-ai-strip{background:color-mix(in srgb,oklch(0.72 0.19 28) 7%,#0d0e12);border-bottom:1px solid color-mix(in srgb,oklch(0.72 0.19 28) 18%,transparent);padding:14px 24px;}
+.sv-ai-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;text-align:center;}
+.sv-ai-badge{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb,oklch(0.72 0.19 28) 15%,transparent);border:1px solid color-mix(in srgb,oklch(0.72 0.19 28) 35%,transparent);border-radius:999px;padding:4px 12px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:oklch(0.72 0.19 28);white-space:nowrap;}
+.sv-ai-badge .dot{width:6px;height:6px;background:oklch(0.72 0.19 28);border-radius:50%;animation:svbd 1.4s ease-in-out infinite;}
+.sv-ai-text{font-size:.84rem;color:#c8c5be;line-height:1.5;}
+.sv-ai-text b{color:#f1ece4;}
+
 /* mode tabs */
 .sv-tabs{display:inline-flex;background:#101217;border:1px solid #23272f;border-radius:14px;padding:4px;gap:4px;margin-bottom:0;}
 .sv-tab{display:flex;align-items:center;gap:8px;padding:12px 24px;border-radius:10px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#a8a59d;transition:all .15s;}
@@ -599,6 +607,17 @@ function ServicesInner() {
           </div>
         </div>
       </section>
+
+      {/* AI Calling Strip */}
+      <div className="sv-ai-strip">
+        <div className="sv-ai-inner">
+          <span className="sv-ai-badge"><span className="dot" />AI Outreach Active</span>
+          <p className="sv-ai-text">
+            Our AI is <b>already calling thousands of bars &amp; restaurants</b> across all 11 World Cup host cities — qualifying leads and driving venue sign-ups.
+            If you received a call, register below to claim your listing.
+          </p>
+        </div>
+      </div>
 
       {mode === "venue"
         ? <VenueTab selectedCity={selectedCity} setSelectedCity={setSelectedCity} onOpenModal={openModal} />

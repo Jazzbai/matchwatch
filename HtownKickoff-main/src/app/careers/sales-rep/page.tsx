@@ -37,6 +37,14 @@ body{background:#0a0b0d!important;color:#f1ece4!important;overflow-x:hidden;}
 .sr-section:last-of-type{border-bottom:none;}
 .sr-section-title{font-family:'Space Grotesk',sans-serif;font-size:1.35rem;font-weight:800;color:#f1ece4;margin:0 0 24px;letter-spacing:-0.01em;}
 
+/* ai warm bar */
+.sr-warm{background:color-mix(in srgb,oklch(0.72 0.19 28) 7%,#0d0e12);border-bottom:1px solid color-mix(in srgb,oklch(0.72 0.19 28) 18%,transparent);padding:16px 24px;}
+.sr-warm-inner{max-width:880px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.sr-warm-badge{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb,oklch(0.72 0.19 28) 15%,transparent);border:1px solid color-mix(in srgb,oklch(0.72 0.19 28) 35%,transparent);border-radius:999px;padding:4px 12px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:oklch(0.72 0.19 28);white-space:nowrap;flex-shrink:0;}
+.sr-warm-badge .dot{width:6px;height:6px;background:oklch(0.72 0.19 28);border-radius:50%;animation:srbd 1.4s ease-in-out infinite;}
+.sr-warm-text{font-size:.84rem;color:#c8c5be;line-height:1.5;}
+.sr-warm-text b{color:#f1ece4;}
+
 /* highlights bar */
 .sr-highlights{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:32px 0;}
 .sr-hl{background:#101217;border:1px solid #1e2128;border-radius:12px;padding:20px;text-align:center;}
@@ -193,6 +201,16 @@ function SalesRepContent() {
           </div>
         </div>
       </section>
+
+      {/* Warm Leads Strip */}
+      <div className="sr-warm">
+        <div className="sr-warm-inner">
+          <span className="sr-warm-badge"><span className="dot" />AI Outreach Active</span>
+          <p className="sr-warm-text">
+            <b>Your leads are already warm.</b> MatchWatch&apos;s AI system is actively calling bars &amp; restaurants across all host cities — qualifying venues before you even knock. You&apos;re closing, not cold calling from scratch.
+          </p>
+        </div>
+      </div>
 
       {/* Highlights bar */}
       <div className="sr-wrap" style={{ paddingTop: 0, paddingBottom: 0 }}>
