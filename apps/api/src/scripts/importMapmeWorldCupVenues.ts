@@ -328,11 +328,13 @@ function priceRange(level?: number): 'BUDGET' | 'MID' | 'UPSCALE' | 'LUXURY' {
 }
 
 async function loadExistingPlaceIds(): Promise<Set<string>> {
-    const rows = await db.select({ meta: venues.metadata }).from(venues);
+    const rows = await db.select({ meta: venues.metadata, name: venues.name, city: venues.city }).from(venues);
     const ids = new Set<string>();
     for (const row of rows) {
         const meta = row.meta as Record<string, unknown> | null;
         if (typeof meta?.importedPlaceId === 'string') ids.add(meta.importedPlaceId);
+        // Also index by "name|city" to catch seed venues without place IDs
+        if (row.name && row.city) ids.add(`name:${row.name.toLowerCase()}|${row.city.toLowerCase()}`);
     }
     return ids;
 }
@@ -366,6 +368,7 @@ async function insertVenue(ownerId: string, v: ValidatedVenue, city: CityConfig)
         isVerified: false,
         isActive: true,
         isFeatured: false,
+        approvalStatus: 'APPROVED',
         metadata: {
             importedFrom: 'mapme_worldcup2026',
             importedPlaceId: v.placeId,
@@ -441,7 +444,8 @@ async function main() {
         }
         seenInBatch.add(validated.placeId);
 
-        if (existingPlaceIds.has(validated.placeId)) {
+        const nameKey = `name:${validated.name.toLowerCase()}|${raw.city.name.toLowerCase()}`;
+        if (existingPlaceIds.has(validated.placeId) || existingPlaceIds.has(nameKey)) {
             console.log(`already in DB`);
             byCityStats[cityName].skipped++;
             skipped++;
