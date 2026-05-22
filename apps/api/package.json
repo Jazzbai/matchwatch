@@ -25,6 +25,7 @@
         "teams:backfill-logos": "tsx src/scripts/backfillTeamLogos.ts",
         "venues:import": "tsx src/scripts/importVenuesFromPlaces.ts",
         "venues:crawl-soccer": "tsx src/scripts/crawlSoccerWatchPartyVenues.ts",
+        "venues:import-mapme-wc": "tsx src/scripts/importMapmeWorldCupVenues.ts",
         "venues:enrich": "tsx src/scripts/enrichVenuesFromGoogle.ts",
         "venues:import-mls": "tsx src/scripts/importMlsPubPartners.ts"
     },
