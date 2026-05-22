@@ -3,9 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { MatchVideo } from "../../components/MatchVideo";
 import { type League, type Match, type Team } from "../../lib/data";
-import { useAuth } from "../../lib/auth-context";
 import { useData } from "../../lib/data-provider";
 import { isNationalTeamCompetition } from "../../lib/league-utils";
 import { getMatchDisplay } from "../../lib/match-display";
@@ -48,6 +47,24 @@ body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 /* band */
 .mt-band{max-width:1440px;margin-inline:auto;padding:32px clamp(16px,4vw,32px) 20px;border-bottom:1px solid var(--mt-line);position:relative;overflow:hidden;}
 .mt-band::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;}
+.mt-band-bg{position:absolute;inset:0;background:url(/match-hero.webp) center/cover no-repeat;opacity:.13;pointer-events:none;}
+.mt-band-grid{position:relative;z-index:1;}
+/* World Cup rail */
+.mt-wc{max-width:1440px;margin-inline:auto;padding:20px clamp(16px,4vw,32px) 0;}
+.mt-wc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.mt-wc-head h2{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:800;font-size:18px;margin:0;display:flex;align-items:center;gap:10px;}
+.mt-wc-head .tag{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--mt-accent);border:1px solid color-mix(in srgb,var(--mt-accent) 35%,transparent);padding:3px 8px;border-radius:6px;}
+.mt-wc-head a{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mt-fg-dim);text-decoration:none;}
+.mt-wc-head a:hover{color:var(--mt-accent);}
+.mt-wc-strip{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;}
+.mt-wc-strip::-webkit-scrollbar{display:none;}
+.mt-wc-card{flex:0 0 230px;border:1px solid var(--mt-line);border-radius:12px;background:var(--mt-bg-1);padding:12px 14px;text-decoration:none;color:inherit;transition:border-color .14s,transform .14s;}
+.mt-wc-card:hover{border-color:color-mix(in srgb,var(--mt-accent) 32%,transparent);transform:translateY(-2px);}
+.mt-wc-meta{display:flex;justify-content:space-between;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--mt-fg-mute);margin-bottom:8px;}
+.mt-wc-teams{display:flex;align-items:center;gap:8px;}
+.mt-wc-teams img{width:22px;height:18px;object-fit:cover;border-radius:2px;flex-shrink:0;}
+.mt-wc-team{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:14px;}
+.mt-wc-vs{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--mt-fg-mute);margin:0 2px;}
 .mt-band-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:end;position:relative;z-index:1;}
 .mt-kicker{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:11px;letter-spacing:.16em;color:var(--mt-fg-mute);text-transform:uppercase;margin-bottom:12px;}
 .mt-h1{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:700;font-size:54px;line-height:.95;letter-spacing:-0.025em;margin:0;}
@@ -281,11 +298,20 @@ function MatchRow({ match, league, home, away, todayKey }: { match: Match; leagu
             </div>
 
             <div className="mt-act">
-                {!fin && <button type="button" onClick={e => e.stopPropagation()}>REMIND</button>}
-                {fin && <button type="button" onClick={e => e.stopPropagation()}>HIGHLIGHTS</button>}
+                {(match.youtubeVideoId || match.youtubeEmbedUrl) && (
+                    <span onClick={e => e.stopPropagation()}>
+                        <MatchVideo
+                            videoId={match.youtubeVideoId}
+                            embedUrl={match.youtubeEmbedUrl}
+                            thumbnailUrl={match.youtubeThumbnailUrl}
+                            title={`${d.homeName} vs ${d.awayName}`}
+                            variant="badge"
+                        />
+                    </span>
+                )}
                 <Link
                     href={matchHref}
-                    className={`join${(match.venueCount ?? 0) > 0 ? "" : ""}`}
+                    className="join"
                     onClick={e => e.stopPropagation()}
                 >
                     BARS · {match.venueCount ?? 0}
@@ -331,9 +357,7 @@ function MatchesPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { matches: MATCHES, leagues, sports, teams, venueEvents, getTeam, getLeague } = useData();
-    const { user } = useAuth();
 
-    const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
     const [selectedSportId, setSelectedSportId] = React.useState<string | null>(null);
     const [selectedLeagueId, setSelectedLeagueId] = React.useState<string | null>(() => searchParams.get("league"));
     const [searchQuery, setSearchQuery] = React.useState("");
@@ -469,6 +493,17 @@ function MatchesPageContent() {
         [filtered]
     );
 
+    /* World Cup / national-team fixtures are excluded from the main list above;
+       surface them in a dedicated rail near the top. */
+    const wcMatches = React.useMemo(() => {
+        const threshold = renderNow - 2 * 60 * 60 * 1000;
+        return MATCHES
+            .filter(m => isNationalTeamCompetition(getLeague(m.leagueId)))
+            .filter(m => asTimestamp(m.matchDateUTC) >= threshold)
+            .sort((a, b) => asTimestamp(a.matchDateUTC) - asTimestamp(b.matchDateUTC))
+            .slice(0, 12);
+    }, [MATCHES, getLeague, renderNow]);
+
     const heroUpcoming = filtered.filter(m => isLive(m.status) || isUpcoming(m.status)).length;
     const heroPlayed = filtered.filter(m => isFinished(m.status)).length;
     const heroWeek = filtered.length;
@@ -481,55 +516,6 @@ function MatchesPageContent() {
             <style dangerouslySetInnerHTML={{ __html: MT_VARS + MT_CSS }} />
             <FloatingNav />
 
-            {/* Topbar */}
-            <header className="mt-topbar">
-                <div className="mt-topbar-inner">
-                    <Link href="/" className="mt-brand">
-                        <img className="mt-brand-logo" src="/logo.svg" alt="MatchWatch" />
-                    </Link>
-                    <nav className="mt-nav">
-                        <Link href="/">Home</Link>
-                        <Link href="/matches" className="active">Matches</Link>
-                        <Link href="/world-cup">World Cup</Link>
-                        <Link href="/venues">Venues</Link>
-                        <Link href="/for-venues">For venues</Link>
-                    </nav>
-                    <button
-                        type="button"
-                        className="mt-menu-toggle"
-                        aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-                        aria-expanded={mobileMenuOpen}
-                        onClick={() => setMobileMenuOpen((open) => !open)}
-                    >
-                        {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                    </button>
-                    <nav className={`mt-mobile-nav${mobileMenuOpen ? " open" : ""}`}>
-                        <Link href="/" onClick={() => setMobileMenuOpen(false)}>Home</Link>
-                        <Link href="/matches" className="active" onClick={() => setMobileMenuOpen(false)}>Matches</Link>
-                        <Link href="/world-cup" onClick={() => setMobileMenuOpen(false)}>World Cup</Link>
-                        <Link href="/venues" onClick={() => setMobileMenuOpen(false)}>Venues</Link>
-                        <Link href="/for-venues" onClick={() => setMobileMenuOpen(false)}>For venues</Link>
-                        {user ? (
-                            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>My bookings</Link>
-                        ) : (
-                            <>
-                                <Link href="/for-venues/register" onClick={() => setMobileMenuOpen(false)}>List venue</Link>
-                                <Link href="/login" className="primary" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
-                            </>
-                        )}
-                    </nav>
-                    <div className="mt-top-right">
-                        {user
-                            ? <Link href="/dashboard" className="mt-btn-pill ghost">{user.name?.split(" ")[0]}</Link>
-                            : <>
-                                <Link href="/for-venues/register" className="mt-btn-pill ghost mt-list-venue-btn">List venue</Link>
-                                <Link href="/login" className="mt-btn-pill">Log in</Link>
-                              </>
-                        }
-                    </div>
-                </div>
-            </header>
-
             {/* Crumb */}
             <div className="mt-crumb">
                 <Link href="/">Home</Link><span className="sep">/</span><b>Matches</b>
@@ -537,6 +523,7 @@ function MatchesPageContent() {
 
             {/* Band */}
             <section className="mt-band">
+                <div className="mt-band-bg" />
                 <div className="mt-band-grid">
                     <div>
                         <div className="mt-kicker">{todayLabel} · {filtered.length} matches · {availableSports.length} sports</div>
@@ -550,6 +537,42 @@ function MatchesPageContent() {
                     </div>
                 </div>
             </section>
+
+            {/* World Cup fixtures rail */}
+            {wcMatches.length > 0 && (
+                <section className="mt-wc">
+                    <div className="mt-wc-head">
+                        <h2><span className="tag">WC 2026</span> World Cup fixtures</h2>
+                        <Link href="/world-cup">All World Cup →</Link>
+                    </div>
+                    <div className="mt-wc-strip">
+                        {wcMatches.map(m => {
+                            const h = m.homeTeamId ? getTeam(m.homeTeamId) : undefined;
+                            const a = m.awayTeamId ? getTeam(m.awayTeamId) : undefined;
+                            const d = getMatchDisplay(m, { homeTeam: h, awayTeam: a, league: getLeague(m.leagueId) });
+                            const dt = new Date(m.matchDateUTC);
+                            return (
+                                <Link key={m.id} href={`/matches/${m.id}`} className="mt-wc-card">
+                                    <div className="mt-wc-meta">
+                                        <span>{getLeague(m.leagueId)?.shortName || "WC 2026"}</span>
+                                        <span>{dt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                                    </div>
+                                    <div className="mt-wc-teams">
+                                        {h?.image && <img src={h.image} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />}
+                                        <span className="mt-wc-team">{d.homeName}</span>
+                                    </div>
+                                    {!d.isSingleEvent && (
+                                        <div className="mt-wc-teams" style={{ marginTop: 6 }}>
+                                            {a?.image && <img src={a.image} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />}
+                                            <span className="mt-wc-team">{d.awayName}</span>
+                                        </div>
+                                    )}
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
 
             {/* Date strip */}
             <div className="mt-dates">
