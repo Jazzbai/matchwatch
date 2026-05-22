@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
 import { useData } from "../lib/data-provider";
 import { useAuth } from "../lib/auth-context";
 import { getMatchDisplay } from "../lib/match-display";
@@ -124,25 +123,10 @@ const CSS = `
   .mw-iconbtn{border-radius:12px;width:36px;height:36px;border:1px solid var(--mw-line);display:grid;place-items:center;color:var(--mw-fg-dim);background:none;cursor:pointer;flex-shrink:0;}
   .mw-iconbtn:hover{color:var(--mw-fg);border-color:var(--mw-line-2);}
   .mw-avatar{width:32px;height:32px;background:linear-gradient(135deg,#5a4a3a,#a07a52);display:grid;place-items:center;font-weight:600;font-size:12px;color:#1a1108;border:1px solid var(--mw-line-2);flex-shrink:0;}
-  .mw-ribbon{display:none;}
-  .mw-topbar{display:none!important;}
-  .mw-topbar-inner{display:grid;grid-template-columns:220px minmax(0,1fr) auto;align-items:center;gap:24px;width:100%;height:72px;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;}
-  .mw-brand{display:flex;align-items:center;text-decoration:none;color:var(--mw-fg);min-width:0;}
-  .mw-brand-logo{display:block;width:132px;height:auto;max-height:38px;object-fit:contain;}
-  .mw-brand-name{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:900;font-size:18px;letter-spacing:-0.02em;line-height:1.1;}
-  .mw-brand-name em{font-style:normal;color:var(--mw-accent);}
-  .mw-brand-tag{font-family:monospace;font-size:9px;letter-spacing:0.22em;color:var(--mw-accent);font-weight:700;text-transform:uppercase;margin-top:1px;opacity:0.8;}
-  .mw-nav{display:inline-flex;align-items:center;justify-self:center;gap:3px;padding:4px;border:1px solid var(--mw-line);border-radius:999px;background:rgba(255,255,255,0.03);}
-  .mw-nav a{display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;font-size:13px;font-weight:700;color:var(--mw-fg-dim);transition:all .18s;text-decoration:none;white-space:nowrap;}
-  .mw-nav a.active,.mw-nav a:hover{background:rgba(255,255,255,0.09);color:var(--mw-fg);}
-  .mw-top-right{display:flex;gap:8px;align-items:center;}
   .mw-btn-pill{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:999px;font-size:13px;font-weight:800;text-decoration:none;white-space:nowrap;background:var(--mw-accent);color:#0a0b0d;transition:all .18s;}
   .mw-btn-pill:hover{opacity:0.88;transform:translateY(-1px);}
   .mw-btn-pill.ghost{background:rgba(255,255,255,0.07);color:var(--mw-fg);}
-  .mw-menu-toggle{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--mw-line);border-radius:999px;background:rgba(255,255,255,0.04);color:var(--mw-fg);cursor:pointer;}
-  .mw-mobile-nav{display:none;}
-  @media (max-width:1200px){.mw-page{grid-template-columns:1fr;}.mw-side,.mw-rail{display:none;}.mw-fixtures{grid-template-columns:repeat(2,1fr);}.mw-topbar-inner{grid-template-columns:170px minmax(0,1fr) auto;gap:14px;}.mw-brand-logo{width:120px;}.mw-nav a{padding:0 12px;font-size:12px;}.mw-list-venue-btn{display:none;}}
-  @media (max-width:900px){.mw-topbar{padding:0 10px;}.mw-topbar-inner{height:auto;min-height:64px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:9px 0;}.mw-brand{min-width:0;}.mw-brand-logo{width:120px;max-height:36px;}.mw-brand-tag{display:none;}.mw-nav{display:none;}.mw-top-right{grid-column:2;grid-row:1;display:flex;gap:6px;}.mw-menu-toggle{display:inline-flex;grid-column:3;grid-row:1;justify-self:end;}.mw-mobile-nav{grid-column:1/-1;grid-row:2;display:none;flex-direction:column;gap:8px;padding-top:8px;}.mw-mobile-nav.open{display:flex;}.mw-mobile-nav a{padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700;color:var(--mw-fg);background:rgba(255,255,255,0.04);text-decoration:none;transition:all .18s;white-space:nowrap;}.mw-mobile-nav a:hover,.mw-mobile-nav a.active{background:rgba(255,255,255,0.08);color:var(--mw-fg);}.mw-mobile-nav .primary{background:var(--mw-accent);color:#0a0b0d;}.mw-btn-pill{min-height:38px;padding:0 12px;font-size:12px;white-space:nowrap;}.mw-list-venue-btn{display:none;}}
+  @media (max-width:1200px){.mw-page{grid-template-columns:1fr;}.mw-side,.mw-rail{display:none;}.mw-fixtures{grid-template-columns:repeat(2,1fr);}}
   @media (max-width:768px){.mw-main{padding:16px 16px 60px;}.mw-fixtures{grid-template-columns:1fr;}.mw-match-grid{grid-template-columns:1fr;}.mw-hero-inner{grid-template-columns:1fr;}.mw-hero-right{display:none;}.mw-hero-left{padding:20px 16px;}.mw-sec-head{padding:14px 16px;}.mw-section{margin-bottom:24px;}}
 `;
 
@@ -172,23 +156,11 @@ function CrestBox({ label, color }: { label: string; color: string }) {
 export default function HomePage() {
   const { matches, venues, leagues, teams, isLoading } = useData();
   const { user } = useAuth();
-  const [utcTime, setUtcTime] = useState("");
   const [renderNow] = useState(() => Date.now());
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const nonWorldCupMatches = React.useMemo(
     () => matches.filter((match) => !isNationalTeamCompetition(leagues.find((league) => league.id === match.leagueId))),
     [matches, leagues]
   );
-
-  useEffect(() => {
-    const tick = () => {
-      const now = new Date();
-      setUtcTime(now.toUTCString().split(" ")[4]);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
 
   /* Today / coming soon — live now or starting within 72h */
   const in72h = renderNow + 72 * 60 * 60 * 1000;
@@ -215,76 +187,23 @@ export default function HomePage() {
   /* Venue cards for "Find a bar" — use real venues */
   const featuredVenues = venues.slice(0, 6);
 
-  const initials = user?.name
-    ? user.name.split(" ").map((w) => w[0]).join("").substring(0, 2).toUpperCase()
-    : "MW";
+  /* Top leagues for the sidebar, ordered by how many real matches we have */
+  const sidebarLeagues = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const m of nonWorldCupMatches) {
+      counts.set(m.leagueId, (counts.get(m.leagueId) || 0) + 1);
+    }
+    return leagues
+      .map((l) => ({ league: l, count: counts.get(l.id) || 0 }))
+      .filter((entry) => entry.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  }, [leagues, nonWorldCupMatches]);
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: MW_VARS + CSS + `body{background:var(--mw-bg)!important;color:var(--mw-fg)!important;}` }} />
       <FloatingNav />
-      {/* Ribbon */}
-      <div className="mw-ribbon">
-        <div className="left">
-          <b>◆ MATCHWATCH</b>
-          <span>WATCH WITH FANS &amp; FRIENDS · FIND A BAR · PLAN MATCH NIGHT</span>
-        </div>
-        <div className="mw-ribbon-ticker">
-          <span><b>{venues.length || 209}</b> bars &amp; venues</span>
-          <span><b>{nonWorldCupMatches.length || 42}</b> upcoming matches</span>
-          <span><b>$48 avg</b> saved on tickets</span>
-        </div>
-      </div>
-
-      {/* Topbar */}
-      <header className="mw-topbar">
-        <div className="mw-topbar-inner">
-          <Link href="/" className="mw-brand" aria-label="MatchWatch home">
-            <img className="mw-brand-logo" src="/logo.svg" alt="MatchWatch" />
-          </Link>
-          <nav className="mw-nav">
-            <Link href="/" className="active">Home</Link>
-            <Link href="/matches">Matches</Link>
-            <Link href="/world-cup">World Cup</Link>
-            <Link href="/venues">Venues</Link>
-            <Link href="/for-venues">For venues</Link>
-          </nav>
-          <button
-            type="button"
-            className="mw-menu-toggle"
-            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen((open) => !open)}
-          >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <nav className={`mw-mobile-nav${mobileMenuOpen ? " open" : ""}`}>
-            <Link href="/" className="active" onClick={() => setMobileMenuOpen(false)}>Home</Link>
-            <Link href="/matches" onClick={() => setMobileMenuOpen(false)}>Matches</Link>
-            <Link href="/world-cup" onClick={() => setMobileMenuOpen(false)}>World Cup</Link>
-            <Link href="/venues" onClick={() => setMobileMenuOpen(false)}>Venues</Link>
-            <Link href="/for-venues" onClick={() => setMobileMenuOpen(false)}>For venues</Link>
-            {user ? (
-              <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>My bookings</Link>
-            ) : (
-              <>
-                <Link href="/for-venues/register" onClick={() => setMobileMenuOpen(false)}>List venue</Link>
-                <Link href="/login" className="primary" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
-              </>
-            )}
-          </nav>
-          <div className="mw-top-right">
-            {user ? (
-              <Link href="/dashboard" className="mw-btn-pill ghost">{initials}</Link>
-            ) : (
-              <>
-                <Link href="/for-venues/register" className="mw-btn-pill ghost mw-list-venue-btn">List venue</Link>
-                <Link href="/login" className="mw-btn-pill">Log in</Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
 
       {/* 3-column layout */}
       <div className="mw-page">
@@ -301,12 +220,12 @@ export default function HomePage() {
             <Link href="/venues" className="mw-side-item">
               <span className="ico">🍺</span>
               <span>Venues</span>
-              <span className="badge">{venues.length || 209}</span>
+              <span className="badge">{venues.length || ""}</span>
             </Link>
             <Link href="/matches" className="mw-side-item">
               <span className="ico">📅</span>
               <span>Matches</span>
-              <span className="badge">{matches.length || 64}</span>
+              <span className="badge">{matches.length || ""}</span>
             </Link>
             {user ? (
               <Link href="/dashboard" className="mw-side-item">
@@ -321,33 +240,24 @@ export default function HomePage() {
             )}
           </div>
 
-          <h4>Sports</h4>
-          <div className="mw-side-list">
-            <div className="mw-side-item"><span className="ico">⚽</span><span>Football</span><span className="badge">{todayMatches.length || 18}</span></div>
-          </div>
-
-          <h4>Following teams</h4>
-          {[
-            { name: "Arsenal", color: "#dc2626", form: ["W","W","D","W","L"] },
-            { name: "NYCFC", color: "#0b1220", form: ["W","W","W","D","W"] },
-            { name: "Houston Dynamo", color: "#ff6b00", form: ["W","L","W","W","D"] },
-          ].map(({ name, color, form }) => {
-            const t = teams.find(t => t.name.toLowerCase().includes(name.split(" ")[0].toLowerCase()));
-            return (
-              <div key={name} className="mw-follow-team">
-                {t?.image
-                  ? <img src={t.image} alt={name} style={{ width: 22, height: 22, objectFit: "contain", flexShrink: 0 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                  : <span className="mw-team-crest" style={{ background: color }}>{name.substring(0, 2).toUpperCase()}</span>
-                }
-                <span style={{ flex: 1 }}>{name}</span>
-                <div className="mw-form">
-                  {form.map((r, i) => (
-                    <div key={i} className="mw-dot" style={{ background: r === "W" ? "oklch(0.78 0.16 145)" : r === "D" ? "var(--mw-fg-mute)" : "oklch(0.65 0.2 20)" }} />
-                  ))}
-                </div>
+          {sidebarLeagues.length > 0 && (
+            <>
+              <h4>Leagues</h4>
+              <div className="mw-side-list">
+                {sidebarLeagues.map(({ league, count }) => (
+                  <Link key={league.id} href={`/matches?league=${league.id}`} className="mw-side-item">
+                    <span className="ico">
+                      {league.image
+                        ? <img src={league.image} alt="" style={{ width: 18, height: 18, objectFit: "contain" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                        : "⚽"}
+                    </span>
+                    <span>{league.name}</span>
+                    <span className="badge">{count}</span>
+                  </Link>
+                ))}
               </div>
-            );
-          })}
+            </>
+          )}
         </aside>
 
         {/* Main content */}
@@ -369,20 +279,20 @@ export default function HomePage() {
                     Watch every match <em style={{ fontStyle: "normal", color: "var(--mw-accent)" }}>with your people.</em>
                   </h1>
                   <p style={{ maxWidth: 520, fontSize: 16, lineHeight: 1.5, color: "var(--mw-fg-dim)", margin: 0 }}>
-                    Find fans near you, join a watch party at a bar, or save on stadium tickets for the real thing. One place for every way to watch the match.
+                    Find a bar showing your match, reserve a table, and watch with fans near you. One place to plan every match night with your people.
                   </p>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderTop: "1px solid var(--mw-line)", paddingTop: 18, marginTop: 4 }}>
                   {[
-                    { label: "VENUES &amp; BARS", val: String(venues.length || 209), accent: false },
-                    { label: "UPCOMING MATCHES", val: String(nonWorldCupMatches.length || 42), accent: false },
-                    { label: "AVG TICKET SAVINGS", val: "$48", accent: true },
-                  ].map(({ label, val, accent }) => (
+                    { label: "VENUES & BARS", val: String(venues.length || "—"), suffix: "", accent: false },
+                    { label: "UPCOMING MATCHES", val: String(nonWorldCupMatches.length || "—"), suffix: "", accent: false },
+                    { label: "WORLD CUP CITIES", val: "11", suffix: "/2026", accent: true },
+                  ].map(({ label, val, suffix, accent }) => (
                     <div key={label}>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--mw-fg-mute)", marginBottom: 6 }} dangerouslySetInnerHTML={{ __html: label }} />
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--mw-fg-mute)", marginBottom: 6 }}>{label}</div>
                       <div style={{ fontFamily: "'Space Grotesk', var(--font-space), sans-serif", fontWeight: 600, fontSize: 32, color: accent ? "var(--mw-accent)" : "var(--mw-fg)", lineHeight: 1 }}>
-                        {val}{accent && <em style={{ fontStyle: "normal", color: "var(--mw-fg-mute)", fontSize: 14, marginLeft: 4 }}>/seat</em>}
+                        {val}{suffix && <em style={{ fontStyle: "normal", color: "var(--mw-fg-mute)", fontSize: 14, marginLeft: 4 }}>{suffix}</em>}
                       </div>
                     </div>
                   ))}
@@ -415,21 +325,10 @@ export default function HomePage() {
                     </Link>
                   ))
                   : (
-                    <>
-                      {[
-                        { label: "TOP BAR · 0.3 MI", badge: "87% FULL", name: "The Long Bar", desc: "Showing 3 matches · $5 pints during kickoffs · Union St" },
-                        { label: "WATCH PARTY · 6 FRIENDS", badge: "STARTS 18:30", name: "Arsenal supporters · Hoboken", desc: "14 people going · Reservation held at The Pitch" },
-                        { label: "TICKET DROP · TONIGHT", badge: "−38%", name: "NYCFC vs Atlanta · Section 114", desc: "$52 · was $84 · 4 seats left" },
-                      ].map(({ label, badge, name, desc }) => (
-                        <div key={name} style={{ border: "1px solid var(--mw-line)", padding: 12, background: "var(--mw-bg-1)" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.1em", color: "var(--mw-fg-mute)", textTransform: "uppercase", marginBottom: 8 }}>
-                            <span>{label}</span><span style={{ color: "var(--mw-accent)", fontWeight: 600 }}>{badge}</span>
-                          </div>
-                          <div style={{ fontFamily: "'Space Grotesk', var(--font-space), sans-serif", fontWeight: 600, fontSize: 15, marginBottom: 4, color: "var(--mw-fg)" }}>{name}</div>
-                          <div style={{ fontSize: 11, color: "var(--mw-fg-dim)" }}>{desc}</div>
-                        </div>
-                      ))}
-                    </>
+                    <div style={{ border: "1px dashed var(--mw-line)", borderRadius: 12, padding: 16, background: "var(--mw-bg-1)", fontSize: 12, color: "var(--mw-fg-dim)", lineHeight: 1.5 }}>
+                      Venues near you will show up here.{" "}
+                      <Link href="/venues" style={{ color: "var(--mw-accent)" }}>Browse all venues →</Link>
+                    </div>
                   )}
               </aside>
             </div>
@@ -618,14 +517,14 @@ export default function HomePage() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <div className="mw-mc-team">
                           {homeTeam?.image
-                            ? <img src={homeTeam.image} alt={disp.homeName} style={{ width: 28, height: 28, objectFit: "contain" }} />
+                            ? <img src={homeTeam.image} alt={disp.homeName} style={{ width: 28, height: 28, objectFit: "contain" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                             : <CrestBox label={disp.homeName.substring(0, 2)} color={homeTeam?.color || "var(--mw-accent)"} />
                           }
                           <span className="mw-mc-name">{disp.homeName}</span>
                         </div>
                         <div className="mw-mc-team">
                           {awayTeam?.image
-                            ? <img src={awayTeam.image} alt={disp.awayName} style={{ width: 28, height: 28, objectFit: "contain" }} />
+                            ? <img src={awayTeam.image} alt={disp.awayName} style={{ width: 28, height: 28, objectFit: "contain" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                             : <CrestBox label={disp.awayName.substring(0, 2)} color={awayTeam?.color || "#374151"} />
                           }
                           <span className="mw-mc-name">{disp.awayName}</span>
@@ -714,22 +613,18 @@ export default function HomePage() {
             <Link href="/venues" className="mw-party-join">Browse venues →</Link>
           </div>
 
-          <h4>Friends are watching</h4>
-          <div className="mw-create-party">
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ display: "flex" }}>
-                {["#b4876a", "#8ca67a", "#7a8ca6"].map((c, i) => (
-                  <div key={i} style={{ width: 18, height: 18, background: c, border: "2px solid var(--mw-bg-1)", marginLeft: i === 0 ? 0 : -6 }} />
-                ))}
-              </div>
-              <div>3 friends · watching now</div>
+          <h4>World Cup 2026</h4>
+          <div className="mw-party" style={{ gap: 10 }}>
+            <div className="mw-party-title">The tournament hits 11 US host cities</div>
+            <div style={{ fontSize: 12, color: "var(--mw-fg-dim)", lineHeight: 1.5 }}>
+              Browse fixtures and find watch parties near each host city.
             </div>
-            <Link href="/venues" className="mw-party-join">Find them →</Link>
+            <Link href="/world-cup" className="mw-party-join">Explore host cities →</Link>
           </div>
 
           <h4>List your venue</h4>
           <div className="mw-create-party">
-            Show {nonWorldCupMatches.length || 42} upcoming matches to your customers and grow your crowd on match nights.
+            Show your upcoming matches to fans nearby and grow your crowd on match nights.
             <Link href="/for-venues/register" className="mw-btn" style={{ padding: "8px 12px", fontSize: 11 }}>+ Add your bar</Link>
           </div>
         </aside>
