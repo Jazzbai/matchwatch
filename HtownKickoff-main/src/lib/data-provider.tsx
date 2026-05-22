@@ -30,7 +30,7 @@ import {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 const MATCH_FETCH_LIMIT = 50;
 const VENUE_FETCH_LIMIT = 50;
-const VENUE_MAX_PAGES = 4;
+const VENUE_MAX_PAGES = 15;
 const VENUE_DEEP_MAX_PAGES = 50;
 const MATCH_MAX_PAGES = 20;
 
@@ -46,6 +46,7 @@ const HOME_PRIORITY_SOCCER_LEAGUE_MATCHERS = [
     (name: string) => name.includes("champions league") || name.includes("ucl"),
     (name: string) => name.includes("fifa european qualifiers") || name.includes("wc-qualifiers"),
 ];
+const PRIORITY_SOCCER_LEAGUE_CODES = ["MLS", "PL", "PD", "BL1", "SA", "FL1", "CL"];
 
 type ApiMeta = {
     page: number;
@@ -458,7 +459,7 @@ function getVenueDetailSlug(pathname: string) {
 }
 
 function getVenueBootstrapMaxPages(pathname: string) {
-    return pathname.startsWith("/venues") ? VENUE_DEEP_MAX_PAGES : VENUE_MAX_PAGES;
+    return (pathname.startsWith("/venues") || pathname.startsWith("/world-cup")) ? VENUE_DEEP_MAX_PAGES : VENUE_MAX_PAGES;
 }
 
 function authHeader(): Record<string, string> {
@@ -523,9 +524,16 @@ async function safeFetchPaginated<T>(
 }
 
 async function fetchPrioritySoccerMatches(): Promise<{ matches: ApiMatch[]; facets: ApiMatchFacets | null }> {
-    const facets = await safeFetch<ApiMatchFacets>("/matches/facets");
+    const [facets, directMatches] = await Promise.all([
+        safeFetch<ApiMatchFacets>("/matches/facets"),
+        safeFetchPaginated<ApiMatch>(
+            `/matches?sort=date_asc&upcoming_only=true&league=${encodeURIComponent(PRIORITY_SOCCER_LEAGUE_CODES.join(","))}`,
+            MATCH_FETCH_LIMIT,
+            MATCH_MAX_PAGES,
+        ),
+    ]);
     if (!facets) {
-        return { matches: [], facets: null };
+        return { matches: directMatches || [], facets: null };
     }
 
     const targetLeagues = facets.leagues.filter((league) => {
@@ -536,7 +544,7 @@ async function fetchPrioritySoccerMatches(): Promise<{ matches: ApiMatch[]; face
     });
 
     if (targetLeagues.length === 0) {
-        return { matches: [], facets };
+        return { matches: directMatches || [], facets };
     }
 
     const matchGroups = await Promise.all(
@@ -546,6 +554,9 @@ async function fetchPrioritySoccerMatches(): Promise<{ matches: ApiMatch[]; face
     );
 
     const merged = new Map<string, ApiMatch>();
+    for (const match of directMatches || []) {
+        merged.set(match.id, match);
+    }
     for (const rows of matchGroups) {
         for (const match of rows || []) {
             merged.set(match.id, match);
