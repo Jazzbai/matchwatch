@@ -2,18 +2,28 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useAuth } from "../../lib/auth-context";
-import { Menu, X, Building2, Star, Trophy, ChevronRight, Globe, Calendar } from "lucide-react";
+import { useData } from "../../lib/data-provider";
+import { Building2, Star, Trophy, ChevronRight, Globe, Calendar } from "lucide-react";
 import { FloatingNav } from "../../components/AppShell";
+import { Countdown } from "../../components/Countdown";
 
-const NAV_LINKS = [
-  { label: "Home",       href: "/" },
-  { label: "Matches",    href: "/matches" },
-  { label: "World Cup",  href: "/world-cup" },
-  { label: "Venues",     href: "/venues" },
-  { label: "For venues", href: "/for-venues" },
-];
+/* Opening match — Jun 11 2026, 5:00 PM ET (used for the hero countdown). */
+const WC_OPENING = "2026-06-11T17:00:00-04:00";
+
+/* Match a host city to real venues in the live dataset (alias-aware). */
+function cityVenueCount(venues: Array<{ city?: string | null }>, aliases: string[]) {
+  const keys = aliases.map((a) => a.toLowerCase());
+  return venues.filter((v) => {
+    const c = (v.city || "").toLowerCase();
+    return keys.some((k) => c.includes(k));
+  }).length;
+}
+
+/* Derive venue-match aliases from a host-city display name, e.g.
+   "New York / New Jersey" -> ["New York","New Jersey"]; "San Francisco Bay Area" -> ["San Francisco"]. */
+function cityAliases(name: string): string[] {
+  return name.split("/").map((p) => p.trim().replace(/ Bay Area$/i, "").trim()).filter(Boolean);
+}
 
 // `image` points at an optional city photo in /public/cities/. When the file
 // is absent the gradient `g` shows through as a designed fallback (no broken
@@ -243,6 +253,8 @@ const CSS = `
   .wc-hero{position:relative;overflow:hidden;min-height:560px;display:flex;align-items:center;background:linear-gradient(160deg,var(--mw-bg) 0%,#0d1520 40%,#1a0a05 100%);border-bottom:1px solid var(--mw-line);}
   .wc-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 70% 50%,color-mix(in srgb,var(--mw-accent) 12%,transparent),transparent 70%),radial-gradient(ellipse 60% 80% at 20% 30%,rgba(0,80,160,.15),transparent 70%);pointer-events:none;}
   .wc-hero-orb{position:absolute;right:-80px;top:50%;transform:translateY(-50%);width:520px;height:520px;border-radius:50%;border:1px solid color-mix(in srgb,var(--mw-accent) 7%,transparent);}
+  .wc-hero-bg{position:absolute;inset:0;background:url(/home-hero.webp) center/cover no-repeat;opacity:.16;pointer-events:none;}
+  .wc-hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,var(--mw-bg) 100%);}
   .wc-hero-inner{position:relative;z-index:2;max-width:1440px;margin:0 auto;padding:148px 24px 64px;width:100%;display:grid;grid-template-columns:1fr 300px;gap:48px;align-items:center;}
   .wc-hero-text{display:flex;flex-direction:column;}
   .wc-hero-trophy{display:flex;flex-direction:column;align-items:center;justify-content:center;height:320px;margin:0;}
@@ -376,15 +388,8 @@ const CSS = `
 type ScheduleTab = "group" | "knockout" | "final";
 
 export default function WorldCupPage() {
-  const pathname = usePathname();
-  const { isAuthenticated, user } = useAuth();
-  const [open, setOpen] = useState(false);
+  const { venues } = useData();
   const [tab, setTab] = useState<ScheduleTab>("group");
-
-  const dash =
-    user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" ? "/admin"
-    : user?.role === "BUSINESS" || user?.role === "VENUE_OWNER" ? "/admin"
-    : "/account";
 
   const matches = SCHEDULE[tab];
 
@@ -394,75 +399,14 @@ export default function WorldCupPage() {
 
       <FloatingNav />
 
-      {/* ── Legacy nav (hidden — replaced by shared FloatingNav) ── */}
-      <header className="wc-topbar" hidden aria-hidden="true">
-        <div className="wc-topbar-inner">
-          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
-            <img src="/logo.svg" alt="MatchWatch" className="wc-logo" />
-          </Link>
-
-          <nav className="wc-nav">
-            {NAV_LINKS.map(l => {
-              const on = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
-              return (
-                <Link key={l.href} href={l.href} className={on ? "on" : ""}>
-                  {l.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="wc-tr">
-            {isAuthenticated
-              ? <Link href={dash} className="wc-ghost">Dashboard</Link>
-              : <Link href="/login" className="wc-ghost">Log in</Link>
-            }
-            <Link href="/for-venues/register" className="wc-orange">
-              <Building2 size={14} /> List your venue
-            </Link>
-            <button className="wc-hmbg" onClick={() => setOpen(!open)} style={{ border: "none" }}>
-              {open ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
-        </div>
-
-        {open && (
-          <div style={{
-            position: "absolute", top: "calc(100% + 4px)", left: 16, right: 16, zIndex: 50,
-            background: "color-mix(in srgb,var(--mw-bg) 97%,transparent)",
-            backdropFilter: "blur(24px)", border: "1px solid var(--mw-line)", borderRadius: 12,
-            padding: 16, display: "flex", flexDirection: "column", gap: 8,
-            boxShadow: "0 16px 48px rgba(0,0,0,.4)",
-          }}>
-            {NAV_LINKS.map(l => (
-              <Link key={l.href} href={l.href} onClick={() => setOpen(false)} style={{
-                padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,.04)",
-                color: "var(--mw-fg)", fontWeight: 600, fontSize: 14, textDecoration: "none",
-              }}>
-                {l.label}
-              </Link>
-            ))}
-            {isAuthenticated
-              ? <Link href={dash} onClick={() => setOpen(false)} style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,.04)", color: "var(--mw-fg)", fontWeight: 600, fontSize: 14, textDecoration: "none" }}>Dashboard</Link>
-              : <Link href="/login" onClick={() => setOpen(false)} style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,.04)", color: "var(--mw-fg)", fontWeight: 600, fontSize: 14, textDecoration: "none" }}>Log in</Link>
-            }
-            <Link href="/for-venues/register" onClick={() => setOpen(false)} style={{
-              padding: "12px 16px", borderRadius: 12, background: "var(--mw-accent)", color: "#0a0b0d",
-              fontWeight: 700, fontSize: 14, textDecoration: "none", display: "flex", alignItems: "center", gap: 8,
-            }}>
-              <Building2 size={16} /> List your venue
-            </Link>
-          </div>
-        )}
-      </header>
-
       {/* ── Hero ── */}
       <section className="wc-hero">
+        <div className="wc-hero-bg" />
         <div className="wc-hero-orb" />
         <div className="wc-hero-inner">
           <div className="wc-hero-text">
             <div className="wc-kicker">
-              <span className="bd" />FIFA World Cup 2026 · Official Fan Hub
+              <span className="bd" />World Cup 2026 · Watch-Party Hub
             </div>
             <h1 className="wc-h1">
               World Cup 2026<br />
@@ -473,6 +417,9 @@ export default function WorldCupPage() {
               Discover the best soccer venues, fan festivals, and match-day experiences across all 11 U.S. host cities.
               From Houston to New York — find your perfect watch party.
             </p>
+            <div style={{ margin: "4px 0 28px" }}>
+              <Countdown target={WC_OPENING} label="Kickoff · Jun 11, 2026" />
+            </div>
             <div className="wc-btns">
               <a href="#cities" className="wc-btn-p">
                 <Trophy size={18} /> Explore Host Cities
@@ -498,20 +445,14 @@ export default function WorldCupPage() {
                 <div className="wc-sl">Nations</div>
               </div>
               <div>
-                <div className="wc-sv">Jun <span>11</span></div>
-                <div className="wc-sl">Opening Match</div>
-              </div>
-              <div>
                 <div className="wc-sv">Jul <span>19</span></div>
                 <div className="wc-sl">The Final · NYC</div>
               </div>
             </div>
           </div>
           <figure className="wc-hero-trophy">
-            <img
-              src="/world-cup-emblem.png"
-              alt="FIFA World Cup 2026 Official Emblem"
-            />
+            <TrophyImg />
+            <figcaption>World Cup 2026 · United States · Canada · Mexico</figcaption>
           </figure>
         </div>
       </section>
@@ -602,7 +543,9 @@ export default function WorldCupPage() {
             </Link>
           </div>
           <div className="wc-cg">
-            {CITIES.map(c => (
+            {CITIES.map(c => {
+              const watchParties = cityVenueCount(venues, cityAliases(c.name));
+              return (
               <Link
                 key={c.short}
                 href={`/world-cup/${c.slug}`}
@@ -620,6 +563,7 @@ export default function WorldCupPage() {
                   <div className="wc-cm">
                     <div className="wc-cmn">
                       <span className="n">{c.matches}</span> matches
+                      {watchParties > 0 && <> · <span className="n">{watchParties}</span> venues</>}
                     </div>
                     <div className="wc-cex">
                       Explore <ChevronRight size={12} />
@@ -627,7 +571,8 @@ export default function WorldCupPage() {
                   </div>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
