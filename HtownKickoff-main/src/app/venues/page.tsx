@@ -3,9 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Menu, X } from "lucide-react";
 import { useData, type Venue } from "../../lib/data-provider";
-import { useAuth } from "../../lib/auth-context";
 import { AMENITY_LABELS } from "../../lib/data";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
 import { MatchVenueMap } from "../../components/MatchVenueMap";
@@ -204,10 +202,8 @@ function VenueListImage({ src, alt }: { src?: string; alt: string }) {
 
 function VenuesPageContent() {
     const { venues: VENUES, isLoading } = useData();
-    const { user } = useAuth();
     const searchParams = useSearchParams();
 
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
     const [sortBy, setSortBy] = useState<SortOption>("rating");
@@ -258,10 +254,6 @@ function VenuesPageContent() {
     const toggleAmenity = (key: string) =>
         setSelectedAmenities(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
 
-    const initials = user?.name
-        ? user.name.split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase()
-        : "MW";
-
     const d = selectedVenue;
     const dGlyph = d ? d.name.split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase() : "";
     const dTag = d ? (d.fanTeams?.[0]?.teamName || d.cuisineTags?.[0] || "WATCH PARTY VENUE") : "";
@@ -270,55 +262,6 @@ function VenuesPageContent() {
         <div className="vn-wrap">
             <style dangerouslySetInnerHTML={{ __html: VN_VARS + VN_CSS }} />
             <FloatingNav />
-
-            {/* Topbar */}
-            <header className="vn-topbar">
-                <div className="vn-topbar-inner">
-                    <Link href="/" className="vn-brand">
-                        <img className="vn-brand-logo" src="/logo.svg" alt="MatchWatch" />
-                    </Link>
-                    <nav className="vn-nav">
-                        <Link href="/">Home</Link>
-                        <Link href="/matches">Matches</Link>
-                        <Link href="/world-cup">World Cup</Link>
-                        <Link href="/venues" className="active">Venues</Link>
-                        {user && <Link href="/dashboard">My bookings</Link>}
-                    </nav>
-                    <button
-                        type="button"
-                        className="vn-menu-toggle"
-                        aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-                        aria-expanded={mobileMenuOpen}
-                        onClick={() => setMobileMenuOpen((open) => !open)}
-                    >
-                        {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                    </button>
-                    <nav className={`vn-mobile-nav${mobileMenuOpen ? " open" : ""}`}>
-                        <Link href="/" onClick={() => setMobileMenuOpen(false)}>Home</Link>
-                        <Link href="/matches" onClick={() => setMobileMenuOpen(false)}>Matches</Link>
-                        <Link href="/world-cup" onClick={() => setMobileMenuOpen(false)}>World Cup</Link>
-                        <Link href="/venues" className="active" onClick={() => setMobileMenuOpen(false)}>Venues</Link>
-                        <Link href="/for-venues" onClick={() => setMobileMenuOpen(false)}>For venues</Link>
-                        {user ? (
-                            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>My bookings</Link>
-                        ) : (
-                            <>
-                                <Link href="/for-venues/register" onClick={() => setMobileMenuOpen(false)}>List venue</Link>
-                                <Link href="/login" className="primary" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
-                            </>
-                        )}
-                    </nav>
-                    <div className="vn-top-right">
-                        {user
-                            ? <Link href="/dashboard" className="vn-btn-pill ghost">{initials}</Link>
-                            : <>
-                                <Link href="/for-venues/register" className="vn-btn-pill ghost vn-list-venue-btn">List venue</Link>
-                                <Link href="/login" className="vn-btn-pill">Log in</Link>
-                              </>
-                        }
-                    </div>
-                </div>
-            </header>
 
             {/* Breadcrumb */}
             <div className="vn-crumb">
@@ -332,23 +275,23 @@ function VenuesPageContent() {
                 <div className="vn-band-grid">
                     <div>
                         <div className="vn-kicker">
-                            {activeVenues.length} Bars · Houston &amp; surrounding areas · Updated live
+                            {activeVenues.length} bars · across US host cities · Updated live
                         </div>
                         <h1 className="vn-h1">Where to watch. <em>Tonight.</em></h1>
-                        <p className="vn-sub">Every bar showing a live match, ranked by vibe and distance. Reserve tables, see how full it is right now, and join the supporter section that fits you.</p>
+                        <p className="vn-sub">Every bar showing the match, with real photos, ratings, and amenities. Reserve a table, get directions, and join the supporter section that fits you.</p>
                     </div>
                     <div className="vn-metrics">
                         <div className="vn-metric">
-                            <div className="lbl">Bars showing matches</div>
-                            <div className="v">{activeVenues.length || 312}</div>
+                            <div className="lbl">Bars listed</div>
+                            <div className="v">{activeVenues.length}</div>
                         </div>
                         <div className="vn-metric">
-                            <div className="lbl">Watch parties live</div>
-                            <div className="v"><em>{activeVenues.filter(v => (v.upcomingEventsCount || 0) > 0).length || 42}</em></div>
+                            <div className="lbl">Hosting events</div>
+                            <div className="v"><em>{activeVenues.filter(v => (v.upcomingEventsCount || 0) > 0).length}</em></div>
                         </div>
                         <div className="vn-metric">
-                            <div className="lbl">Tables open</div>
-                            <div className="v">84</div>
+                            <div className="lbl">Cities</div>
+                            <div className="v">{new Set(activeVenues.map(v => v.city).filter(Boolean)).size}</div>
                         </div>
                     </div>
                 </div>
@@ -422,10 +365,8 @@ function VenuesPageContent() {
                             No venues match your filters
                         </div>
                     ) : (
-                        displayedVenues.map((v, i) => {
-                            const pct = v.upcomingEventsCount ? Math.min(87, 30 + i * 13) : 0;
-                            const isHot = pct >= 80;
-                            const isOpen = !v.upcomingEventsCount || pct < 40;
+                        displayedVenues.map((v) => {
+                            const events = v.upcomingEventsCount || 0;
                             return (
                                 <div
                                     key={v.id}
@@ -441,25 +382,22 @@ function VenuesPageContent() {
                                     <div className="vn-body">
                                         <div className="vn-top">
                                             <span>{v.city}{v.state ? `, ${normalizeState(v.state)}` : ""}</span>
-                                            {isOpen
-                                                ? <span className="open">TABLES OPEN</span>
-                                                : <span className={isHot ? "occ" : ""}>{pct}% FULL</span>
-                                            }
+                                            {events > 0 && <span className="occ">{events} EVENT{events > 1 ? "S" : ""}</span>}
                                         </div>
                                         <div className="vn-name">{v.name}</div>
                                         <div className="vn-desc">
                                             {v.shortDescription || v.amenities.slice(0, 4).map(a => AMENITY_LABELS[a]?.label || a).join(" · ") || "Sports bar · Watch parties welcome"}
                                         </div>
                                         <div className="vn-tags">
-                                            {(v.upcomingEventsCount || 0) > 0 && (
-                                                <span className="vn-tagmini hot">LIVE · {v.upcomingEventsCount} EVENTS</span>
+                                            {events > 0 && (
+                                                <span className="vn-tagmini hot">{events} UPCOMING</span>
                                             )}
                                             {v.amenities.slice(0, 3).map(a => (
                                                 <span key={a} className="vn-tagmini">{AMENITY_LABELS[a]?.label || a}</span>
                                             ))}
                                         </div>
                                         <div className="vn-foot">
-                                            <span>⭐ {v.rating?.toFixed(1) || "4.5"} · {v.reviewCount || 0} reviews</span>
+                                            <span>{v.rating ? `⭐ ${v.rating.toFixed(1)}${v.reviewCount ? ` · ${v.reviewCount} reviews` : ""}` : "New venue"}</span>
                                             <span className="res">RESERVE →</span>
                                         </div>
                                     </div>
@@ -509,22 +447,53 @@ function VenuesPageContent() {
                     <>
                         <div style={{ position: "relative" }}>
                             <div className="vn-drawer-img">
-                                <div className="stripes" />
+                                {d.coverImageUrl ? (
+                                    <img
+                                        src={d.coverImageUrl}
+                                        alt={d.name}
+                                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                        onError={e => {
+                                            const el = e.currentTarget as HTMLImageElement;
+                                            el.onerror = null;
+                                            el.src = "/venue-hero.webp";
+                                        }}
+                                    />
+                                ) : (
+                                    <>
+                                        <div className="stripes" />
+                                        <div className="glyph">{dGlyph}</div>
+                                    </>
+                                )}
                                 <div className="dtag">{dTag.toUpperCase()}</div>
-                                <div className="glyph">{dGlyph}</div>
                             </div>
                             <button className="vn-drawer-close" onClick={closeDrawer}>✕</button>
                         </div>
+                        {d.galleryImageUrls && d.galleryImageUrls.length > 0 && (
+                            <div style={{ display: "flex", gap: 6, padding: "10px 24px 0", overflowX: "auto" }}>
+                                {d.galleryImageUrls.slice(0, 6).map((url, idx) => (
+                                    <img
+                                        key={idx}
+                                        src={url}
+                                        alt=""
+                                        loading="lazy"
+                                        style={{ width: 88, height: 62, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid var(--vn-line)" }}
+                                        onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                                    />
+                                ))}
+                            </div>
+                        )}
                         <div className="vn-drawer-body">
                             <div className="vn-dh-row">
                                 <div>
                                     <div className="vn-d-title">{d.name}</div>
                                     <div className="vn-d-addr">{d.addressLine1}{d.city ? ` · ${d.city}` : ""}{d.state ? `, ${normalizeState(d.state)}` : ""}</div>
                                 </div>
-                                <div className="vn-d-rating">
-                                    <div className="v">{d.rating?.toFixed(1) || "4.5"}<small>/5</small></div>
-                                    <div className="r">{d.reviewCount || 0} reviews</div>
-                                </div>
+                                {d.rating ? (
+                                    <div className="vn-d-rating">
+                                        <div className="v">{d.rating.toFixed(1)}<small>/5</small></div>
+                                        <div className="r">{d.reviewCount || 0} reviews</div>
+                                    </div>
+                                ) : null}
                             </div>
 
                             <div className="vn-d-ctas">
