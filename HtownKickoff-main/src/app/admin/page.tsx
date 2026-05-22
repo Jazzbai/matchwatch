@@ -4,24 +4,32 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  BarChart3,
+  Bell,
   Check,
   CalendarDays,
   Camera,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   CircleAlert,
   Clock4,
+  Download,
   ImagePlus,
   Loader2,
   MapPin,
+  MessageSquare,
   Phone,
   Plus,
   Search,
   Save,
+  Send,
   Sparkles,
   Ticket,
   Trash2,
   Trophy,
+  UserCheck,
   Users,
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
@@ -117,9 +125,24 @@ type GroupedBookingEvent = {
     partySize: number;
     status: string;
     createdAt: string;
+    checkInAt?: string | null;
     specialRequests?: string | null;
     user: { name: string; email: string };
   }>;
+};
+
+type VenuePost = {
+  id: string;
+  content: string;
+  matchId?: string | null;
+  isPublished?: boolean | null;
+  scheduledPublishAt?: string | null;
+  createdAt: string;
+};
+
+type DashboardAnalytics = {
+  bookingsOverTime: Array<{ date: string; total: number }>;
+  topEvents: Array<{ eventId: string; matchId: string; totalBookings: number }>;
 };
 
 type UpcomingMatch = {
@@ -425,6 +448,29 @@ export default function AdminPage() {
   const [menu, setMenu] = React.useState<MenuCategory[]>([]);
   const [packages, setPackages] = React.useState<VenuePackage[]>([]);
   const [promotions, setPromotions] = React.useState<Promotion[]>([]);
+  const [posts, setPosts] = React.useState<VenuePost[]>([]);
+  const [analytics, setAnalytics] = React.useState<DashboardAnalytics | null>(null);
+
+  // Posts & notify-followers
+  const [postContent, setPostContent] = React.useState("");
+  const [postMatchId, setPostMatchId] = React.useState("");
+  const [savingPost, setSavingPost] = React.useState(false);
+  const [deletingPostId, setDeletingPostId] = React.useState<string | null>(null);
+  const [notifyTitle, setNotifyTitle] = React.useState("");
+  const [notifyBody, setNotifyBody] = React.useState("");
+  const [notifyActionUrl, setNotifyActionUrl] = React.useState("");
+  const [sendingNotify, setSendingNotify] = React.useState(false);
+  const [notifyResult, setNotifyResult] = React.useState<string | null>(null);
+
+  // Reservations power tools
+  const [checkingInId, setCheckingInId] = React.useState<string | null>(null);
+  const [bulkConfirmingEventId, setBulkConfirmingEventId] = React.useState<string | null>(null);
+
+  // Calendar
+  const [calendarMonth, setCalendarMonth] = React.useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
   const [showCreateModal, setShowCreateModal] = React.useState(false);
   const [showMatchPicker, setShowMatchPicker] = React.useState(false);
@@ -755,6 +801,8 @@ export default function AdminPage() {
         setMenu([]);
         setPackages([]);
         setPromotions([]);
+        setPosts([]);
+        setAnalytics(null);
         setUpcomingMatches([]);
         setPromotedEventId(null);
         setVenueName("");
@@ -795,6 +843,8 @@ export default function AdminPage() {
         menuRes,
         packagesRes,
         promotionsRes,
+        postsRes,
+        analyticsRes,
       ] = await Promise.all([
         api.get<DashboardOverview>(dashboardPath("/dashboard", effectiveVenueId)),
         api.get<OwnerEvent[]>(dashboardPath("/dashboard/events", effectiveVenueId)),
@@ -805,6 +855,8 @@ export default function AdminPage() {
         api.get<MenuCategory[]>(dashboardPath("/dashboard/menu", effectiveVenueId)),
         api.get<VenuePackage[]>(dashboardPath("/dashboard/packages", effectiveVenueId)),
         api.get<Promotion[]>(dashboardPath("/dashboard/promotions", effectiveVenueId)),
+        api.get<VenuePost[]>(dashboardPath("/dashboard/posts", effectiveVenueId)),
+        api.get<DashboardAnalytics>(dashboardPath("/dashboard/analytics", effectiveVenueId)),
       ]);
 
       setOverview(overviewRes.data);
@@ -814,6 +866,8 @@ export default function AdminPage() {
       setMenu(menuRes.data || []);
       setPackages(packagesRes.data || []);
       setPromotions(promotionsRes.data || []);
+      setPosts(postsRes.data || []);
+      setAnalytics(analyticsRes.data || null);
 
       const profile = venueRes.data || {};
       setVenueName(profile.name || "");
@@ -1133,6 +1187,152 @@ export default function AdminPage() {
     } finally {
       setUpdatingBooking(false);
       setBookingAction(null);
+    }
+  };
+
+  const checkInBooking = async (bookingId: string, checkedIn: boolean) => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+    if (checkingInId) return;
+    setCheckingInId(bookingId);
+    setError(null);
+    try {
+      await api.post(dashboardPath(`/dashboard/bookings/${bookingId}/check-in`), { checkedIn });
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update check-in");
+    } finally {
+      setCheckingInId(null);
+    }
+  };
+
+  const bulkConfirmEvent = async (event: GroupedBookingEvent) => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+    const pending = event.bookings.filter((b) => b.status === "PENDING");
+    if (pending.length === 0 || bulkConfirmingEventId) return;
+    setBulkConfirmingEventId(event.id);
+    setError(null);
+    try {
+      for (const booking of pending) {
+        await api.put(dashboardPath(`/dashboard/bookings/${booking.id}`), { status: "CONFIRMED" });
+      }
+      await Promise.all([loadDashboard(), refetch()]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to confirm reservations");
+    } finally {
+      setBulkConfirmingEventId(null);
+    }
+  };
+
+  const exportBookingsCsv = (eventList: GroupedBookingEvent[], filename: string) => {
+    const header = [
+      "Event", "Match date", "Booking ref", "Guest", "Email",
+      "Party size", "Status", "Checked in", "Booked at", "Special requests",
+    ];
+    const escape = (value: string | number | null | undefined) => {
+      const s = value === null || value === undefined ? "" : String(value);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows: string[] = [header.join(",")];
+    for (const event of eventList) {
+      const matchLabel = `${event.match.homeTeamName} vs ${event.match.awayTeamName}`;
+      for (const b of event.bookings) {
+        rows.push([
+          escape(matchLabel),
+          escape(formatDateTime(event.match.matchDateUtc)),
+          escape(b.bookingReference),
+          escape(b.user.name),
+          escape(b.user.email),
+          escape(b.partySize),
+          escape(b.status),
+          escape(b.checkInAt ? "Yes" : "No"),
+          escape(formatDateTime(b.createdAt)),
+          escape(b.specialRequests || ""),
+        ].join(","));
+      }
+    }
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const createPost = async () => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+    const content = postContent.trim();
+    if (!content || savingPost) return;
+    setSavingPost(true);
+    setError(null);
+    try {
+      await api.post(dashboardPath("/dashboard/posts"), {
+        content,
+        matchId: postMatchId || undefined,
+      });
+      setPostContent("");
+      setPostMatchId("");
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to publish post");
+    } finally {
+      setSavingPost(false);
+    }
+  };
+
+  const deletePost = async (postId: string) => {
+    if (!selectedVenueId || deletingPostId) return;
+    setDeletingPostId(postId);
+    setError(null);
+    try {
+      await api.delete(dashboardPath(`/dashboard/posts/${postId}`));
+      await loadDashboard();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to delete post");
+    } finally {
+      setDeletingPostId(null);
+    }
+  };
+
+  const sendNotify = async () => {
+    if (!selectedVenueId) {
+      setError("Select a business venue first.");
+      return;
+    }
+    const title = notifyTitle.trim();
+    const body = notifyBody.trim();
+    if (!title || !body || sendingNotify) return;
+    setSendingNotify(true);
+    setError(null);
+    setNotifyResult(null);
+    try {
+      const res = await api.post<{ message: string; count: number }>(
+        dashboardPath("/dashboard/notify-followers"),
+        {
+          title,
+          body,
+          actionUrl: notifyActionUrl.trim() || undefined,
+        },
+      );
+      setNotifyResult(res.data?.message || "Notification sent.");
+      setNotifyTitle("");
+      setNotifyBody("");
+      setNotifyActionUrl("");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to send notification");
+    } finally {
+      setSendingNotify(false);
     }
   };
 
@@ -1641,6 +1841,9 @@ export default function AdminPage() {
     { id: "overview", label: "Overview" },
     { id: "events", label: "Events" },
     { id: "bookings", label: "Reservations" },
+    { id: "calendar", label: "Calendar" },
+    { id: "analytics", label: "Analytics" },
+    { id: "posts", label: "Posts" },
     { id: "menu", label: "Menu" },
     { id: "packages", label: "Packages" },
     { id: "promotions", label: "Promotions" },
@@ -2036,9 +2239,18 @@ export default function AdminPage() {
           {/* ═══ TAB: Reservations ═══ */}
           {activeTab === "bookings" && (
             <div style={cardStyle}>
-              <div style={cardHeaderStyle}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Event reservations</h3>
-                <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Click an event to view guest reservations and contact email. Capacity progress is shown for each event.</p>
+              <div style={{ ...cardHeaderStyle, display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Event reservations</h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Click an event to view guest reservations and contact email. Confirm, check in, or export guests below.</p>
+                </div>
+                <button
+                  style={btnOutline(bookingsByEvent.every((e) => e.bookings.length === 0))}
+                  disabled={bookingsByEvent.every((e) => e.bookings.length === 0)}
+                  onClick={() => exportBookingsCsv(bookingsByEvent, `reservations-${new Date().toISOString().slice(0, 10)}.csv`)}
+                >
+                  <Download size={14} /> Export all CSV
+                </button>
               </div>
               <div style={cardContentStyle}>
                 {bookingsByEvent.length ? bookingsByEvent.map((event) => {
@@ -2070,6 +2282,31 @@ export default function AdminPage() {
                         </div>
                       </button>
 
+                      <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {(() => {
+                          const pendingCount = event.bookings.filter((b) => b.status === "PENDING").length;
+                          const isBulk = bulkConfirmingEventId === event.id;
+                          return (
+                            <button
+                              style={btnOutline(pendingCount === 0 || isBulk)}
+                              disabled={pendingCount === 0 || isBulk}
+                              onClick={() => void bulkConfirmEvent(event)}
+                            >
+                              {isBulk
+                                ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Confirming…</>
+                                : <><Check size={14} /> Confirm all pending{pendingCount ? ` (${pendingCount})` : ""}</>}
+                            </button>
+                          );
+                        })()}
+                        <button
+                          style={btnOutline(event.bookings.length === 0)}
+                          disabled={event.bookings.length === 0}
+                          onClick={() => exportBookingsCsv([event], `reservations-${event.match.homeTeamName}-vs-${event.match.awayTeamName}.csv`.replace(/\s+/g, "-"))}
+                        >
+                          <Download size={14} /> Export CSV
+                        </button>
+                      </div>
+
                       {expanded && (
                         <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
                           {event.bookings.length === 0 ? (
@@ -2100,6 +2337,19 @@ export default function AdminPage() {
                                   <button style={btnOutline(updatingBooking || !canConfirm)} disabled={updatingBooking || !canConfirm} onClick={() => void updateBookingStatus(booking.id, "CONFIRMED", booking.status)}>
                                     {isConfirming ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Confirming</> : isConfirmed ? "Confirmed" : "Confirm"}
                                   </button>
+                                  {(isConfirmed || booking.checkInAt) && (
+                                    <button
+                                      style={booking.checkInAt ? btnPrimary(checkingInId === booking.id) : btnOutline(checkingInId === booking.id)}
+                                      disabled={checkingInId === booking.id}
+                                      onClick={() => void checkInBooking(booking.id, !booking.checkInAt)}
+                                    >
+                                      {checkingInId === booking.id
+                                        ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving</>
+                                        : booking.checkInAt
+                                          ? <><UserCheck size={14} /> Checked in</>
+                                          : <><UserCheck size={14} /> Check in</>}
+                                    </button>
+                                  )}
                                   <button style={btnDestructive(updatingBooking || !canCancel || isCancelled)} disabled={updatingBooking || !canCancel || isCancelled} onClick={() => void updateBookingStatus(booking.id, "CANCELLED_BY_VENUE", booking.status)}>
                                     {isCancelling ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Cancelling</> : isCancelled ? "Cancelled" : "Cancel"}
                                   </button>
@@ -2114,6 +2364,307 @@ export default function AdminPage() {
                 }) : (
                   <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No events with bookings yet.</p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TAB: Calendar ═══ */}
+          {activeTab === "calendar" && (() => {
+            const year = calendarMonth.getFullYear();
+            const month = calendarMonth.getMonth();
+            const monthLabel = calendarMonth.toLocaleString("en-US", { month: "long", year: "numeric" });
+            const firstWeekday = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const eventsByDay = new Map<number, GroupedBookingEvent[]>();
+            for (const ev of bookingsByEvent) {
+              const d = new Date(ev.match.matchDateUtc);
+              if (d.getFullYear() === year && d.getMonth() === month) {
+                const day = d.getDate();
+                const list = eventsByDay.get(day) || [];
+                list.push(ev);
+                eventsByDay.set(day, list);
+              }
+            }
+            const cells: Array<number | null> = [];
+            for (let i = 0; i < firstWeekday; i += 1) cells.push(null);
+            for (let d = 1; d <= daysInMonth; d += 1) cells.push(d);
+            while (cells.length % 7 !== 0) cells.push(null);
+            const today = new Date();
+            const isToday = (day: number) =>
+              today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+            return (
+              <div style={cardStyle}>
+                <div style={{ ...cardHeaderStyle, display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Match calendar</h3>
+                    <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Your hosted events by date. Click an event to manage its reservations.</p>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button style={btnOutline()} onClick={() => setCalendarMonth(new Date(year, month - 1, 1))} aria-label="Previous month"><ChevronLeft size={16} /></button>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)", minWidth: 150, textAlign: "center" }}>{monthLabel}</span>
+                    <button style={btnOutline()} onClick={() => setCalendarMonth(new Date(year, month + 1, 1))} aria-label="Next month"><ChevronRight size={16} /></button>
+                    <button style={btnOutline()} onClick={() => setCalendarMonth(new Date(today.getFullYear(), today.getMonth(), 1))}>Today</button>
+                  </div>
+                </div>
+                <div style={cardContentStyle}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 8 }}>
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                      <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{d}</div>
+                    ))}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+                    {cells.map((day, idx) => {
+                      const dayEvents = day ? (eventsByDay.get(day) || []) : [];
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            minHeight: 92, borderRadius: 10, padding: 6,
+                            border: "1px solid var(--border)",
+                            backgroundColor: day ? "var(--secondary)" : "transparent",
+                            opacity: day ? 1 : 0.35,
+                            display: "flex", flexDirection: "column", gap: 4,
+                          }}
+                        >
+                          {day && (
+                            <span style={{
+                              fontSize: 12, fontWeight: 700, alignSelf: "flex-end",
+                              color: isToday(day) ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                              backgroundColor: isToday(day) ? "var(--primary)" : "transparent",
+                              borderRadius: 99, width: 22, height: 22, display: "grid", placeItems: "center",
+                            }}>{day}</span>
+                          )}
+                          {dayEvents.map((ev) => {
+                            const confirmed = ev.bookings.filter((b) => b.status === "CONFIRMED" || b.status === "PENDING").length;
+                            return (
+                              <button
+                                key={ev.id}
+                                onClick={() => { setActiveTab("bookings"); setExpandedEventId(ev.id); }}
+                                title={`${ev.match.homeTeamName} vs ${ev.match.awayTeamName} — ${ev.bookings.length} reservations`}
+                                style={{
+                                  textAlign: "left", border: "none", cursor: "pointer", fontFamily: "inherit",
+                                  borderRadius: 6, padding: "3px 6px", fontSize: 10, fontWeight: 700,
+                                  backgroundColor: "var(--primary)", color: "var(--primary-foreground)",
+                                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                }}
+                              >
+                                {ev.match.homeTeamName} v {ev.match.awayTeamName}{confirmed ? ` · ${confirmed}` : ""}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {bookingsByEvent.length === 0 && (
+                    <p style={{ marginTop: 16, fontSize: 13, color: "var(--muted-foreground)" }}>No hosted events yet. Add an event from the Events tab to see it here.</p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ═══ TAB: Analytics ═══ */}
+          {activeTab === "analytics" && (() => {
+            const series = [...(analytics?.bookingsOverTime || [])]
+              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+              .slice(-21);
+            const totalBookings = (analytics?.bookingsOverTime || []).reduce((sum, p) => sum + p.total, 0);
+            const busiest = (analytics?.bookingsOverTime || []).reduce<{ date: string; total: number } | null>(
+              (best, p) => (!best || p.total > best.total ? p : best), null);
+            const activeDays = (analytics?.bookingsOverTime || []).filter((p) => p.total > 0).length;
+            const maxTotal = Math.max(1, ...series.map((p) => p.total));
+            const eventName = (eventId: string, matchId: string) => {
+              const ev = bookingsByEvent.find((e) => e.id === eventId);
+              if (ev) return `${ev.match.homeTeamName} vs ${ev.match.awayTeamName}`;
+              const owner = events.find((e) => e.matchId === matchId);
+              return owner ? `${owner.match.homeTeamName} vs ${owner.match.awayTeamName}` : "Event";
+            };
+            const kpis = [
+              { label: "Total reservations", value: totalBookings },
+              { label: "Followers", value: overview?.stats.followers ?? 0 },
+              { label: "Days with bookings", value: activeDays },
+              { label: "Busiest day", value: busiest && busiest.total > 0 ? `${formatDateTime(busiest.date).split(",")[0]}` : "—" },
+            ];
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
+                  {kpis.map((k) => (
+                    <div key={k.label} style={{ ...cardStyle, padding: 20 }}>
+                      <p style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 600, marginBottom: 8 }}>{k.label}</p>
+                      <p style={{ fontSize: 28, fontWeight: 900, color: "var(--foreground)" }}>{k.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={cardStyle}>
+                  <div style={cardHeaderStyle}>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                      <BarChart3 size={16} /> Reservations over time
+                    </h3>
+                    <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Daily reservation volume (last {series.length} active days).</p>
+                  </div>
+                  <div style={cardContentStyle}>
+                    {series.length === 0 ? (
+                      <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No reservation activity yet.</p>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 180, overflowX: "auto" }}>
+                        {series.map((p) => (
+                          <div key={p.date} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, minWidth: 28, flex: 1 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--foreground)" }}>{p.total}</span>
+                            <div
+                              title={`${p.date}: ${p.total}`}
+                              style={{
+                                width: "100%", maxWidth: 32,
+                                height: `${Math.round((p.total / maxTotal) * 130)}px`,
+                                minHeight: 4, borderRadius: 6,
+                                backgroundColor: "var(--primary)",
+                              }}
+                            />
+                            <span style={{ fontSize: 9, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>
+                              {new Date(p.date).toLocaleDateString("en-US", { month: "numeric", day: "numeric" })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={cardStyle}>
+                  <div style={cardHeaderStyle}>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Top events</h3>
+                    <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Your most-booked events.</p>
+                  </div>
+                  <div style={cardContentStyle}>
+                    {(analytics?.topEvents || []).length === 0 ? (
+                      <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No bookings to rank yet.</p>
+                    ) : (analytics?.topEvents || []).map((te, i) => (
+                      <div key={te.eventId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < (analytics?.topEvents.length || 0) - 1 ? "1px solid var(--border)" : "none" }}>
+                        <span style={{ fontSize: 14, color: "var(--foreground)", display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ ...badgeStyle, minWidth: 24, justifyContent: "center" }}>{i + 1}</span>
+                          {eventName(te.eventId, te.matchId)}
+                        </span>
+                        <span style={badgeStyle}>{te.totalBookings} bookings</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ═══ TAB: Posts ═══ */}
+          {activeTab === "posts" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Compose post */}
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                    <MessageSquare size={16} /> Create a post
+                  </h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Share updates with fans. Posts appear on your venue page feed.</p>
+                </div>
+                <div style={cardContentStyle}>
+                  <label style={labelStyle}>Post content</label>
+                  <textarea
+                    value={postContent}
+                    onChange={(e) => setPostContent(e.target.value)}
+                    placeholder="Big match this weekend — doors open at 6, get here early for a good seat!"
+                    maxLength={5000}
+                    rows={4}
+                    style={{ ...inputStyle, resize: "vertical", marginBottom: 12 }}
+                  />
+                  <label style={labelStyle}>Tag a match (optional)</label>
+                  <select value={postMatchId} onChange={(e) => setPostMatchId(e.target.value)} style={{ ...inputStyle, marginBottom: 12 }}>
+                    <option value="">No match</option>
+                    {events.map((ev) => (
+                      <option key={ev.id} value={ev.match.id}>
+                        {ev.match.homeTeamName} vs {ev.match.awayTeamName} — {formatDateTime(ev.match.matchDateUtc)}
+                      </option>
+                    ))}
+                  </select>
+                  <button style={btnPrimary(savingPost || !postContent.trim())} disabled={savingPost || !postContent.trim()} onClick={() => void createPost()}>
+                    {savingPost ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Publishing</> : <><Plus size={14} /> Publish post</>}
+                  </button>
+                </div>
+              </div>
+
+              {/* Notify followers */}
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                    <Bell size={16} /> Notify followers
+                  </h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+                    Send a notification to your {overview?.stats.followers ?? 0} follower{overview?.stats.followers === 1 ? "" : "s"}.
+                  </p>
+                </div>
+                <div style={cardContentStyle}>
+                  <label style={labelStyle}>Title ({notifyTitle.length}/65)</label>
+                  <input
+                    value={notifyTitle}
+                    onChange={(e) => setNotifyTitle(e.target.value.slice(0, 65))}
+                    placeholder="Match day specials are live"
+                    maxLength={65}
+                    style={{ ...inputStyle, marginBottom: 12 }}
+                  />
+                  <label style={labelStyle}>Message ({notifyBody.length}/200)</label>
+                  <textarea
+                    value={notifyBody}
+                    onChange={(e) => setNotifyBody(e.target.value.slice(0, 200))}
+                    placeholder="Half-price wings during every kickoff this weekend. Reserve your table now."
+                    maxLength={200}
+                    rows={3}
+                    style={{ ...inputStyle, resize: "vertical", marginBottom: 12 }}
+                  />
+                  <label style={labelStyle}>Link (optional)</label>
+                  <input
+                    value={notifyActionUrl}
+                    onChange={(e) => setNotifyActionUrl(e.target.value)}
+                    placeholder="https://…"
+                    style={{ ...inputStyle, marginBottom: 12 }}
+                  />
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <button
+                      style={btnPrimary(sendingNotify || !notifyTitle.trim() || !notifyBody.trim() || (overview?.stats.followers ?? 0) === 0)}
+                      disabled={sendingNotify || !notifyTitle.trim() || !notifyBody.trim() || (overview?.stats.followers ?? 0) === 0}
+                      onClick={() => void sendNotify()}
+                    >
+                      {sendingNotify ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Sending</> : <><Send size={14} /> Send notification</>}
+                    </button>
+                    {(overview?.stats.followers ?? 0) === 0 && (
+                      <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>No followers to notify yet.</span>
+                    )}
+                    {notifyResult && <span style={{ fontSize: 13, color: "var(--primary)", fontWeight: 600 }}>{notifyResult}</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Published posts */}
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 4 }}>Published posts</h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{posts.length} post{posts.length === 1 ? "" : "s"}.</p>
+                </div>
+                <div style={cardContentStyle}>
+                  {posts.length === 0 ? (
+                    <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No posts yet. Create your first one above.</p>
+                  ) : posts.map((post) => (
+                    <div key={post.id} style={{ padding: 14, borderRadius: 10, border: "1px solid var(--border)", backgroundColor: "var(--secondary)", marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                        <p style={{ fontSize: 14, color: "var(--foreground)", whiteSpace: "pre-wrap", flex: 1 }}>{post.content}</p>
+                        <button style={btnDestructive(deletingPostId === post.id)} disabled={deletingPostId === post.id} onClick={() => void deletePost(post.id)}>
+                          {deletingPostId === post.id ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Trash2 size={14} />}
+                        </button>
+                      </div>
+                      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={badgeStyle}>{post.isPublished === false ? "Scheduled" : "Published"}</span>
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{formatDateTime(post.scheduledPublishAt || post.createdAt)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

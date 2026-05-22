@@ -1463,6 +1463,7 @@ dashboardRoutes.get('/bookings/events', async (c) => {
         partySize: number;
         status: string;
         createdAt: Date;
+        checkInAt: Date | null;
         specialRequests: string | null;
         user: { name: string; email: string };
     }>>();
@@ -1475,6 +1476,7 @@ dashboardRoutes.get('/bookings/events', async (c) => {
             partySize: row.booking.partySize,
             status: row.booking.status,
             createdAt: row.booking.createdAt,
+            checkInAt: row.booking.checkInAt,
             specialRequests: row.booking.specialRequests,
             user: { name: row.userName, email: row.userEmail },
         });
@@ -1558,6 +1560,32 @@ async function updateBookingStatusHandler(c: any) {
 dashboardRoutes.put('/bookings/:bookingId/status', updateBookingStatusHandler);
 dashboardRoutes.put('/bookings/:bookingId', updateBookingStatusHandler);
 dashboardRoutes.patch('/bookings/:bookingId', updateBookingStatusHandler);
+
+// Day-of check-in toggle. Sets/clears bookings.check_in_at (column already exists).
+dashboardRoutes.post('/bookings/:bookingId/check-in', async (c) => {
+    const user = c.get('user');
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
+    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+
+    const bookingId = c.req.param('bookingId');
+    const body = await c.req.json().catch(() => ({}));
+    const checkedIn = body?.checkedIn !== false; // default to checking in
+
+    const [row] = await db.select({ booking: bookings })
+        .from(bookings)
+        .innerJoin(venueEvents, eq(bookings.venueEventId, venueEvents.id))
+        .where(and(eq(bookings.id, bookingId), eq(venueEvents.venueId, venue.id)))
+        .limit(1);
+    if (!row) return c.json(apiError('NOT_FOUND', 'Booking not found'), 404);
+
+    const checkInAt = checkedIn ? new Date() : null;
+    await db.update(bookings).set({ checkInAt, updatedAt: new Date() }).where(eq(bookings.id, bookingId));
+
+    return c.json(apiResponse({
+        message: checkedIn ? 'Guest checked in' : 'Check-in cleared',
+        checkInAt: checkInAt ? checkInAt.toISOString() : null,
+    }));
+});
 
 // ─── Posts CRUD ──────────────────────────────────
 
