@@ -15,6 +15,11 @@ import {
 } from '../lib/venueImages';
 
 const venueRoutes = new Hono();
+const publicVenueCondition = sql`NOT (coalesce(${venues.amenities}, ARRAY[]::text[]) @> ARRAY['OFFICIAL_FAN_FEST']::text[])`;
+
+function isInternalFanFestVenue(venue: typeof venues.$inferSelect) {
+    return Array.isArray(venue.amenities) && venue.amenities.includes('OFFICIAL_FAN_FEST');
+}
 
 function galleryImageUrlsFromMetadata(metadata: unknown): string[] {
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return [];
@@ -56,7 +61,7 @@ async function getPublicVenueBySlugOrId(slugOrId: string) {
         sql`${venues.slug} = ${slugOrId} OR ${venues.id}::text = ${slugOrId}`,
     ).limit(1);
 
-    if (!venue || !venue.isActive || venue.approvalStatus !== 'APPROVED') {
+    if (!venue || !venue.isActive || venue.approvalStatus !== 'APPROVED' || isInternalFanFestVenue(venue)) {
         return null;
     }
 
@@ -225,6 +230,7 @@ venueRoutes.get('/cities', async (c) => {
     const conditions = [
         eq(venues.isActive, true),
         eq(venues.approvalStatus, 'APPROVED'),
+        publicVenueCondition,
         sql`${venues.city} IS NOT NULL AND ${venues.city} != ''`,
     ];
 
@@ -255,7 +261,7 @@ venueRoutes.get('/', async (c) => {
     const { q, city, lat, lng, is_verified, page, limit } = query.data;
     const offset = paginationOffset(page, limit);
 
-    let conditions: any[] = [eq(venues.isActive, true), eq(venues.approvalStatus, 'APPROVED')];
+    let conditions: any[] = [eq(venues.isActive, true), eq(venues.approvalStatus, 'APPROVED'), publicVenueCondition];
     if (city) conditions.push(ilike(venues.city, `%${city}%`));
     if (q) conditions.push(ilike(venues.name, `%${q}%`));
     if (is_verified !== undefined) conditions.push(eq(venues.isVerified, is_verified));

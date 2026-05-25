@@ -35,6 +35,7 @@ const VENUE_DEEP_MAX_PAGES = 50;
 const MATCH_MAX_PAGES = 20;
 
 const BOOKING_FETCH_LIMIT = 50;
+const INTERNAL_VENUE_AMENITIES = new Set(["OFFICIAL_FAN_FEST"]);
 const FLAG_CDN_BASE = "https://flagcdn.com";
 const HOME_PRIORITY_SOCCER_LEAGUE_MATCHERS = [
     (name: string) => name === "mls" || name.includes("major league soccer"),
@@ -75,6 +76,11 @@ type ApiMatchFacets = {
         logoUrl?: string | null;
     }>;
 };
+
+function isPublicVenue(venue: { amenities?: unknown }) {
+    const amenities = Array.isArray(venue.amenities) ? venue.amenities : [];
+    return !amenities.some((amenity) => typeof amenity === "string" && INTERNAL_VENUE_AMENITIES.has(amenity));
+}
 
 interface DataContextType {
     matches: Match[];
@@ -797,7 +803,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             };
         });
 
-        const baseVenues = apiVenues.map((v) => {
+        const baseVenues = apiVenues.filter(isPublicVenue).map((v) => {
             const withGallery = v as { galleryImageUrls?: string[] };
             return ({
             id: v.id,
