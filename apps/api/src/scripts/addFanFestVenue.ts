@@ -56,7 +56,29 @@ const FAN_FESTS: FanFestDef[] = [
     dates: 'June 11 – July 19, 2026',
     capacity: 15000,
   },
-  // ── Add remaining 10 cities below as you collect their links ──
+  {
+    citySlug: 'dallas',
+    cityName: 'Dallas',
+    state: 'TX',
+    timezone: 'America/Chicago',
+    name: 'FIFA Fan Festival™ Dallas',
+    addressLine1: 'Fair Park — Lots 9 & 10, The Pavilion Amphitheater',
+    lat: 32.7770,
+    lng: -96.7441,
+    description:
+      'The official FIFA Fan Festival™ for Dallas World Cup 2026 matches. A free, open-to-all 1-million-square-foot celebration at historic Fair Park featuring live match broadcasts on giant screens, The Pavilion main stage (7,000 covered seats + hillside seating), mini-pitches, concerts, sponsor zones, and food courts arranged as a walkable village. Capacity: 35,000 fans. June 11 – July 19, 2026.',
+    website: 'https://www.dallasfwc26.com/our-venues/fan-festival/',
+    coverImageUrl:
+      'https://www.dallasfwc26.com/wp-content/uploads/2026/04/FFFdallas_render01_Feb16-1024x576.jpg',
+    galleryUrls: [
+      'https://www.dallasfwc26.com/wp-content/uploads/2026/05/FFF-mainstage-1024x576.jpg',
+      'https://www.dallasfwc26.com/wp-content/uploads/2026/04/FFFdallas_render02_Feb16-1024x576.jpg',
+      'https://www.dallasfwc26.com/wp-content/uploads/2026/04/FFFdallas_render05_Feb16-1024x576.jpg',
+    ],
+    dates: 'June 11 – July 19, 2026',
+    capacity: 35000,
+  },
+  // ── Add remaining 9 cities below as you collect their links ──
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
