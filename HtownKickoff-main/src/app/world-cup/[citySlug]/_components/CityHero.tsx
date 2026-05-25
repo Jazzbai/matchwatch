@@ -1,5 +1,6 @@
 import React from "react";
-import { MapPin, ArrowDown } from "lucide-react";
+import Link from "next/link";
+import { MapPin, ArrowDown, Tent } from "lucide-react";
 import type { WorldCupCity, CityMatch } from "../types";
 
 interface Props {
@@ -29,6 +30,16 @@ export function CityHero({ city, matches }: Props) {
               <MapPin size={15} />
               Find {city.name} Watch Party Venues
             </a>
+            {city.slug === "seattle" && (
+              <Link
+                href="/world-cup/seattle/fan-zones"
+                className="cc-btn-g"
+                style={{ textDecoration: "none" }}
+              >
+                <Tent size={15} />
+                9 Official Fan Zones
+              </Link>
+            )}
           </div>
           <a href="#for-business" className="cc-hero-biz-link">
             <ArrowDown size={12} />
