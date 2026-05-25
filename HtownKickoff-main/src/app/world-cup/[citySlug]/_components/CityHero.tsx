@@ -1,7 +1,6 @@
 import React from "react";
 import { MapPin, ArrowDown } from "lucide-react";
 import type { WorldCupCity, CityMatch } from "../types";
-import { TrophyImg } from "../../../../components/TrophyImg";
 
 interface Props {
   city: WorldCupCity;
@@ -65,7 +64,7 @@ export function CityHero({ city, matches }: Props) {
         </div>
 
         <figure className="cc-hero-emblem">
-          <TrophyImg />
+          <img src="/world-cup-emblem.png" alt="World Cup 2026" />
         </figure>
       </div>
     </section>

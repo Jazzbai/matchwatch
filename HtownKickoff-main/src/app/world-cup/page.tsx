@@ -6,7 +6,6 @@ import { useData } from "../../lib/data-provider";
 import { Building2, Star, Trophy, ChevronRight, Globe, Calendar } from "lucide-react";
 import { FloatingNav } from "../../components/AppShell";
 import { Countdown } from "../../components/Countdown";
-import { TrophyImg } from "../../components/TrophyImg";
 
 /* Opening match — Jun 11 2026, 5:00 PM ET (used for the hero countdown). */
 const WC_OPENING = "2026-06-11T17:00:00-04:00";
@@ -331,8 +330,7 @@ export default function WorldCupPage() {
             </div>
           </div>
           <figure className="wc-hero-trophy">
-            <TrophyImg />
-            <figcaption>World Cup 2026 · United States · Canada · Mexico</figcaption>
+            <img src="/world-cup-emblem.png" alt="World Cup 2026" />
           </figure>
         </div>
       </section>
