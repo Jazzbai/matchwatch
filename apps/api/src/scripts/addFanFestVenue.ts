@@ -78,7 +78,119 @@ const FAN_FESTS: FanFestDef[] = [
     dates: 'June 11 – July 19, 2026',
     capacity: 35000,
   },
-  // ── Add remaining 9 cities below as you collect their links ──
+  // ── Seattle / Washington State — 6 regional fan zones ──────────────────────
+  {
+    citySlug: 'seattle-bellingham',
+    cityName: 'Bellingham',
+    state: 'WA',
+    timezone: 'America/Los_Angeles',
+    name: 'FIFA Fan Zone™ Bellingham',
+    addressLine1: '904 Potter St — Waterfront District',
+    lat: 48.7342,
+    lng: -122.4971,
+    description:
+      'Official FIFA Fan Zone for Seattle\'s 2026 World Cup, hosted in Bellingham\'s waterfront district. Free-admission outdoor fan zone featuring live match screenings on giant screens, local food vendors, interactive soccer activities, youth programming, and community celebrations. Open on select World Cup match days, June–July 2026.',
+    website: 'https://www.bellingham.org/fan-zone',
+    coverImageUrl:
+      'https://bellingham.objects.liquidweb.services/photos/6925-fifa_webheader_final-2800x900.jpg',
+    galleryUrls: [],
+    dates: 'June–July 2026',
+    capacity: 5000,
+  },
+  {
+    citySlug: 'seattle-bremerton',
+    cityName: 'Bremerton',
+    state: 'WA',
+    timezone: 'America/Los_Angeles',
+    name: 'FIFA Fan Zone™ Bremerton',
+    addressLine1: 'Harborside Fountain Park, 100 Washington Ave',
+    lat: 47.5649,
+    lng: -122.6271,
+    description:
+      'Official FIFA Fan Zone in Downtown Bremerton for Seattle\'s 2026 World Cup. Bremerton is a designated official fan zone city, hosting celebrations and soccer watch parties in its vibrant Downtown waterfront district. Enjoy giant match-viewing screens, live entertainment, local vendors, and community atmosphere on select World Cup match days, June–July 2026.',
+    website: 'https://www.downtownbremerton.org/events/bremerton-fan-zones',
+    coverImageUrl:
+      'https://www.downtownbremerton.org/wp-content/uploads/2025/bremerton-fan-zone-wc26.jpg',
+    galleryUrls: [],
+    dates: 'June–July 2026',
+    capacity: 3000,
+  },
+  {
+    citySlug: 'seattle-olympia',
+    cityName: 'Olympia',
+    state: 'WA',
+    timezone: 'America/Los_Angeles',
+    name: 'Olympia-Lacey Official FIFA Fan Zone™',
+    addressLine1: 'Port of Olympia — Port Plaza, 701 Columbia Street NW',
+    lat: 47.0459,
+    lng: -122.9025,
+    description:
+      'Official FIFA Fan Zone for Seattle\'s 2026 World Cup at Port of Olympia\'s waterfront Port Plaza. A high-energy waterfront festival experience featuring live match screenings on giant screens, local food vendors, community partners, interactive activities, and live music. VIP packages available ($75). General admission $10; youth 12 & under free. Open June 19, 24, 25 & 26, 2026.',
+    website: 'https://thurstonchamber.com/fanzone/',
+    coverImageUrl:
+      'https://thurstonchamber.com/wp-content/uploads/2026/03/Olympia_Lacey-Official-Logo.png',
+    galleryUrls: [],
+    dates: 'June 19, 24, 25 & 26, 2026',
+    capacity: 10000,
+  },
+  {
+    citySlug: 'seattle-tacoma',
+    cityName: 'Tacoma',
+    state: 'WA',
+    timezone: 'America/Los_Angeles',
+    name: 'Puyallup Tribe Official FIFA Fan Zone™',
+    addressLine1: '3001 Puyalupabsh St',
+    lat: 47.2276,
+    lng: -122.4131,
+    description:
+      'Official FIFA Fan Zone in Tacoma, hosted by the Puyallup Tribe — the first Indigenous nation formally represented at the FIFA World Cup™. A historic community celebration featuring official fan zone viewing parties, cultural programming, interactive experiences, live entertainment, and community gatherings during Seattle\'s 2026 World Cup matches. Select match days June 15 – July 6, 2026.',
+    website: 'https://puyallupalltogether.org',
+    coverImageUrl:
+      'https://puyallupalltogether.org/wp-content/uploads/2026/02/AdobeStock_924205395-scaled.jpeg',
+    galleryUrls: [],
+    dates: 'June 15 – July 6, 2026',
+    capacity: 8000,
+  },
+  {
+    citySlug: 'seattle-pasco',
+    cityName: 'Pasco',
+    state: 'WA',
+    timezone: 'America/Los_Angeles',
+    name: 'FIFA Fan Zone™ Pasco / Tri-Cities',
+    addressLine1: 'Gesa Stadium & Pasco Sports Complex, 6200 Burden Blvd',
+    lat: 46.2418,
+    lng: -119.1028,
+    description:
+      'Official Seattle FWC26 Fan Zone at Gesa Stadium & Pasco Sports Complex in the Tri-Cities. A summer 2026 soccer celebration featuring large-screen outdoor match viewing with festival atmosphere, live music, family-friendly activities, local food vendors, and easy riverside access. Open June 15, 19, July 1 & 6, 2026.',
+    website: 'https://www.pasco-wa.gov/1715/Official-Seattle-FWC26-Fan-Zone',
+    coverImageUrl:
+      'https://www.pasco-wa.gov/ImageRepository/Document?documentId=69217',
+    galleryUrls: [
+      'https://www.pasco-wa.gov/ImageRepository/Document?documentID=66272',
+      'https://www.pasco-wa.gov/ImageRepository/Document?documentID=66285',
+    ],
+    dates: 'June 15, 19, July 1 & 6, 2026',
+    capacity: 15000,
+  },
+  {
+    citySlug: 'seattle-yakima',
+    cityName: 'Yakima',
+    state: 'WA',
+    timezone: 'America/Los_Angeles',
+    name: 'FIFA Fan Zone™ Yakima — Yakima Valley SunDome',
+    addressLine1: 'Yakima Valley SunDome at State Fair Park, 1301 S Fair Ave',
+    lat: 46.5840,
+    lng: -120.5050,
+    description:
+      'Official FIFA Fan Zone for Seattle\'s 2026 World Cup at the Yakima Valley SunDome and State Fair Park. A community celebration in the heart of Washington wine country featuring live match broadcasts on giant screens, local entertainment, food vendors, interactive fan activities, and family-friendly programming on select World Cup match days, June–July 2026.',
+    website: 'https://www.statefairpark.org/',
+    coverImageUrl:
+      'https://www.statefairpark.org/ImageRepository/Document?documentId=1001',
+    galleryUrls: [],
+    dates: 'June–July 2026',
+    capacity: 12000,
+  },
+  // ── Add remaining 8 cities below: NYC, LA, Miami, Atlanta, SF, Philadelphia, Boston, Kansas City ──
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -108,11 +220,11 @@ async function main() {
 
   console.log(`\n🏟️  Adding official FIFA Fan Festival: ${def.name}`);
 
-  // Check for duplicate
+  // Check for duplicate (matches both "Fan Festival" and "Fan Zone" naming)
   const existing = await db.select({ id: venues.id, name: venues.name })
     .from(venues)
     .where(and(
-      ilike(venues.name, '%fan festival%'),
+      ilike(venues.name, `%${def.name.split('™')[0].trim()}%`),
       ilike(venues.city, `%${def.cityName}%`),
     ))
     .limit(1);
