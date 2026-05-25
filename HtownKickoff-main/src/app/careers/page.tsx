@@ -86,7 +86,7 @@ export default function CareersPage() {
                   <h1 className="cr-h1">Build the Future of<br /><b>Watch Party Culture</b></h1>
                   <p className="cr-sub">
                     MatchWatch is the platform connecting football fans with the best bars, restaurants,
-                    and event spaces for FIFA World Cup 2026 watch parties across 11 US host cities.
+                    and event spaces for World Cup 2026 watch parties across 11 US host cities.
                     We&apos;re a small, fast-moving team building something big.
                   </p>
                   <div className="cr-hero-stats">
@@ -100,7 +100,7 @@ export default function CareersPage() {
                   <p className="cr-hero-card-title">Why join now?</p>
                   <ul className="cr-hero-card-list">
                     <li>Ground floor of a high-growth platform</li>
-                    <li>FIFA World Cup 2026 is the biggest sporting event ever held in the US</li>
+                    <li>World Cup 2026 is the biggest sporting event ever held in the US</li>
                     <li>Flexible, commission-driven roles</li>
                     <li>Real impact — your work ships to real users</li>
                     <li>Sports, hospitality & tech intersection</li>
@@ -168,7 +168,7 @@ export default function CareersPage() {
               </div>
               <div className="cr-why-grid">
                 {[
-                  { icon: Trophy, title: "Once-in-a-generation event", body: "The FIFA World Cup 2026 is the largest sporting event ever hosted in the US. Be part of building the infrastructure around it." },
+                  { icon: Trophy, title: "Once-in-a-generation event", body: "The World Cup 2026 is the largest sporting event ever hosted in the US. Be part of building the infrastructure around it." },
                   { icon: Zap,    title: "Fast-moving startup energy", body: "We ship fast, iterate constantly, and give everyone real ownership of their work. No bureaucracy, no waiting." },
                   { icon: DollarSign, title: "Earn what you sell", body: "Commission-based roles reward performance. The more venues and events you bring on, the more you earn." },
                   { icon: MapPin, title: "11 cities, one platform", body: "Houston is home base but the opportunity spans Dallas, Miami, NYC, LA, and every other host city." },

@@ -162,7 +162,7 @@ function MatchPointContent() {
                 <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 50% 0%, rgba(34,197,94,0.12) 0%, transparent 60%)", pointerEvents: "none" }} />
                 <div style={{ position: "relative", maxWidth: 700, margin: "0 auto" }}>
                     <div style={{ display: "inline-block", padding: "6px 14px", borderRadius: 99, background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.3)", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: "#22c55e", textTransform: "uppercase", marginBottom: 16 }}>
-                        FIFA World Cup 2026 · Prediction Game
+                        World Cup 2026 · Prediction Game
                     </div>
                     <h1 style={{ fontSize: "clamp(36px,7vw,64px)", fontWeight: 900, lineHeight: 1.05, margin: "0 0 16px", letterSpacing: "-0.02em" }}>
                         Match <span style={{ color: "#22c55e" }}>Point</span>

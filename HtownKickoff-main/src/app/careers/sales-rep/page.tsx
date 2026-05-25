@@ -196,7 +196,7 @@ function SalesRepContent() {
               <span className="sr-tag"><DollarSign size={13} /> Commission + Bonuses</span>
               <span className="sr-tag"><Clock size={13} /> Part-Time / Contract</span>
               <span className="sr-tag"><Users size={13} /> Remote-Friendly</span>
-              <span className="sr-tag"><Trophy size={13} /> FIFA World Cup 2026</span>
+              <span className="sr-tag"><Trophy size={13} /> World Cup 2026</span>
             </div>
           </div>
         </div>
@@ -273,7 +273,7 @@ function SalesRepContent() {
               <div className="sr-box-title">What We&apos;re Looking For</div>
               <ul className="sr-list">
                 {[
-                  "Based in one of the 11 FIFA World Cup 2026 host cities (or willing to work one remotely)",
+                  "Based in one of the 11 World Cup 2026 host cities (or willing to work one remotely)",
                   "1+ years in B2B sales, hospitality sales, or sponsorship/media sales",
                   "Self-starter who can manage their own schedule and hit targets without hand-holding",
                   "Strong local network in hospitality, entertainment, or corporate sectors",

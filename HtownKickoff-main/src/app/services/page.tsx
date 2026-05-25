@@ -520,7 +520,7 @@ function CorporateTab({
         <div className="sv-sh">
           <h2 className="sv-sh-title">Corporate Watch Party Packages</h2>
           <p className="sv-sh-sub">
-            Bring your team together for FIFA World Cup 2026. We organize private watch parties
+            Bring your team together for World Cup 2026. We organize private watch parties
             for companies, employee events, client entertainment, and group bookings across all 11 US host cities.
           </p>
         </div>
@@ -590,7 +590,7 @@ function ServicesInner() {
         <div className="sv-hero-overlay" aria-hidden="true" />
         <div className="sv-hero-overlay2" aria-hidden="true" />
         <div className="sv-hero-inner">
-          <div className="sv-kicker"><span className="bd" />FIFA World Cup 2026 · Event Services</div>
+          <div className="sv-kicker"><span className="bd" />World Cup 2026 · Event Services</div>
           <h1 className="sv-hero-h1">World Cup <b>Watch Party</b> Services</h1>
           <p className="sv-hero-sub">
             Whether you run a bar or manage a company, we make World Cup watch parties unforgettable — in all 11 US host cities.
