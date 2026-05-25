@@ -78,7 +78,26 @@ const FAN_FESTS: FanFestDef[] = [
     dates: 'June 11 – July 19, 2026',
     capacity: 35000,
   },
-  // ── Seattle / Washington State — 6 regional fan zones ──────────────────────
+  // ── Seattle — Official FIFA Fan Festival™ at Seattle Center ─────────────────
+  {
+    citySlug: 'seattle',
+    cityName: 'Seattle',
+    state: 'WA',
+    timezone: 'America/Los_Angeles',
+    name: 'FIFA Fan Festival™ Seattle — Seattle Center',
+    addressLine1: 'Seattle Center — The Armory & Mural Amphitheatre, 305 Harrison St',
+    lat: 47.6205,
+    lng: -122.3493,
+    description:
+      'The official FIFA Fan Festival™ for Seattle\'s World Cup 2026 matches. "Let\'s Play SEA \'26 — World Soccer Fan Celebration" at Seattle Center — a massive civic celebration beneath the Space Needle featuring a giant indoor screen at The Armory (all-weather viewing), outdoor big-screen viewing at the Mural Amphitheatre, international DJs, immersive fan activations, public art, fitness activities, food vendors, and campus-wide programming across Seattle Center\'s full grounds.',
+    website: 'https://www.seattlecenter.com/events/lets-play-sea-26',
+    coverImageUrl:
+      'https://www.seattlecenter.com/Images/Events/Productions/Lets%20Play%20SEA%2026/LPSea26_1920x1080.jpg',
+    galleryUrls: [],
+    dates: 'June–July 2026 (all match days)',
+    capacity: 30000,
+  },
+  // ── Seattle / Washington State — 9 regional fan zones ──────────────────────
   {
     citySlug: 'seattle-bellingham',
     cityName: 'Bellingham',

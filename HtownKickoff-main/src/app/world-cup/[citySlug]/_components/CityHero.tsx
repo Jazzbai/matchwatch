@@ -37,7 +37,7 @@ export function CityHero({ city, matches }: Props) {
                 style={{ textDecoration: "none" }}
               >
                 <Tent size={15} />
-                9 Official Fan Zones
+                Fan Festival &amp; Zones
               </Link>
             )}
           </div>
