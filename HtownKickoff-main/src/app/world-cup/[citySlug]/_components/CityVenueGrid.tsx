@@ -7,6 +7,7 @@ interface Props {
   venues: CityVenue[];
   citySlug: string;
   cityName: string;
+  topSlot?: React.ReactNode;
 }
 
 function FeatureChip({ label }: { label: string }) {
@@ -68,10 +69,11 @@ function VenueCard({ venue, citySlug }: { venue: CityVenue; citySlug: string }) 
   );
 }
 
-export function CityVenueGrid({ venues, citySlug, cityName }: Props) {
+export function CityVenueGrid({ venues, citySlug, cityName, topSlot }: Props) {
   return (
     <section className="cc-section" id="venues">
       <div className="cc-wrap">
+        {topSlot}
         <div className="cc-sh">
           <div>
             <h2 className="cc-st">{cityName} Watch Party Venues</h2>

@@ -2,14 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { notFound, useParams } from "next/navigation";
 import { FloatingNav } from "../../../../components/AppShell";
 import {
   MapPin, Globe, ChevronRight, ExternalLink, Calendar,
   Users, Building2, ChevronDown, Star, Shield,
 } from "lucide-react";
-
-const SUPPORTED_CITIES = ["seattle"];
 
 interface FanZone {
   id: string;
@@ -331,9 +328,6 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export default function SeattleFanZonesPage() {
-  const params = useParams<{ citySlug: string }>();
-  if (!SUPPORTED_CITIES.includes(params.citySlug)) notFound();
-
   return (
     <div className="fz-page">
       <style dangerouslySetInnerHTML={{ __html: MW_VARS + CSS + `body{background:var(--mw-bg)!important;color:var(--mw-fg)!important;}` }} />

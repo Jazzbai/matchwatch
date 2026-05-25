@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useMemo } from "react";
+import Link from "next/link";
+import { ExternalLink, Shield } from "lucide-react";
 import type { WorldCupCity, CityMatch, CityVenue, VenueSolutionPackage, VendorSolution } from "../types";
 import { CityHero } from "./CityHero";
 import { CityMatchSchedule } from "./CityMatchSchedule";
@@ -9,6 +11,30 @@ import { CityVenueMap } from "./CityVenueMap";
 import { CityActionCTAs } from "./CityActionCTAs";
 import { FloatingNav } from "@/components/AppShell";
 import { useData, type Venue } from "@/lib/data-provider";
+
+const FAN_FEST_CITIES: Record<string, { name: string; venue: string; addr: string; dates: string; officialSite: string }> = {
+  seattle: {
+    name: "Seattle",
+    venue: "Seattle Center — The Armory & Mural Amphitheatre",
+    addr: "305 Harrison St, Seattle, WA 98109",
+    dates: "Jun–Jul 2026 · All Match Days · Free Admission",
+    officialSite: "https://www.seattlecenter.com/events/lets-play-sea-26",
+  },
+  houston: {
+    name: "Houston",
+    venue: "FIFA Fan Festival™ Houston — EaDo",
+    addr: "East Downtown (EaDo), near Shell Energy Stadium, Houston, TX",
+    dates: "Jun 11 – Jul 19, 2026 · All 34 Match Days · Free Admission",
+    officialSite: "https://www.fwc26houston.com/fifafanfestivalhou",
+  },
+  dallas: {
+    name: "Dallas",
+    venue: "FIFA Fan Festival™ Dallas — Fair Park",
+    addr: "Fair Park, Lots 9 & 10, The Pavilion, Dallas, TX 75210",
+    dates: "Jun 11 – Jul 19, 2026 · Free Admission · 35,000 Capacity",
+    officialSite: "https://www.dallasfwc26.com/our-venues/fan-festival/",
+  },
+};
 
 function toStaticVenue(v: Venue, citySlug: string): CityVenue {
   const ams = v.amenities.map((a) => a.toLowerCase());
@@ -210,20 +236,59 @@ const CSS = `
   }
 `;
 
+const FAN_FEST_CSS = `
+  .cc-fanfest-banner{border:1px solid color-mix(in srgb,oklch(0.72 0.19 28) 30%,transparent);background:linear-gradient(120deg,color-mix(in srgb,oklch(0.72 0.19 28) 6%,transparent),transparent),var(--mw-bg-1);padding:22px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:28px;}
+  .cc-fanfest-left{display:flex;align-items:center;gap:16px;}
+  .cc-fanfest-icon{width:44px;height:44px;background:oklch(0.72 0.19 28);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0a0b0d;flex-shrink:0;}
+  .cc-fanfest-label{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:oklch(0.72 0.19 28);font-weight:700;margin-bottom:3px;}
+  .cc-fanfest-name{font-family:"Space Grotesk",sans-serif;font-size:16px;font-weight:800;color:var(--mw-fg);}
+  .cc-fanfest-meta{font-size:12px;color:var(--mw-fg-mute);}
+  .cc-fanfest-btns{display:flex;gap:10px;flex-wrap:wrap;}
+`;
+
+function FanFestBanner({ citySlug }: { citySlug: string }) {
+  const ff = FAN_FEST_CITIES[citySlug];
+  if (!ff) return null;
+  return (
+    <div className="cc-fanfest-banner">
+      <div className="cc-fanfest-left">
+        <div className="cc-fanfest-icon"><Shield size={20} /></div>
+        <div>
+          <div className="cc-fanfest-label">Official FIFA Fan Festival™ · {ff.name}</div>
+          <div className="cc-fanfest-name">{ff.venue}</div>
+          <div className="cc-fanfest-meta">{ff.addr} · {ff.dates}</div>
+        </div>
+      </div>
+      <div className="cc-fanfest-btns">
+        <Link href={`/world-cup/${citySlug}/fan-festival`} className="cc-btn-p" style={{ textDecoration: "none" }}>
+          <Shield size={13} /> View Fan Festival
+        </Link>
+        <a href={ff.officialSite} target="_blank" rel="noopener noreferrer" className="cc-btn-g" style={{ textDecoration: "none" }}>
+          <ExternalLink size={13} /> Official Site
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export function WorldCupCityClient({ city, matches, packages, vendors }: Props) {
   const { venues: allVenues } = useData();
 
+  const allCityVenues = useMemo(
+    () => allVenues.filter((v) => v.city?.toLowerCase().includes(city.name.toLowerCase())),
+    [allVenues, city.name],
+  );
+
   const cityVenues = useMemo(
-    () =>
-      allVenues
-        .filter((v) => v.city?.toLowerCase().includes(city.name.toLowerCase()))
-        .map((v) => toStaticVenue(v, city.slug)),
-    [allVenues, city.name, city.slug],
+    () => allCityVenues
+      .filter((v) => !v.amenities?.includes("OFFICIAL_FAN_FEST"))
+      .map((v) => toStaticVenue(v, city.slug)),
+    [allCityVenues, city.slug],
   );
 
   return (
     <>
-      <style>{CSS}</style>
+      <style>{CSS + FAN_FEST_CSS}</style>
       <FloatingNav />
       <main className="cc-page">
         <CityHero city={city} matches={matches} />
@@ -240,6 +305,7 @@ export function WorldCupCityClient({ city, matches, packages, vendors }: Props) 
           venues={cityVenues}
           citySlug={city.slug}
           cityName={city.name}
+          topSlot={<FanFestBanner citySlug={city.slug} />}
         />
 
         <CityVenueMap
