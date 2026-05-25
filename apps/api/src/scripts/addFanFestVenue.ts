@@ -97,9 +97,9 @@ const FAN_FESTS: FanFestDef[] = [
     dates: 'June–July 2026 (all match days)',
     capacity: 30000,
   },
-  // ── Seattle / Washington State — 9 regional fan zones ──────────────────────
+  // ── Seattle / Washington State — 9 community fan zones ─────────────────────
   {
-    citySlug: 'seattle-bellingham',
+    citySlug: 'bellingham',
     cityName: 'Bellingham',
     state: 'WA',
     timezone: 'America/Los_Angeles',
@@ -117,7 +117,7 @@ const FAN_FESTS: FanFestDef[] = [
     capacity: 5000,
   },
   {
-    citySlug: 'seattle-bremerton',
+    citySlug: 'bremerton',
     cityName: 'Bremerton',
     state: 'WA',
     timezone: 'America/Los_Angeles',
@@ -135,7 +135,7 @@ const FAN_FESTS: FanFestDef[] = [
     capacity: 3000,
   },
   {
-    citySlug: 'seattle-olympia',
+    citySlug: 'olympia',
     cityName: 'Olympia',
     state: 'WA',
     timezone: 'America/Los_Angeles',
@@ -153,7 +153,7 @@ const FAN_FESTS: FanFestDef[] = [
     capacity: 10000,
   },
   {
-    citySlug: 'seattle-tacoma',
+    citySlug: 'tacoma',
     cityName: 'Tacoma',
     state: 'WA',
     timezone: 'America/Los_Angeles',
@@ -171,7 +171,7 @@ const FAN_FESTS: FanFestDef[] = [
     capacity: 8000,
   },
   {
-    citySlug: 'seattle-pasco',
+    citySlug: 'pasco',
     cityName: 'Pasco',
     state: 'WA',
     timezone: 'America/Los_Angeles',
@@ -192,7 +192,7 @@ const FAN_FESTS: FanFestDef[] = [
     capacity: 15000,
   },
   {
-    citySlug: 'seattle-yakima',
+    citySlug: 'yakima',
     cityName: 'Yakima',
     state: 'WA',
     timezone: 'America/Los_Angeles',
