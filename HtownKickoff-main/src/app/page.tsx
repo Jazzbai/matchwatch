@@ -183,7 +183,9 @@ export default function HomePage() {
 
   const getLeagueName = (leagueId: string) => leagues.find((l) => l.id === leagueId)?.name || leagueId.toUpperCase();
   const getTeam = (teamId?: string) => teams.find((t) => t.id === teamId);
-  const featuredVenues = venues.slice(0, 8);
+  const featuredVenues = venues
+    .filter((venue) => !venue.amenities?.includes("OFFICIAL_FAN_FEST"))
+    .slice(0, 8);
 
   return (
     <div className="hp">
