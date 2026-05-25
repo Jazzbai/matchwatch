@@ -184,7 +184,13 @@ export default function HomePage() {
   const getLeagueName = (leagueId: string) => leagues.find((l) => l.id === leagueId)?.name || leagueId.toUpperCase();
   const getTeam = (teamId?: string) => teams.find((t) => t.id === teamId);
   const featuredVenues = venues
-    .filter((venue) => !venue.amenities?.includes("OFFICIAL_FAN_FEST"))
+    .filter((venue) => {
+      const name = venue.name.toLowerCase();
+      return !venue.amenities?.includes("OFFICIAL_FAN_FEST") &&
+        !name.includes("fifa fan festival") &&
+        !name.includes("fifa fan zone") &&
+        !name.includes("official fifa fan zone");
+    })
     .slice(0, 8);
 
   return (

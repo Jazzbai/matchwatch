@@ -79,7 +79,16 @@ type ApiMatchFacets = {
 
 function isPublicVenue(venue: { amenities?: unknown }) {
     const amenities = Array.isArray(venue.amenities) ? venue.amenities : [];
-    return !amenities.some((amenity) => typeof amenity === "string" && INTERNAL_VENUE_AMENITIES.has(amenity));
+    const name = typeof (venue as { name?: unknown }).name === "string"
+        ? (venue as { name: string }).name.toLowerCase()
+        : "";
+    const isOfficialFanVenueName =
+        name.includes("fifa fan festival") ||
+        name.includes("fifa fan zone") ||
+        name.includes("official fifa fan zone") ||
+        name.includes("puyallup tribe official fifa fan zone") ||
+        name.includes("olympia-lacey official fifa fan zone");
+    return !amenities.some((amenity) => typeof amenity === "string" && INTERNAL_VENUE_AMENITIES.has(amenity)) && !isOfficialFanVenueName;
 }
 
 interface DataContextType {
