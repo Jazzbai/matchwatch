@@ -27,6 +27,7 @@
         "venues:crawl-soccer": "tsx src/scripts/crawlSoccerWatchPartyVenues.ts",
         "venues:import-mapme-wc": "tsx src/scripts/importMapmeWorldCupVenues.ts",
         "venues:fill-images": "tsx src/scripts/fillVenueImages.ts",
+        "venues:add-fanfest": "tsx src/scripts/addFanFestVenue.ts",
         "venues:enrich": "tsx src/scripts/enrichVenuesFromGoogle.ts",
         "venues:import-mls": "tsx src/scripts/importMlsPubPartners.ts"
     },
