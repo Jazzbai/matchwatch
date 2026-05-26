@@ -133,6 +133,46 @@ const FAN_FESTS = {
       { q: "How do I get to Fair Park?", a: "DART Light Rail (Green Line, Fair Park Station), by car via I-30 or I-45, or rideshare. DART recommended on match days as parking can be limited." },
     ],
   },
+  "new-york": {
+    citySlug: "new-york",
+    cityName: "New York / New Jersey",
+    badge: "Official NYNJ Fan Village · Rockefeller Center",
+    h1a: "NYNJ World Cup 26",
+    h1b: "Fan Village",
+    subtitle: "Rockefeller Center — Telemundo Fan Village in Midtown Manhattan",
+    addrShort: "30 Rockefeller Plaza, New York, NY 10112",
+    addrFull: "30 Rockefeller Plaza, New York, NY 10112",
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=30+Rockefeller+Plaza+New+York+NY+10112",
+    dates: "July 6 – July 19, 2026 · Open to the Public",
+    capacity: 0,
+    website: "https://www.rockefellercenter.com/events/world-cup-2026",
+    cover: "https://www.rockefellercenter.com/_next/image?q=75&url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fbs9rmafh%2Fecomm-main%2F9edb5e95f86ac5988321de75a9eb3a19a43f6cc7-3949x1974.jpg&w=3840",
+    p1: "The official NYNJ World Cup 26 & Telemundo Fan Village at Rockefeller Center brings the World Cup to Midtown Manhattan from July 6 through July 19. Hosted by the FIFA World Cup 26 NYNJ Host Committee, Telemundo, and Rockefeller Center, the Fan Village transforms 30 Rockefeller Plaza into a public watch party destination for fans from around the world.",
+    p2: "At the heart of the Fan Village, The Rink at Rockefeller Center becomes a soccer pitch surrounded by large screens for live match broadcasts. Across the Plaza, fans can explore Channel Gardens tributes to World Cup champions, family-friendly programming, brand activations, Top of the Rock soccer experiences, and the FIFA Museum Presented by Hyundai at Rockefeller Center.",
+    features: [
+      { icon: Tv, label: "The Rink — Live Match Broadcasts on Large Screens" },
+      { icon: Star, label: "Dynamic Soccer Pitch at Rockefeller Center" },
+      { icon: Sparkles, label: "Channel Gardens Champion Tributes" },
+      { icon: Globe, label: "Top of the Rock Official Viewpoint" },
+      { icon: Shield, label: "FIFA Museum Presented by Hyundai" },
+      { icon: Utensils, label: "Restaurants, Bars & Midtown Dining Nearby" },
+      { icon: Ticket, label: "Open to the Public July 6–19" },
+      { icon: Music, label: "Family Programming & Brand Activations" },
+    ],
+    sidebarName: "NYNJ World Cup 26 & Telemundo Fan Village",
+    sidebarAddr: "30 Rockefeller Plaza, New York, NY 10112",
+    notes: ["The Rink — live match viewing", "Channel Gardens champion tribute", "Top of the Rock viewpoint"],
+    matchCount: 8,
+    hasZones: false,
+    faqs: [
+      { q: "Where is the New York / New Jersey Fan Village?", a: "The NYNJ World Cup 26 & Telemundo Fan Village is at Rockefeller Center, 30 Rockefeller Plaza, New York, NY 10112." },
+      { q: "When is the Fan Village open?", a: "Rockefeller Center lists the Fan Village as open to the public from July 6 through July 19, 2026." },
+      { q: "Is this different from MetLife Stadium?", a: "Yes. MetLife Stadium hosts the World Cup matches. The Rockefeller Center Fan Village is a public Manhattan watch party and fan experience where fans can gather for live broadcasts and programming." },
+      { q: "What happens at The Rink?", a: "The Rink at Rockefeller Center transforms into a soccer pitch with large screens for live match broadcasts and fan gatherings." },
+      { q: "What else is part of the Fan Village?", a: "The experience includes Channel Gardens tributes to World Cup champions, Top of the Rock soccer moments, FIFA Museum programming, family-friendly activities, and brand activations across the Plaza." },
+      { q: "Do I need a match ticket?", a: "No. The Fan Village is separate from the stadium matches and is open to the public. Some related attractions, like Top of the Rock, may require tickets." },
+    ],
+  },
 } as const;
 
 type CityKey = keyof typeof FAN_FESTS;
@@ -282,7 +322,7 @@ export default function FanFestivalPage() {
               </div>
               <div className="ff-cap">
                 <Users size={13} />
-                Up to {d.capacity.toLocaleString()} fans · {d.matchCount} {d.cityName} matches
+                {d.capacity ? `Up to ${d.capacity.toLocaleString()} fans · ` : ""}{d.matchCount} {d.cityName} matches
               </div>
             </div>
 

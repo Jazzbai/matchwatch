@@ -30,7 +30,7 @@ export function CityHero({ city, matches }: Props) {
               <MapPin size={15} />
               Find {city.name} Watch Party Venues
             </a>
-            {(city.slug === "seattle" || city.slug === "houston" || city.slug === "dallas") && (
+            {(city.slug === "seattle" || city.slug === "houston" || city.slug === "dallas" || city.slug === "new-york") && (
               <Link href={`/world-cup/${city.slug}/fan-festival`} className="cc-btn-g" style={{ textDecoration: "none" }}>
                 <Shield size={14} /> Official Fan Festival™
               </Link>

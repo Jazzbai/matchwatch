@@ -97,6 +97,24 @@ const FAN_FESTS: FanFestDef[] = [
     dates: 'June–July 2026 (all match days)',
     capacity: 30000,
   },
+  {
+    citySlug: 'new-york',
+    cityName: 'New York',
+    state: 'NY',
+    timezone: 'America/New_York',
+    name: 'NYNJ World Cup 26 & Telemundo Fan Village — Rockefeller Center',
+    addressLine1: '30 Rockefeller Plaza',
+    lat: 40.7587,
+    lng: -73.9787,
+    description:
+      'Official NYNJ World Cup 26 & Telemundo Fan Village at Rockefeller Center. Open to the public July 6–19, 2026 at 30 Rockefeller Plaza, with The Rink transformed into a soccer pitch surrounded by large screens for live match broadcasts, Channel Gardens tributes to World Cup champions, Top of the Rock soccer experiences, FIFA Museum programming, family-friendly activities, and brand activations across Rockefeller Center.',
+    website: 'https://www.rockefellercenter.com/events/world-cup-2026',
+    coverImageUrl:
+      'https://www.rockefellercenter.com/_next/image?q=75&url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fbs9rmafh%2Fecomm-main%2F9edb5e95f86ac5988321de75a9eb3a19a43f6cc7-3949x1974.jpg&w=3840',
+    galleryUrls: [],
+    dates: 'July 6–19, 2026',
+    capacity: 0,
+  },
   // ── Seattle / Washington State — 9 community fan zones ─────────────────────
   {
     citySlug: 'bellingham',

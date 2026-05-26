@@ -34,6 +34,13 @@ const FAN_FEST_CITIES: Record<string, { name: string; venue: string; addr: strin
     dates: "Jun 11 – Jul 19, 2026 · Free Admission · 35,000 Capacity",
     officialSite: "https://www.dallasfwc26.com/our-venues/fan-festival/",
   },
+  "new-york": {
+    name: "New York / New Jersey",
+    venue: "NYNJ World Cup 26 & Telemundo Fan Village — Rockefeller Center",
+    addr: "30 Rockefeller Plaza, New York, NY 10112",
+    dates: "Jul 6 – Jul 19, 2026 · Open to the Public",
+    officialSite: "https://www.rockefellercenter.com/events/world-cup-2026",
+  },
 };
 
 function toStaticVenue(v: Venue, citySlug: string): CityVenue {
