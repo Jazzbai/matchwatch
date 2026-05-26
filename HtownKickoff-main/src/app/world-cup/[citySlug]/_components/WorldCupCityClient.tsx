@@ -34,6 +34,13 @@ const FAN_FEST_CITIES: Record<string, { name: string; venue: string; addr: strin
     dates: "Jun 11 – Jul 19, 2026 · Free Admission · 35,000 Capacity",
     officialSite: "https://www.dallasfwc26.com/our-venues/fan-festival/",
   },
+  miami: {
+    name: "Miami",
+    venue: "FIFA Fan Festival™ Miami — Bayfront Park",
+    addr: "301 N Biscayne Blvd, Miami, FL 33132",
+    dates: "Jun 13 – Jul 5, 2026 · Free Admission · 30,000 Daily Capacity",
+    officialSite: "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/fifa-fan-festival/miami",
+  },
   "new-york": {
     name: "New York / New Jersey",
     venue: "NYNJ World Cup 26 & Telemundo Fan Village — Rockefeller Center",

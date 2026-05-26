@@ -115,6 +115,24 @@ const FAN_FESTS: FanFestDef[] = [
     dates: 'July 6–19, 2026',
     capacity: 0,
   },
+  {
+    citySlug: 'miami',
+    cityName: 'Miami',
+    state: 'FL',
+    timezone: 'America/New_York',
+    name: 'FIFA Fan Festival™ Miami — Bayfront Park',
+    addressLine1: 'Bayfront Park, 301 N Biscayne Blvd',
+    lat: 25.7751,
+    lng: -80.1868,
+    description:
+      'The official FIFA Fan Festival™ Miami at Bayfront Park in Downtown Miami. Free to the public from June 13 through July 5, 2026, with all World Cup matches broadcast live on massive LED screens, daily concerts and cultural performances at the amphitheater, interactive installations, family-friendly programming, local food and beverage vendors, merchandise zones, and a waterfront festival setting designed for up to 30,000 fans per day.',
+    website: 'https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/fifa-fan-festival/miami',
+    coverImageUrl:
+      'https://images.unsplash.com/photo-1514214246283-d427a95c5d2f?w=1600&q=80',
+    galleryUrls: [],
+    dates: 'June 13 – July 5, 2026',
+    capacity: 30000,
+  },
   // ── Seattle / Washington State — 9 community fan zones ─────────────────────
   {
     citySlug: 'bellingham',
