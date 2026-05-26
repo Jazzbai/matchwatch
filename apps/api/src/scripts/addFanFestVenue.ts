@@ -133,6 +133,24 @@ const FAN_FESTS: FanFestDef[] = [
     dates: 'June 13 – July 5, 2026',
     capacity: 30000,
   },
+  {
+    citySlug: 'atlanta',
+    cityName: 'Atlanta',
+    state: 'GA',
+    timezone: 'America/New_York',
+    name: 'FIFA Fan Festival™ Atlanta — Centennial Olympic Park',
+    addressLine1: 'Centennial Olympic Park, 265 Park Ave SW',
+    lat: 33.7603,
+    lng: -84.3935,
+    description:
+      'The official FIFA Fan Festival™ Atlanta at Centennial Olympic Park. Operating on select tournament days from June 11 through July 15, 2026, with free general entry requiring advance registration, plus GA+, VIP, and private suite upgrades. The festival takes over the full park footprint with a Main Stage and 40-foot match screen, daily concerts, The Pitch culture and technology zone, The Playground family activity zone, regional food vendors, artists, makers, and World Cup programming in Downtown Atlanta.',
+    website: 'https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/fifa-fan-festival/atlanta',
+    coverImageUrl:
+      'https://images.unsplash.com/photo-1575917649705-5b59aaa12e6b?w=1600&q=80',
+    galleryUrls: [],
+    dates: 'June 11 – July 15, 2026',
+    capacity: 0,
+  },
   // ── Seattle / Washington State — 9 community fan zones ─────────────────────
   {
     citySlug: 'bellingham',

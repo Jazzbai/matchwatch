@@ -41,6 +41,13 @@ const FAN_FEST_CITIES: Record<string, { name: string; venue: string; addr: strin
     dates: "Jun 13 – Jul 5, 2026 · Free Admission · 30,000 Daily Capacity",
     officialSite: "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/fifa-fan-festival/miami",
   },
+  atlanta: {
+    name: "Atlanta",
+    venue: "FIFA Fan Festival™ Atlanta — Centennial Olympic Park",
+    addr: "265 Park Ave SW, Atlanta, GA 30313",
+    dates: "Jun 11 – Jul 15, 2026 · Free Entry · Registration Required",
+    officialSite: "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/fifa-fan-festival/atlanta",
+  },
   "new-york": {
     name: "New York / New Jersey",
     venue: "NYNJ World Cup 26 & Telemundo Fan Village — Rockefeller Center",
