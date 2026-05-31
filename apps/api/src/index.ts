@@ -33,6 +33,7 @@ import predictionsRoutes from './routes/predictions';
 import checkinsRoutes from './routes/checkins';
 import sponsorInquiryRoutes from './routes/sponsorInquiry';
 import contactRoutes from './routes/contact';
+import matchPointRoutes from './routes/matchPoint';
 import { logger } from './lib/logger';
 import { normalizeEntitySlugs } from './lib/entitySlugs';
 import { scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
@@ -79,6 +80,7 @@ v1.route('/predictions', predictionsRoutes);
 v1.route('/checkins', checkinsRoutes);
 v1.route('/sponsor-inquiry', sponsorInquiryRoutes);
 v1.route('/contact', contactRoutes);
+v1.route('/match-point', matchPointRoutes);
 
 app.route('/api/v1', v1);
 

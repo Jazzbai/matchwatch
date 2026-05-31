@@ -1358,3 +1358,18 @@ export const contactMessages = pgTable('contact_messages', {
     status: varchar('status', { length: 30 }).notNull().default('new'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// ─── Match Point: singleton settings record ─────
+// One config row (slug='default') drives the prize copy + active flag on the
+// public Match Point pages. Editable from the super-admin Match Point tab.
+
+export const matchPointSettings = pgTable('matchpoint_settings', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: varchar('slug', { length: 50 }).notNull().unique().default('default'),
+    prizeName: varchar('prize_name', { length: 200 }).notNull().default('Mercedes-Benz C300'),
+    prizeDescription: text('prize_description'),
+    prizeImageUrl: varchar('prize_image_url', { length: 500 }),
+    heroSubtitle: text('hero_subtitle'),
+    isActive: boolean('is_active').notNull().default(true),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});

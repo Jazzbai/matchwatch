@@ -30,6 +30,22 @@ type LeaderboardEntry = {
     correctPredictions: number;
 };
 
+type Settings = {
+    prizeName: string;
+    prizeDescription: string | null;
+    prizeImageUrl: string | null;
+    heroSubtitle: string | null;
+    isActive: boolean;
+};
+
+const SETTINGS_DEFAULT: Settings = {
+    prizeName: "Mercedes-Benz C300",
+    prizeDescription: "Top point earners across the tournament enter a grand-prize sweepstakes to win a Mercedes-Benz C300.",
+    prizeImageUrl: null,
+    heroSubtitle: "Scan the QR at a host venue, pick the winner, and call the exact score. Top scorers play for the Mercedes-Benz C300 grand prize.",
+    isActive: true,
+};
+
 const MP_VARS = `
   :root{
     --mp-bg:var(--background);--mp-card:var(--card);--mp-line:var(--border);
@@ -168,6 +184,7 @@ function MatchPointContent() {
     const [pendingPred, setPendingPred] = useState<{ matchId: string } | null>(null);
     const [checkedInVenueId, setCheckedInVenueId] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
+    const [settings, setSettings] = useState<Settings>(SETTINGS_DEFAULT);
 
     // Per-match working state (winner + scores + venue) — local only until "Save"
     const [draft, setDraft] = useState<Record<string, { winner?: "home" | "away" | "draw"; home?: string; away?: string; venueId?: string }>>(
@@ -211,6 +228,15 @@ function MatchPointContent() {
             .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user, qrVenueId]);
+
+    /* Load admin-managed Match Point settings (prize name/image/copy/active flag). */
+    useEffect(() => {
+        api.get<Settings>("/match-point/settings")
+            .then((res) => {
+                if (res.data) setSettings({ ...SETTINGS_DEFAULT, ...res.data });
+            })
+            .catch(() => { /* keep defaults */ });
+    }, []);
 
     /* Load existing predictions + leaderboard */
     useEffect(() => {
@@ -324,14 +350,11 @@ function MatchPointContent() {
                 <div className="mp-hero-inner">
                     <span className="mp-kicker"><span className="bd" />Match Point · QR Prediction Campaign</span>
                     <h1 className="mp-h1">Watch. <em>Predict.</em> Win.</h1>
-                    <p className="mp-sub">
-                        Scan the QR at a host venue, pick the winner, and — if you&apos;re feeling bold — call the exact
-                        score. Top scorers earn entries to the grand-prize sweepstakes. Every kickoff counts.
-                    </p>
+                    <p className="mp-sub">{settings.heroSubtitle || SETTINGS_DEFAULT.heroSubtitle}</p>
                     <div className="mp-rules">
                         <span className="mp-pill"><b>1 pt</b> · Correct winner</span>
                         <span className="mp-pill"><b>2 pts</b> · Exact score</span>
-                        <span className="mp-pill">Top scorers → grand prize</span>
+                        <span className="mp-pill">Grand prize · <b>{settings.prizeName}</b></span>
                     </div>
                     {nextKickoff && (
                         <div style={{ margin: "8px 0 24px" }}>
@@ -555,7 +578,16 @@ function MatchPointContent() {
                                 <div className="mp-rule">Exact score <b>2 pts</b></div>
                                 <div className="mp-rule">Check-in bonus <b>+1 pt</b></div>
                                 <div className="mp-prize">
-                                    🎁 Top scorers earn entries to the <b>grand-prize sweepstakes</b>. New rounds every match day.
+                                    {settings.prizeImageUrl && (
+                                        <img
+                                            src={settings.prizeImageUrl}
+                                            alt={settings.prizeName}
+                                            style={{ width: "100%", aspectRatio: "16/9", objectFit: "cover", borderRadius: 8, marginBottom: 10, display: "block" }}
+                                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                                        />
+                                    )}
+                                    🏆 Grand prize: <b>{settings.prizeName}</b>.{" "}
+                                    {settings.prizeDescription || SETTINGS_DEFAULT.prizeDescription}
                                 </div>
                             </div>
                         </aside>

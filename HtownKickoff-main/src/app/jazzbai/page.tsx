@@ -5,13 +5,14 @@ import { BlogAdminPanel } from "../../components/admin/BlogAdminPanel";
 import { MotorsportEntitiesAdminPanel } from "../../components/admin/MotorsportEntitiesAdminPanel";
 import { PlayersAdminPanel } from "../../components/admin/PlayersAdminPanel";
 import { PredictionsAdminPanel } from "../../components/admin/PredictionsAdminPanel";
+import { MatchPointAdminPanel } from "../../components/admin/MatchPointAdminPanel";
 import { StandingsAdminPanel } from "../../components/admin/StandingsAdminPanel";
 import { StaticPagesAdminPanel } from "../../components/admin/StaticPagesAdminPanel";
 import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import type { GooglePlaceDetailsResponse, GooglePlaceSnapshot } from "../../lib/api";
 import { uploadSuperAdminImage } from "../../lib/superAdminUploads";
 
-type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "stadiums" | "players" | "motorsportEntities" | "events" | "customEvents" | "sports" | "leagues" | "standings" | "imports" | "matches" | "predictions" | "motorsportEntries" | "pages" | "blog";
+type TabId = "overview" | "users" | "venues" | "attributes" | "teams" | "stadiums" | "players" | "motorsportEntities" | "events" | "customEvents" | "sports" | "leagues" | "standings" | "imports" | "matches" | "predictions" | "matchPoint" | "motorsportEntries" | "pages" | "blog";
 
 type ApiListMeta = {
   page: number;
@@ -3223,6 +3224,7 @@ export default function JazzbaiSuperAdminPage() {
             ["imports", "CSV Import"],
             ["matches", "Matches"],
             ["predictions", "Predictions"],
+            ["matchPoint", "Match Point"],
             ["motorsportEntries", "Race Entries"],
             ["pages", "Static Pages"],
             ["blog", "Blog"],
@@ -6676,6 +6678,12 @@ export default function JazzbaiSuperAdminPage() {
         {activeTab === "predictions" && (
           <section style={{ display: "grid", gap: 14 }}>
             <PredictionsAdminPanel />
+          </section>
+        )}
+
+        {activeTab === "matchPoint" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <MatchPointAdminPanel />
           </section>
         )}
 

@@ -42,6 +42,8 @@ import {
     venueCustomEvents,
     venueEvents,
     venues,
+    matchPointSettings,
+    sponsorInquiries,
 } from '../db/schema';
 import { apiError, apiResponse, generateUniqueSlug, paginationMeta, paginationOffset } from '../lib/utils';
 import { hashPassword } from '../lib/auth';
@@ -6774,6 +6776,94 @@ superAdminRoutes.post('/enrichment/league/:leagueId/batch', async (c) => {
         failed: results.filter((item) => !item.ok).length,
         results,
     }));
+});
+
+// ─── Match Point admin ───────────────────────────────────────────────────────
+// Singleton settings row (slug='default') + sponsor inquiries inbox.
+
+const MP_DEFAULT_SLUG = 'default';
+
+const matchPointSettingsSchema = z.object({
+    prizeName: z.string().min(1).max(200).optional(),
+    prizeDescription: z.string().max(2000).nullable().optional(),
+    prizeImageUrl: z.string().url().max(500).nullable().optional().or(z.literal('')),
+    heroSubtitle: z.string().max(2000).nullable().optional(),
+    isActive: z.boolean().optional(),
+});
+
+async function ensureMatchPointSettingsRow() {
+    const [row] = await db
+        .select()
+        .from(matchPointSettings)
+        .where(eq(matchPointSettings.slug, MP_DEFAULT_SLUG))
+        .limit(1);
+    if (row) return row;
+    const [created] = await db
+        .insert(matchPointSettings)
+        .values({ slug: MP_DEFAULT_SLUG })
+        .onConflictDoNothing()
+        .returning();
+    return created || (await db.select().from(matchPointSettings).where(eq(matchPointSettings.slug, MP_DEFAULT_SLUG)).limit(1))[0];
+}
+
+superAdminRoutes.get('/match-point/settings', async (c) => {
+    const row = await ensureMatchPointSettingsRow();
+    return c.json(apiResponse(row));
+});
+
+superAdminRoutes.patch('/match-point/settings', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = matchPointSettingsSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.flatten().fieldErrors), 400);
+    }
+    await ensureMatchPointSettingsRow();
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.prizeName !== undefined) updates.prizeName = parsed.data.prizeName;
+    if (parsed.data.prizeDescription !== undefined) updates.prizeDescription = parsed.data.prizeDescription || null;
+    if (parsed.data.prizeImageUrl !== undefined) updates.prizeImageUrl = parsed.data.prizeImageUrl || null;
+    if (parsed.data.heroSubtitle !== undefined) updates.heroSubtitle = parsed.data.heroSubtitle || null;
+    if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+
+    const [row] = await db
+        .update(matchPointSettings)
+        .set(updates)
+        .where(eq(matchPointSettings.slug, MP_DEFAULT_SLUG))
+        .returning();
+    return c.json(apiResponse(row));
+});
+
+// Sponsor inquiries inbox
+
+const sponsorInquiryStatusSchema = z.object({
+    status: z.enum(['new', 'contacted', 'closed', 'archived']),
+});
+
+superAdminRoutes.get('/sponsor-inquiries', async (c) => {
+    const status = c.req.query('status');
+    const rows = await db
+        .select()
+        .from(sponsorInquiries)
+        .where(status ? eq(sponsorInquiries.status, status) : sql`true`)
+        .orderBy(desc(sponsorInquiries.createdAt))
+        .limit(200);
+    return c.json(apiResponse(rows));
+});
+
+superAdminRoutes.patch('/sponsor-inquiries/:id', async (c) => {
+    const id = c.req.param('id');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = sponsorInquiryStatusSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid status', parsed.error.flatten().fieldErrors), 400);
+    }
+    const [row] = await db
+        .update(sponsorInquiries)
+        .set({ status: parsed.data.status })
+        .where(eq(sponsorInquiries.id, id))
+        .returning();
+    if (!row) return c.json(apiError('NOT_FOUND', 'Inquiry not found'), 404);
+    return c.json(apiResponse(row));
 });
 
 export default superAdminRoutes;
