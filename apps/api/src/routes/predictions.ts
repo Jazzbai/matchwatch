@@ -31,8 +31,8 @@ function computePoints(match: {
         pred.predictedHomeScore === match.homeScore &&
         pred.predictedAwayScore === match.awayScore;
 
-    if (correctScore) return 5;   // Exact score
-    if (correctWinner) return 2;  // Correct winner only
+    if (correctScore) return 2;   // Exact score
+    if (correctWinner) return 1;  // Correct winner only
     return 0;
 }
 
