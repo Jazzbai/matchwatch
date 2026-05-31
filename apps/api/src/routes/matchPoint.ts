@@ -11,7 +11,7 @@ const DEFAULT_SLUG = 'default';
 const DEFAULTS = {
     prizeName: 'Mercedes-Benz C300',
     prizeDescription: 'Top point earners across the tournament enter a grand-prize sweepstakes to win a Mercedes-Benz C300.',
-    prizeImageUrl: null as string | null,
+    prizeImageUrl: '/match-point/prize.jpg' as string | null,
     heroSubtitle: 'Scan the QR at a host venue, pick the winner, and call the exact score. Top scorers play for the Mercedes-Benz C300 grand prize.',
     isActive: true,
 };
@@ -37,13 +37,15 @@ export async function readMatchPointSettings() {
 }
 
 // Public: any visitor can fetch the live settings for the landing/QR pages.
+// Nulls are coalesced to sensible defaults so the page never falls back to
+// blank/broken state even if the admin hasn't set a value yet.
 router.get('/settings', async (c) => {
     const settings = await readMatchPointSettings();
     return c.json(apiResponse({
-        prizeName: settings.prizeName,
-        prizeDescription: settings.prizeDescription,
-        prizeImageUrl: settings.prizeImageUrl,
-        heroSubtitle: settings.heroSubtitle,
+        prizeName: settings.prizeName || DEFAULTS.prizeName,
+        prizeDescription: settings.prizeDescription || DEFAULTS.prizeDescription,
+        prizeImageUrl: settings.prizeImageUrl || DEFAULTS.prizeImageUrl,
+        heroSubtitle: settings.heroSubtitle || DEFAULTS.heroSubtitle,
         isActive: settings.isActive,
     }));
 });

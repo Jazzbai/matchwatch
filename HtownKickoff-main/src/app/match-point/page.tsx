@@ -41,7 +41,7 @@ type Settings = {
 const SETTINGS_DEFAULT: Settings = {
     prizeName: "Mercedes-Benz C300",
     prizeDescription: "Top point earners across the tournament enter a grand-prize sweepstakes to win a Mercedes-Benz C300.",
-    prizeImageUrl: null,
+    prizeImageUrl: "/match-point/prize.jpg",
     heroSubtitle: "Scan the QR at a host venue, pick the winner, and call the exact score. Top scorers play for the Mercedes-Benz C300 grand prize.",
     isActive: true,
 };
