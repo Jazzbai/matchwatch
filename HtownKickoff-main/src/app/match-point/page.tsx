@@ -64,8 +64,9 @@ const CSS = `
 
   /* Hero */
   .hp-hero{position:relative;overflow:hidden;border-bottom:1px solid var(--mw-line);min-height:560px;display:flex;align-items:center;}
-  .hp-hero-bg{position:absolute;inset:0;background:#06070a url(/home-hero.webp) center/cover no-repeat;}
-  .hp-hero-scrim{position:absolute;inset:0;background:linear-gradient(110deg,rgba(6,7,10,0.94) 0%,rgba(6,7,10,0.78) 40%,rgba(6,7,10,0.45) 100%),linear-gradient(0deg,var(--mw-bg) 2%,transparent 40%);}
+  .hp-hero-bg{position:absolute;inset:0;background-color:#06070a;background-position:center right;background-size:cover;background-repeat:no-repeat;}
+  .hp-hero-bg.fallback{background-image:url(/home-hero.webp);}
+  .hp-hero-scrim{position:absolute;inset:0;background:linear-gradient(110deg,rgba(6,7,10,0.96) 0%,rgba(6,7,10,0.82) 38%,rgba(6,7,10,0.30) 100%),linear-gradient(0deg,var(--mw-bg) 2%,transparent 40%);}
   .hp-hero-inner{position:relative;z-index:2;max-width:1200px;margin-inline:auto;width:100%;padding:150px clamp(16px,4vw,28px) 64px;}
   .hp-kicker{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mw-accent);font-weight:700;border:1px solid color-mix(in srgb,var(--mw-accent) 32%,transparent);padding:5px 12px;border-radius:999px;margin-bottom:20px;}
   .hp-kicker .bd{width:6px;height:6px;border-radius:50%;background:var(--mw-accent);animation:hpPulse 1.4s ease-in-out infinite;}
@@ -90,18 +91,6 @@ const CSS = `
   .hp-st .tag{font-family:var(--font-mono),monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--mw-accent);border:1px solid color-mix(in srgb,var(--mw-accent) 35%,transparent);padding:3px 8px;border-radius:6px;}
   .hp-see{font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mw-dim);text-decoration:none;white-space:nowrap;}
   .hp-see:hover{color:var(--mw-accent);}
-
-  /* Grand-prize showcase (photo card pattern, big) */
-  .hp-prize{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--mw-line);min-height:320px;background:var(--mw-card);}
-  .hp-prize-bg{position:absolute;inset:0;background:#06070a;background-size:cover;background-position:center;}
-  .hp-prize-bg.gradient{background:linear-gradient(135deg,#1a1108 0%,#3a2410 35%,#0d0f14 100%);}
-  .hp-prize-scrim{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,0.78) 0%,rgba(0,0,0,0.55) 50%,rgba(0,0,0,0.1) 100%);}
-  .hp-prize-in{position:relative;z-index:2;padding:40px clamp(20px,4vw,40px);min-height:320px;display:flex;flex-direction:column;justify-content:center;max-width:620px;}
-  .hp-prize-kicker{display:inline-flex;width:fit-content;align-items:center;gap:8px;font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mw-accent);font-weight:700;border:1px solid color-mix(in srgb,var(--mw-accent) 35%,transparent);padding:5px 12px;border-radius:999px;margin-bottom:18px;}
-  .hp-prize-h2{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:900;font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.05;letter-spacing:-0.02em;margin:0 0 12px;color:#fff;}
-  .hp-prize-h2 em{font-style:normal;color:var(--mw-accent);}
-  .hp-prize-desc{font-size:14.5px;color:rgba(255,255,255,0.82);line-height:1.55;margin:0 0 18px;}
-  .hp-prize-glyph{position:absolute;right:36px;top:36px;font-size:80px;opacity:0.18;pointer-events:none;z-index:2;}
 
   /* How it works */
   .hp-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
@@ -350,7 +339,7 @@ function MatchPointContent() {
         });
     }
 
-    const prizeBgStyle: React.CSSProperties = settings.prizeImageUrl
+    const heroBgStyle: React.CSSProperties = settings.prizeImageUrl
         ? { backgroundImage: `url(${settings.prizeImageUrl})` }
         : {};
 
@@ -359,9 +348,9 @@ function MatchPointContent() {
             <style dangerouslySetInnerHTML={{ __html: MW_VARS + CSS + `body{background:var(--mw-bg)!important;color:var(--mw-fg)!important;}` }} />
             <FloatingNav />
 
-            {/* ── Hero (same shape as home) ── */}
+            {/* ── Hero (same shape as home, but with the grand-prize photo behind) ── */}
             <section className="hp-hero">
-                <div className="hp-hero-bg" />
+                <div className={`hp-hero-bg${settings.prizeImageUrl ? "" : " fallback"}`} style={heroBgStyle} />
                 <div className="hp-hero-scrim" />
                 <div className="hp-hero-inner">
                     <span className="hp-kicker"><span className="bd" />Match Point · QR Prediction Campaign</span>
@@ -386,29 +375,8 @@ function MatchPointContent() {
             </section>
 
             <div className="hp-wrap">
-                {/* ── Grand-prize showcase ── */}
-                <section className="hp-sec" style={{ borderTop: 0 }}>
-                    <div className="hp-sh">
-                        <div className="hp-st">Grand prize <span className="tag">Sweepstakes</span></div>
-                    </div>
-                    <div className="hp-prize">
-                        <div className={`hp-prize-bg${settings.prizeImageUrl ? "" : " gradient"}`} style={prizeBgStyle} />
-                        <div className="hp-prize-scrim" />
-                        <span className="hp-prize-glyph">🏆</span>
-                        <div className="hp-prize-in">
-                            <span className="hp-prize-kicker">Top scorers play for</span>
-                            <h2 className="hp-prize-h2"><em>{settings.prizeName}</em></h2>
-                            <p className="hp-prize-desc">{settings.prizeDescription || SETTINGS_DEFAULT.prizeDescription}</p>
-                            <div className="hp-cta-row">
-                                <a href="#predict" className="hp-btn primary">Make a prediction</a>
-                                <Link href="/match-point/leaderboard" className="hp-btn">View leaderboard</Link>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
                 {/* ── How it works ── */}
-                <section className="hp-sec">
+                <section className="hp-sec" style={{ borderTop: 0 }}>
                     <div className="hp-sh">
                         <div className="hp-st">How it works <span className="tag">3 steps</span></div>
                     </div>
