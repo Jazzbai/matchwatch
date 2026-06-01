@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Internal / authenticated routes — no value to search engines.
+Disallow: /dashboard
+Disallow: /jazzbai
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://matchwatch.us/sitemap.xml

@@ -32,7 +32,11 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "matchwatch.us | MatchWatch",
+  metadataBase: new URL("https://matchwatch.us"),
+  title: {
+    default: "MatchWatch — Find Your World Cup 2026 Watch Party",
+    template: "%s | MatchWatch",
+  },
   description:
     "MatchWatch helps fans discover venues, create watch-party bookings, and follow live football match events across local leagues.",
   keywords: [
@@ -42,16 +46,20 @@ export const metadata: Metadata = {
     "sports venues",
     "venue bookings",
     "match events",
+    "World Cup 2026",
   ],
   openGraph: {
-    title: "matchwatch.us | MatchWatch",
+    title: "MatchWatch — Find Your World Cup 2026 Watch Party",
     description:
       "Discover venues, sync live matches, and run watch-party bookings in one platform.",
     type: "website",
     images: ["/logo.svg"],
   },
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
   },
 };
 

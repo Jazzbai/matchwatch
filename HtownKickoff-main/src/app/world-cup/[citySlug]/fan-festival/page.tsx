@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { notFound, usePathname } from "next/navigation";
 import { FloatingNav } from "../../../../components/AppShell";
 import {
   MapPin, Globe, ChevronRight, ExternalLink, Calendar,
@@ -337,7 +337,10 @@ export default function FanFestivalPage() {
   const pathname = usePathname() ?? "";
   // pathname: "/world-cup/houston/fan-festival" → parts[2] = "houston"
   const slug = pathname.split("/")[2] as CityKey;
-  const d = FAN_FESTS[slug] ?? FAN_FESTS.seattle;
+  // Only the six host cities below have an official FIFA Fan Festival entry.
+  // Any other slug used to silently fall back to Seattle's page — render 404 instead.
+  if (!FAN_FESTS[slug]) notFound();
+  const d = FAN_FESTS[slug];
 
   return (
     <div className="ff">

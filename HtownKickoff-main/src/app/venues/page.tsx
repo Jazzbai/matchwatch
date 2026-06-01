@@ -368,10 +368,19 @@ function VenuesPageContent() {
                         displayedVenues.map((v) => {
                             const events = v.upcomingEventsCount || 0;
                             return (
-                                <div
+                                <Link
                                     key={v.id}
+                                    href={`/venues/${v.slug || v.id}`}
+                                    prefetch={false}
                                     className={`vn-card${selectedVenue?.id === v.id ? " sel" : ""}`}
-                                    onClick={() => openDrawer(v)}
+                                    onClick={(e) => {
+                                        // Left-click opens the quick-look drawer. Cmd / Ctrl / middle-click /
+                                        // right-click → context menu still navigate normally so the venue
+                                        // detail page is reachable and SEO-crawlable.
+                                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                                        e.preventDefault();
+                                        openDrawer(v);
+                                    }}
                                 >
                                     <div className="vn-img">
                                         <VenueListImage src={v.coverImageUrl} alt={v.name} />
@@ -401,7 +410,7 @@ function VenuesPageContent() {
                                             <span className="res">RESERVE →</span>
                                         </div>
                                     </div>
-                                </div>
+                                </Link>
                             );
                         })
                     )}

@@ -264,7 +264,7 @@ export default function LoginPage() {
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <label style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>Password</label>
-                <Link href="/account" style={{ fontSize: 13, fontWeight: 600, color: "var(--primary)", textDecoration: "none" }}>Need help?</Link>
+                <Link href="/forgot-password" style={{ fontSize: 13, fontWeight: 600, color: "var(--primary)", textDecoration: "none" }}>Forgot password?</Link>
               </div>
               <div style={{ position: "relative" }}>
                 <Lock size={18} style={{ position: "absolute", left: 14, top: 14, color: "var(--muted-foreground)", pointerEvents: "none" }} />

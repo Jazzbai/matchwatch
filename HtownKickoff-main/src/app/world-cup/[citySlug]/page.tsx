@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const city = CITIES.find((c) => c.slug === citySlug);
   if (!city) return {};
   return {
-    title: `${city.name} World Cup 2026 Watch Parties | MatchWatch`,
+    title: `${city.name} World Cup 2026 Watch Parties`,
     description: city.heroSubtitle,
   };
 }
