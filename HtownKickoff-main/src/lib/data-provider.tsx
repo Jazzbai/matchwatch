@@ -880,7 +880,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const venueDetails = await Promise.all(
             baseVenues.map(async (venue) => {
                 const shouldFetchDeepVenueData = detailedVenueIds.has(venue.id);
-                const shouldFetchVenueEvents = venueDetailSlug ? shouldFetchDeepVenueData : true;
+                // Only fetch the events list for the specific venue currently being
+                // viewed in detail. Fetching for every venue on every page boot
+                // means 500+ concurrent calls now that the dataset has tripled,
+                // which trips the API's public rate limiter (429 Too Many Requests).
+                // Other pages don't actually need the per-venue events array —
+                // upcomingEventsCount falls back to 0 here and the cards still render.
+                const shouldFetchVenueEvents = shouldFetchDeepVenueData;
                 const venueSlugOrId = venue.slug || venue.id;
                 const events = shouldFetchVenueEvents
                     ? await safeFetchPaginated<any>(`/venues/${venueSlugOrId}/events`, VENUE_FETCH_LIMIT, 6)
