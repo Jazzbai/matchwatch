@@ -158,16 +158,29 @@ export default function HomePage() {
   const { user } = useAuth();
   const [renderNow] = useState(() => Date.now());
 
+  // The home rail uses the "home vs away" card layout, so it can only show
+  // head-to-head matches with real team names. Motorsports / single-event
+  // fixtures (F1, IndyCar, etc.) have no teams and render as "Team vs Team".
+  const headToHeadMatches = React.useMemo(
+    () => matches.filter((match) => {
+      if (match.eventFormat === "SINGLE_EVENT") return false;
+      const home = (match.homeTeamName || "").trim();
+      const away = (match.awayTeamName || "").trim();
+      return home.length > 0 && away.length > 0;
+    }),
+    [matches]
+  );
+
   const nonWorldCupMatches = React.useMemo(
-    () => matches.filter((match) => !isNationalTeamCompetition(leagues.find((league) => league.id === match.leagueId))),
-    [matches, leagues]
+    () => headToHeadMatches.filter((match) => !isNationalTeamCompetition(leagues.find((league) => league.id === match.leagueId))),
+    [headToHeadMatches, leagues]
   );
 
   // Club seasons end in late May; right before the World Cup the non-WC list
-  // can be empty for days at a time. When that happens, fall back to ALL
-  // upcoming matches so the rail still has content (WC fixtures naturally
+  // can be empty for days at a time. When that happens, fall back to all
+  // head-to-head matches so the rail still has content (WC fixtures naturally
   // become the relevant programming as we approach Jun 11).
-  const railPool = nonWorldCupMatches.length > 0 ? nonWorldCupMatches : matches;
+  const railPool = nonWorldCupMatches.length > 0 ? nonWorldCupMatches : headToHeadMatches;
 
   const in72h = renderNow + 72 * 60 * 60 * 1000;
   const todayMatches = railPool
