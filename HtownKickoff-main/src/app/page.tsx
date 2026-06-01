@@ -163,8 +163,14 @@ export default function HomePage() {
     [matches, leagues]
   );
 
+  // Club seasons end in late May; right before the World Cup the non-WC list
+  // can be empty for days at a time. When that happens, fall back to ALL
+  // upcoming matches so the rail still has content (WC fixtures naturally
+  // become the relevant programming as we approach Jun 11).
+  const railPool = nonWorldCupMatches.length > 0 ? nonWorldCupMatches : matches;
+
   const in72h = renderNow + 72 * 60 * 60 * 1000;
-  const todayMatches = nonWorldCupMatches
+  const todayMatches = railPool
     .filter((m) => {
       const ts = new Date(m.matchDateUTC).getTime();
       const live = m.status === "IN_PLAY" || m.status === "PAUSED";
@@ -174,7 +180,7 @@ export default function HomePage() {
     .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime())
     .slice(0, 8);
 
-  const upcomingMatches = nonWorldCupMatches
+  const upcomingMatches = railPool
     .filter((m) => m.status === "SCHEDULED" || m.status === "TIMED")
     .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime())
     .slice(0, 8);
