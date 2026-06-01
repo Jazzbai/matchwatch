@@ -15,6 +15,8 @@ export function CityHero({ city, matches }: Props) {
 
   return (
     <section className="cc-hero">
+      <div className="cc-hero-photo" style={{ backgroundImage: `url(/cities/${city.slug}.webp)` }} />
+      <div className="cc-hero-scrim" />
       <div className="cc-hero-inner">
         <div className="cc-hero-text">
           <div className="cc-kicker">
