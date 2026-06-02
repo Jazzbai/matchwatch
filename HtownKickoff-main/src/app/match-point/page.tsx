@@ -370,6 +370,7 @@ function MatchPointContent() {
                         <a href="#predict" className="hp-btn primary">Start predicting</a>
                         <Link href="/venues" className="hp-btn">Find a watch party</Link>
                         <Link href="/match-point/sponsor" className="hp-btn">For venues / sponsors</Link>
+                        <Link href="/match-point/creator" className="hp-btn">Creator packages</Link>
                     </div>
                 </div>
             </section>
