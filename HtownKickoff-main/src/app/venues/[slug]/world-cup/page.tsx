@@ -18,6 +18,20 @@ type WorldCupConfig = {
     sponsors?: Array<{ name: string; logoUrl?: string | null; tier?: string }>;
 };
 
+type VenueCustomEvent = {
+    id: string;
+    title: string;
+    description?: string | null;
+    eventTypeTags?: string[] | null;
+    startsAt: string;
+    endsAt: string;
+    imageUrl?: string | null;
+    bookingNotes?: string | null;
+    campaignTemplateId?: string | null;
+    prizes?: Array<{ tier: string; prize: string }> | null;
+    contestRules?: string | null;
+};
+
 type VenueRow = {
     id: string;
     name: string;
@@ -29,6 +43,7 @@ type VenueRow = {
     phone?: string | null;
     website?: string | null;
     worldCup?: WorldCupConfig | null;
+    customEvents?: VenueCustomEvent[] | null;
 };
 
 type VenuePackage = {
@@ -155,6 +170,18 @@ const CSS = `
   .hp-scard .pr{color:var(--mw-accent);font-weight:800;font-family:var(--font-mono),monospace;font-size:13px;}
   .hp-scard .desc{font-size:12.5px;color:var(--mw-dim);line-height:1.5;margin:4px 0 0;}
 
+  /* Themed events (jersey parties) */
+  .hp-themed{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+  .hp-tcard{padding:20px;border-radius:14px;border:1px solid var(--mw-line);background:var(--mw-card);display:flex;flex-direction:column;gap:10px;}
+  .hp-tcard.hot{border-color:color-mix(in srgb,var(--mw-accent) 50%,var(--mw-line));box-shadow:0 0 0 1px color-mix(in srgb,var(--mw-accent) 30%,transparent);}
+  .hp-tcard h3{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:15.5px;margin:0;line-height:1.2;}
+  .hp-tcard .when{font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mw-accent);font-weight:700;}
+  .hp-tcard .desc{font-size:13px;color:var(--mw-dim);line-height:1.55;margin:0;}
+  .hp-tcard .prizes{display:flex;flex-direction:column;gap:4px;padding-top:8px;border-top:1px dashed var(--mw-line);font-size:12.5px;color:var(--mw-fg);}
+  .hp-tcard .prizes .row{display:flex;gap:8px;align-items:baseline;}
+  .hp-tcard .prizes .tier{font-family:var(--font-mono),monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mw-accent);font-weight:800;flex-shrink:0;min-width:80px;}
+  .hp-tcard .rules{font-size:11.5px;color:var(--mw-dim);line-height:1.5;font-style:italic;border-top:1px dashed var(--mw-line);padding-top:8px;}
+
   /* Sponsors */
   .hp-spn{display:flex;flex-wrap:wrap;gap:14px;align-items:center;}
   .hp-spn-item{padding:14px 22px;border-radius:12px;border:1px solid var(--mw-line);background:var(--mw-card);font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:10px;}
@@ -263,6 +290,14 @@ function VenueWorldCupContent({ params }: { params: Promise<{ slug: string }> })
             })
             .sort((a, b) => new Date(a.match!.matchDateUtc).getTime() - new Date(b.match!.matchDateUtc).getTime());
     }, [events]);
+
+    const themedEvents = useMemo(() => {
+        const list = (venue?.customEvents || []).filter((e) => e.campaignTemplateId);
+        const now = Date.now();
+        return list
+            .filter((e) => new Date(e.endsAt).getTime() >= now)
+            .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+    }, [venue]);
 
     const nextEvent = wcEvents[0];
     const featuredMenu = useMemo(() => {
@@ -450,6 +485,46 @@ function VenueWorldCupContent({ params }: { params: Promise<{ slug: string }> })
                                     {p.maxPartySize && <div style={{ fontSize: 11, color: "var(--mw-dim)", fontFamily: "var(--font-mono), monospace", letterSpacing: 0.06, textTransform: "uppercase", marginTop: 6 }}>Up to {p.maxPartySize} guests</div>}
                                 </div>
                             ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* Themed events (jersey-party campaigns activated by the venue owner). */}
+                {themedEvents.length > 0 && (
+                    <section className="hp-sec">
+                        <div className="hp-sh">
+                            <div>
+                                <div className="hp-st">Themed events <span className="tag">{themedEvents.length}</span></div>
+                                <p className="hp-sh-sub">Jersey parties, contests, and themed nights running through the tournament.</p>
+                            </div>
+                        </div>
+                        <div className="hp-themed">
+                            {themedEvents.map((e, idx) => {
+                                const start = new Date(e.startsAt);
+                                const end = new Date(e.endsAt);
+                                const sameDay = start.toDateString() === end.toDateString();
+                                const when = sameDay
+                                    ? `${start.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
+                                    : `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${end.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+                                return (
+                                    <div key={e.id} className={`hp-tcard${idx === 0 ? " hot" : ""}`}>
+                                        <span className="when">{when}</span>
+                                        <h3>{e.title}</h3>
+                                        {e.description && <p className="desc">{e.description}</p>}
+                                        {Array.isArray(e.prizes) && e.prizes.length > 0 && (
+                                            <div className="prizes">
+                                                {e.prizes.map((p, i) => (
+                                                    <div key={i} className="row">
+                                                        <span className="tier">{p.tier}</span>
+                                                        <span>{p.prize}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {e.contestRules && <p className="rules">{e.contestRules}</p>}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </section>
                 )}

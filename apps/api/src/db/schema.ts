@@ -757,6 +757,33 @@ export const venueEvents = pgTable('venue_events', {
 
 // ─── Venue Custom Events ────────────────────────
 
+// ─── Campaign templates ─────────────────────────
+// Pre-built themed-event blueprints (e.g. the 10 World Cup jersey-party
+// templates from the proposal). A venue activates a template by creating a
+// venueCustomEvents row with campaignTemplateId pointing here, optionally
+// overriding the title / description / prizes for their specific run.
+
+export const campaignTemplates = pgTable('campaign_templates', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: varchar('slug', { length: 80 }).notNull().unique(),
+    title: varchar('title', { length: 160 }).notNull(),
+    description: text('description'),
+    defaultPrizes: jsonb('default_prizes').default([]).notNull(),
+    defaultTags: text('default_tags').array().notNull().default([]),
+    defaultBookingNotes: text('default_booking_notes'),
+    defaultContestRules: text('default_contest_rules'),
+    heroImageUrl: varchar('hero_image_url'),
+    heroImageS3Key: varchar('hero_image_s3_key'),
+    category: varchar('category', { length: 60 }),
+    isActive: boolean('is_active').default(true).notNull(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('campaign_templates_category_idx').on(table.category),
+    index('campaign_templates_active_idx').on(table.isActive),
+]);
+
 export const venueCustomEvents = pgTable('venue_custom_events', {
     id: uuid('id').primaryKey().defaultRandom(),
     venueId: uuid('venue_id').notNull().references(() => venues.id),
@@ -768,6 +795,11 @@ export const venueCustomEvents = pgTable('venue_custom_events', {
     imageUrl: varchar('image_url'),
     imageS3Key: varchar('image_s3_key'),
     bookingNotes: text('booking_notes'),
+    // Phase 3: optional template-driven theming (jersey-party campaigns).
+    // Nullable so existing custom events stay untouched.
+    campaignTemplateId: uuid('campaign_template_id').references(() => campaignTemplates.id),
+    prizes: jsonb('prizes').default([]).notNull(),
+    contestRules: text('contest_rules'),
     isActive: boolean('is_active').default(true).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -775,6 +807,7 @@ export const venueCustomEvents = pgTable('venue_custom_events', {
     index('venue_custom_events_venue_idx').on(table.venueId),
     index('venue_custom_events_starts_idx').on(table.startsAt),
     index('venue_custom_events_ends_idx').on(table.endsAt),
+    index('venue_custom_events_template_idx').on(table.campaignTemplateId),
 ]);
 
 // ─── Bookings ───────────────────────────────────

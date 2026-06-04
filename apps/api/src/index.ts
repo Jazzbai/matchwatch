@@ -32,6 +32,7 @@ import phoneAuthRoutes from './routes/phoneAuth';
 import predictionsRoutes from './routes/predictions';
 import checkinsRoutes from './routes/checkins';
 import sponsorInquiryRoutes from './routes/sponsorInquiry';
+import campaignTemplatesRoutes from './routes/campaignTemplates';
 import contactRoutes from './routes/contact';
 import matchPointRoutes from './routes/matchPoint';
 import { logger } from './lib/logger';
@@ -81,6 +82,7 @@ v1.route('/checkins', checkinsRoutes);
 v1.route('/sponsor-inquiry', sponsorInquiryRoutes);
 v1.route('/contact', contactRoutes);
 v1.route('/match-point', matchPointRoutes);
+v1.route('/campaign-templates', campaignTemplatesRoutes);
 
 app.route('/api/v1', v1);
 

@@ -3,7 +3,7 @@ import { db } from '../db/client';
 import {
     venues, venueEvents, bookings, matches, posts, menuCategories, menuItems,
     follows, notifications, auditLogs, users, venueCustomEvents, venueClaims, venueAttributes,
-    venuePackages, promotions,
+    venuePackages, promotions, campaignTemplates,
 } from '../db/schema';
 import { eq, and, count, desc, asc, sql, gte, lt } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, generateUniqueSlug } from '../lib/utils';
@@ -1300,6 +1300,90 @@ dashboardRoutes.post('/custom-events', async (c) => {
         action: 'EVENT_CREATED',
         entityType: 'VenueCustomEvent',
         entityId: created.id,
+    });
+
+    return c.json(apiResponse(created), 201);
+});
+
+// ─── One-click activation from a campaign template ──────────────
+// POST /api/v1/dashboard/custom-events/from-template
+// Body: { templateId, startsAt, endsAt, overrides? }
+// Creates a venue_custom_events row pre-filled from the template. The venue
+// owner can override title / description / prizes / contestRules / etc.
+// All template fields fall back to the template's defaults.
+
+const activateTemplateSchema = z.object({
+    templateId: z.string().uuid(),
+    startsAt: z.string().datetime(),
+    endsAt: z.string().datetime(),
+    overrides: z.object({
+        title: z.string().min(1).max(160).optional(),
+        description: z.string().max(4000).optional().nullable(),
+        bookingNotes: z.string().max(2000).optional().nullable(),
+        contestRules: z.string().max(2000).optional().nullable(),
+        eventTypeTags: z.array(z.string().max(60)).max(20).optional(),
+        prizes: z.array(z.object({
+            tier: z.string().max(120),
+            prize: z.string().max(400),
+        })).max(20).optional(),
+        imageUrl: z.string().url().optional().nullable(),
+        imageS3Key: z.string().max(500).optional().nullable(),
+    }).optional(),
+});
+
+dashboardRoutes.post('/custom-events/from-template', async (c) => {
+    const context = await getVenueOr404(c);
+    if ('error' in context) return context.error;
+    const { user, venue } = context;
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
+
+    const body = await c.req.json().catch(() => null);
+    if (!body) return c.json(apiError('VALIDATION_ERROR', 'Invalid JSON'), 400);
+    const parsed = activateTemplateSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const startsAt = new Date(parsed.data.startsAt);
+    const endsAt = new Date(parsed.data.endsAt);
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid startsAt/endsAt date'), 400);
+    }
+    if (endsAt <= startsAt) {
+        return c.json(apiError('VALIDATION_ERROR', 'endsAt must be after startsAt'), 400);
+    }
+
+    const [template] = await db.select().from(campaignTemplates)
+        .where(and(eq(campaignTemplates.id, parsed.data.templateId), eq(campaignTemplates.isActive, true)))
+        .limit(1);
+    if (!template) {
+        return c.json(apiError('NOT_FOUND', 'Campaign template not found'), 404);
+    }
+
+    const overrides = parsed.data.overrides ?? {};
+
+    const [created] = await db.insert(venueCustomEvents).values({
+        venueId: venue.id,
+        campaignTemplateId: template.id,
+        title: overrides.title ?? template.title,
+        description: overrides.description ?? template.description,
+        eventTypeTags: overrides.eventTypeTags ?? template.defaultTags,
+        startsAt,
+        endsAt,
+        imageUrl: overrides.imageUrl ?? template.heroImageUrl,
+        imageS3Key: overrides.imageS3Key ?? template.heroImageS3Key,
+        bookingNotes: overrides.bookingNotes ?? template.defaultBookingNotes,
+        prizes: overrides.prizes ?? template.defaultPrizes,
+        contestRules: overrides.contestRules ?? template.defaultContestRules,
+    }).returning();
+
+    await db.insert(auditLogs).values({
+        userId: user.id,
+        action: 'EVENT_ACTIVATED_FROM_TEMPLATE',
+        entityType: 'VenueCustomEvent',
+        entityId: created.id,
+        metadata: { templateId: template.id, templateSlug: template.slug },
     });
 
     return c.json(apiResponse(created), 201);
