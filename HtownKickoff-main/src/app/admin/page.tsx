@@ -35,6 +35,9 @@ import {
 import { AppShell } from "../../components/AppShell";
 import { GooglePlacePicker } from "../../components/GooglePlacePicker";
 import { PaginationControls } from "../../components/PaginationControls";
+import { WorldCupConfigTab } from "../../components/admin/WorldCupConfigTab";
+import { JerseyPartyCampaignsTab } from "../../components/admin/JerseyPartyCampaignsTab";
+import { ContentCalendarTab } from "../../components/admin/ContentCalendarTab";
 import { useAuth } from "../../lib/auth-context";
 import { api, uploadApi, type GooglePlaceDetailsResponse, type GooglePlaceSnapshot } from "../../lib/api";
 import { useData } from "../../lib/data-provider";
@@ -1847,8 +1850,13 @@ export default function AdminPage() {
     { id: "menu", label: "Menu" },
     { id: "packages", label: "Packages" },
     { id: "promotions", label: "Promotions" },
+    { id: "world-cup", label: "World Cup" },
+    { id: "jersey-parties", label: "Jersey Parties" },
+    { id: "content-calendar", label: "Content Calendar" },
     { id: "settings", label: "Venue Settings" },
   ];
+
+  const selectedVenue = ownedVenues.find((v) => v.id === selectedVenueId);
 
   const googleSuggestedImages = googleDefaults?.googleSuggestedImages || [];
   const googleMenuCategories = googleDefaults?.menu?.categories || [];
@@ -2948,6 +2956,24 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* ═══ TAB: World Cup ═══ */}
+          {activeTab === "world-cup" && (
+            <WorldCupConfigTab
+              selectedVenueId={selectedVenueId}
+              venueSlug={selectedVenue?.slug}
+            />
+          )}
+
+          {/* ═══ TAB: Jersey Parties ═══ */}
+          {activeTab === "jersey-parties" && (
+            <JerseyPartyCampaignsTab selectedVenueId={selectedVenueId} />
+          )}
+
+          {/* ═══ TAB: Content Calendar ═══ */}
+          {activeTab === "content-calendar" && (
+            <ContentCalendarTab selectedVenueId={selectedVenueId} />
           )}
 
           {/* ═══ TAB: Settings ═══ */}
