@@ -8,10 +8,8 @@ import {
     Check,
     CheckCircle2,
     Megaphone,
-    Package,
     Star,
     Ticket,
-    Trophy,
     TrendingUp,
     type LucideIcon,
 } from "lucide-react";
@@ -41,7 +39,7 @@ const MATCHPOINT_PACKAGES: Pkg[] = [
     {
         num: "01",
         name: "MatchPoint Starter Booth",
-        price: 150,
+        price: 149,
         tagline: "Best for restaurants that want a simple promotional setup.",
         features: [
             "Standard photo-shoot booth setup",
@@ -55,7 +53,7 @@ const MATCHPOINT_PACKAGES: Pkg[] = [
     {
         num: "02",
         name: "MatchPoint Reservation + Social Boost",
-        price: 2000,
+        price: 1999,
         tagline: "Best for venues that want bookings and social media promotion.",
         features: [
             "Everything in Starter Booth",
@@ -73,7 +71,7 @@ const MATCHPOINT_PACKAGES: Pkg[] = [
     {
         num: "03",
         name: "MatchPoint Premium Venue Story",
-        price: 3000,
+        price: 2899,
         tagline: "Best for venues that want professional video and stronger branding.",
         features: [
             "Everything in Reservation + Social Boost",
@@ -85,16 +83,6 @@ const MATCHPOINT_PACKAGES: Pkg[] = [
         ],
         bestFor: "restaurants that want to become a featured watch-party destination",
     },
-];
-
-const WC_HIGHLIGHTS = [
-    "World Cup landing page for your venue",
-    "Reservation system (Reserve / VIP / Private / Group / Corporate / Waitlist)",
-    "34 match-day pages with kickoff + crests + specials",
-    "10 jersey-party themed events",
-    "35-campaign social-media content calendar",
-    "Featured placement on city + home pages",
-    "Optional video add-ons ($499 – $1,500)",
 ];
 
 const MW_VARS = `
@@ -122,7 +110,7 @@ const CSS = `
   .hp-sub{max-width:620px;font-size:1.05rem;line-height:1.55;color:rgba(255,255,255,0.85);margin:0 0 28px;}
 
   /* Tier picker */
-  .hp-tierpick{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px;}
+  .hp-tierpick{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px;max-width:680px;}
   @media(max-width:760px){.hp-tierpick{grid-template-columns:1fr;}}
   .hp-tierpick a{display:flex;flex-direction:column;gap:6px;padding:18px 20px;border-radius:14px;border:1px solid rgba(255,255,255,0.18);background:rgba(0,0,0,0.32);backdrop-filter:blur(8px);color:#fff;text-decoration:none;transition:all .18s;}
   .hp-tierpick a:hover{border-color:var(--mw-accent);transform:translateY(-2px);}
@@ -166,19 +154,6 @@ const CSS = `
   .hp-mpfoot{margin-top:auto;padding-top:14px;border-top:1px dashed var(--mw-line);font-size:0.82rem;color:var(--mw-dim);line-height:1.5;}
   .hp-mpfoot b{color:var(--mw-fg);font-weight:700;}
 
-  /* WC Package row */
-  .hp-wc{position:relative;border-radius:18px;border:1px solid color-mix(in srgb,var(--mw-accent) 38%,var(--mw-line));overflow:hidden;background:linear-gradient(135deg,color-mix(in srgb,var(--mw-accent) 11%,transparent) 0%,var(--mw-card) 65%);}
-  .hp-wc-inner{padding:36px clamp(20px,4vw,40px);display:grid;grid-template-columns:1.3fr 1fr;gap:36px;align-items:start;}
-  @media(max-width:900px){.hp-wc-inner{grid-template-columns:1fr;}}
-  .hp-wc-price{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:900;font-size:clamp(2.4rem,5vw,3.6rem);color:var(--mw-accent);line-height:1;letter-spacing:-0.02em;margin:0 0 10px;}
-  .hp-wc-price small{font-size:0.85rem;font-weight:600;color:var(--mw-dim);margin-left:8px;letter-spacing:0;}
-  .hp-wc-h{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:900;font-size:1.4rem;color:var(--mw-fg);margin:0 0 8px;}
-  .hp-wc-p{font-size:14.5px;color:var(--mw-dim);line-height:1.55;margin:0 0 16px;}
-  .hp-wc-inc{list-style:none;padding:0;margin:0;display:grid;gap:9px;}
-  .hp-wc-inc li{display:flex;gap:10px;font-size:0.92rem;color:var(--mw-fg);line-height:1.45;}
-  .hp-wc-inc li svg{flex-shrink:0;color:var(--mw-accent);margin-top:2px;}
-  .hp-wc-cta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px;}
-
   /* Buttons */
   .hp-btn{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:999px;font-size:14px;font-weight:800;text-decoration:none;border:1px solid var(--mw-line);color:var(--mw-fg);transition:all .18s;cursor:pointer;font-family:inherit;background:transparent;}
   .hp-btn:hover{border-color:var(--mw-accent);}
@@ -212,27 +187,22 @@ export default function ForVenuesPage() {
                 <div className="hp-hero-scrim" />
                 <div className="hp-hero-inner">
                     <span className="hp-kicker"><span className="bd" />For venue owners · World Cup 2026</span>
-                    <h1 className="hp-h1">List your venue. <em>Choose your tier.</em></h1>
+                    <h1 className="hp-h1">List your venue. <em>Pack your bar.</em></h1>
                     <p className="hp-sub">
-                        Three ways to put your bar on MatchWatch — free listing, MatchPoint Creator
-                        Packages, or the full World Cup hospitality package. Pick the one that fits
-                        your goals; upgrade any time.
+                        Get discovered free, or upgrade to a MatchPoint Creator Package for
+                        signage, reservations, social content, and premium video — built around
+                        your match-day program.
                     </p>
                     <div className="hp-tierpick">
                         <a href="#free">
-                            <span className="lbl">Tier 1</span>
+                            <span className="lbl">Tier 1 · Free</span>
                             <span className="nm">Free listing</span>
                             <span className="pr">$0 forever</span>
                         </a>
                         <a href="#matchpoint">
-                            <span className="lbl">Tier 2</span>
+                            <span className="lbl">Tier 2 · One-time</span>
                             <span className="nm">MatchPoint Packages</span>
-                            <span className="pr">$150 – $3,000 one-time</span>
-                        </a>
-                        <a href="#wc-package">
-                            <span className="lbl">Tier 3 · Premium</span>
-                            <span className="nm">WC Watch Party Package</span>
-                            <span className="pr">$12,650 full delivery</span>
+                            <span className="pr">$149 – $2,899</span>
                         </a>
                     </div>
                 </div>
@@ -312,50 +282,6 @@ export default function ForVenuesPage() {
                                 </Link>
                             </article>
                         ))}
-                    </div>
-                </section>
-
-                {/* ─── Tier 3: WC Watch Party Package ─── */}
-                <section className="hp-sec" id="wc-package">
-                    <div className="hp-sh">
-                        <div>
-                            <span className="hp-tag-pill"><Trophy size={11} /> Tier 3 · World Cup premium</span>
-                            <div className="hp-st">World Cup Watch Party Package <span className="tag">June 11 – July 19</span></div>
-                            <p className="hp-sh-sub">
-                                The full hospitality build for World Cup 2026. Your own WC microsite, reservation tiers, 34 match-day pages, 10 jersey parties, and a 35-campaign content calendar — all delivered before opening match.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="hp-wc">
-                        <div className="hp-wc-inner">
-                            <div>
-                                <div className="hp-wc-price">$12,650<small>full June delivery</small></div>
-                                <h3 className="hp-wc-h">Turn your venue into a World Cup destination.</h3>
-                                <p className="hp-wc-p">
-                                    More fans. More reservations. More revenue. More exposure. Designed to capture the World Cup's once-in-four-years traffic with a complete venue activation — not just a listing.
-                                </p>
-                                <div className="hp-wc-cta-row">
-                                    <Link href="/for-venues/watch-party-package?ref=for-venues" className="hp-btn primary">
-                                        <Package size={15} /> See full package details →
-                                    </Link>
-                                    <Link href="/for-venues/watch-party-package?ref=for-venues#apply" className="hp-btn">
-                                        Apply now
-                                    </Link>
-                                </div>
-                            </div>
-                            <div>
-                                <div className="hp-mpinc-label" style={{ marginBottom: 10 }}>What you get</div>
-                                <ul className="hp-wc-inc">
-                                    {WC_HIGHLIGHTS.map((h) => (
-                                        <li key={h}>
-                                            <Check size={16} />
-                                            <span>{h}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
                     </div>
                 </section>
 

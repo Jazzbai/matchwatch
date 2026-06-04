@@ -16,9 +16,8 @@ export function FeaturedVenueCTA({ citySlug, cityName }: Props) {
           Want Your Venue Featured on the {cityName} World Cup Page?
         </h2>
         <p className="cc-fcta-body">
-          Get listed free, or go premium with the full World Cup Watch Party Package —
-          landing page, reservations, 34 match-day pages, jersey parties, and content
-          calendar, delivered before opening match.
+          Get listed free, or grab a MatchPoint Creator Package — signage,
+          reservation tools, social content, and premium video starting at $149.
         </p>
         <div className="cc-fcta-btns">
           <Link
@@ -29,11 +28,11 @@ export function FeaturedVenueCTA({ citySlug, cityName }: Props) {
             List Your Venue (Free)
           </Link>
           <Link
-            href={`/for-venues/watch-party-package?ref=${citySlug}`}
+            href="/for-venues#matchpoint"
             className="cc-btn-g"
           >
             <Package size={15} />
-            World Cup Package — $12,650
+            See packages ($149 – $2,899)
           </Link>
         </div>
       </div>
