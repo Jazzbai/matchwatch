@@ -25,6 +25,17 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // /world-cup/activate consolidated into the /for-venues hub.
+      // Permanent (301) so search engines update.
+      {
+        source: "/world-cup/activate",
+        destination: "/for-venues#matchpoint",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
