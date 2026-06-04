@@ -42,6 +42,15 @@ function promotedVenueEventIdFromMetadata(metadata: unknown): string | null {
     return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : null;
 }
 
+// venues.metadata.worldCup powers /venues/<slug>/world-cup. Shape matches the
+// dashboard PATCH schema; we trust what's stored and just return it raw to the
+// client. The microsite gates on `enabled === true`.
+function worldCupConfigFromMetadata(metadata: unknown) {
+    const raw = venueMetadataRecord(metadata).worldCup;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    return raw as Record<string, unknown>;
+}
+
 function venueImagePayloadForRow(venue: typeof venues.$inferSelect) {
     return buildVenueImageRenderPayload({
         slugOrId: venue.slug || venue.id,
@@ -448,6 +457,7 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
         .limit(10);
 
     const promotedVenueEventId = promotedVenueEventIdFromMetadata(venue.metadata);
+    const worldCupConfig = worldCupConfigFromMetadata(venue.metadata);
     const [promotedEventRow] = promotedVenueEventId ? await db.select({
         event: venueEvents,
         match: matches,
@@ -513,6 +523,7 @@ venueRoutes.get('/:slugOrId', optionalAuthMiddleware, async (c) => {
         googleReviews,
 
         promotedVenueEventId,
+        worldCup: worldCupConfig,
         followerCount: Number(followerResult?.count ?? 0),
         isFollowing,
         promotedEvent: promotedEventRow ? {

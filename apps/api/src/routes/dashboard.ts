@@ -725,6 +725,66 @@ dashboardRoutes.put('/settings', updateVenueHandler);
 dashboardRoutes.put('/venue', updateVenueHandler);
 dashboardRoutes.patch('/venue', updateVenueHandler);
 
+// ─── World Cup microsite config ──────────────────
+// venues.metadata.worldCup powers /venues/<slug>/world-cup. Lives in metadata
+// (JSONB) instead of its own table so the bar of entry stays low — promotable
+// to a real venueWcConfig table later if write contention emerges.
+const worldCupConfigSchema = z.object({
+    enabled: z.boolean(),
+    heroHeadline: z.string().max(160).optional().nullable(),
+    heroSub: z.string().max(400).optional().nullable(),
+    faqs: z.array(z.object({
+        q: z.string().min(1).max(200),
+        a: z.string().min(1).max(2000),
+    })).max(12).optional(),
+    specials: z.array(z.object({
+        title: z.string().min(1).max(120),
+        desc: z.string().max(400).optional().nullable(),
+        price: z.string().max(40).optional().nullable(),
+    })).max(20).optional(),
+    sponsors: z.array(z.object({
+        name: z.string().min(1).max(120),
+        logoUrl: z.string().url().max(800).optional().nullable(),
+        tier: z.enum(['title', 'gold', 'venue', 'prize']).optional(),
+    })).max(20).optional(),
+});
+
+function worldCupConfigFromMetadata(metadata: unknown) {
+    const raw = venueMetadataRecord(metadata).worldCup;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const parsed = worldCupConfigSchema.safeParse(raw);
+    return parsed.success ? parsed.data : null;
+}
+
+async function updateWorldCupConfigHandler(c: any) {
+    const context = await getVenueOr404(c);
+    if ('error' in context) return context.error;
+    const { user, venue } = context;
+
+    const body = await c.req.json().catch(() => null);
+    if (!body) return c.json(apiError('VALIDATION_ERROR', 'Invalid JSON'), 400);
+    const parsed = worldCupConfigSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid world-cup config', parsed.error.issues), 400);
+    }
+
+    const currentMetadata = venueMetadataRecord(venue.metadata);
+    const nextMetadata = { ...currentMetadata, worldCup: parsed.data };
+    await db.update(venues).set({ metadata: nextMetadata, updatedAt: new Date() }).where(eq(venues.id, venue.id));
+
+    await db.insert(auditLogs).values({
+        userId: user.id,
+        action: 'VENUE_WORLD_CUP_CONFIG_UPDATED',
+        entityType: 'Venue',
+        entityId: venue.id,
+    });
+
+    return c.json(apiResponse({ message: 'World Cup config updated', worldCup: parsed.data }));
+}
+
+dashboardRoutes.put('/world-cup-config', updateWorldCupConfigHandler);
+dashboardRoutes.patch('/world-cup-config', updateWorldCupConfigHandler);
+
 const setVenuePromotionSchema = z.object({
     venueEventId: z.string().uuid().nullable(),
 });
