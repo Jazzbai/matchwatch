@@ -11,7 +11,7 @@ const inquirySchema = z.object({
     email: z.string().email().max(255),
     phone: z.string().max(30).optional(),
     website: z.string().url().max(500).optional().or(z.literal('')),
-    tier: z.enum(['title', 'gold', 'venue', 'prize']),
+    tier: z.enum(['title', 'gold', 'venue', 'prize', 'watch_party_package']),
     message: z.string().max(5000).optional(),
 });
 

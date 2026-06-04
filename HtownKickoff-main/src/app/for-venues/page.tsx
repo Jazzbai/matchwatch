@@ -268,8 +268,74 @@ export default function ForVenuesPage() {
                     </div>
                 </div>
 
+                {/* ── PREMIUM WC PACKAGE STRIP ── */}
+                <div style={{ maxWidth: 1440, margin: "0 auto", padding: "8px clamp(16px, 4vw, 32px) 0" }}>
+                    <div
+                        style={{
+                            ...cardStyle,
+                            padding: "clamp(28px, 4vw, 36px)",
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 24,
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            background:
+                                "linear-gradient(110deg, color-mix(in oklch, var(--primary) 18%, var(--card)) 0%, var(--card) 60%)",
+                            borderColor: "color-mix(in oklch, var(--primary) 30%, var(--border))",
+                        }}
+                    >
+                        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+                            <div
+                                style={{
+                                    fontFamily: "var(--font-mono), 'JetBrains Mono', monospace",
+                                    fontSize: 11,
+                                    fontWeight: 800,
+                                    letterSpacing: "0.14em",
+                                    textTransform: "uppercase",
+                                    color: "var(--primary)",
+                                    marginBottom: 10,
+                                }}
+                            >
+                                Premium · World Cup 2026
+                            </div>
+                            <h2
+                                className="font-display"
+                                style={{
+                                    color: "var(--foreground)", fontWeight: 800,
+                                    fontSize: "clamp(22px, 3vw, 30px)", letterSpacing: "-0.02em",
+                                    marginBottom: 8, lineHeight: 1.15,
+                                }}
+                            >
+                                Want the full World Cup hospitality package?
+                            </h2>
+                            <p
+                                style={{
+                                    color: "var(--muted-foreground)", fontSize: 14.5,
+                                    margin: 0, maxWidth: 620, lineHeight: 1.55,
+                                }}
+                            >
+                                $12,650 — your own World Cup landing page, reservation system,
+                                34 match-day pages, jersey parties, and a 35-campaign content
+                                calendar, all delivered before June 11 kickoff.
+                            </p>
+                        </div>
+                        <Link
+                            href="/for-venues/watch-party-package?ref=for-venues"
+                            style={{
+                                display: "inline-flex", alignItems: "center", gap: 8,
+                                padding: "14px 26px", borderRadius: 12,
+                                background: "var(--primary)", color: "#fff",
+                                fontWeight: 800, fontSize: 14.5, textDecoration: "none",
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            See the package <ArrowRight size={17} />
+                        </Link>
+                    </div>
+                </div>
+
                 {/* ── FINAL CTA ── */}
-                <div style={{ maxWidth: 1440, margin: "0 auto", padding: "48px clamp(16px, 4vw, 32px) 64px" }}>
+                <div style={{ maxWidth: 1440, margin: "0 auto", padding: "32px clamp(16px, 4vw, 32px) 64px" }}>
                     <div
                         style={{
                             ...cardStyle,

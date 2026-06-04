@@ -60,6 +60,19 @@ const TIERS = [
             "In-app notification to all fans",
         ],
     },
+    {
+        id: "watch_party_package",
+        name: "Watch Party Package",
+        price: "$12,650 / venue",
+        perks: [
+            "Per-venue World Cup landing page",
+            "Reservation system (Reserve / VIP / Private / Group / Corporate / Waitlist)",
+            "34 match-day pages with kickoff + crests + specials",
+            "10 jersey-party themed events with prizes & contests",
+            "35 social-media content campaigns",
+            "Optional video production add-ons ($499 – $1,500)",
+        ],
+    },
 ];
 
 /* Same theme tokens as the home page */
@@ -238,12 +251,35 @@ export default function SponsorPage() {
                 <section className="hp-sec" style={{ borderTop: 0 }}>
                     <div className="hp-sh">
                         <div>
-                            <div className="hp-st">Choose your sponsorship tier <span className="tag">4 tiers</span></div>
-                            <p className="hp-sh-sub">Pick a tier and it pre-fills the form below.</p>
+                            <div className="hp-st">Choose your sponsorship tier <span className="tag">5 tiers</span></div>
+                            <p className="hp-sh-sub">Pick a tier and it pre-fills the form below. The Watch Party Package has its own application page with full deliverables.</p>
                         </div>
                     </div>
                     <div className="hp-tiers">
                         {TIERS.map((tier) => {
+                            // The full per-venue Watch Party Package has its own pitch + application
+                            // page. The other 4 tiers are quick selectors that pre-fill the form below.
+                            if (tier.id === "watch_party_package") {
+                                return (
+                                    <Link
+                                        key={tier.id}
+                                        href="/for-venues/watch-party-package?ref=match-point-sponsor"
+                                        className="hp-tier"
+                                        style={{ textDecoration: "none" }}
+                                    >
+                                        <div className="hp-tier-name">{tier.name}</div>
+                                        <div className="hp-tier-price">{tier.price}</div>
+                                        <ul>
+                                            {tier.perks.map((perk) => (
+                                                <li key={perk}><span>✓</span>{perk}</li>
+                                            ))}
+                                        </ul>
+                                        <div style={{ marginTop: 12, fontFamily: "var(--font-mono), monospace", fontSize: 11, color: "var(--mw-accent)", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                                            See full package →
+                                        </div>
+                                    </Link>
+                                );
+                            }
                             const selected = form.tier === tier.id;
                             return (
                                 <button
@@ -314,7 +350,7 @@ export default function SponsorPage() {
                                     <label className="hp-fld-label" htmlFor="sp-tier">Sponsorship tier *</label>
                                     <select id="sp-tier" className="hp-fld" value={form.tier} onChange={(e) => update("tier", e.target.value)} required>
                                         <option value="">Select a tier…</option>
-                                        {TIERS.map((t) => (
+                                        {TIERS.filter((t) => t.id !== "watch_party_package").map((t) => (
                                             <option key={t.id} value={t.id}>{t.name} — {t.price}</option>
                                         ))}
                                     </select>
