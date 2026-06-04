@@ -897,6 +897,31 @@ export const venuePackages = pgTable('venue_packages', {
 
 // ─── Posts ───────────────────────────────────────
 
+// ─── Social post templates ──────────────────────
+// The 35 content-calendar templates from the Sport PBR proposal — copy
+// + optional image overlay. Venue owners fill placeholders ({team}, {date},
+// {prize}) and either copy the text or download the rendered PNG to paste
+// to IG/Twitter manually. No OAuth, no posting integration in v1.
+
+export const socialPostTemplates = pgTable('social_post_templates', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: varchar('slug', { length: 80 }).notNull().unique(),
+    title: varchar('title', { length: 160 }).notNull(),
+    description: text('description'),
+    category: varchar('category', { length: 60 }).notNull(),
+    copyTemplate: text('copy_template').notNull(),
+    imageTemplateS3Key: varchar('image_template_s3_key'),
+    placeholders: text('placeholders').array().notNull().default([]),
+    defaultMatchPhase: varchar('default_match_phase', { length: 40 }),
+    isActive: boolean('is_active').default(true).notNull(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('social_post_templates_category_idx').on(table.category),
+    index('social_post_templates_active_idx').on(table.isActive),
+]);
+
 export const posts = pgTable('posts', {
     id: uuid('id').primaryKey().defaultRandom(),
     venueId: uuid('venue_id').notNull().references(() => venues.id),
@@ -908,12 +933,17 @@ export const posts = pgTable('posts', {
     isPublished: boolean('is_published').default(true).notNull(),
     scheduledPublishAt: timestamp('scheduled_publish_at'),
     viewsCount: integer('views_count').default(0),
+    // Phase 4: optional template provenance for posts created via the
+    // content calendar. Nullable so existing posts stay untouched.
+    templateId: uuid('template_id').references(() => socialPostTemplates.id),
+    renderedImageS3Key: varchar('rendered_image_s3_key'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at'),
 }, (table) => [
     index('posts_venue_idx').on(table.venueId),
     index('posts_author_idx').on(table.authorId),
+    index('posts_template_idx').on(table.templateId),
 ]);
 
 export const blogCategories = pgTable('blog_categories', {

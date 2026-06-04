@@ -3,7 +3,7 @@ import { db } from '../db/client';
 import {
     venues, venueEvents, bookings, matches, posts, menuCategories, menuItems,
     follows, notifications, auditLogs, users, venueCustomEvents, venueClaims, venueAttributes,
-    venuePackages, promotions, campaignTemplates,
+    venuePackages, promotions, campaignTemplates, socialPostTemplates,
 } from '../db/schema';
 import { eq, and, count, desc, asc, sql, gte, lt } from 'drizzle-orm';
 import { apiResponse, apiError, paginationMeta, paginationOffset, generateUniqueSlug } from '../lib/utils';
@@ -1756,6 +1756,95 @@ dashboardRoutes.post('/posts', async (c) => {
     await db.insert(auditLogs).values({ userId: user.id, action: 'POST_CREATED', entityType: 'Post', entityId: post.id });
 
     return c.json(apiResponse(post), 201);
+});
+
+// ─── Render a post from a social-post template ──────────────────
+// POST /api/v1/dashboard/posts/from-template
+// Body: { templateId, variables, matchId?, scheduledPublishAt?, autoSave? }
+//
+// Substitutes the {placeholder} tokens in template.copy_template with the
+// provided variables and either:
+//   - returns the rendered text only (if autoSave is false / omitted)
+//   - inserts a posts row with templateId set (if autoSave is true)
+//
+// v1 = text-only. Image overlay rendering (sharp + PNG template + font)
+// is intentionally deferred — the venue-owner UI exposes a "Copy text"
+// action and an external "Download image" link if one is provided.
+
+const renderFromTemplateSchema = z.object({
+    templateId: z.string().uuid(),
+    variables: z.record(z.string(), z.string().max(500)).default({}),
+    matchId: z.string().uuid().optional().nullable(),
+    scheduledPublishAt: z.string().datetime().optional().nullable(),
+    autoSave: z.boolean().default(false),
+});
+
+function renderTemplate(template: string, vars: Record<string, string>) {
+    return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
+        const value = vars[key];
+        // Preserve {placeholder} verbatim if the var wasn't supplied — the
+        // venue owner sees the unfilled token and knows to edit before posting.
+        return typeof value === 'string' && value.length > 0 ? value : match;
+    });
+}
+
+dashboardRoutes.post('/posts/from-template', async (c) => {
+    const user = c.get('user');
+    const venue = await getOwnedVenue(user.id, getRequestedVenueId(c));
+    if (!venue) return c.json(apiError('NOT_FOUND', 'No venue found'), 404);
+    const access = await ensureVenueOperationalAccess(user.id, venue.id);
+    if ('error' in access && access.error) return c.json(access.error, access.error.error.code === 'FORBIDDEN' ? 403 : 404);
+
+    const body = await c.req.json().catch(() => null);
+    if (!body) return c.json(apiError('VALIDATION_ERROR', 'Invalid JSON'), 400);
+    const parsed = renderFromTemplateSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const [template] = await db.select().from(socialPostTemplates)
+        .where(and(eq(socialPostTemplates.id, parsed.data.templateId), eq(socialPostTemplates.isActive, true)))
+        .limit(1);
+    if (!template) {
+        return c.json(apiError('NOT_FOUND', 'Social-post template not found'), 404);
+    }
+
+    const renderedContent = renderTemplate(template.copyTemplate, parsed.data.variables);
+
+    // Report any placeholders the venue owner didn't fill — used by the UI
+    // to flag the post as "needs review" before publishing.
+    const expected = (template.placeholders || []) as string[];
+    const missing = expected.filter((p) => !parsed.data.variables[p] || parsed.data.variables[p].length === 0);
+
+    if (!parsed.data.autoSave) {
+        return c.json(apiResponse({
+            rendered: {
+                content: renderedContent,
+                template: { id: template.id, slug: template.slug, title: template.title, category: template.category },
+                missing,
+            },
+        }));
+    }
+
+    const [post] = await db.insert(posts).values({
+        venueId: venue.id,
+        authorId: user.id,
+        content: renderedContent,
+        matchId: parsed.data.matchId ?? null,
+        templateId: template.id,
+        scheduledPublishAt: parsed.data.scheduledPublishAt ? new Date(parsed.data.scheduledPublishAt) : null,
+        isPublished: !parsed.data.scheduledPublishAt,
+    }).returning();
+
+    await db.insert(auditLogs).values({
+        userId: user.id,
+        action: 'POST_CREATED_FROM_TEMPLATE',
+        entityType: 'Post',
+        entityId: post.id,
+        metadata: { templateId: template.id, templateSlug: template.slug, missing },
+    });
+
+    return c.json(apiResponse({ post, missing }), 201);
 });
 
 dashboardRoutes.get('/posts', async (c) => {
