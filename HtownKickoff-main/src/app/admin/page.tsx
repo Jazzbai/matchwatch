@@ -38,6 +38,7 @@ import { PaginationControls } from "../../components/PaginationControls";
 import { WorldCupConfigTab } from "../../components/admin/WorldCupConfigTab";
 import { JerseyPartyCampaignsTab } from "../../components/admin/JerseyPartyCampaignsTab";
 import { ContentCalendarTab } from "../../components/admin/ContentCalendarTab";
+import { VenuePredictionsTab } from "../../components/admin/VenuePredictionsTab";
 import { useAuth } from "../../lib/auth-context";
 import { api, uploadApi, type GooglePlaceDetailsResponse, type GooglePlaceSnapshot } from "../../lib/api";
 import { useData } from "../../lib/data-provider";
@@ -1853,6 +1854,7 @@ export default function AdminPage() {
     { id: "world-cup", label: "World Cup" },
     { id: "jersey-parties", label: "Jersey Parties" },
     { id: "content-calendar", label: "Content Calendar" },
+    { id: "predictions", label: "Predictions" },
     { id: "settings", label: "Venue Settings" },
   ];
 
@@ -2974,6 +2976,14 @@ export default function AdminPage() {
           {/* ═══ TAB: Content Calendar ═══ */}
           {activeTab === "content-calendar" && (
             <ContentCalendarTab selectedVenueId={selectedVenueId} />
+          )}
+
+          {/* ═══ TAB: Venue Predictions ═══ */}
+          {activeTab === "predictions" && (
+            <VenuePredictionsTab
+              selectedVenueId={selectedVenueId}
+              venueSlug={selectedVenue?.slug}
+            />
           )}
 
           {/* ═══ TAB: Settings ═══ */}

@@ -581,7 +581,7 @@ export const uploadApi = {
     createPresignedUrl: (data: {
         filename: string;
         contentType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
-        purpose: 'avatar' | 'venue_cover' | 'venue_gallery' | 'menu_item' | 'post';
+        purpose: 'avatar' | 'venue_cover' | 'venue_gallery' | 'menu_item' | 'post' | 'prediction_prize';
         fileSize: number;
     }) =>
         apiFetch<PresignedUpload>('/uploads/presigned-url', {
