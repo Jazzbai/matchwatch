@@ -42,6 +42,10 @@ const dashboardRoutes = new Hono();
 dashboardRoutes.use('*', authMiddleware);
 dashboardRoutes.use('*', requireRole('BUSINESS', 'VENUE_OWNER', 'ADMIN', 'SUPER_ADMIN'));
 
+// Sub-router: venue predictions (kept separate to keep this file tractable).
+import predictionCampaignsDashboardRoutes from './dashboard/predictionCampaigns';
+dashboardRoutes.route('/prediction-campaigns', predictionCampaignsDashboardRoutes);
+
 // Helper: get a specific venue owned by current user (or first active venue by default)
 async function getOwnedVenue(userId: string, venueId?: string | null) {
     const normalizedVenueId = typeof venueId === 'string' && venueId.trim().length > 0 ? venueId.trim() : null;

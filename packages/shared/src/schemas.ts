@@ -294,6 +294,67 @@ export const paginationSchema = z.object({
     limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
+// ─── Venue Predictions ──────────────────────────
+
+export const predictionPrizeEligibilityValues = ['CORRECT_WINNER', 'EXACT_SCORE', 'ANY_ENTRY'] as const;
+export const predictionWinnerPickValues = ['HOME', 'AWAY', 'DRAW'] as const;
+
+// Prize subschema used both on create (with the campaign) and on add-prize.
+export const predictionPrizeInputSchema = z.object({
+    sortOrder: z.coerce.number().int().min(0).max(1000).optional(),
+    title: z.string().min(1).max(200),
+    description: z.string().max(4000).optional().nullable(),
+    imageUrl: z.string().url().max(500).optional().nullable(),
+    imageS3Key: z.string().max(500).optional().nullable(),
+    eligibility: z.enum(predictionPrizeEligibilityValues),
+    drawCount: z.coerce.number().int().positive().max(1000).default(1),
+});
+
+export const createPredictionCampaignSchema = z.object({
+    matchId: z.string().uuid(),
+    venueEventId: z.string().uuid().optional().nullable(),
+    title: z.string().min(1).max(200),
+    description: z.string().max(4000).optional().nullable(),
+    opensAt: z.string().datetime(),
+    closesAt: z.string().datetime(),
+    pointsExactScore: z.coerce.number().int().min(0).max(1000).optional(),
+    pointsCorrectWinner: z.coerce.number().int().min(0).max(1000).optional(),
+    prizes: z.array(predictionPrizeInputSchema).min(1).max(20),
+}).superRefine((value, ctx) => {
+    if (new Date(value.closesAt).getTime() <= new Date(value.opensAt).getTime()) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['closesAt'],
+            message: 'closesAt must be after opensAt',
+        });
+    }
+});
+
+export const updatePredictionCampaignSchema = z.object({
+    title: z.string().min(1).max(200).optional(),
+    description: z.string().max(4000).optional().nullable(),
+    opensAt: z.string().datetime().optional(),
+    closesAt: z.string().datetime().optional(),
+    pointsExactScore: z.coerce.number().int().min(0).max(1000).optional(),
+    pointsCorrectWinner: z.coerce.number().int().min(0).max(1000).optional(),
+});
+
+export const submitPredictionEntrySchema = z.object({
+    displayName: z.string().min(1).max(100),
+    predictedWinner: z.enum(predictionWinnerPickValues),
+    predictedHomeScore: z.coerce.number().int().min(0).max(99).optional(),
+    predictedAwayScore: z.coerce.number().int().min(0).max(99).optional(),
+});
+
+export const redrawPredictionPrizeSchema = z.object({
+    reason: z.string().min(1).max(500),
+    excludeEntryIds: z.array(z.string().uuid()).max(100).default([]),
+});
+
+export const unlockPredictionCampaignSchema = z.object({
+    closesAt: z.string().datetime(),
+});
+
 // ─── Admin Schemas ──────────────────────────────
 
 export const adminUpdateUserSchema = z.object({

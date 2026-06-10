@@ -706,6 +706,44 @@ venueRoutes.get('/:slugOrId/packages', async (c) => {
     return c.json(apiResponse(list));
 });
 
+// ─── GET /:slugOrId/prediction-campaigns ─────────
+venueRoutes.get('/:slugOrId/prediction-campaigns', async (c) => {
+    const slugOrId = c.req.param('slugOrId');
+    const venue = await getPublicVenueBySlugOrId(slugOrId);
+    if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+
+    const { listVenuePredictionCampaigns } = await import('./predictionCampaigns');
+    const rows = await listVenuePredictionCampaigns(venue.id);
+    return c.json(apiResponse(rows.map((r) => ({
+        id: r.campaign.id,
+        title: r.campaign.title,
+        status: r.campaign.status,
+        opensAt: r.campaign.opensAt,
+        closesAt: r.campaign.closesAt,
+        totalEntries: r.campaign.totalEntries,
+        match: {
+            id: r.match.id,
+            homeTeamName: r.match.homeTeamName,
+            awayTeamName: r.match.awayTeamName,
+            matchDateUtc: r.match.matchDateUtc,
+            status: r.match.status,
+        },
+    }))));
+});
+
+// ─── GET /:slugOrId/prediction-campaigns/by-match/:matchId ──
+venueRoutes.get('/:slugOrId/prediction-campaigns/by-match/:matchId', async (c) => {
+    const slugOrId = c.req.param('slugOrId');
+    const matchId = c.req.param('matchId');
+    const venue = await getPublicVenueBySlugOrId(slugOrId);
+    if (!venue) return c.json(apiError('NOT_FOUND', 'Venue not found'), 404);
+
+    const { findVenueCampaignByMatch } = await import('./predictionCampaigns');
+    const payload = await findVenueCampaignByMatch(venue.id, matchId);
+    if (!payload) return c.json(apiError('NOT_FOUND', 'No prediction campaign for this match at this venue'), 404);
+    return c.json(apiResponse(payload));
+});
+
 // ─── GET /:slugOrId/promotions/:code (validate a discount code) ──
 venueRoutes.get('/:slugOrId/promotions/:code', async (c) => {
     const slugOrId = c.req.param('slugOrId');
