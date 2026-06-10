@@ -15,6 +15,19 @@ export const bookingStatusEnum = pgEnum('booking_status', [
 ]);
 export const notificationTypeEnum = pgEnum('notification_type', [
     'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'VENUE_POST', 'MATCH_REMINDER', 'VENUE_NOTIFICATION', 'SYSTEM',
+    // Phase 5 — Venue Predictions
+    'PREDICTION_WIN',
+]);
+
+// ─── Venue Predictions enums ─────────────────────────
+export const predictionCampaignStatusEnum = pgEnum('prediction_campaign_status', [
+    'DRAFT', 'OPEN', 'LOCKED', 'SETTLED', 'DRAWN',
+]);
+export const predictionPrizeEligibilityEnum = pgEnum('prediction_prize_eligibility', [
+    'CORRECT_WINNER', 'EXACT_SCORE', 'ANY_ENTRY',
+]);
+export const predictionWinnerPickEnum = pgEnum('prediction_winner_pick', [
+    'HOME', 'AWAY', 'DRAW',
 ]);
 export const priceRangeEnum = pgEnum('price_range', ['BUDGET', 'MID', 'UPSCALE', 'LUXURY']);
 export const venueAttributeTypeEnum = pgEnum('venue_attribute_type', ['AMENITY', 'VIBE', 'CUISINE']);
@@ -1208,6 +1221,104 @@ export const venueQrBanners = pgTable('venue_qr_banners', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// ─── Venue Predictions — per-venue, per-match prediction campaigns ───
+// Distinct from `predictions` above (that's the platform-wide Match Point
+// sweepstakes). This is the venue-owner-controlled local pick'em with
+// custom prizes and a raffle draw.
+
+export const predictionCampaigns = pgTable('prediction_campaigns', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    venueId: uuid('venue_id').notNull().references(() => venues.id, { onDelete: 'cascade' }),
+    matchId: uuid('match_id').notNull().references(() => matches.id, { onDelete: 'cascade' }),
+    venueEventId: uuid('venue_event_id').references(() => venueEvents.id, { onDelete: 'set null' }),
+    title: varchar('title', { length: 200 }).notNull(),
+    description: text('description'),
+    status: predictionCampaignStatusEnum('status').default('DRAFT').notNull(),
+    opensAt: timestamp('opens_at').notNull(),
+    closesAt: timestamp('closes_at').notNull(),
+    pointsExactScore: integer('points_exact_score').default(2).notNull(),
+    pointsCorrectWinner: integer('points_correct_winner').default(1).notNull(),
+    // Denormalized counters — bumped on insert/settle to avoid re-aggregating
+    // every time the admin renders the campaign card.
+    totalEntries: integer('total_entries').default(0).notNull(),
+    correctWinnerCount: integer('correct_winner_count').default(0).notNull(),
+    exactScoreCount: integer('exact_score_count').default(0).notNull(),
+    settledAt: timestamp('settled_at'),
+    raffleDrawnAt: timestamp('raffle_drawn_at'),
+    createdBy: uuid('created_by').notNull().references(() => users.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('prediction_campaigns_venue_match_unique').on(table.venueId, table.matchId),
+    index('prediction_campaigns_venue_status_idx').on(table.venueId, table.status),
+    index('prediction_campaigns_match_idx').on(table.matchId),
+    index('prediction_campaigns_lock_sweep_idx').on(table.status, table.closesAt),
+]);
+
+export const predictionCampaignPrizes = pgTable('prediction_campaign_prizes', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id').notNull().references(() => predictionCampaigns.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    title: varchar('title', { length: 200 }).notNull(),
+    description: text('description'),
+    imageUrl: varchar('image_url', { length: 500 }),
+    imageS3Key: varchar('image_s3_key', { length: 500 }),
+    eligibility: predictionPrizeEligibilityEnum('eligibility').notNull(),
+    drawCount: integer('draw_count').default(1).notNull(),
+    drawnAt: timestamp('drawn_at'),
+    drawnBy: uuid('drawn_by').references(() => users.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+    index('prediction_prizes_campaign_sort_idx').on(table.campaignId, table.sortOrder),
+]);
+
+export const predictionEntries = pgTable('prediction_entries', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id').notNull().references(() => predictionCampaigns.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    displayName: varchar('display_name', { length: 100 }).notNull(),
+    // Denormalized so the unique constraint actually fires regardless of
+    // future user.phone changes. Normalized to E.164 at write time.
+    phone: varchar('phone', { length: 20 }).notNull(),
+    email: varchar('email', { length: 255 }),
+    // SHA-256 hex of (request IP + PREDICTION_IP_SALT). Soft signal only —
+    // no UNIQUE constraint because shared venue WiFi will collide on legit
+    // predictors. Surface collision count to admin instead.
+    ipHash: varchar('ip_hash', { length: 64 }).notNull(),
+    userAgent: text('user_agent'),
+    predictedWinner: predictionWinnerPickEnum('predicted_winner').notNull(),
+    predictedHomeScore: integer('predicted_home_score'),
+    predictedAwayScore: integer('predicted_away_score'),
+    points: integer('points').default(0).notNull(),
+    isCorrectWinner: boolean('is_correct_winner').default(false).notNull(),
+    isExactScore: boolean('is_exact_score').default(false).notNull(),
+    settledAt: timestamp('settled_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+    uniqueIndex('prediction_entries_campaign_user_unique').on(table.campaignId, table.userId),
+    uniqueIndex('prediction_entries_campaign_phone_unique').on(table.campaignId, table.phone),
+    index('prediction_entries_campaign_ip_idx').on(table.campaignId, table.ipHash),
+    index('prediction_entries_user_idx').on(table.userId),
+]);
+
+export const predictionWinners = pgTable('prediction_winners', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    prizeId: uuid('prize_id').notNull().references(() => predictionCampaignPrizes.id, { onDelete: 'cascade' }),
+    entryId: uuid('entry_id').notNull().references(() => predictionEntries.id, { onDelete: 'cascade' }),
+    drawnAt: timestamp('drawn_at').defaultNow().notNull(),
+    drawnBy: uuid('drawn_by').references(() => users.id),
+    // Soft invalidation so redraws keep an audit trail. The partial unique
+    // index (defined in the migration) only enforces uniqueness on active rows.
+    isInvalidated: boolean('is_invalidated').default(false).notNull(),
+    invalidatedAt: timestamp('invalidated_at'),
+    invalidatedReason: text('invalidated_reason'),
+    notifiedAt: timestamp('notified_at'),
+    notificationChannel: varchar('notification_channel', { length: 20 }),
+}, (table) => [
+    index('prediction_winners_entry_idx').on(table.entryId),
+]);
+
 export const venuesRelations = relations(venues, ({ one, many }) => ({
     owner: one(users, { fields: [venues.ownerId], references: [users.id] }),
     events: many(venueEvents),
@@ -1395,6 +1506,33 @@ export const venueCheckinsRelations = relations(venueCheckins, ({ one }) => ({
 
 export const venueQrBannersRelations = relations(venueQrBanners, ({ one }) => ({
     venue: one(venues, { fields: [venueQrBanners.venueId], references: [venues.id] }),
+}));
+
+export const predictionCampaignsRelations = relations(predictionCampaigns, ({ one, many }) => ({
+    venue: one(venues, { fields: [predictionCampaigns.venueId], references: [venues.id] }),
+    match: one(matches, { fields: [predictionCampaigns.matchId], references: [matches.id] }),
+    venueEvent: one(venueEvents, { fields: [predictionCampaigns.venueEventId], references: [venueEvents.id] }),
+    createdBy: one(users, { fields: [predictionCampaigns.createdBy], references: [users.id] }),
+    prizes: many(predictionCampaignPrizes),
+    entries: many(predictionEntries),
+}));
+
+export const predictionCampaignPrizesRelations = relations(predictionCampaignPrizes, ({ one, many }) => ({
+    campaign: one(predictionCampaigns, { fields: [predictionCampaignPrizes.campaignId], references: [predictionCampaigns.id] }),
+    drawnBy: one(users, { fields: [predictionCampaignPrizes.drawnBy], references: [users.id] }),
+    winners: many(predictionWinners),
+}));
+
+export const predictionEntriesRelations = relations(predictionEntries, ({ one, many }) => ({
+    campaign: one(predictionCampaigns, { fields: [predictionEntries.campaignId], references: [predictionCampaigns.id] }),
+    user: one(users, { fields: [predictionEntries.userId], references: [users.id] }),
+    winnerOf: many(predictionWinners),
+}));
+
+export const predictionWinnersRelations = relations(predictionWinners, ({ one }) => ({
+    prize: one(predictionCampaignPrizes, { fields: [predictionWinners.prizeId], references: [predictionCampaignPrizes.id] }),
+    entry: one(predictionEntries, { fields: [predictionWinners.entryId], references: [predictionEntries.id] }),
+    drawnBy: one(users, { fields: [predictionWinners.drawnBy], references: [users.id] }),
 }));
 
 // ─── Sponsor Inquiries ───────────────────────────

@@ -10,7 +10,8 @@ export type StorageUploadPurpose =
     | 'menu_item'
     | 'post'
     | 'entity_primary'
-    | 'entity_hero';
+    | 'entity_hero'
+    | 'prediction_prize';
 
 export const STORAGE_MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 
