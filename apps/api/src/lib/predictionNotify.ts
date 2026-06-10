@@ -11,7 +11,7 @@
  */
 
 import { Resend } from 'resend';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
     matches,
@@ -23,6 +23,7 @@ import {
     venues,
 } from '../db/schema';
 import { logger } from './logger';
+import { isTwilioConfigured, sendSms } from './sms';
 
 function isPlaceholderEmail(email: string | null | undefined) {
     return !email || email.endsWith('@matchwatch.internal');
@@ -50,17 +51,21 @@ export async function notifyPrizeWinners(prizeId: string) {
             isNull(predictionWinners.notifiedAt),
         ));
 
-    if (rows.length === 0) return { notified: 0, emailed: 0 };
+    if (rows.length === 0) return { notified: 0, emailed: 0, smsSent: 0 };
 
     const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
     const fromAddress = process.env.RESEND_FROM_EMAIL || 'MatchWatch <notifications@matchwatch.us>';
+    const smsAvailable = isTwilioConfigured();
 
     let emailed = 0;
-    const winnerIds: string[] = [];
+    let smsSent = 0;
+    // Track which channels actually fired per winner so we record provenance.
+    const channels: Map<string, string[]> = new Map();
 
     for (const row of rows) {
         const actionUrl = `/predict/${row.venue.slug}/${row.match.id}/winners`;
         const matchLabel = `${row.match.homeTeamName ?? 'TBD'} vs ${row.match.awayTeamName ?? 'TBD'}`;
+        const fired: string[] = [];
 
         try {
             await db.insert(notifications).values({
@@ -76,6 +81,7 @@ export async function notifyPrizeWinners(prizeId: string) {
                     entryId: row.entry.id,
                 },
             });
+            fired.push('in_app');
         } catch (err) {
             logger.warn({ err, entryId: row.entry.id }, 'Failed to insert prediction win notification');
         }
@@ -108,20 +114,34 @@ export async function notifyPrizeWinners(prizeId: string) {
                     `,
                 });
                 emailed++;
+                fired.push('email');
             } catch (err) {
                 logger.warn({ err, entryId: row.entry.id }, 'Failed to send prediction win email');
             }
         }
 
-        winnerIds.push(row.winner.id);
+        // SMS — always attempt if Twilio is configured (phone is always set).
+        if (smsAvailable && row.entry.phone) {
+            const smsBody = `🏆 You won at ${row.venue.name}! Prize: ${row.prize.title} (${matchLabel}). Claim it at the venue with ID. Full details: https://matchwatch.us${actionUrl}`;
+            const result = await sendSms(row.entry.phone, smsBody);
+            if (result.sent) {
+                smsSent++;
+                fired.push('sms');
+            }
+        }
+
+        channels.set(row.winner.id, fired);
     }
 
-    if (winnerIds.length > 0) {
+    // Persist what actually fired per winner — comma-separated for simplicity
+    // (the column is varchar(20) so cap channels at the first 3 to fit).
+    for (const [winnerId, fired] of channels) {
+        const channel = fired.slice(0, 3).join(',').slice(0, 20);
         await db.update(predictionWinners).set({
             notifiedAt: new Date(),
-            notificationChannel: 'in_app',
-        }).where(inArray(predictionWinners.id, winnerIds));
+            notificationChannel: channel || 'none',
+        }).where(eq(predictionWinners.id, winnerId));
     }
 
-    return { notified: rows.length, emailed };
+    return { notified: rows.length, emailed, smsSent };
 }

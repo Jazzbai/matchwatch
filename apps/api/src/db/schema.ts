@@ -1245,6 +1245,10 @@ export const predictionCampaigns = pgTable('prediction_campaigns', {
     exactScoreCount: integer('exact_score_count').default(0).notNull(),
     settledAt: timestamp('settled_at'),
     raffleDrawnAt: timestamp('raffle_drawn_at'),
+    // Phase 6: when true, the submit endpoint rejects entries sharing an
+    // ip_hash with any existing entry. Off by default — venue WiFi sharing
+    // would otherwise block legit second predictors.
+    strictIpDedup: boolean('strict_ip_dedup').default(false).notNull(),
     createdBy: uuid('created_by').notNull().references(() => users.id),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

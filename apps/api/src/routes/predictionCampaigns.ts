@@ -185,6 +185,25 @@ router.post('/:id/entries', authRateLimit, authMiddleware, async (c) => {
     const ipHash = hashIp(ip);
     const userAgent = c.req.header('user-agent') || null;
 
+    // Strict IP dedup: if the campaign opted in, reject before we ever try
+    // the insert. Default is soft (shared venue WiFi tolerated).
+    if (campaign.strictIpDedup) {
+        const [collision] = await db.select({ id: predictionEntries.id })
+            .from(predictionEntries)
+            .where(and(eq(predictionEntries.campaignId, campaignId), eq(predictionEntries.ipHash, ipHash)))
+            .limit(1);
+        if (collision) {
+            void db.insert(auditLogs).values({
+                userId: user.id,
+                action: 'PREDICTION_ENTRY_REJECTED',
+                entityType: 'PredictionCampaign',
+                entityId: campaignId,
+                metadata: { reason: 'strict_ip_dedup', ipHash, userAgent },
+            }).catch(() => undefined);
+            return c.json(apiError('IP_BLOCKED', 'This network has already submitted an entry. Try from a different device or wait until you leave the venue WiFi.'), 409);
+        }
+    }
+
     try {
         const inserted = await db.transaction(async (tx) => {
             const [entry] = await tx.insert(predictionEntries).values({

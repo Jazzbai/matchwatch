@@ -85,10 +85,24 @@ async function requireOwnedCampaign(c: any, campaignId: string): Promise<VenueCa
     return { ok: true, user: ctx.user, venue: ctx.venue, campaign };
 }
 
+// Lazy auto-lock: flip OPEN campaigns past their close time to LOCKED before
+// rendering the admin list. Cheap UPDATE — only touches rows that match;
+// indexed on (status, closes_at) so it's a fast scan.
+async function lazyAutoLockExpired(venueId: string) {
+    await db.update(predictionCampaigns)
+        .set({ status: 'LOCKED', updatedAt: new Date() })
+        .where(and(
+            eq(predictionCampaigns.venueId, venueId),
+            eq(predictionCampaigns.status, 'OPEN'),
+            sql`${predictionCampaigns.closesAt} <= now()`,
+        ));
+}
+
 // ─── GET / — list campaigns for this venue
 router.get('/', async (c) => {
     const ctx = await requireVenue(c);
     if (!ctx.ok) return ctx.error;
+    await lazyAutoLockExpired(ctx.venue.id);
     const rows = await db.select({
         campaign: predictionCampaigns,
         match: matches,
@@ -131,6 +145,7 @@ router.post('/', async (c) => {
                 closesAt: new Date(parsed.data.closesAt),
                 pointsExactScore: parsed.data.pointsExactScore ?? 2,
                 pointsCorrectWinner: parsed.data.pointsCorrectWinner ?? 1,
+                strictIpDedup: parsed.data.strictIpDedup ?? false,
                 createdBy: ctx.user.id,
             }).returning();
 
@@ -191,6 +206,7 @@ router.patch('/:id', async (c) => {
     if (parsed.data.closesAt !== undefined) updates.closesAt = new Date(parsed.data.closesAt);
     if (parsed.data.pointsExactScore !== undefined) updates.pointsExactScore = parsed.data.pointsExactScore;
     if (parsed.data.pointsCorrectWinner !== undefined) updates.pointsCorrectWinner = parsed.data.pointsCorrectWinner;
+    if (parsed.data.strictIpDedup !== undefined) updates.strictIpDedup = parsed.data.strictIpDedup;
 
     await db.update(predictionCampaigns).set(updates).where(eq(predictionCampaigns.id, ctx.campaign.id));
     await db.insert(auditLogs).values({

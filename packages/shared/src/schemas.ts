@@ -319,6 +319,7 @@ export const createPredictionCampaignSchema = z.object({
     closesAt: z.string().datetime(),
     pointsExactScore: z.coerce.number().int().min(0).max(1000).optional(),
     pointsCorrectWinner: z.coerce.number().int().min(0).max(1000).optional(),
+    strictIpDedup: z.boolean().optional(),
     prizes: z.array(predictionPrizeInputSchema).min(1).max(20),
 }).superRefine((value, ctx) => {
     if (new Date(value.closesAt).getTime() <= new Date(value.opensAt).getTime()) {
@@ -337,6 +338,7 @@ export const updatePredictionCampaignSchema = z.object({
     closesAt: z.string().datetime().optional(),
     pointsExactScore: z.coerce.number().int().min(0).max(1000).optional(),
     pointsCorrectWinner: z.coerce.number().int().min(0).max(1000).optional(),
+    strictIpDedup: z.boolean().optional(),
 });
 
 export const submitPredictionEntrySchema = z.object({
