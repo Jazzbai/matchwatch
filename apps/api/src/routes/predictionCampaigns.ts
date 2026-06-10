@@ -15,6 +15,7 @@ import { and, asc, desc, eq, gt, gte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db/client';
 import {
+    auditLogs,
     matches,
     predictionCampaigns,
     predictionCampaignPrizes,
@@ -210,6 +211,14 @@ router.post('/:id/entries', authRateLimit, authMiddleware, async (c) => {
         });
 
         if (!inserted) {
+            // Soft-log the rejection so the venue owner can spot abuse patterns.
+            void db.insert(auditLogs).values({
+                userId: user.id,
+                action: 'PREDICTION_ENTRY_REJECTED',
+                entityType: 'PredictionCampaign',
+                entityId: campaignId,
+                metadata: { reason: 'duplicate', ipHash, userAgent },
+            }).catch(() => undefined);
             return c.json(apiError('DUPLICATE_ENTRY', 'You have already entered this campaign'), 409);
         }
 

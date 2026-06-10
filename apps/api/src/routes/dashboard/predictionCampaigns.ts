@@ -30,6 +30,7 @@ import {
     settleCampaign,
     PredictionLogicError,
 } from '../../lib/predictionDraw';
+import { notifyPrizeWinners } from '../../lib/predictionNotify';
 import { deleteStorageObjects } from '../../lib/storage';
 import {
     createPredictionCampaignSchema,
@@ -492,6 +493,8 @@ router.post('/:id/prizes/:prizeId/draw', async (c) => {
             entityId: prizeId,
             metadata: result,
         });
+        // Notify winners outside the tx — Resend failures don't roll back the draw.
+        void notifyPrizeWinners(prizeId).catch(() => undefined);
         return c.json(apiResponse(result));
     } catch (err) {
         if (err instanceof PredictionLogicError) {
@@ -522,6 +525,9 @@ router.post('/:id/prizes/:prizeId/redraw', async (c) => {
             entityId: prizeId,
             metadata: result,
         });
+        // Notify the newly-drawn winners (old ones already had notifiedAt set,
+        // and the helper's WHERE clause skips them).
+        void notifyPrizeWinners(prizeId).catch(() => undefined);
         return c.json(apiResponse(result));
     } catch (err) {
         if (err instanceof PredictionLogicError) {
