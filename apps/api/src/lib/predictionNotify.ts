@@ -11,7 +11,7 @@
  */
 
 import { Resend } from 'resend';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
     matches,
@@ -68,19 +68,32 @@ export async function notifyPrizeWinners(prizeId: string) {
         const fired: string[] = [];
 
         try {
-            await db.insert(notifications).values({
-                userId: row.entry.userId,
-                type: 'PREDICTION_WIN',
-                title: `You won at ${row.venue.name}!`,
-                body: `You won "${row.prize.title}" in the ${matchLabel} prediction. Stop by ${row.venue.name} to claim your prize.`,
-                actionUrl,
-                imageUrl: row.prize.imageUrl ?? null,
-                data: {
-                    campaignId: row.campaign.id,
-                    prizeId: row.prize.id,
-                    entryId: row.entry.id,
-                },
-            });
+            // Skip the in-app insert if an existing row already covers this
+            // (user, entry) pair — otherwise a /renotify call would add a
+            // duplicate "You won" bell entry every time it fires.
+            const [existing] = await db.select({ id: notifications.id }).from(notifications)
+                .where(and(
+                    eq(notifications.userId, row.entry.userId),
+                    eq(notifications.type, 'PREDICTION_WIN'),
+                    sql`${notifications.data}->>'entryId' = ${row.entry.id}`,
+                    sql`${notifications.data}->>'prizeId' = ${row.prize.id}`,
+                ))
+                .limit(1);
+            if (!existing) {
+                await db.insert(notifications).values({
+                    userId: row.entry.userId,
+                    type: 'PREDICTION_WIN',
+                    title: `You won at ${row.venue.name}!`,
+                    body: `You won "${row.prize.title}" in the ${matchLabel} prediction. Stop by ${row.venue.name} to claim your prize.`,
+                    actionUrl,
+                    imageUrl: row.prize.imageUrl ?? null,
+                    data: {
+                        campaignId: row.campaign.id,
+                        prizeId: row.prize.id,
+                        entryId: row.entry.id,
+                    },
+                });
+            }
             fired.push('in_app');
         } catch (err) {
             logger.warn({ err, entryId: row.entry.id }, 'Failed to insert prediction win notification');

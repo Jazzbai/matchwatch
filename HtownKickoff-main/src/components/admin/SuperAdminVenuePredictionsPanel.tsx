@@ -320,6 +320,7 @@ function CreateCampaignModal({ onClose, onCreated }: { onClose: () => void; onCr
     const [venues, setVenues] = React.useState<Venue[]>([]);
     const [matches, setMatches] = React.useState<Match[]>([]);
     const [venueId, setVenueId] = React.useState("");
+    const [venueSearch, setVenueSearch] = React.useState("");
     const [matchId, setMatchId] = React.useState("");
     const [title, setTitle] = React.useState("");
     const [description, setDescription] = React.useState("");
@@ -334,16 +335,27 @@ function CreateCampaignModal({ onClose, onCreated }: { onClose: () => void; onCr
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
+    // Debounced venue search — re-queries /super-admin/venues?search=... so the
+    // dropdown isn't capped at the first 200 venues.
     React.useEffect(() => {
-        (async () => {
+        const timer = setTimeout(async () => {
             try {
-                const venuesData = await saFetch<{ data?: Array<{ id: string; name: string; slug: string; city: string | null }> } | Venue[]>("/venues?page=1&limit=200");
-                // Endpoint shape: { data: [...], meta }
+                const q = venueSearch.trim();
+                const path = q
+                    ? `/venues?page=1&limit=100&search=${encodeURIComponent(q)}`
+                    : "/venues?page=1&limit=100";
+                const venuesData = await saFetch<{ data?: Array<{ id: string; name: string; slug: string; city: string | null }> } | Venue[]>(path);
                 const list = Array.isArray(venuesData) ? venuesData : (venuesData as any)?.data || [];
                 setVenues(list);
             } catch {
                 // ignore — admin can still type the venueId manually if dropdown empty
             }
+        }, 250);
+        return () => clearTimeout(timer);
+    }, [venueSearch]);
+
+    React.useEffect(() => {
+        (async () => {
             try {
                 const res = await fetch("/api/v1/matches/upcoming", { credentials: "include" });
                 if (res.ok) {
@@ -449,6 +461,12 @@ function CreateCampaignModal({ onClose, onCreated }: { onClose: () => void; onCr
             <div style={{ display: "grid", gap: 12, marginBottom: 18 }}>
                 <div>
                     <label style={labelStyle}>Venue</label>
+                    <input
+                        style={{ ...inputStyle, marginBottom: 6 }}
+                        value={venueSearch}
+                        onChange={(e) => setVenueSearch(e.target.value)}
+                        placeholder="Search venues by name…"
+                    />
                     <select style={inputStyle} value={venueId} onChange={(e) => setVenueId(e.target.value)}>
                         <option value="">Pick a venue…</option>
                         {venues.map((v) => <option key={v.id} value={v.id}>{v.name}{v.city ? ` — ${v.city}` : ""}</option>)}
@@ -570,6 +588,10 @@ function DetailModal({
     const [auditEntries, setAuditEntries] = React.useState<AuditEntry[]>([]);
     const [showAudit, setShowAudit] = React.useState(false);
     const [busy, setBusy] = React.useState(false);
+    const [showEdit, setShowEdit] = React.useState(false);
+    const [editPrizeId, setEditPrizeId] = React.useState<string | null>(null);
+    const [showAddPrize, setShowAddPrize] = React.useState(false);
+    const qrCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
     const refresh = React.useCallback(async () => {
         try {
@@ -597,6 +619,26 @@ function DetailModal({
     }, [campaignId, onError]);
 
     React.useEffect(() => { void refresh(); }, [refresh]);
+
+    // Render the QR for the campaign's public landing once detail is loaded.
+    // Same pattern as the venue-owner side: client-side toCanvas via dynamic
+    // import so the qrcode dep doesn't bloat the bundle.
+    React.useEffect(() => {
+        if (!detail || !qrCanvasRef.current) return;
+        void (async () => {
+            const { default: QRCode } = await import("qrcode");
+            const url = `${window.location.origin}/predict/${detail.venue.slug}/${detail.match.id}`;
+            await QRCode.toCanvas(qrCanvasRef.current, url, { width: 220, margin: 1, color: { dark: "#000000", light: "#ffffff" } });
+        })();
+    }, [detail]);
+
+    function downloadQr() {
+        if (!qrCanvasRef.current || !detail) return;
+        const a = document.createElement("a");
+        a.href = qrCanvasRef.current.toDataURL("image/png");
+        a.download = `prediction-qr-${detail.campaign.id}.png`;
+        a.click();
+    }
 
     async function action(label: string, fn: () => Promise<unknown>) {
         setBusy(true);
@@ -703,9 +745,37 @@ function DetailModal({
                 </button>
             </div>
 
+            {/* QR + public landing URL */}
+            <div style={{ ...cardStyle, flexDirection: "row", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
+                <canvas ref={qrCanvasRef} style={{ background: "#fff", borderRadius: 8 }} />
+                <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>Public landing QR</div>
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 8 }}>Print this for the venue or share the URL.</div>
+                    <code style={{ fontSize: 11, padding: "5px 9px", background: "var(--secondary)", borderRadius: 6, display: "inline-block", wordBreak: "break-all" }}>
+                        {typeof window !== "undefined" ? `${window.location.origin}/predict/${detail.venue.slug}/${detail.match.id}` : ""}
+                    </code>
+                    <div style={{ marginTop: 10 }}>
+                        <button onClick={downloadQr} style={{ padding: "7px 14px", borderRadius: 999, background: "var(--primary)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>
+                            Download PNG
+                        </button>
+                    </div>
+                </div>
+                <button onClick={() => setShowEdit(true)} style={{ padding: "9px 14px", borderRadius: 8, background: "var(--secondary)", color: "var(--foreground)", border: "1px solid var(--border)", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>
+                    Edit details
+                </button>
+            </div>
+
             {/* Prizes */}
             <div style={{ marginBottom: 14 }}>
-                <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>Prizes ({detail.prizes.length})</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14 }}>Prizes ({detail.prizes.length})</div>
+                    {c.status !== "DRAWN" && (
+                        <button onClick={() => setShowAddPrize(true)}
+                            style={{ padding: "6px 12px", borderRadius: 999, background: "var(--primary)", color: "#fff", fontWeight: 700, border: "none", cursor: "pointer", fontSize: 12 }}>
+                            + Add prize
+                        </button>
+                    )}
+                </div>
                 <div style={{ display: "grid", gap: 8 }}>
                     {detail.prizes.map((p) => (
                         <div key={p.id} style={{ ...cardStyle, flexDirection: "row", gap: 12, alignItems: "center" }}>
@@ -735,11 +805,58 @@ function DetailModal({
                                             style={{ padding: "5px 12px", borderRadius: 999, background: "var(--secondary)", color: "var(--foreground)", border: "1px solid var(--border)", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>Renotify</button>
                                     </>
                                 )}
+                                {!p.drawnAt && (
+                                    <>
+                                        <button disabled={busy} onClick={() => setEditPrizeId(p.id)}
+                                            style={{ padding: "5px 12px", borderRadius: 999, background: "var(--secondary)", color: "var(--foreground)", border: "1px solid var(--border)", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>Edit</button>
+                                        <button disabled={busy} onClick={() => {
+                                            if (!window.confirm(`Delete prize "${p.title}"?`)) return;
+                                            void action("Prize deleted", () => call(`/prizes/${p.id}`, { method: "DELETE" }));
+                                        }} style={{ padding: "5px 12px", borderRadius: 999, background: "rgba(220,38,38,0.12)", color: "#ef4444", border: "1px solid rgba(220,38,38,0.3)", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>Delete</button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     ))}
                 </div>
             </div>
+
+            {/* Edit campaign / Add prize / Edit prize nested modals */}
+            {showEdit && (
+                <EditCampaignNestedModal
+                    campaign={detail.campaign}
+                    onClose={() => setShowEdit(false)}
+                    onSave={(patch) => action("Campaign updated", async () => {
+                        await call("", { method: "PATCH", jsonBody: patch });
+                        setShowEdit(false);
+                    })}
+                />
+            )}
+            {showAddPrize && (
+                <PrizeNestedModal
+                    modalTitle="Add prize"
+                    onClose={() => setShowAddPrize(false)}
+                    onSave={(payload) => action("Prize added", async () => {
+                        await call("/prizes", { method: "POST", jsonBody: payload });
+                        setShowAddPrize(false);
+                    })}
+                />
+            )}
+            {editPrizeId && (() => {
+                const prize = detail.prizes.find((p) => p.id === editPrizeId);
+                if (!prize) return null;
+                return (
+                    <PrizeNestedModal
+                        modalTitle="Edit prize"
+                        initial={prize}
+                        onClose={() => setEditPrizeId(null)}
+                        onSave={(payload) => action("Prize updated", async () => {
+                            await call(`/prizes/${editPrizeId}`, { method: "PATCH", jsonBody: payload });
+                            setEditPrizeId(null);
+                        })}
+                    />
+                );
+            })()}
 
             {/* Entries */}
             <div style={{ marginBottom: 14 }}>
@@ -803,6 +920,176 @@ function DetailModal({
                     </div>
                 </div>
             )}
+        </Modal>
+    );
+}
+
+// ─── Edit campaign nested modal ────────────────────────────────────
+
+function EditCampaignNestedModal({
+    campaign,
+    onClose,
+    onSave,
+}: {
+    campaign: Campaign;
+    onClose: () => void;
+    onSave: (patch: Record<string, unknown>) => void;
+}) {
+    const [title, setTitle] = React.useState(campaign.title);
+    const [description, setDescription] = React.useState(campaign.description || "");
+    const [opensAt, setOpensAt] = React.useState(toLocalDatetimeInput(new Date(campaign.opensAt)));
+    const [closesAt, setClosesAt] = React.useState(toLocalDatetimeInput(new Date(campaign.closesAt)));
+    const [pointsWinner, setPointsWinner] = React.useState(String(campaign.pointsCorrectWinner));
+    const [pointsExact, setPointsExact] = React.useState(String(campaign.pointsExactScore));
+    const [strictIp, setStrictIp] = React.useState(campaign.strictIpDedup);
+
+    function submit() {
+        onSave({
+            title: title.trim() || undefined,
+            description: description.trim() || null,
+            opensAt: new Date(opensAt).toISOString(),
+            closesAt: new Date(closesAt).toISOString(),
+            pointsCorrectWinner: Number(pointsWinner) || campaign.pointsCorrectWinner,
+            pointsExactScore: Number(pointsExact) || campaign.pointsExactScore,
+            strictIpDedup: strictIp,
+        });
+    }
+
+    return (
+        <Modal onClose={onClose}>
+            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 16 }}>Edit campaign</div>
+            <div style={{ display: "grid", gap: 12, marginBottom: 18 }}>
+                <div>
+                    <label style={labelStyle}>Title</label>
+                    <input style={inputStyle} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
+                </div>
+                <div>
+                    <label style={labelStyle}>Description</label>
+                    <textarea style={{ ...inputStyle, minHeight: 60 }} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={4000} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                        <label style={labelStyle}>Opens at</label>
+                        <input type="datetime-local" style={inputStyle} value={opensAt} onChange={(e) => setOpensAt(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Closes at</label>
+                        <input type="datetime-local" style={inputStyle} value={closesAt} onChange={(e) => setClosesAt(e.target.value)} />
+                    </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                        <label style={labelStyle}>Points · winner</label>
+                        <input type="number" style={inputStyle} value={pointsWinner} onChange={(e) => setPointsWinner(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Points · exact score</label>
+                        <input type="number" style={inputStyle} value={pointsExact} onChange={(e) => setPointsExact(e.target.value)} />
+                    </div>
+                </div>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                    <input type="checkbox" checked={strictIp} onChange={(e) => setStrictIp(e.target.checked)} style={{ accentColor: "var(--primary)" }} />
+                    <span>Strict IP dedup</span>
+                </label>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button onClick={onClose} style={{ padding: "10px 18px", borderRadius: 10, background: "var(--secondary)", color: "var(--foreground)", border: "1px solid var(--border)", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Cancel</button>
+                <button onClick={submit} style={{ padding: "10px 22px", borderRadius: 10, background: "var(--primary)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 800, fontSize: 13 }}>Save</button>
+            </div>
+        </Modal>
+    );
+}
+
+// ─── Prize add/edit nested modal ───────────────────────────────────
+
+function PrizeNestedModal({
+    modalTitle,
+    initial,
+    onClose,
+    onSave,
+}: {
+    modalTitle?: string;
+    initial?: Prize;
+    onClose: () => void;
+    onSave: (payload: Record<string, unknown>) => void;
+}) {
+    const [title, setTitle] = React.useState(initial?.title || "");
+    const [description, setDescription] = React.useState(initial?.description || "");
+    const [imageUrl, setImageUrl] = React.useState(initial?.imageUrl || "");
+    const [imageS3Key, setImageS3Key] = React.useState(initial?.imageS3Key || "");
+    const [eligibility, setEligibility] = React.useState<Eligibility>(initial?.eligibility || "CORRECT_WINNER");
+    const [drawCount, setDrawCount] = React.useState(String(initial?.drawCount || 1));
+    const [uploading, setUploading] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+
+    async function uploadImage(file: File) {
+        if (!file.type.startsWith("image/")) { setError("Image files only"); return; }
+        if (file.size > 4 * 1024 * 1024) { setError("Max 4 MB"); return; }
+        setUploading(true);
+        setError(null);
+        try {
+            const presigned = await saFetch<{ uploadUrl: string; publicUrl: string; key: string; uploadHeaders?: Record<string, string> }>("/uploads/presigned-url", {
+                method: "POST",
+                jsonBody: { filename: file.name, contentType: file.type, purpose: "prediction_prize", fileSize: file.size },
+            });
+            const put = await fetch(presigned.uploadUrl, {
+                method: "PUT",
+                headers: { "Content-Type": file.type, ...(presigned.uploadHeaders || {}) },
+                body: file,
+            });
+            if (!put.ok) throw new Error("S3 upload failed");
+            setImageUrl(presigned.publicUrl);
+            setImageS3Key(presigned.key);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Upload failed");
+        } finally {
+            setUploading(false);
+        }
+    }
+
+    function submit() {
+        setError(null);
+        if (!title.trim()) { setError("Title is required"); return; }
+        onSave({
+            title: title.trim(),
+            description: description.trim() || undefined,
+            imageUrl: imageUrl || undefined,
+            imageS3Key: imageS3Key || undefined,
+            eligibility,
+            drawCount: Number(drawCount) || 1,
+        });
+    }
+
+    return (
+        <Modal onClose={onClose}>
+            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 16 }}>{modalTitle || (initial ? "Edit prize" : "Add prize")}</div>
+            <div style={{ display: "grid", gap: 12, marginBottom: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 12 }}>
+                    <label style={{ aspectRatio: "1/1", borderRadius: 8, background: "var(--secondary)", border: "1px solid var(--border)", display: "grid", placeItems: "center", cursor: "pointer", overflow: "hidden" }}>
+                        {imageUrl
+                            ? <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            : <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{uploading ? "Uploading…" : "Upload"}</span>}
+                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
+                    </label>
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <input style={inputStyle} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Prize title" maxLength={200} />
+                        <input style={inputStyle} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" maxLength={400} />
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 8 }}>
+                            <select style={inputStyle} value={eligibility} onChange={(e) => setEligibility(e.target.value as Eligibility)}>
+                                <option value="CORRECT_WINNER">Correct winner</option>
+                                <option value="EXACT_SCORE">Exact score</option>
+                                <option value="ANY_ENTRY">Any entry</option>
+                            </select>
+                            <input type="number" min={1} style={inputStyle} value={drawCount} onChange={(e) => setDrawCount(e.target.value)} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {error && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 10 }}>{error}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button onClick={onClose} style={{ padding: "10px 18px", borderRadius: 10, background: "var(--secondary)", color: "var(--foreground)", border: "1px solid var(--border)", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Cancel</button>
+                <button onClick={submit} style={{ padding: "10px 22px", borderRadius: 10, background: "var(--primary)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 800, fontSize: 13 }}>Save</button>
+            </div>
         </Modal>
     );
 }

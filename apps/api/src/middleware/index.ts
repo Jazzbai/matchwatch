@@ -144,6 +144,12 @@ interface RateLimitConfig {
     maxRequests: number;
     keyPrefix: string;
     keyExtractor?: (c: Context) => string;
+    /**
+     * When Redis is unavailable: fail OPEN (allow through, default) or fail
+     * CLOSED (reject with 503). Use fail-closed for high-privilege surfaces
+     * like super-admin so a Redis blip can't be used to bypass the limit.
+     */
+    failClosed?: boolean;
 }
 
 export function rateLimiter(config: RateLimitConfig) {
@@ -169,9 +175,12 @@ export function rateLimiter(config: RateLimitConfig) {
                 c.header('Retry-After', String(ttl));
                 return c.json(apiError('RATE_LIMITED', 'Too many requests, slow down'), 429);
             }
-        } catch {
-            // If Redis is down, allow the request through
-            logger.warn('Rate limiter: Redis unavailable, allowing request');
+        } catch (err) {
+            if (config.failClosed) {
+                logger.warn({ err, keyPrefix: config.keyPrefix }, 'Rate limiter: Redis unavailable, REJECTING (fail-closed)');
+                return c.json(apiError('SERVICE_UNAVAILABLE', 'Rate limit service unavailable; try again shortly'), 503);
+            }
+            logger.warn({ err, keyPrefix: config.keyPrefix }, 'Rate limiter: Redis unavailable, allowing request');
         }
         await next();
     };
@@ -208,6 +217,20 @@ export const authenticatedRateLimit = rateLimiter({
     maxRequests: 300,
     keyPrefix: 'authed',
     keyExtractor: (c) => c.get('user')?.id || 'unknown',
+});
+
+// Super-admin: tight cap on writes per session-username, fail-CLOSED on
+// Redis outage. If the cookie ever leaks, this is the last line preventing
+// a wipe-the-table attack.
+export const superAdminWriteRateLimit = rateLimiter({
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: Number(process.env.SUPER_ADMIN_WRITE_RATE_LIMIT_MAX || '30'),
+    keyPrefix: 'super_admin_write',
+    failClosed: true,
+    keyExtractor: (c) => {
+        const session = c.get('superAdmin') as { username?: string } | undefined;
+        return session?.username || 'anon';
+    },
 });
 
 export const adminRateLimit = rateLimiter({

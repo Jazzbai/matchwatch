@@ -18,19 +18,23 @@
  */
 
 import { Hono } from 'hono';
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../../db/client';
 import {
     auditLogs,
     matches,
+    notifications,
     predictionCampaigns,
     predictionCampaignPrizes,
     predictionEntries,
     predictionWinners,
+    venueEvents,
     venues,
 } from '../../db/schema';
 import { apiError, apiResponse, paginationMeta, paginationOffset } from '../../lib/utils';
+import { logger } from '../../lib/logger';
+import { superAdminWriteRateLimit } from '../../middleware';
 import {
     drawPrizeWinners,
     redrawPrizeWinners,
@@ -49,6 +53,13 @@ import {
 } from '@matchwatch/shared';
 
 const router = new Hono();
+
+// Gate every write method on the sub-router behind the dedicated super-admin
+// rate limit. GET stays uncapped (visibility shouldn't be throttled).
+router.use('*', async (c, next) => {
+    if (c.req.method === 'GET') return next();
+    return superAdminWriteRateLimit(c, next);
+});
 
 const ALL_STATUSES = ['DRAFT', 'OPEN', 'LOCKED', 'SETTLED', 'DRAWN'] as const;
 type Status = typeof ALL_STATUSES[number];
@@ -80,6 +91,15 @@ function actorMetadata(c: any, extra: Record<string, unknown> = {}) {
     };
 }
 
+function extractRequestIp(c: any): string | null {
+    const raw = c.req.header('x-forwarded-for')
+        || c.req.header('x-real-ip')
+        || c.req.header('cf-connecting-ip')
+        || '';
+    const first = String(raw).split(',')[0]?.trim();
+    return first || null;
+}
+
 async function logSuperAdminAction(
     c: any,
     action: string,
@@ -94,9 +114,16 @@ async function logSuperAdminAction(
             entityType,
             entityId,
             metadata: actorMetadata(c, extra),
+            // Forensic attribution — schema columns exist for this; populating
+            // them lets incident response see whether a destructive action
+            // came from the real admin IP or somewhere new.
+            ipAddress: extractRequestIp(c),
+            userAgent: c.req.header('user-agent') || null,
         });
-    } catch {
-        // Forensic logging — never let it break the response.
+    } catch (err) {
+        // Forensic logging — never let it break the response, but DO surface
+        // the failure in pino output so we can detect a vanishing audit trail.
+        logger.warn({ err, action, entityType, entityId }, 'super-admin audit log insert failed');
     }
 }
 
@@ -105,6 +132,50 @@ async function loadCampaign(campaignId: string) {
         .where(eq(predictionCampaigns.id, campaignId))
         .limit(1);
     return campaign || null;
+}
+
+// Deletes the in-app PREDICTION_WIN notifications that point at this
+// campaign. Used by /unsettle, /force-status backward jumps, and DELETE.
+// (Email + SMS that already left are unrecoverable; we only own the in-app
+// `notifications` rows.)
+async function deletePredictionWinNotifications(tx: any, campaignId: string) {
+    await tx.delete(notifications).where(and(
+        eq(notifications.type, 'PREDICTION_WIN'),
+        sql`${notifications.data}->>'campaignId' = ${campaignId}`,
+    ));
+}
+
+// Resets every byproduct of settlement + draw on a campaign so the state
+// machine can move backward cleanly. Invalidates active winners, clears
+// prize draw flags, resets per-entry flags + points, zeros campaign
+// counters, deletes orphaned PREDICTION_WIN notifications.
+//
+// Caller is responsible for setting the final campaign.status (LOCKED for
+// /unsettle, target status for /force-status). Always runs inside a tx.
+async function tearDownCampaignSettlement(tx: any, campaignId: string) {
+    await tx.update(predictionWinners).set({
+        isInvalidated: true,
+        invalidatedAt: new Date(),
+        invalidatedReason: 'super-admin teardown',
+    }).where(and(
+        eq(predictionWinners.isInvalidated, false),
+        sql`${predictionWinners.prizeId} IN (
+            SELECT ${predictionCampaignPrizes.id} FROM ${predictionCampaignPrizes}
+            WHERE ${predictionCampaignPrizes.campaignId} = ${campaignId}
+        )`,
+    ));
+    await tx.update(predictionCampaignPrizes).set({
+        drawnAt: null,
+        drawnBy: null,
+        updatedAt: new Date(),
+    }).where(eq(predictionCampaignPrizes.campaignId, campaignId));
+    await tx.update(predictionEntries).set({
+        isCorrectWinner: false,
+        isExactScore: false,
+        points: 0,
+        settledAt: null,
+    }).where(eq(predictionEntries.campaignId, campaignId));
+    await deletePredictionWinNotifications(tx, campaignId);
 }
 
 // ─── GET / — cross-venue list with filters
@@ -184,6 +255,23 @@ router.post('/', async (c) => {
     const [match] = await db.select({ id: matches.id }).from(matches)
         .where(eq(matches.id, parsed.data.matchId)).limit(1);
     if (!match) return c.json(apiError('NOT_FOUND', 'Match not found'), 404);
+
+    // Validate venueEventId actually belongs to the chosen venue + match so
+    // we don't seed an inconsistent FK that downstream code (settle/draw +
+    // public landing) depends on.
+    if (parsed.data.venueEventId) {
+        const [ve] = await db.select({ id: venueEvents.id })
+            .from(venueEvents)
+            .where(and(
+                eq(venueEvents.id, parsed.data.venueEventId),
+                eq(venueEvents.venueId, venue.id),
+                eq(venueEvents.matchId, parsed.data.matchId),
+            ))
+            .limit(1);
+        if (!ve) {
+            return c.json(apiError('VALIDATION_ERROR', 'venueEventId does not belong to this venue+match'), 400);
+        }
+    }
 
     try {
         const created = await db.transaction(async (tx) => {
@@ -270,7 +358,12 @@ router.delete('/:id', async (c) => {
         .where(eq(predictionCampaignPrizes.campaignId, campaign.id));
     const keys = prizes.map((p) => p.imageS3Key).filter((k): k is string => Boolean(k));
 
-    await db.delete(predictionCampaigns).where(eq(predictionCampaigns.id, campaign.id));
+    await db.transaction(async (tx) => {
+        // Clean up in-app PREDICTION_WIN rows whose actionUrl + data.campaignId
+        // would otherwise dangle after the campaign row goes away.
+        await deletePredictionWinNotifications(tx, campaign.id);
+        await tx.delete(predictionCampaigns).where(eq(predictionCampaigns.id, campaign.id));
+    });
     if (keys.length > 0) await deleteStorageObjects(keys).catch(() => undefined);
 
     await logSuperAdminAction(c, 'SUPER_ADMIN_PREDICTION_CAMPAIGN_DELETED', 'PredictionCampaign', campaign.id, {
@@ -281,6 +374,15 @@ router.delete('/:id', async (c) => {
 });
 
 // ─── POST /:id/force-status — escape hatch
+// Backward jumps (anything → DRAFT/OPEN/LOCKED from SETTLED/DRAWN, or
+// DRAWN → SETTLED) run the full settlement teardown so per-entry flags,
+// prize draw flags, winners, counters, and PREDICTION_WIN notifications
+// all get reset — otherwise the campaign would lie about its state.
+//
+// Forward jumps to SETTLED/DRAWN are GATED: SETTLED requires a regular
+// /settle call first; DRAWN requires every prize already drawn. We reject
+// rather than fake the state because a phantom DRAWN with no winners is
+// worse than a 409 error.
 router.post('/:id/force-status', async (c) => {
     const campaign = await loadCampaign(c.req.param('id'));
     if (!campaign) return c.json(apiError('NOT_FOUND', 'Campaign not found'), 404);
@@ -290,42 +392,86 @@ router.post('/:id/force-status', async (c) => {
     if (!parsed.success) {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
     }
-
-    const updates: Partial<typeof predictionCampaigns.$inferInsert> & { updatedAt: Date } = {
-        status: parsed.data.status,
-        updatedAt: new Date(),
-    };
-    // Keep the timestamps coherent so the UI doesn't show "DRAWN but raffleDrawnAt=null".
-    if (parsed.data.status === 'DRAWN' && !campaign.raffleDrawnAt) updates.raffleDrawnAt = new Date();
-    if (parsed.data.status === 'SETTLED' && !campaign.settledAt) updates.settledAt = new Date();
-    if (parsed.data.status === 'DRAFT' || parsed.data.status === 'OPEN' || parsed.data.status === 'LOCKED') {
-        updates.raffleDrawnAt = null;
-    }
-    if (parsed.data.status === 'DRAFT' || parsed.data.status === 'OPEN') {
-        updates.settledAt = null;
+    const from = campaign.status as Status;
+    const to = parsed.data.status;
+    if (from === to) {
+        return c.json(apiResponse({ message: `Campaign already in status ${to}` }));
     }
 
-    await db.update(predictionCampaigns).set(updates).where(eq(predictionCampaigns.id, campaign.id));
-    await logSuperAdminAction(c, 'SUPER_ADMIN_PREDICTION_FORCE_STATUS', 'PredictionCampaign', campaign.id, {
-        from: campaign.status,
-        to: parsed.data.status,
-        reason: parsed.data.reason,
+    const orderRank: Record<Status, number> = { DRAFT: 0, OPEN: 1, LOCKED: 2, SETTLED: 3, DRAWN: 4 };
+    const isBackward = orderRank[to] < orderRank[from];
+
+    // Gate forward jumps to SETTLED / DRAWN.
+    if (to === 'SETTLED' && !isBackward) {
+        return c.json(apiError('CONFLICT', 'Cannot force-jump forward to SETTLED — call /settle with a FINISHED match instead.'), 409);
+    }
+    if (to === 'DRAWN' && !isBackward) {
+        const undrawn = await db.select({ id: predictionCampaignPrizes.id })
+            .from(predictionCampaignPrizes)
+            .where(and(
+                eq(predictionCampaignPrizes.campaignId, campaign.id),
+                isNull(predictionCampaignPrizes.drawnAt),
+            ))
+            .limit(1);
+        if (undrawn.length > 0) {
+            return c.json(apiError('CONFLICT', 'Cannot force to DRAWN — draw every prize first.'), 409);
+        }
+    }
+
+    await db.transaction(async (tx) => {
+        // For any backward jump from SETTLED/DRAWN, tear down all the derived
+        // state so the new status isn't a lie.
+        if (isBackward && (from === 'SETTLED' || from === 'DRAWN')) {
+            await tearDownCampaignSettlement(tx, campaign.id);
+        }
+
+        const updates: Partial<typeof predictionCampaigns.$inferInsert> & { updatedAt: Date } = {
+            status: to,
+            updatedAt: new Date(),
+        };
+        // Coherent timestamps for the target status.
+        if (to === 'DRAFT' || to === 'OPEN' || to === 'LOCKED') {
+            updates.raffleDrawnAt = null;
+            updates.settledAt = null;
+            updates.correctWinnerCount = 0;
+            updates.exactScoreCount = 0;
+        } else if (to === 'SETTLED') {
+            // Only reachable as a backward jump from DRAWN (forward forbidden).
+            updates.raffleDrawnAt = null;
+            if (!campaign.settledAt) updates.settledAt = new Date();
+        } else if (to === 'DRAWN') {
+            // Only reachable as forward when every prize already drawn.
+            if (!campaign.raffleDrawnAt) updates.raffleDrawnAt = new Date();
+            if (!campaign.settledAt) updates.settledAt = new Date();
+        }
+
+        await tx.update(predictionCampaigns).set(updates).where(eq(predictionCampaigns.id, campaign.id));
     });
-    return c.json(apiResponse({ message: `Forced status to ${parsed.data.status}` }));
+
+    await logSuperAdminAction(c, 'SUPER_ADMIN_PREDICTION_FORCE_STATUS', 'PredictionCampaign', campaign.id, {
+        from, to, reason: parsed.data.reason, teardown: isBackward && (from === 'SETTLED' || from === 'DRAWN'),
+    });
+    return c.json(apiResponse({ message: `Forced status to ${to}` }));
 });
 
 // ─── State-machine action shortcuts (no ownership check, audited as super-admin)
-async function transitionEndpoint(c: any, targetStatus: Status, validFrom: Status[], setSettled = false) {
+async function transitionEndpoint(c: any, targetStatus: Status, validFrom: Status[]) {
     const campaign = await loadCampaign(c.req.param('id'));
     if (!campaign) return c.json(apiError('NOT_FOUND', 'Campaign not found'), 404);
     if (!validFrom.includes(campaign.status as Status)) {
         return c.json(apiError('CONFLICT', `Cannot transition from ${campaign.status} to ${targetStatus} via this endpoint; use /force-status`), 409);
     }
+    // Always wipe any stale settled_at / raffle_drawn_at when moving to a
+    // pre-settle status. /force-status can drop a campaign back to DRAFT/OPEN
+    // and leave timestamps populated; downstream lock/publish should always
+    // normalize so the state machine is internally consistent regardless of
+    // how we got here.
     const updates: Partial<typeof predictionCampaigns.$inferInsert> & { updatedAt: Date } = {
         status: targetStatus,
         updatedAt: new Date(),
+        settledAt: null,
+        raffleDrawnAt: null,
     };
-    if (setSettled && !campaign.settledAt) updates.settledAt = new Date();
     await db.update(predictionCampaigns).set(updates).where(eq(predictionCampaigns.id, campaign.id));
     await logSuperAdminAction(c, `SUPER_ADMIN_PREDICTION_${targetStatus}`, 'PredictionCampaign', campaign.id, {
         from: campaign.status, to: targetStatus,
@@ -379,33 +525,7 @@ router.post('/:id/unsettle', async (c) => {
     if (!campaign) return c.json(apiError('NOT_FOUND', 'Campaign not found'), 404);
 
     await db.transaction(async (tx) => {
-        // First, soft-invalidate all active winners (super-admin override of
-        // the venue-owner constraint that says "redraw drawn prizes first").
-        await tx.update(predictionWinners).set({
-            isInvalidated: true,
-            invalidatedAt: new Date(),
-            invalidatedReason: 'super-admin unsettle',
-        }).where(and(
-            eq(predictionWinners.isInvalidated, false),
-            sql`${predictionWinners.prizeId} IN (
-                SELECT ${predictionCampaignPrizes.id} FROM ${predictionCampaignPrizes}
-                WHERE ${predictionCampaignPrizes.campaignId} = ${campaign.id}
-            )`,
-        ));
-        // Reset prize drawn flags.
-        await tx.update(predictionCampaignPrizes).set({
-            drawnAt: null,
-            drawnBy: null,
-            updatedAt: new Date(),
-        }).where(eq(predictionCampaignPrizes.campaignId, campaign.id));
-        // Reset entries.
-        await tx.update(predictionEntries).set({
-            isCorrectWinner: false,
-            isExactScore: false,
-            points: 0,
-            settledAt: null,
-        }).where(eq(predictionEntries.campaignId, campaign.id));
-        // Roll the campaign back to LOCKED.
+        await tearDownCampaignSettlement(tx, campaign.id);
         await tx.update(predictionCampaigns).set({
             status: 'LOCKED',
             settledAt: null,
@@ -419,7 +539,7 @@ router.post('/:id/unsettle', async (c) => {
     await logSuperAdminAction(c, 'SUPER_ADMIN_PREDICTION_UNSETTLED', 'PredictionCampaign', campaign.id, {
         priorStatus: campaign.status,
     });
-    return c.json(apiResponse({ message: 'Campaign unsettled — entries and winners reset' }));
+    return c.json(apiResponse({ message: 'Campaign unsettled — entries and winners reset, in-app notifications cleared' }));
 });
 
 // ─── Prizes ────────────────────────────────────────────────────────
@@ -632,7 +752,7 @@ router.get('/:id/audit-log', async (c) => {
         ? await db.select().from(auditLogs)
             .where(and(
                 eq(auditLogs.entityType, 'PredictionPrize'),
-                sql`${auditLogs.entityId} IN ${prizeIds}`,
+                inArray(auditLogs.entityId, prizeIds),
             ))
             .orderBy(desc(auditLogs.createdAt))
             .limit(200)

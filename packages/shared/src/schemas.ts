@@ -300,11 +300,20 @@ export const predictionPrizeEligibilityValues = ['CORRECT_WINNER', 'EXACT_SCORE'
 export const predictionWinnerPickValues = ['HOME', 'AWAY', 'DRAW'] as const;
 
 // Prize subschema used both on create (with the campaign) and on add-prize.
+// imageUrl is restricted to http(s) so a malicious payload can't pass a
+// `javascript:` or `data:` URL that would later be loaded into admin
+// browsers (tracking pixel / SSRF surface). Direct XSS isn't reachable
+// through <img src> but the side channels are real.
 export const predictionPrizeInputSchema = z.object({
     sortOrder: z.coerce.number().int().min(0).max(1000).optional(),
     title: z.string().min(1).max(200),
     description: z.string().max(4000).optional().nullable(),
-    imageUrl: z.string().url().max(500).optional().nullable(),
+    imageUrl: z.string()
+        .url()
+        .max(500)
+        .refine((u) => /^https?:\/\//i.test(u), { message: 'imageUrl must be http(s)' })
+        .optional()
+        .nullable(),
     imageS3Key: z.string().max(500).optional().nullable(),
     eligibility: z.enum(predictionPrizeEligibilityValues),
     drawCount: z.coerce.number().int().positive().max(1000).default(1),
