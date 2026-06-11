@@ -32,6 +32,8 @@ type CampaignPayload = {
         matchDateUtc: string;
         status: string;
         venueName: string | null;
+        stage: string | null;
+        isKnockout: boolean;
     };
     prizes: Array<{
         id: string;
@@ -154,6 +156,7 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
     const [notFoundFlag, setNotFoundFlag] = useState(false);
 
     const [displayName, setDisplayName] = useState("");
+    const [email, setEmail] = useState("");
     const [winner, setWinner] = useState<WinnerPick | null>(null);
     const [homeScore, setHomeScore] = useState("");
     const [awayScore, setAwayScore] = useState("");
@@ -166,6 +169,37 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
         () => Boolean(campaign?.prizes.some((p) => p.eligibility === "EXACT_SCORE")),
         [campaign],
     );
+    const isKnockout = Boolean(campaign?.match.isKnockout);
+    const pickOptions: WinnerPick[] = isKnockout ? ["HOME", "AWAY"] : ["HOME", "DRAW", "AWAY"];
+
+    // If user already picked DRAW and we learn this is a knockout, clear it.
+    useEffect(() => {
+        if (isKnockout && winner === "DRAW") setWinner(null);
+    }, [isKnockout, winner]);
+
+    /**
+     * Score-vs-pick consistency mirrors the server check
+     * (apps/api/src/lib/predictionStatus.ts → validateScoreConsistency).
+     * For knockouts, equal scores are allowed under HOME/AWAY (penalties decide).
+     */
+    function checkScoreConsistency(): string | null {
+        if (!winner) return null;
+        if (!homeScore || !awayScore) return null;
+        const h = Number(homeScore);
+        const a = Number(awayScore);
+        if (Number.isNaN(h) || Number.isNaN(a)) return null;
+        if (winner === "DRAW") {
+            if (isKnockout) return "Knockout matches cannot end in a draw — pick a winner.";
+            return h === a ? null : "Draw prediction needs equal scores.";
+        }
+        if (winner === "HOME") {
+            if (isKnockout) return h >= a ? null : "If home wins, home score cannot be lower than away.";
+            return h > a ? null : "If home wins, home score must be greater than away.";
+        }
+        if (isKnockout) return a >= h ? null : "If away wins, away score cannot be lower than home.";
+        return a > h ? null : "If away wins, away score must be greater than home.";
+    }
+    const scoreHint = checkScoreConsistency();
 
     useEffect(() => {
         let active = true;
@@ -203,8 +237,17 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
             setSubmitError("Enter both scores to qualify for the exact-score prize.");
             return;
         }
+        if (scoreHint) {
+            setSubmitError(scoreHint);
+            return;
+        }
         if (!displayName.trim()) {
             setSubmitError("Enter your name.");
+            return;
+        }
+        const trimmedEmail = email.trim();
+        if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+            setSubmitError("Email looks off — leave it blank if you don't want to share it.");
             return;
         }
         if (!getAccessToken()) {
@@ -220,6 +263,7 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
             };
             if (homeScore) payload.predictedHomeScore = Number(homeScore);
             if (awayScore) payload.predictedAwayScore = Number(awayScore);
+            if (trimmedEmail) payload.email = trimmedEmail;
 
             await api.post(`/prediction-campaigns/${campaign.id}/entries`, payload);
             setSubmitted(true);
@@ -361,9 +405,11 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
                             </p>
 
                             <div className="pp-fld">
-                                <span className="pp-lbl">Who wins?</span>
-                                <div className="pp-picks">
-                                    {(["HOME", "DRAW", "AWAY"] as WinnerPick[]).map((opt) => (
+                                <span className="pp-lbl">
+                                    Who wins?{isKnockout && <span style={{ color: "var(--mw-accent)", marginLeft: 8 }}>· Knockout — no draws</span>}
+                                </span>
+                                <div className="pp-picks" style={{ gridTemplateColumns: `repeat(${pickOptions.length},1fr)` }}>
+                                    {pickOptions.map((opt) => (
                                         <button
                                             key={opt}
                                             type="button"
@@ -377,7 +423,7 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
                             </div>
 
                             <div className="pp-fld">
-                                <span className="pp-lbl">Score</span>
+                                <span className="pp-lbl">Score{isKnockout && " (after extra time)"}</span>
                                 <div className="pp-scores">
                                     <input
                                         className="pp-inp pp-score"
@@ -393,6 +439,9 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
                                         onChange={(e) => setAwayScore(e.target.value)}
                                     />
                                 </div>
+                                {scoreHint && (
+                                    <p style={{ color: "#f59e0b", fontSize: 12, margin: "8px 0 0" }}>{scoreHint}</p>
+                                )}
                             </div>
 
                             <div className="pp-fld">
@@ -404,6 +453,20 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
                                     onChange={(e) => setDisplayName(e.target.value)}
                                     placeholder="What should we call you on the leaderboard?"
                                     maxLength={100}
+                                />
+                            </div>
+
+                            <div className="pp-fld">
+                                <label className="pp-lbl" htmlFor="pp-email">Email <span style={{ textTransform: "none", letterSpacing: 0, color: "var(--mw-dim)" }}>(optional)</span></label>
+                                <input
+                                    id="pp-email"
+                                    className="pp-inp"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="you@example.com — so we can email you if you win"
+                                    maxLength={255}
+                                    autoComplete="email"
                                 />
                             </div>
 

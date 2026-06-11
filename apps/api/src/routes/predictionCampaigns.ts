@@ -27,7 +27,7 @@ import { authMiddleware, authRateLimit } from '../middleware';
 import { apiError, apiResponse } from '../lib/utils';
 import { getRequestIp } from '../lib/recaptcha';
 import { submitPredictionEntrySchema } from '@matchwatch/shared';
-import { isCampaignAcceptingEntries } from '../lib/predictionStatus';
+import { isCampaignAcceptingEntries, isKnockoutStage, validateScoreConsistency } from '../lib/predictionStatus';
 
 const router = new Hono();
 
@@ -94,6 +94,8 @@ function publicCampaignPayload(row: NonNullable<Awaited<ReturnType<typeof loadCa
             matchDateUtc: match.matchDateUtc,
             status: match.status,
             venueName: match.venueName,
+            stage: match.stage,
+            isKnockout: isKnockoutStage(match.stage),
         },
         prizes: prizes.map((p) => ({
             id: p.id,
@@ -168,10 +170,16 @@ router.post('/:id/entries', authRateLimit, authMiddleware, async (c) => {
     }
 
     const campaignId = c.req.param('id');
-    const [campaign] = await db.select().from(predictionCampaigns)
+    const [campaignRow] = await db.select({
+        campaign: predictionCampaigns,
+        matchStage: matches.stage,
+    })
+        .from(predictionCampaigns)
+        .innerJoin(matches, eq(predictionCampaigns.matchId, matches.id))
         .where(eq(predictionCampaigns.id, campaignId))
         .limit(1);
-    if (!campaign) return c.json(apiError('NOT_FOUND', 'Campaign not found'), 404);
+    if (!campaignRow) return c.json(apiError('NOT_FOUND', 'Campaign not found'), 404);
+    const campaign = campaignRow.campaign;
 
     const now = new Date();
     if (now >= campaign.closesAt) {
@@ -179,6 +187,21 @@ router.post('/:id/entries', authRateLimit, authMiddleware, async (c) => {
     }
     if (!isCampaignAcceptingEntries(campaign.status, campaign.opensAt, campaign.closesAt, now)) {
         return c.json(apiError('NOT_OPEN', `Campaign is in status ${campaign.status} and not accepting entries`), 409);
+    }
+
+    // Reject DRAW for knockout matches, then enforce score-vs-pick consistency.
+    const isKnockout = isKnockoutStage(campaignRow.matchStage);
+    if (isKnockout && parsed.data.predictedWinner === 'DRAW') {
+        return c.json(apiError('VALIDATION_ERROR', 'Knockout matches cannot end in a draw. Pick a winner.'), 400);
+    }
+    const consistency = validateScoreConsistency(
+        parsed.data.predictedWinner,
+        parsed.data.predictedHomeScore,
+        parsed.data.predictedAwayScore,
+        isKnockout,
+    );
+    if (!consistency.ok) {
+        return c.json(apiError('VALIDATION_ERROR', consistency.reason), 400);
     }
 
     const ip = getRequestIp(c.req.raw.headers);
@@ -204,6 +227,13 @@ router.post('/:id/entries', authRateLimit, authMiddleware, async (c) => {
         }
     }
 
+    // Prefer the form-supplied email over the JWT placeholder
+    // (phone-OTP users get phone_*@matchwatch.internal — useless for notify).
+    const placeholderEmail = (email: string | null | undefined) =>
+        !email || email.endsWith('@matchwatch.internal');
+    const entryEmail = parsed.data.email
+        ?? (placeholderEmail(user.email) ? null : user.email!);
+
     try {
         const inserted = await db.transaction(async (tx) => {
             const [entry] = await tx.insert(predictionEntries).values({
@@ -211,7 +241,7 @@ router.post('/:id/entries', authRateLimit, authMiddleware, async (c) => {
                 userId: user.id,
                 displayName: parsed.data.displayName,
                 phone: user.phone!,
-                email: user.email ?? null,
+                email: entryEmail,
                 ipHash,
                 userAgent,
                 predictedWinner: parsed.data.predictedWinner,

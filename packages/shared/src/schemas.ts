@@ -355,6 +355,7 @@ export const submitPredictionEntrySchema = z.object({
     predictedWinner: z.enum(predictionWinnerPickValues),
     predictedHomeScore: z.coerce.number().int().min(0).max(99).optional(),
     predictedAwayScore: z.coerce.number().int().min(0).max(99).optional(),
+    email: z.string().trim().email().max(255).optional().nullable(),
 });
 
 export const redrawPredictionPrizeSchema = z.object({
