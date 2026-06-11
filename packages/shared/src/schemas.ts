@@ -328,7 +328,6 @@ export const createPredictionCampaignSchema = z.object({
     closesAt: z.string().datetime(),
     pointsExactScore: z.coerce.number().int().min(0).max(1000).optional(),
     pointsCorrectWinner: z.coerce.number().int().min(0).max(1000).optional(),
-    strictIpDedup: z.boolean().optional(),
     prizes: z.array(predictionPrizeInputSchema).min(1).max(20),
 }).superRefine((value, ctx) => {
     if (new Date(value.closesAt).getTime() <= new Date(value.opensAt).getTime()) {
@@ -347,11 +346,12 @@ export const updatePredictionCampaignSchema = z.object({
     closesAt: z.string().datetime().optional(),
     pointsExactScore: z.coerce.number().int().min(0).max(1000).optional(),
     pointsCorrectWinner: z.coerce.number().int().min(0).max(1000).optional(),
-    strictIpDedup: z.boolean().optional(),
 });
 
 export const submitPredictionEntrySchema = z.object({
     displayName: z.string().min(1).max(100),
+    // Raw user input. The server normalizes to E.164 and validates the result.
+    phone: z.string().trim().min(7).max(25),
     predictedWinner: z.enum(predictionWinnerPickValues),
     predictedHomeScore: z.coerce.number().int().min(0).max(99).optional(),
     predictedAwayScore: z.coerce.number().int().min(0).max(99).optional(),

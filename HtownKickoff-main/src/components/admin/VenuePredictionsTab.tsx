@@ -275,7 +275,6 @@ function CreateCampaignModal({
     const [prizes, setPrizes] = React.useState<Prize[]>([
         { title: "", description: "", imageUrl: "", imageS3Key: "", eligibility: "CORRECT_WINNER", drawCount: 1 },
     ]);
-    const [strictIpDedup, setStrictIpDedup] = React.useState(false);
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
@@ -350,7 +349,6 @@ function CreateCampaignModal({
                 closesAt: new Date(closesAt).toISOString(),
                 pointsCorrectWinner: Number(pointsCorrectWinner) || 1,
                 pointsExactScore: Number(pointsExactScore) || 2,
-                strictIpDedup,
                 prizes: prizes.map((p, idx) => ({
                     title: p.title.trim(),
                     description: p.description.trim() || undefined,
@@ -418,14 +416,9 @@ function CreateCampaignModal({
                     </div>
                 </div>
 
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 12, borderRadius: 10, background: "var(--secondary)", border: "1px solid var(--border)", cursor: "pointer", fontSize: 13 }}>
-                    <input type="checkbox" checked={strictIpDedup} onChange={(e) => setStrictIpDedup(e.target.checked)} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--primary)" }} />
-                    <span>
-                        <strong>Strict IP dedup</strong> — one entry per network address. Off by default
-                        because shared venue WiFi blocks legit second predictors. Turn on for high-value
-                        prizes or trusted environments where every device has cellular.
-                    </span>
-                </label>
+                <div style={{ padding: 12, borderRadius: 10, background: "var(--secondary)", border: "1px solid var(--border)", fontSize: 13, color: "var(--muted-foreground)" }}>
+                    <strong style={{ color: "var(--foreground)" }}>Dedup rule:</strong> one entry per phone number AND one per network address per campaign. Fans on the same venue WiFi can submit one entry total — they should switch to cellular if they want to play individually.
+                </div>
             </div>
 
             <div style={{ marginBottom: 16 }}>

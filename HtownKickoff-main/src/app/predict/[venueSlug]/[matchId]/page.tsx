@@ -4,9 +4,8 @@ import React, { Suspense, use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FloatingNav } from "../../../../components/AppShell";
-import { PhoneAuthModal } from "../../../../components/PhoneAuthModal";
 import { Countdown } from "../../../../components/Countdown";
-import { api, getAccessToken } from "../../../../lib/api";
+import { api, ApiClientError } from "../../../../lib/api";
 
 type Eligibility = "CORRECT_WINNER" | "EXACT_SCORE" | "ANY_ENTRY";
 type WinnerPick = "HOME" | "AWAY" | "DRAW";
@@ -156,6 +155,7 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
     const [notFoundFlag, setNotFoundFlag] = useState(false);
 
     const [displayName, setDisplayName] = useState("");
+    const [phone, setPhone] = useState("");
     const [email, setEmail] = useState("");
     const [winner, setWinner] = useState<WinnerPick | null>(null);
     const [homeScore, setHomeScore] = useState("");
@@ -163,7 +163,6 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [submitted, setSubmitted] = useState(false);
-    const [showAuthModal, setShowAuthModal] = useState(false);
 
     const hasExactScorePrize = useMemo(
         () => Boolean(campaign?.prizes.some((p) => p.eligibility === "EXACT_SCORE")),
@@ -228,6 +227,9 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
     }, [notFoundFlag]);
 
     async function submit() {
+        // Double-tap guard: setSubmitting(true) is async; React might still be
+        // batching when a fast user fires the second click. Bail explicitly.
+        if (submitting || submitted) return;
         if (!campaign) return;
         if (!winner) {
             setSubmitError("Pick a winner first.");
@@ -245,13 +247,16 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
             setSubmitError("Enter your name.");
             return;
         }
+        const trimmedPhone = phone.trim();
+        // Loose client-side check — server does proper E.164 normalization.
+        const phoneDigits = trimmedPhone.replace(/[^\d+]/g, "");
+        if (phoneDigits.replace(/\D/g, "").length < 10) {
+            setSubmitError("Enter a valid phone number so we can let you know if you win.");
+            return;
+        }
         const trimmedEmail = email.trim();
         if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
             setSubmitError("Email looks off — leave it blank if you don't want to share it.");
-            return;
-        }
-        if (!getAccessToken()) {
-            setShowAuthModal(true);
             return;
         }
         setSubmitting(true);
@@ -259,6 +264,7 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
         try {
             const payload: Record<string, unknown> = {
                 displayName: displayName.trim(),
+                phone: trimmedPhone,
                 predictedWinner: winner,
             };
             if (homeScore) payload.predictedHomeScore = Number(homeScore);
@@ -268,17 +274,33 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
             await api.post(`/prediction-campaigns/${campaign.id}/entries`, payload);
             setSubmitted(true);
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Failed to submit prediction.";
-            setSubmitError(message);
+            setSubmitError(humanizeSubmitError(err));
         } finally {
             setSubmitting(false);
         }
     }
 
-    function handlePhoneSuccess() {
-        setShowAuthModal(false);
-        // Retry submit after auth
-        void submit();
+    function humanizeSubmitError(err: unknown): string {
+        if (err instanceof ApiClientError) {
+            switch (err.code) {
+                case "IP_BLOCKED":
+                    return "Someone on this network has already entered this campaign. Switch to cellular data and try again.";
+                case "DUPLICATE_ENTRY":
+                    return "This phone has already entered this campaign.";
+                case "RATE_LIMITED":
+                    return "Too many attempts — wait a minute and try again.";
+                case "CLOSED":
+                    return "Predictions just closed for this match.";
+                case "NOT_OPEN":
+                    return "Predictions aren't open for this campaign yet.";
+                case "VALIDATION_ERROR":
+                    return err.message || "Some of the details look off — please check and try again.";
+                case "NOT_FOUND":
+                    return "This prediction campaign is no longer available.";
+            }
+            return err.message || "Failed to submit prediction.";
+        }
+        return err instanceof Error ? err.message : "Failed to submit prediction.";
     }
 
     if (loading) {
@@ -457,6 +479,21 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
                             </div>
 
                             <div className="pp-fld">
+                                <label className="pp-lbl" htmlFor="pp-phone">Phone number</label>
+                                <input
+                                    id="pp-phone"
+                                    className="pp-inp"
+                                    type="tel"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    placeholder="+1 555 123 4567"
+                                    maxLength={25}
+                                    autoComplete="tel"
+                                    inputMode="tel"
+                                />
+                            </div>
+
+                            <div className="pp-fld">
                                 <label className="pp-lbl" htmlFor="pp-email">Email <span style={{ textTransform: "none", letterSpacing: 0, color: "var(--mw-dim)" }}>(optional)</span></label>
                                 <input
                                     id="pp-email"
@@ -477,19 +514,12 @@ function PredictContent({ params }: { params: Promise<{ venueSlug: string; match
                             {submitError && <p className="pp-error">{submitError}</p>}
 
                             <p style={{ fontSize: 11, color: "var(--mw-dim)", marginTop: 14, textAlign: "center" }}>
-                                One entry per person per match. Phone verification required.
+                                One entry per phone, one entry per network. If you win, we&apos;ll text you.
                             </p>
                         </div>
                     )}
                 </section>
             </div>
-
-            <PhoneAuthModal
-                isOpen={showAuthModal}
-                onClose={() => setShowAuthModal(false)}
-                onSuccess={handlePhoneSuccess}
-                title="Verify your phone to enter"
-            />
         </div>
     );
 }

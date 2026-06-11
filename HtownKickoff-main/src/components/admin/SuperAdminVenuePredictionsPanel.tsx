@@ -328,7 +328,6 @@ function CreateCampaignModal({ onClose, onCreated }: { onClose: () => void; onCr
     const [closesAt, setClosesAt] = React.useState("");
     const [pointsWinner, setPointsWinner] = React.useState("1");
     const [pointsExact, setPointsExact] = React.useState("2");
-    const [strictIp, setStrictIp] = React.useState(false);
     const [prizes, setPrizes] = React.useState<PrizeInput[]>([
         { title: "", description: "", imageUrl: "", imageS3Key: "", eligibility: "CORRECT_WINNER", drawCount: 1 },
     ]);
@@ -434,7 +433,6 @@ function CreateCampaignModal({ onClose, onCreated }: { onClose: () => void; onCr
                     closesAt: new Date(closesAt).toISOString(),
                     pointsCorrectWinner: Number(pointsWinner) || 1,
                     pointsExactScore: Number(pointsExact) || 2,
-                    strictIpDedup: strictIp,
                     prizes: prizes.map((p, idx) => ({
                         title: p.title.trim(),
                         description: p.description.trim() || undefined,
@@ -511,10 +509,9 @@ function CreateCampaignModal({ onClose, onCreated }: { onClose: () => void; onCr
                         <input type="number" style={inputStyle} value={pointsExact} onChange={(e) => setPointsExact(e.target.value)} />
                     </div>
                 </div>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                    <input type="checkbox" checked={strictIp} onChange={(e) => setStrictIp(e.target.checked)} style={{ accentColor: "var(--primary)" }} />
-                    <span>Strict IP dedup</span>
-                </label>
+                <div style={{ fontSize: 12, color: "var(--muted-foreground)", padding: 10, borderRadius: 8, background: "var(--secondary)" }}>
+                    Dedup: one entry per phone and one per network address per campaign (always on).
+                </div>
             </div>
 
             <div style={{ marginBottom: 14 }}>
@@ -941,7 +938,6 @@ function EditCampaignNestedModal({
     const [closesAt, setClosesAt] = React.useState(toLocalDatetimeInput(new Date(campaign.closesAt)));
     const [pointsWinner, setPointsWinner] = React.useState(String(campaign.pointsCorrectWinner));
     const [pointsExact, setPointsExact] = React.useState(String(campaign.pointsExactScore));
-    const [strictIp, setStrictIp] = React.useState(campaign.strictIpDedup);
 
     function submit() {
         onSave({
@@ -951,7 +947,6 @@ function EditCampaignNestedModal({
             closesAt: new Date(closesAt).toISOString(),
             pointsCorrectWinner: Number(pointsWinner) || campaign.pointsCorrectWinner,
             pointsExactScore: Number(pointsExact) || campaign.pointsExactScore,
-            strictIpDedup: strictIp,
         });
     }
 
@@ -987,10 +982,6 @@ function EditCampaignNestedModal({
                         <input type="number" style={inputStyle} value={pointsExact} onChange={(e) => setPointsExact(e.target.value)} />
                     </div>
                 </div>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                    <input type="checkbox" checked={strictIp} onChange={(e) => setStrictIp(e.target.checked)} style={{ accentColor: "var(--primary)" }} />
-                    <span>Strict IP dedup</span>
-                </label>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button onClick={onClose} style={{ padding: "10px 18px", borderRadius: 10, background: "var(--secondary)", color: "var(--foreground)", border: "1px solid var(--border)", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Cancel</button>

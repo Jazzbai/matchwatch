@@ -38,7 +38,6 @@ import {
     predictionPrizeInputSchema,
     redrawPredictionPrizeSchema,
     unlockPredictionCampaignSchema,
-    paginationSchema,
 } from '@matchwatch/shared';
 
 const router = new Hono();
@@ -145,7 +144,6 @@ router.post('/', async (c) => {
                 closesAt: new Date(parsed.data.closesAt),
                 pointsExactScore: parsed.data.pointsExactScore ?? 2,
                 pointsCorrectWinner: parsed.data.pointsCorrectWinner ?? 1,
-                strictIpDedup: parsed.data.strictIpDedup ?? false,
                 createdBy: ctx.user.id,
             }).returning();
 
@@ -206,7 +204,6 @@ router.patch('/:id', async (c) => {
     if (parsed.data.closesAt !== undefined) updates.closesAt = new Date(parsed.data.closesAt);
     if (parsed.data.pointsExactScore !== undefined) updates.pointsExactScore = parsed.data.pointsExactScore;
     if (parsed.data.pointsCorrectWinner !== undefined) updates.pointsCorrectWinner = parsed.data.pointsCorrectWinner;
-    if (parsed.data.strictIpDedup !== undefined) updates.strictIpDedup = parsed.data.strictIpDedup;
 
     await db.update(predictionCampaigns).set(updates).where(eq(predictionCampaigns.id, ctx.campaign.id));
     await db.insert(auditLogs).values({
@@ -402,11 +399,18 @@ router.delete('/:id/prizes/:prizeId', async (c) => {
     return c.json(apiResponse({ message: 'Prize deleted' }));
 });
 
+// Local schema — shared paginationSchema caps limit at 50; owner's entries
+// view legitimately wants up to 100/page on busy campaigns.
+const ownerEntriesQuerySchema = z.object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 // ─── GET /:id/entries — paginated, owner sees full phone
 router.get('/:id/entries', async (c) => {
     const ctx = await requireOwnedCampaign(c, c.req.param('id'));
     if (!ctx.ok) return ctx.error;
-    const query = paginationSchema.safeParse(c.req.query());
+    const query = ownerEntriesQuerySchema.safeParse(c.req.query());
     if (!query.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid query', query.error.issues), 400);
     const { page, limit } = query.data;
     const offset = paginationOffset(page, limit);

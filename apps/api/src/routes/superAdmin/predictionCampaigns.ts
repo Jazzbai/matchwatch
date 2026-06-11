@@ -49,7 +49,6 @@ import {
     predictionPrizeInputSchema,
     redrawPredictionPrizeSchema,
     unlockPredictionCampaignSchema,
-    paginationSchema,
 } from '@matchwatch/shared';
 
 const router = new Hono();
@@ -285,7 +284,6 @@ router.post('/', async (c) => {
                 closesAt: new Date(parsed.data.closesAt),
                 pointsExactScore: parsed.data.pointsExactScore ?? 2,
                 pointsCorrectWinner: parsed.data.pointsCorrectWinner ?? 1,
-                strictIpDedup: parsed.data.strictIpDedup ?? false,
                 // createdBy = the venue's owner so existing FK checks pass and
                 // the owner still sees the campaign as theirs in /admin.
                 createdBy: venue.ownerId,
@@ -341,7 +339,6 @@ router.patch('/:id', async (c) => {
     if (parsed.data.closesAt !== undefined) updates.closesAt = new Date(parsed.data.closesAt);
     if (parsed.data.pointsExactScore !== undefined) updates.pointsExactScore = parsed.data.pointsExactScore;
     if (parsed.data.pointsCorrectWinner !== undefined) updates.pointsCorrectWinner = parsed.data.pointsCorrectWinner;
-    if (parsed.data.strictIpDedup !== undefined) updates.strictIpDedup = parsed.data.strictIpDedup;
 
     await db.update(predictionCampaigns).set(updates).where(eq(predictionCampaigns.id, campaign.id));
     await logSuperAdminAction(c, 'SUPER_ADMIN_PREDICTION_CAMPAIGN_UPDATED', 'PredictionCampaign', campaign.id);
@@ -663,10 +660,17 @@ router.post('/:id/prizes/:prizeId/renotify', async (c) => {
 
 // ─── Entries / CSV / audit-log ─────────────────────────────────────
 
+// Local schema — shared paginationSchema caps limit at 50, but this admin
+// view legitimately wants 100/page (matches sibling listQuerySchema).
+const entriesQuerySchema = z.object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 router.get('/:id/entries', async (c) => {
     const campaign = await loadCampaign(c.req.param('id'));
     if (!campaign) return c.json(apiError('NOT_FOUND', 'Campaign not found'), 404);
-    const query = paginationSchema.safeParse(c.req.query());
+    const query = entriesQuerySchema.safeParse(c.req.query());
     if (!query.success) return c.json(apiError('VALIDATION_ERROR', 'Invalid query', query.error.issues), 400);
     const { page, limit } = query.data;
     const offset = paginationOffset(page, limit);
