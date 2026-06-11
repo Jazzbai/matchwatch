@@ -1525,6 +1525,10 @@ superAdminRoutes.get('/session', async (c) => {
 
 superAdminRoutes.use('*', superAdminAuthMiddleware);
 
+// Sub-router: cross-venue prediction campaigns (full control for super-admin).
+import superAdminPredictionCampaignsRoutes from './superAdmin/predictionCampaigns';
+superAdminRoutes.route('/prediction-campaigns', superAdminPredictionCampaignsRoutes);
+
 superAdminRoutes.post('/uploads/presigned-url', async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const parsed = presignedUploadSchema.safeParse(body);

@@ -116,7 +116,7 @@ function buildEligibilityFilter(eligibility: PredictionPrizeEligibility) {
     return sql`true`;
 }
 
-export async function drawPrizeWinners(tx: Tx, prizeId: string, actorUserId: string, excludeEntryIds: string[] = []) {
+export async function drawPrizeWinners(tx: Tx, prizeId: string, actorUserId: string | null, excludeEntryIds: string[] = []) {
     const [prize] = await tx.select().from(predictionCampaignPrizes)
         .where(eq(predictionCampaignPrizes.id, prizeId))
         .for('update')
@@ -213,7 +213,7 @@ export async function drawPrizeWinners(tx: Tx, prizeId: string, actorUserId: str
 export async function redrawPrizeWinners(
     tx: Tx,
     prizeId: string,
-    actorUserId: string,
+    actorUserId: string | null,
     reason: string,
     excludeEntryIds: string[] = [],
 ) {
