@@ -83,6 +83,8 @@ export const changePasswordSchema = z.object({
 export const matchQuerySchema = z.object({
     sport_id: z.string().uuid().optional(),
     league_id: z.string().uuid().optional(),
+    league: z.string().optional(),
+    league_ids: z.string().optional(),
     team_id: z.string().uuid().optional(),
     date_from: z.string().optional(),
     date_to: z.string().optional(),

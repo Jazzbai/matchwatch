@@ -10,6 +10,16 @@ import { getMatchPrediction } from '../lib/predictions';
 import { getYoutubeRecapTarget, processMatchYoutubeRecap, processRecentFinishedMatchRecaps } from '../lib/youtubeRecaps';
 
 const matchRoutes = new Hono();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const LEAGUE_CODE_ALIASES: Record<string, string> = {
+    EPL: 'PL',
+    PREMIERLEAGUE: 'PL',
+    ENGLISHPREMIERLEAGUE: 'PL',
+    LALIGA: 'PD',
+    LA_LIGA: 'PD',
+    LIGA: 'PD',
+};
+
 const youtubeRecapBatchSchema = z.object({
     limit: z.coerce.number().int().min(1).max(50).default(10),
     forceRefresh: z.coerce.boolean().default(false),
@@ -26,13 +36,37 @@ matchRoutes.get('/', optionalAuthMiddleware, async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Invalid query parameters', query.error.issues), 400);
     }
 
-    const { page, limit, sort, sport_id, league_id, date_from, date_to, status, has_venues } = query.data;
+    const { page, limit, sort, sport_id, league_id, league, league_ids, date_from, date_to, status, has_venues } = query.data;
     const offset = paginationOffset(page, limit);
 
     let conditions: any[] = [];
     const now = new Date();
 
     if (league_id) conditions.push(eq(matches.leagueId, league_id));
+    const requestedLeagueIds = (league_ids || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter((value) => UUID_PATTERN.test(value));
+    if (requestedLeagueIds.length > 0) conditions.push(inArray(matches.leagueId, requestedLeagueIds));
+    const requestedLeagueTokens = (league || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+    if (requestedLeagueTokens.length > 0) {
+        const leagueMatchers = requestedLeagueTokens.map((token) => {
+            const normalized = token.toLowerCase();
+            const compactCode = token.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const aliasedCode = LEAGUE_CODE_ALIASES[compactCode] || compactCode;
+            return or(
+                eq(sql`lower(${leagues.id}::text)`, normalized),
+                eq(sql`lower(${leagues.slug})`, normalized),
+                eq(sql`lower(${leagues.externalId})`, aliasedCode.toLowerCase()),
+                eq(sql`lower(${leagues.shortName})`, normalized),
+                eq(sql`lower(${leagues.name})`, normalized),
+            );
+        });
+        conditions.push(or(...leagueMatchers));
+    }
     if (sport_id) conditions.push(eq(leagues.sportId, sport_id));
     if (query.data.team_id) {
         conditions.push(or(

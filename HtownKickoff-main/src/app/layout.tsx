@@ -83,7 +83,7 @@ export default function RootLayout({
       className={`${inter.variable} ${mono.variable} ${outfit.variable} ${spaceGrotesk.variable}`}
     >
       <body suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false} disableTransitionOnChange>
           <AuthProvider><DataProvider>{children}</DataProvider></AuthProvider>
         </ThemeProvider>
       </body>

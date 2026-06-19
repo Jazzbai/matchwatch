@@ -3,9 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, House, LogIn, LogOut, Menu, Store, Trophy, UserCircle2, X } from "lucide-react";
+import { Building2, Flag, House, LogIn, LogOut, Menu, Store, Trophy, UserCircle2, X } from "lucide-react";
 import { useAuth } from "../lib/auth-context";
-import { ThemeToggle } from "./ThemeToggle";
 
 export function FloatingNav() {
   const pathname = usePathname();
@@ -32,6 +31,7 @@ export function FloatingNav() {
     { label: "Home", href: "/", icon: House },
     { label: "Matches", href: "/matches", icon: Trophy },
     { label: "World Cup", href: "/world-cup", icon: Trophy },
+    { label: "Fan Zone", href: "/fans", icon: Flag },
     { label: "Venues", href: "/venues", icon: Store },
     { label: "For Venues", href: "/for-venues", icon: Building2 },
   ];
@@ -64,10 +64,6 @@ export function FloatingNav() {
         </div>
 
         <div className="site-nav__actions">
-          <div className="site-nav__desktop-only">
-            <ThemeToggle />
-          </div>
-
           {isAuthenticated ? (
             <Link href={dashboardHref} className="site-nav__account">
               {avatarUrl ? (
@@ -108,7 +104,6 @@ export function FloatingNav() {
         <div id="mobile-primary-navigation" className="site-nav__mobile-menu">
           <div className="site-nav__mobile-head">
             <span>Navigation</span>
-            <ThemeToggle />
           </div>
           {[
             ...navLinks,

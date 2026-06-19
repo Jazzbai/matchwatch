@@ -29,17 +29,29 @@ function cityAliases(name: string): string[] {
 // is absent the gradient `g` shows through as a designed fallback (no broken
 // image), so the cards look intentional either way.
 const CITIES = [
-  { name: "New York / New Jersey", slug: "new-york",       short: "NY/NJ", stadium: "MetLife Stadium",        cap: "82,500", matches: 8, badge: "THE FINAL",       g: "linear-gradient(145deg,#001840 0%,#8b0000 100%)", image: "/cities/new-york.webp" },
-  { name: "Los Angeles",           slug: "los-angeles",    short: "LA",    stadium: "SoFi Stadium",            cap: "70,240", matches: 8, badge: "SEMIFINAL",       g: "linear-gradient(145deg,#2d0a6e 0%,#c8a200 100%)", image: "/cities/los-angeles.webp" },
-  { name: "Dallas",                slug: "dallas",         short: "DAL",   stadium: "AT&T Stadium",            cap: "80,000", matches: 9, badge: "TOP HOST",        g: "linear-gradient(145deg,#001a40 0%,#7a5500 100%)", image: "/cities/dallas.webp" },
-  { name: "Houston",               slug: "houston",        short: "HOU",   stadium: "NRG Stadium",             cap: "72,220", matches: 7, badge: "OPENING",         g: "linear-gradient(145deg,#001840 0%,#b84a00 100%)", image: "/cities/houston.webp" },
-  { name: "Miami",                 slug: "miami",          short: "MIA",   stadium: "Hard Rock Stadium",        cap: "65,326", matches: 7, badge: "BEACH CITY",     g: "linear-gradient(145deg,#003060 0%,#a83200 100%)", image: "/cities/miami.webp" },
-  { name: "Atlanta",               slug: "atlanta",        short: "ATL",   stadium: "Mercedes-Benz Stadium",   cap: "71,000", matches: 8, badge: "SOCCER CITY",    g: "linear-gradient(145deg,#0a0000 0%,#7a0020 100%)", image: "/cities/atlanta.webp" },
-  { name: "San Francisco Bay Area",slug: "san-francisco",  short: "SF",    stadium: "Levi's Stadium",          cap: "68,500", matches: 6, badge: "TECH CITY",      g: "linear-gradient(145deg,#5a0000 0%,#6a5000 100%)", image: "/cities/san-francisco.webp" },
-  { name: "Philadelphia",          slug: "philadelphia",   short: "PHI",   stadium: "Lincoln Financial Field", cap: "69,800", matches: 6, badge: "LIBERTY CITY",   g: "linear-gradient(145deg,#002030 0%,#3a4a50 100%)", image: "/cities/philadelphia.webp" },
-  { name: "Seattle",               slug: "seattle",        short: "SEA",   stadium: "Lumen Field",             cap: "68,740", matches: 5, badge: "SOCCER CAPITAL", g: "linear-gradient(145deg,#001030 0%,#1a4a00 100%)", image: "/cities/seattle.webp" },
-  { name: "Boston",                slug: "boston",         short: "BOS",   stadium: "Gillette Stadium",        cap: "65,000", matches: 7, badge: "HISTORIC CITY",  g: "linear-gradient(145deg,#6a0010 0%,#001030 100%)", image: "/cities/boston.webp" },
-  { name: "Kansas City",           slug: "kansas-city",    short: "KC",    stadium: "Arrowhead Stadium",       cap: "76,416", matches: 6, badge: "HEART OF USA",   g: "linear-gradient(145deg,#6a0010 0%,#7a5000 100%)", image: "/cities/kansas-city.webp" },
+  { name: "New York / New Jersey", slug: "new-york",       short: "NY/NJ", stadium: "MetLife Stadium",        cap: "82,500", matches: 8, badge: "THE FINAL",       g: "linear-gradient(145deg,#001840 0%,#8b0000 100%)", image: "https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?auto=format&fit=crop&w=800&h=500&q=80" },
+  { name: "Los Angeles",           slug: "los-angeles",    short: "LA",    stadium: "SoFi Stadium",            cap: "70,240", matches: 8, badge: "SEMIFINAL",       g: "linear-gradient(145deg,#2d0a6e 0%,#c8a200 100%)", image: "https://images.unsplash.com/photo-1580655653885-65763b2597d0?auto=format&fit=crop&w=800&h=500&q=80" },
+  { name: "Dallas",                slug: "dallas",         short: "DAL",   stadium: "AT&T Stadium",            cap: "80,000", matches: 9, badge: "TOP HOST",        g: "linear-gradient(145deg,#001a40 0%,#7a5500 100%)", image: "https://images.unsplash.com/photo-1593810450967-f9c42742e326?auto=format&fit=crop&w=800&h=500&q=80" },
+  { name: "Houston",               slug: "houston",        short: "HOU",   stadium: "NRG Stadium",             cap: "72,220", matches: 7, badge: "OPENING",         g: "linear-gradient(145deg,#001840 0%,#b84a00 100%)", image: "https://images.unsplash.com/photo-1553440569-bcc63803a83d?auto=format&fit=crop&w=800&h=500&q=80" },
+  { name: "Miami",                 slug: "miami",          short: "MIA",   stadium: "Hard Rock Stadium",        cap: "65,326", matches: 7, badge: "BEACH CITY",     g: "linear-gradient(145deg,#003060 0%,#a83200 100%)", image: "https://images.unsplash.com/photo-1533106497176-fe5a5955f5b2?auto=format&fit=crop&w=800&h=500&q=80" },
+  { name: "Atlanta",               slug: "atlanta",        short: "ATL",   stadium: "Mercedes-Benz Stadium",   cap: "71,000", matches: 8, badge: "SOCCER CITY",    g: "linear-gradient(145deg,#0a0000 0%,#7a0020 100%)", image: "https://images.unsplash.com/photo-1575517111839-3a3843ee7f5d?auto=format&fit=crop&w=800&h=500&q=80" },
+  { name: "San Francisco Bay Area",slug: "san-francisco",  short: "SF",    stadium: "Levi's Stadium",          cap: "68,500", matches: 6, badge: "TECH CITY",      g: "linear-gradient(145deg,#5a0000 0%,#6a5000 100%)", image: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=800&h=500&q=80" },
+  { name: "Philadelphia",          slug: "philadelphia",   short: "PHI",   stadium: "Lincoln Financial Field", cap: "69,800", matches: 6, badge: "LIBERTY CITY",   g: "linear-gradient(145deg,#002030 0%,#3a4a50 100%)", image: "https://images.unsplash.com/photo-1568402102990-bc814441b8bc?auto=format&fit=crop&w=800&h=500&q=80" },
+  { name: "Seattle",               slug: "seattle",        short: "SEA",   stadium: "Lumen Field",             cap: "68,740", matches: 5, badge: "SOCCER CAPITAL", g: "linear-gradient(145deg,#001030 0%,#1a4a00 100%)", image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&h=500&q=80" },
+  { name: "Boston",                slug: "boston",         short: "BOS",   stadium: "Gillette Stadium",        cap: "65,000", matches: 7, badge: "HISTORIC CITY",  g: "linear-gradient(145deg,#6a0010 0%,#001030 100%)", image: "https://images.unsplash.com/photo-1569601158879-37e0c4b8f34b?auto=format&fit=crop&w=800&h=500&q=80" },
+  { name: "Kansas City",           slug: "kansas-city",    short: "KC",    stadium: "Arrowhead Stadium",       cap: "76,416", matches: 6, badge: "HEART OF USA",   g: "linear-gradient(145deg,#6a0010 0%,#7a5000 100%)", image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&h=500&q=80" },
+];
+
+const FAN_FESTIVALS = [
+  { city: "Houston", slug: "houston", venue: "EaDo District", dates: "Jun 11 - Jul 19", detail: "All 34 match days" },
+  { city: "Dallas", slug: "dallas", venue: "Fair Park", dates: "Jun 11 - Jul 19", detail: "1M sq ft fan celebration" },
+  { city: "Seattle", slug: "seattle", venue: "Seattle Center", dates: "Jun - Jul 2026", detail: "The Armory + Mural Amphitheatre" },
+  { city: "Kansas City", slug: "kansas-city", venue: "National WWI Museum and Memorial", dates: "Jun 11 - Jul 11", detail: "18 festival days" },
+  { city: "Boston", slug: "boston", venue: "City Hall Plaza", dates: "Jun 12 - Jun 27", detail: "16 group-stage days" },
+  { city: "Philadelphia", slug: "philadelphia", venue: "Lemon Hill, Fairmount Park", dates: "Jun 11 - Jul 19", detail: "All 39 tournament days" },
+  { city: "Miami", slug: "miami", venue: "Bayfront Park", dates: "Jun 13 - Jul 5", detail: "Downtown waterfront festival" },
+  { city: "Atlanta", slug: "atlanta", venue: "Centennial Olympic Park", dates: "Jun 11 - Jul 15", detail: "Select tournament days" },
+  { city: "New York / New Jersey", slug: "new-york", venue: "Rockefeller Center", dates: "Jul 6 - Jul 19", detail: "NYNJ Fan Village" },
 ];
 
 
@@ -237,8 +249,12 @@ const CSS = `
   .wc-fh2{font-family:"Space Grotesk",sans-serif;font-size:1.5rem;font-weight:900;color:var(--mw-fg);margin-bottom:14px;}
   .wc-fp{font-size:13px;color:var(--mw-fg-dim);line-height:1.7;margin-bottom:20px;}
   .wc-fcg{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .wc-fci{border:1px solid var(--mw-line);padding:9px 12px;font-size:12px;color:var(--mw-fg-dim);display:flex;align-items:center;gap:8px;}
+  .wc-fci{border:1px solid var(--mw-line);padding:12px 14px;font-size:12px;color:var(--mw-fg-dim);display:grid;grid-template-columns:6px 1fr;align-items:start;gap:10px;text-decoration:none;transition:border-color .15s,background .15s;}
+  .wc-fci:hover{border-color:color-mix(in srgb,var(--mw-accent) 45%,var(--mw-line));background:color-mix(in srgb,var(--mw-accent) 7%,transparent);}
   .wc-fci .d{width:6px;height:6px;background:var(--mw-accent);border-radius:50%;flex-shrink:0;}
+  .wc-fn{font-family:"Space Grotesk",sans-serif;font-size:13px;font-weight:800;color:var(--mw-fg);line-height:1.15;margin-bottom:2px;}
+  .wc-fm{font-size:11px;color:var(--mw-fg-mute);line-height:1.35;}
+  .wc-fm b{color:var(--mw-fg-dim);font-weight:700;}
 
   /* ── Responsive ── */
   @media(max-width:1024px){
@@ -506,14 +522,20 @@ export default function WorldCupPage() {
                 fontFamily: '"JetBrains Mono",monospace', fontSize: 10, letterSpacing: ".14em",
                 textTransform: "uppercase", color: "var(--mw-accent)", marginBottom: 14, fontWeight: 700,
               }}>
-                Fan Festival Host Cities
+                Official Fan Festival Pages
               </div>
               <div className="wc-fcg">
-                {CITIES.map(c => (
-                  <div key={c.short} className="wc-fci">
+                {FAN_FESTIVALS.map(festival => (
+                  <Link key={festival.slug} href={`/world-cup/${festival.slug}/fan-festival`} className="wc-fci">
                     <div className="d" />
-                    {c.name}
-                  </div>
+                    <div>
+                      <div className="wc-fn">{festival.city}</div>
+                      <div className="wc-fm">
+                        <b>{festival.venue}</b><br />
+                        {festival.dates} · {festival.detail}
+                      </div>
+                    </div>
+                  </Link>
                 ))}
               </div>
             </div>

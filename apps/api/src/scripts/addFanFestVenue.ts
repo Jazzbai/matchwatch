@@ -151,6 +151,42 @@ const FAN_FESTS: FanFestDef[] = [
     dates: 'June 11 – July 15, 2026',
     capacity: 0,
   },
+  {
+    citySlug: 'kansas-city',
+    cityName: 'Kansas City',
+    state: 'MO',
+    timezone: 'America/Chicago',
+    name: 'FIFA Fan Festival™ Kansas City — National WWI Museum and Memorial',
+    addressLine1: 'National WWI Museum and Memorial, 2 Memorial Dr',
+    lat: 39.0806,
+    lng: -94.5861,
+    description:
+      'The official FIFA Fan Festival™ Kansas City at the National WWI Museum and Memorial. Free general admission with required digital pass, first-come first-served and subject to 25,000 capacity limits. The festival runs June 11 through July 11, 2026 across 18 operating days with live match watch parties, performances, two stages, a 45-foot-by-25-foot primary video board, additional screens, KC Heart Gateway, Dog Days, premium passes, Legacy Lounge, Premium Garden, local food and drink, games, and ConnectKC26 transit access.',
+    website: 'https://kansascityfwc26.com/fifa-fan-festival/',
+    coverImageUrl:
+      'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=1600&q=80',
+    galleryUrls: [],
+    dates: 'June 11 – July 11, 2026',
+    capacity: 25000,
+  },
+  {
+    citySlug: 'philadelphia',
+    cityName: 'Philadelphia',
+    state: 'PA',
+    timezone: 'America/New_York',
+    name: 'FIFA Fan Festival™ Philadelphia — Lemon Hill',
+    addressLine1: 'Lemon Hill, 1 Lemon Hill Drive',
+    lat: 39.9704,
+    lng: -75.1851,
+    description:
+      'The official FIFA Fan Festival™ Philadelphia at Lemon Hill in East Fairmount Park. Free and open to the public with registration, running all 39 tournament days from June 11 through July 19, 2026. The festival features live match broadcasts and watch parties, food vendors, family-friendly activities, world-class entertainment, immersive partner activations, a Vendor Village, Philly Phlavor food trucks, Pennsylvania Pavilion programming, concerts, and cultural programming.',
+    website: 'https://phillyfwc26.com/fifa-fan-fest',
+    coverImageUrl:
+      'https://images.unsplash.com/photo-1609943871524-4cd587bdfd9b?w=1600&q=80',
+    galleryUrls: [],
+    dates: 'June 11 – July 19, 2026',
+    capacity: 15000,
+  },
   // ── Seattle / Washington State — 9 community fan zones ─────────────────────
   {
     citySlug: 'bellingham',

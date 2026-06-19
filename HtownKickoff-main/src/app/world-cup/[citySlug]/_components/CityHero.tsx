@@ -3,6 +3,18 @@ import Link from "next/link";
 import { MapPin, ArrowDown, Shield, Map } from "lucide-react";
 import type { WorldCupCity, CityMatch } from "../types";
 
+const FAN_FEST_CITY_SLUGS = new Set([
+  "seattle",
+  "houston",
+  "dallas",
+  "miami",
+  "atlanta",
+  "kansas-city",
+  "boston",
+  "philadelphia",
+  "new-york",
+]);
+
 interface Props {
   city: WorldCupCity;
   matches: CityMatch[];
@@ -32,7 +44,7 @@ export function CityHero({ city, matches }: Props) {
               <MapPin size={15} />
               Find {city.name} Watch Party Venues
             </a>
-            {(city.slug === "seattle" || city.slug === "houston" || city.slug === "dallas" || city.slug === "miami" || city.slug === "atlanta" || city.slug === "new-york") && (
+            {FAN_FEST_CITY_SLUGS.has(city.slug) && (
               <Link href={`/world-cup/${city.slug}/fan-festival`} className="cc-btn-g" style={{ textDecoration: "none" }}>
                 <Shield size={14} /> Official Fan Festival™
               </Link>

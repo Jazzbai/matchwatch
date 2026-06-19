@@ -48,6 +48,27 @@ const FAN_FEST_CITIES: Record<string, { name: string; venue: string; addr: strin
     dates: "Jun 11 – Jul 15, 2026 · Free Entry · Registration Required",
     officialSite: "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/fifa-fan-festival/atlanta",
   },
+  "kansas-city": {
+    name: "Kansas City",
+    venue: "FIFA Fan Festival™ Kansas City — National WWI Museum and Memorial",
+    addr: "2 Memorial Dr, Kansas City, MO 64108",
+    dates: "Jun 11 – Jul 11, 2026 · Free Entry · Registration Required",
+    officialSite: "https://kansascityfwc26.com/fifa-fan-festival/",
+  },
+  boston: {
+    name: "Boston",
+    venue: "FIFA Fan Festival Boston - City Hall Plaza",
+    addr: "1 City Hall Square, Boston, MA 02201",
+    dates: "Jun 12 - Jun 27, 2026 - Free Entry - Registration Required",
+    officialSite: "https://bostonfwc26.com/fifa-fan-festival/",
+  },
+  philadelphia: {
+    name: "Philadelphia",
+    venue: "FIFA Fan Festival Philadelphia - Lemon Hill",
+    addr: "1 Lemon Hill Drive, Philadelphia, PA 19130",
+    dates: "Jun 11 - Jul 19, 2026 - All 39 Days - Free Entry",
+    officialSite: "https://phillyfwc26.com/fifa-fan-fest",
+  },
   "new-york": {
     name: "New York / New Jersey",
     venue: "NYNJ World Cup 26 & Telemundo Fan Village — Rockefeller Center",
