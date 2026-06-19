@@ -88,7 +88,7 @@ async function scrapeMapme(): Promise<RawVenue[]> {
 
     // Try JS-rendered scrape via SDK first (handles dynamic map content)
     try {
-        const result = await firecrawl.scrapeUrl(SOURCE_URL, {
+        const result = await firecrawl.scrape(SOURCE_URL, {
             formats: ['markdown'],
             onlyMainContent: false,
             waitFor: 3000,

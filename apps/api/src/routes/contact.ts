@@ -46,7 +46,7 @@ async function sendViaResend(name: string, email: string, topic: string, message
     await resend.emails.send({
         from,
         to: NOTIFICATION_EMAILS,
-        reply_to: email,
+        replyTo: email,
         subject: `New Inquiry: ${topic} — from ${name}`,
         html: buildHtml(name, email, topic, message, phone),
     });
