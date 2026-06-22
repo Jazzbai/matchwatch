@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useData } from "../lib/data-provider";
 import { useAuth } from "../lib/auth-context";
 import { FloatingNav } from "../components/AppShell";
-import { WORLD_CUP_FLAGS, WORLD_CUP_SCHEDULE } from "./world-cup/schedule";
+import { WORLD_CUP_FLAGS, WORLD_CUP_THIS_WEEK } from "./world-cup/schedule";
 
 /* 11 US host cities. `image` is an optional photo in /public/cities/; when the
    file is absent the gradient shows through as a designed fallback. */
@@ -154,7 +154,7 @@ function Crest({ src, label, color }: { src?: string; label: string; color?: str
 export default function HomePage() {
   const { venues, isLoading } = useData();
   const { user } = useAuth();
-  const railMatches = WORLD_CUP_SCHEDULE.group.slice(0, 8);
+  const railMatches = WORLD_CUP_THIS_WEEK;
 
   const featuredVenues = venues
     .filter((venue) => {
@@ -216,8 +216,8 @@ export default function HomePage() {
         <section className="hp-sec">
           <div className="hp-sh">
             <div className="hp-st">
-              World Cup matches
-              <span className="tag">{railMatches.length} games</span>
+              This week matches
+              <span className="tag">Mon-Fri</span>
             </div>
             <Link href="/world-cup#schedule" className="hp-see">Full WC schedule</Link>
           </div>
