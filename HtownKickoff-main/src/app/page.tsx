@@ -7,11 +7,7 @@ import { useAuth } from "../lib/auth-context";
 import { getMatchDisplay } from "../lib/match-display";
 import { isNationalTeamCompetition } from "../lib/league-utils";
 import { FloatingNav } from "../components/AppShell";
-import { Countdown } from "../components/Countdown";
 import { MatchVideo } from "../components/MatchVideo";
-
-/* Opening match — Jun 11 2026, 5:00 PM ET (hero countdown). */
-const WC_OPENING = "2026-06-11T17:00:00-04:00";
 
 /* 11 US host cities. `image` is an optional photo in /public/cities/; when the
    file is absent the gradient shows through as a designed fallback. */
@@ -228,9 +224,6 @@ export default function HomePage() {
             The 2026 World Cup comes to North America. Find the bar showing your match, reserve a
             table, and watch every game with fans near you — all summer long.
           </p>
-          <div style={{ marginBottom: 28 }}>
-            <Countdown target={WC_OPENING} label="Kickoff · Jun 11, 2026" />
-          </div>
           <div className="hp-cta-row">
             <Link href="/venues" className="hp-btn primary">Find a bar near me</Link>
             <Link href="/world-cup" className="hp-btn">Explore host cities</Link>
