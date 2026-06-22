@@ -53,9 +53,9 @@ export const fanProfiles: FanProfile[] = [
     ritual: {
       badge: "Signature ritual",
       name: "The Oranje Fanwalk",
-      story: "Dutch supporters gather hours before kickoff and march to the stadium as one orange block. OnsOranje promoted Dallas as the first Oranje Fanwalk of the 2026 World Cup, setting the tone in Arlington before the tradition rolled into Houston for the Netherlands vs. Sweden match.",
+      story: "Dutch supporters gather hours before kickoff and march to the stadium as one orange block, often behind the famous double-decker Orange Bus. OnsOranje promoted Dallas as the first Oranje Fanwalk of the 2026 World Cup, setting the tone in Arlington before the bus-led tradition rolled into Houston for the Netherlands vs. Sweden match.",
       records: [
-        "Dallas / Arlington: OnsOranje marked the first Oranje Fanwalk of the 2026 World Cup around Dallas Stadium.",
+        "Dallas / Arlington: the Dutch Orange Bus arrived in Texas ahead of the Dallas Stadium match and OnsOranje marked the first Oranje Fanwalk of the 2026 World Cup.",
         "Houston: around 20,000 total fans marched to NRG Stadium, including at least 15,000 Dutch supporters in the Oranje Fanwalk.",
         "Houston Stadium: Netherlands beat Sweden 5-1 in front of a reported 68,777 fans.",
       ],
@@ -63,8 +63,13 @@ export const fanProfiles: FanProfile[] = [
     moments: [
       {
         title: "Dallas hosted the first 2026 Oranje Fanwalk",
-        summary: "OnsOranje positioned Dallas / Arlington as the first Oranje Fanwalk of the 2026 World Cup, giving the Orange Army an official opening march before the wider Texas takeover.",
+        summary: "OnsOranje positioned Dallas / Arlington as the first Oranje Fanwalk of the 2026 World Cup, and NBC DFW covered the Dutch Orange Bus arriving in Texas ahead of the Dallas Stadium match.",
         angle: "The Orange Army made North Texas feel like a Dutch street party.",
+      },
+      {
+        title: "The Orange Bus became the moving landmark",
+        summary: "The orange double-decker bus is more than transportation. It is the rolling symbol that leads Dutch supporters through host cities, creating an instant route, photo moment, and sound system for the fanwalk.",
+        angle: "Where the bus goes, the Oranje crowd knows where to gather.",
       },
       {
         title: "Houston turned highlighter orange",
@@ -93,10 +98,12 @@ export const fanProfiles: FanProfile[] = [
     },
     sources: [
       { label: "OnsOranje - First Oranje Fanwalk 2026 World Cup Dallas", url: "https://www.onsoranje.nl/info/82589/first-oranje-fanwalk-2026-world-cup-dallas" },
+      { label: "NBC DFW - Dutch Orange Bus arrives in Texas", url: "https://www.nbcdfw.com/news/local/the-dutch-orange-bus-arrives-in-texas-ahead-of-game-at-dallas-stadium/4035683/" },
       { label: "Axios Dallas - World Cup kicks off in Arlington", url: "https://www.axios.com/local/dallas/2026/06/14/world-cup-kicks-off-in-arlington" },
       { label: "Axios Houston - Houston turns orange", url: "https://www.axios.com/local/houston/2026/06/22/houston-turns-orange-as-dutch-fans-flood-the-city" },
       { label: "MSN / Houston Chronicle - 20,000 fans march to NRG Stadium", url: "https://www.msn.com/en-us/sports/soccer/around-20-000-fans-march-to-houston-s-nrg-stadium-for-netherlands-v-sweden-world-cup-match/ar-AA269Hu7" },
       { label: "Houston Chronicle - Netherlands vs Sweden in Houston", url: "https://www.houstonchronicle.com/world-cup/article/netherlands-sweden-houston-22310913.php" },
+      { label: "Houston Chronicle - Orange Bus in Fulshear", url: "https://www.houstonchronicle.com/world-cup/article/orange-bus-netherlands-fulshear-22289610.php" },
       { label: "Chron - Orange Fanwalk explained", url: "https://www.chron.com/culture/article/houston-orange-fanwalk-explained-22305717.php" },
     ],
   },
