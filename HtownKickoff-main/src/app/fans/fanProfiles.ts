@@ -53,17 +53,17 @@ export const fanProfiles: FanProfile[] = [
     ritual: {
       badge: "Signature ritual",
       name: "The Oranje Fanwalk",
-      story: "Dutch supporters gather hours before kickoff and march to the stadium as one orange block. In Texas, that ritual became one of the loudest visual stories of the 2026 tournament: Arlington turned orange for Dallas Stadium's opener, then Houston staged a huge walk from Rice University toward Houston Stadium before Netherlands vs. Sweden.",
+      story: "Dutch supporters gather hours before kickoff and march to the stadium as one orange block. OnsOranje promoted Dallas as the first Oranje Fanwalk of the 2026 World Cup, setting the tone in Arlington before the tradition rolled into Houston for the Netherlands vs. Sweden match.",
       records: [
-        "Dallas / Arlington: Orange Army supporters filled the cultural district for Dallas Stadium's first 2026 World Cup match.",
+        "Dallas / Arlington: OnsOranje marked the first Oranje Fanwalk of the 2026 World Cup around Dallas Stadium.",
         "Houston: local reports put the Oranje Fanwalk at roughly 20,000 to 25,000 Dutch supporters.",
         "Houston Stadium: Netherlands beat Sweden 5-1 in front of a reported 68,777 fans.",
       ],
     },
     moments: [
       {
-        title: "Dallas became the first Texas orange wave",
-        summary: "For Dallas Stadium's first World Cup match in Arlington, Dutch supporters took over the cultural district and helped create a crowd near 69,000.",
+        title: "Dallas hosted the first 2026 Oranje Fanwalk",
+        summary: "OnsOranje positioned Dallas / Arlington as the first Oranje Fanwalk of the 2026 World Cup, giving the Orange Army an official opening march before the wider Texas takeover.",
         angle: "The Orange Army made North Texas feel like a Dutch street party.",
       },
       {
@@ -92,6 +92,7 @@ export const fanProfiles: FanProfile[] = [
       text: "Track watch parties and fanwalk-style gatherings for Netherlands match days.",
     },
     sources: [
+      { label: "OnsOranje - First Oranje Fanwalk 2026 World Cup Dallas", url: "https://www.onsoranje.nl/info/82589/first-oranje-fanwalk-2026-world-cup-dallas" },
       { label: "Axios Dallas - World Cup kicks off in Arlington", url: "https://www.axios.com/local/dallas/2026/06/14/world-cup-kicks-off-in-arlington" },
       { label: "Axios Houston - Houston turns orange", url: "https://www.axios.com/local/houston/2026/06/22/houston-turns-orange-as-dutch-fans-flood-the-city" },
       { label: "Houston Chronicle - Netherlands vs Sweden in Houston", url: "https://www.houstonchronicle.com/world-cup/article/netherlands-sweden-houston-22310913.php" },
