@@ -6,8 +6,9 @@ import { useData } from "../../lib/data-provider";
 import { Building2, Star, Trophy, ChevronRight, Globe, Calendar } from "lucide-react";
 import { FloatingNav } from "../../components/AppShell";
 import { Countdown } from "../../components/Countdown";
+import { WORLD_CUP_FLAGS, WORLD_CUP_SCHEDULE } from "./schedule";
 
-/* Opening match — Jun 11 2026, 5:00 PM ET (used for the hero countdown). */
+/* Opening match Ã¢â‚¬â€ Jun 11 2026, 5:00 PM ET (used for the hero countdown). */
 const WC_OPENING = "2026-06-11T17:00:00-04:00";
 
 /* Match a host city to real venues in the live dataset (alias-aware). */
@@ -55,47 +56,6 @@ const FAN_FESTIVALS = [
 ];
 
 
-const SCHEDULE = {
-  group: [
-    { date: "Jun 11", time: "5:00 PM ET", home: "Mexico",        away: "Ecuador",      group: "GROUP A", venue: "AT&T Stadium",            city: "Dallas",        tag: "OPENING MATCH" },
-    { date: "Jun 12", time: "3:00 PM ET", home: "USA",           away: "Bolivia",      group: "GROUP C", venue: "MetLife Stadium",          city: "NY / NJ",       tag: "HOST NATION" },
-    { date: "Jun 12", time: "6:00 PM ET", home: "Canada",        away: "Chile",        group: "GROUP F", venue: "SoFi Stadium",             city: "Los Angeles",   tag: "" },
-    { date: "Jun 13", time: "3:00 PM ET", home: "Brazil",        away: "Japan",        group: "GROUP D", venue: "Hard Rock Stadium",         city: "Miami",         tag: "" },
-    { date: "Jun 14", time: "12:00 PM ET",home: "England",       away: "Senegal",      group: "GROUP B", venue: "Levi's Stadium",           city: "San Francisco", tag: "" },
-    { date: "Jun 14", time: "6:00 PM ET", home: "Germany",       away: "Korea Rep.",   group: "GROUP E", venue: "Gillette Stadium",          city: "Boston",        tag: "" },
-    { date: "Jun 15", time: "3:00 PM ET", home: "Argentina",     away: "Australia",    group: "GROUP H", venue: "NRG Stadium",               city: "Houston",       tag: "" },
-    { date: "Jun 15", time: "6:00 PM ET", home: "France",        away: "Morocco",      group: "GROUP G", venue: "Mercedes-Benz Stadium",     city: "Atlanta",       tag: "" },
-    { date: "Jun 16", time: "3:00 PM ET", home: "Spain",         away: "Sweden",       group: "GROUP I", venue: "Lincoln Financial Field",   city: "Philadelphia",  tag: "" },
-    { date: "Jun 17", time: "6:00 PM ET", home: "Portugal",      away: "Panama",       group: "GROUP J", venue: "Lumen Field",               city: "Seattle",       tag: "" },
-    { date: "Jun 18", time: "3:00 PM ET", home: "Netherlands",   away: "Uruguay",      group: "GROUP K", venue: "Arrowhead Stadium",         city: "Kansas City",   tag: "" },
-    { date: "Jun 19", time: "6:00 PM ET", home: "Italy",         away: "Ecuador",      group: "GROUP L", venue: "AT&T Stadium",              city: "Dallas",        tag: "" },
-  ],
-  knockout: [
-    { date: "Jul 2",  time: "TBD", home: "Group A Winner", away: "Group B Runner-up", group: "ROUND OF 16", venue: "MetLife Stadium",        city: "NY / NJ",     tag: "" },
-    { date: "Jul 3",  time: "TBD", home: "Group C Winner", away: "Group D Runner-up", group: "ROUND OF 16", venue: "SoFi Stadium",           city: "Los Angeles", tag: "" },
-    { date: "Jul 4",  time: "TBD", home: "Group E Winner", away: "Group F Runner-up", group: "ROUND OF 16", venue: "AT&T Stadium",           city: "Dallas",      tag: "INDEPENDENCE DAY" },
-    { date: "Jul 5",  time: "TBD", home: "Group G Winner", away: "Group H Runner-up", group: "ROUND OF 16", venue: "Hard Rock Stadium",      city: "Miami",       tag: "" },
-    { date: "Jul 5",  time: "TBD", home: "QF Winner 1",   away: "QF Winner 2",       group: "QUARTERFINAL", venue: "NRG Stadium",           city: "Houston",     tag: "" },
-    { date: "Jul 6",  time: "TBD", home: "QF Winner 3",   away: "QF Winner 4",       group: "QUARTERFINAL", venue: "Mercedes-Benz Stadium",  city: "Atlanta",     tag: "" },
-    { date: "Jul 14", time: "TBD", home: "SF Winner 1",   away: "SF Winner 2",       group: "SEMIFINAL",    venue: "SoFi Stadium",           city: "Los Angeles", tag: "SEMIFINAL" },
-    { date: "Jul 15", time: "TBD", home: "SF Winner 3",   away: "SF Winner 4",       group: "SEMIFINAL",    venue: "MetLife Stadium",        city: "NY / NJ",     tag: "SEMIFINAL" },
-  ],
-  final: [
-    { date: "Jul 18", time: "TBD",        home: "TBD", away: "TBD", group: "3RD PLACE",     venue: "Hard Rock Stadium", city: "Miami",   tag: "BRONZE MATCH" },
-    { date: "Jul 19", time: "3:00 PM ET", home: "TBD", away: "TBD", group: "THE FINAL",     venue: "MetLife Stadium",   city: "NY / NJ", tag: "WORLD CUP FINAL" },
-  ],
-};
-
-/* ISO 3166-1 alpha-2 codes for flagcdn.com */
-const FLAGS: Record<string, string> = {
-  "Mexico": "mx", "Ecuador": "ec", "USA": "us", "Bolivia": "bo",
-  "Canada": "ca", "Chile": "cl", "Brazil": "br", "Japan": "jp",
-  "England": "gb-eng", "Senegal": "sn", "Germany": "de", "Korea Rep.": "kr",
-  "Argentina": "ar", "Australia": "au", "France": "fr", "Morocco": "ma",
-  "Spain": "es", "Sweden": "se", "Portugal": "pt", "Panama": "pa",
-  "Netherlands": "nl", "Uruguay": "uy", "Italy": "it",
-};
-
 const Flag = ({ code }: { code: string }) => (
   <img
     src={`https://flagcdn.com/24x18/${code}.png`}
@@ -106,7 +66,7 @@ const Flag = ({ code }: { code: string }) => (
   />
 );
 
-/* ── shared design tokens (matches home page exactly) ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ shared design tokens (matches home page exactly) Ã¢â€â‚¬Ã¢â€â‚¬ */
 const MW_VARS = `
   :root{
     --mw-bg:var(--background);
@@ -125,7 +85,7 @@ const MW_VARS = `
 const CSS = `
   .wc-page{background:var(--mw-bg);min-height:100vh;color:var(--mw-fg);}
 
-  /* ── Nav ── */
+  /* Ã¢â€â‚¬Ã¢â€â‚¬ Nav Ã¢â€â‚¬Ã¢â€â‚¬ */
   .wc-topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;}
   .wc-topbar-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1440px;padding:10px 20px;border-radius:999px;background:color-mix(in srgb,var(--mw-bg) 75%,transparent);backdrop-filter:blur(16px);border:1px solid rgba(35,39,47,.8);box-shadow:0 2px 20px rgba(0,0,0,.25);}
   .wc-logo{display:block;width:156px;height:auto;max-height:44px;object-fit:contain;}
@@ -140,7 +100,7 @@ const CSS = `
   .wc-orange:hover{opacity:.88;transform:translateY(-1px);}
   .wc-hmbg{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--mw-line);border-radius:999px;background:rgba(255,255,255,.04);color:var(--mw-fg);cursor:pointer;}
 
-  /* ── Hero ── */
+  /* Ã¢â€â‚¬Ã¢â€â‚¬ Hero Ã¢â€â‚¬Ã¢â€â‚¬ */
   .wc-hero{position:relative;overflow:hidden;min-height:560px;display:flex;align-items:center;background:linear-gradient(160deg,var(--mw-bg) 0%,#0d1520 40%,#1a0a05 100%);border-bottom:1px solid var(--mw-line);}
   .wc-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 70% 50%,color-mix(in srgb,var(--mw-accent) 12%,transparent),transparent 70%),radial-gradient(ellipse 60% 80% at 20% 30%,rgba(0,80,160,.15),transparent 70%);pointer-events:none;}
   .wc-hero-orb{position:absolute;right:-80px;top:50%;transform:translateY(-50%);width:520px;height:520px;border-radius:50%;border:1px solid color-mix(in srgb,var(--mw-accent) 7%,transparent);}
@@ -168,7 +128,7 @@ const CSS = `
   .wc-sv span{color:var(--mw-accent);}
   .wc-sl{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mw-fg-mute);}
 
-  /* ── Shared layout ── */
+  /* Ã¢â€â‚¬Ã¢â€â‚¬ Shared layout Ã¢â€â‚¬Ã¢â€â‚¬ */
   .wc-wrap{max-width:1440px;margin:0 auto;padding:0 24px;}
   .wc-sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:28px;}
   .wc-st{font-family:"Space Grotesk",sans-serif;font-weight:900;font-size:1.6rem;color:var(--mw-fg);letter-spacing:-.01em;display:flex;align-items:center;gap:12px;}
@@ -176,7 +136,7 @@ const CSS = `
   .wc-sl2{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mw-fg-mute);text-decoration:none;display:inline-flex;align-items:center;gap:4px;}
   .wc-sl2:hover{color:var(--mw-accent);}
 
-  /* ── Schedule ── */
+  /* Ã¢â€â‚¬Ã¢â€â‚¬ Schedule Ã¢â€â‚¬Ã¢â€â‚¬ */
   .wc-scw{padding:64px 0 80px;border-top:1px solid var(--mw-line);}
   .wc-tabs{display:flex;gap:4px;margin-bottom:28px;}
   .wc-tab{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border:1px solid var(--mw-line);color:var(--mw-fg-dim);cursor:pointer;background:none;transition:all .12s;}
@@ -202,7 +162,7 @@ const CSS = `
   .wc-final-meta{display:flex;gap:28px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--mw-fg-dim);letter-spacing:.06em;}
   .wc-final-meta span{color:var(--mw-accent);font-weight:700;}
 
-  /* ── City cards ── */
+  /* Ã¢â€â‚¬Ã¢â€â‚¬ City cards Ã¢â€â‚¬Ã¢â€â‚¬ */
   .wc-cw{padding:64px 0 80px;}
   .wc-cg{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
   .wc-cc{border-radius:12px;position:relative;overflow:hidden;border:1px solid var(--mw-line);cursor:pointer;transition:all .2s;text-decoration:none;display:block;min-height:196px;}
@@ -220,7 +180,7 @@ const CSS = `
   .wc-cex{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:3px;margin-left:auto;transition:color .16s;}
   .wc-cc:hover .wc-cex{color:var(--mw-accent);}
 
-  /* ── Venue cards ── */
+  /* Ã¢â€â‚¬Ã¢â€â‚¬ Venue cards Ã¢â€â‚¬Ã¢â€â‚¬ */
   .wc-vw{padding:0 0 80px;}
   .wc-vg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
   .wc-vc{border:1px solid var(--mw-line);background:var(--mw-bg-1);padding:20px;transition:all .16s;}
@@ -233,7 +193,7 @@ const CSS = `
   .wc-vl{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mw-fg-mute);text-decoration:none;}
   .wc-vl:hover{color:var(--mw-accent);}
 
-  /* ── Sponsor CTA ── */
+  /* Ã¢â€â‚¬Ã¢â€â‚¬ Sponsor CTA Ã¢â€â‚¬Ã¢â€â‚¬ */
   .wc-spw{padding:0 0 80px;}
   .wc-sp{border:1px solid var(--mw-line);background:linear-gradient(130deg,color-mix(in srgb,var(--mw-accent) 8%,transparent),transparent 60%),var(--mw-bg-1);padding:52px 48px;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center;}
   .wc-spk{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mw-accent);margin-bottom:12px;font-weight:700;}
@@ -243,7 +203,7 @@ const CSS = `
   .wc-spbtn{display:flex;justify-content:center;align-items:center;gap:6px;padding:12px 20px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;border:1px solid var(--mw-line-2);color:var(--mw-fg-dim);transition:all .18s;}
   .wc-spbtn:hover{border-color:var(--mw-fg-dim);color:var(--mw-fg);}
 
-  /* ── Fan Festival ── */
+  /* Ã¢â€â‚¬Ã¢â€â‚¬ Fan Festival Ã¢â€â‚¬Ã¢â€â‚¬ */
   .wc-fw{padding:0 0 80px;}
   .wc-fb{border:1px solid var(--mw-line);background:linear-gradient(160deg,rgba(0,60,120,.1),transparent 60%),var(--mw-bg-1);padding:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;}
   .wc-fh2{font-family:"Space Grotesk",sans-serif;font-size:1.5rem;font-weight:900;color:var(--mw-fg);margin-bottom:14px;}
@@ -256,7 +216,7 @@ const CSS = `
   .wc-fm{font-size:11px;color:var(--mw-fg-mute);line-height:1.35;}
   .wc-fm b{color:var(--mw-fg-dim);font-weight:700;}
 
-  /* ── Responsive ── */
+  /* Ã¢â€â‚¬Ã¢â€â‚¬ Responsive Ã¢â€â‚¬Ã¢â€â‚¬ */
   @media(max-width:1024px){
     .wc-cg,.wc-vg,.wc-mg{grid-template-columns:repeat(2,1fr);}
     .wc-sp{grid-template-columns:1fr;gap:24px;}
@@ -286,7 +246,7 @@ export default function WorldCupPage() {
   const { venues } = useData();
   const [tab, setTab] = useState<ScheduleTab>("group");
 
-  const matches = SCHEDULE[tab];
+  const matches = WORLD_CUP_SCHEDULE[tab];
 
   return (
     <div className="wc-page">
@@ -294,14 +254,14 @@ export default function WorldCupPage() {
 
       <FloatingNav />
 
-      {/* ── Hero ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Hero Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="wc-hero">
         <div className="wc-hero-bg" />
         <div className="wc-hero-orb" />
         <div className="wc-hero-inner">
           <div className="wc-hero-text">
             <div className="wc-kicker">
-              <span className="bd" />World Cup 2026 · Watch-Party Hub
+              <span className="bd" />World Cup 2026 Ã‚Â· Watch-Party Hub
             </div>
             <h1 className="wc-h1">
               World Cup 2026<br />
@@ -310,10 +270,10 @@ export default function WorldCupPage() {
             </h1>
             <p className="wc-sub">
               Discover the best soccer venues, fan festivals, and match-day experiences across all 11 U.S. host cities.
-              From Houston to New York — find your perfect watch party.
+              From Houston to New York Ã¢â‚¬â€ find your perfect watch party.
             </p>
             <div style={{ margin: "4px 0 28px" }}>
-              <Countdown target={WC_OPENING} label="Kickoff · Jun 11, 2026" />
+              <Countdown target={WC_OPENING} label="Kickoff Ã‚Â· Jun 11, 2026" />
             </div>
             <div className="wc-btns">
               <a href="#cities" className="wc-btn-p">
@@ -341,7 +301,7 @@ export default function WorldCupPage() {
               </div>
               <div>
                 <div className="wc-sv">Jul <span>19</span></div>
-                <div className="wc-sl">The Final · NYC</div>
+                <div className="wc-sl">The Final Ã‚Â· NYC</div>
               </div>
             </div>
           </div>
@@ -351,7 +311,7 @@ export default function WorldCupPage() {
         </div>
       </section>
 
-      {/* ── Match Schedule ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Match Schedule Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="wc-scw" id="schedule">
         <div className="wc-wrap">
           <div className="wc-sh">
@@ -373,18 +333,18 @@ export default function WorldCupPage() {
 
           {tab === "final" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {SCHEDULE.final.map((m, i) => (
+              {WORLD_CUP_SCHEDULE.final.map((m, i) => (
                 <div key={i} className="wc-final-card">
-                  <div className="wc-final-top">{m.group} · {m.date} · {m.time}</div>
+                  <div className="wc-final-top">{m.group} Ã‚Â· {m.date} Ã‚Â· {m.time}</div>
                   <div className="wc-final-teams">
                     <div className="wc-final-team" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      {FLAGS[m.home] && <Flag code={FLAGS[m.home]} />}
+                      {WORLD_CUP_FLAGS[m.home] && <Flag code={WORLD_CUP_FLAGS[m.home]} />}
                       {m.home}
                     </div>
                     <div className="wc-final-vs">VS</div>
                     <div className="wc-final-team" style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "flex-end" }}>
                       {m.away}
-                      {FLAGS[m.away] && <Flag code={FLAGS[m.away]} />}
+                      {WORLD_CUP_FLAGS[m.away] && <Flag code={WORLD_CUP_FLAGS[m.away]} />}
                     </div>
                   </div>
                   <div className="wc-final-meta">
@@ -405,17 +365,17 @@ export default function WorldCupPage() {
                   </div>
                   <div className="wc-mc-teams">
                     <div className="wc-mc-team">
-                      {FLAGS[m.home] && <Flag code={FLAGS[m.home]} />}
+                      {WORLD_CUP_FLAGS[m.home] && <Flag code={WORLD_CUP_FLAGS[m.home]} />}
                       {m.home}
                     </div>
                     <div className="wc-mc-vs">VS</div>
                     <div className="wc-mc-team away">
-                      {FLAGS[m.away] && <Flag code={FLAGS[m.away]} />}
+                      {WORLD_CUP_FLAGS[m.away] && <Flag code={WORLD_CUP_FLAGS[m.away]} />}
                       {m.away}
                     </div>
                   </div>
                   <div className="wc-mc-foot">
-                    <span>{m.date} · {m.time}</span>
+                    <span>{m.date} Ã‚Â· {m.time}</span>
                     <span className="city">{m.city}</span>
                   </div>
                 </Link>
@@ -425,7 +385,7 @@ export default function WorldCupPage() {
         </div>
       </section>
 
-      {/* ── 11 Host Cities ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ 11 Host Cities Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="wc-cw" id="cities">
         <div className="wc-wrap">
           <div className="wc-sh">
@@ -453,11 +413,11 @@ export default function WorldCupPage() {
                 <div className="wc-ci">
                   <span className="wc-cbadge">{c.badge}</span>
                   <div className="wc-cn">{c.name}</div>
-                  <div className="wc-cs">{c.stadium} · {c.cap}</div>
+                  <div className="wc-cs">{c.stadium} Ã‚Â· {c.cap}</div>
                   <div className="wc-cm">
                     <div className="wc-cmn">
                       <span className="n">{c.matches}</span> matches
-                      {watchParties > 0 && <> · <span className="n">{watchParties}</span> venues</>}
+                      {watchParties > 0 && <> Ã‚Â· <span className="n">{watchParties}</span> venues</>}
                     </div>
                     <div className="wc-cex">
                       Explore <ChevronRight size={12} />
@@ -471,7 +431,7 @@ export default function WorldCupPage() {
         </div>
       </section>
 
-      {/* ── Venue Registration CTA ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Venue Registration CTA Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="wc-spw">
         <div className="wc-wrap">
           <div className="wc-sp">
@@ -486,7 +446,7 @@ export default function WorldCupPage() {
             </div>
             <div className="wc-spb">
               <Link href="/for-venues/register" className="wc-orange" style={{ justifyContent: "center" }}>
-                <Building2 size={15} /> Register Your Venue — Free
+                <Building2 size={15} /> Register Your Venue Ã¢â‚¬â€ Free
               </Link>
               <Link href="/for-venues" className="wc-spbtn">
                 <Star size={15} /> Become a Featured Venue
@@ -496,15 +456,15 @@ export default function WorldCupPage() {
         </div>
       </section>
 
-      {/* ── FIFA Fan Festival ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ FIFA Fan Festival Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="wc-fw">
         <div className="wc-wrap">
           <div className="wc-fb">
             <div>
               <div className="wc-spk">Official Events</div>
-              <div className="wc-fh2">FIFA Fan Festivals™</div>
+              <div className="wc-fh2">FIFA Fan FestivalsÃ¢â€žÂ¢</div>
               <p className="wc-fp">
-                FIFA Fan Festivals are free, official events held in host cities throughout the tournament —
+                FIFA Fan Festivals are free, official events held in host cities throughout the tournament Ã¢â‚¬â€
                 live match screenings, entertainment, food, and activities for all fans.
               </p>
               <a
@@ -532,7 +492,7 @@ export default function WorldCupPage() {
                       <div className="wc-fn">{festival.city}</div>
                       <div className="wc-fm">
                         <b>{festival.venue}</b><br />
-                        {festival.dates} · {festival.detail}
+                        {festival.dates} Ã‚Â· {festival.detail}
                       </div>
                     </div>
                   </Link>
