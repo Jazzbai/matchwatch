@@ -56,7 +56,7 @@ export const fanProfiles: FanProfile[] = [
       story: "Dutch supporters gather hours before kickoff and march to the stadium as one orange block. OnsOranje promoted Dallas as the first Oranje Fanwalk of the 2026 World Cup, setting the tone in Arlington before the tradition rolled into Houston for the Netherlands vs. Sweden match.",
       records: [
         "Dallas / Arlington: OnsOranje marked the first Oranje Fanwalk of the 2026 World Cup around Dallas Stadium.",
-        "Houston: local reports put the Oranje Fanwalk at roughly 20,000 to 25,000 Dutch supporters.",
+        "Houston: around 20,000 total fans marched to NRG Stadium, including at least 15,000 Dutch supporters in the Oranje Fanwalk.",
         "Houston Stadium: Netherlands beat Sweden 5-1 in front of a reported 68,777 fans.",
       ],
     },
@@ -68,7 +68,7 @@ export const fanProfiles: FanProfile[] = [
       },
       {
         title: "Houston turned highlighter orange",
-        summary: "The Netherlands vs. Sweden match brought a giant Oranje Fanwalk from Rice University toward Houston Stadium, with local reports ranging from about 20,000 to 25,000 Dutch marchers.",
+        summary: "The Netherlands vs. Sweden match brought a giant Oranje Fanwalk from Rice University toward Houston Stadium. Houston Chronicle reporting put the total march scene around 20,000 fans, including at least 15,000 Dutch supporters.",
         angle: "Houston did not just host Oranje. Houston became Oranje.",
       },
       {
@@ -95,6 +95,7 @@ export const fanProfiles: FanProfile[] = [
       { label: "OnsOranje - First Oranje Fanwalk 2026 World Cup Dallas", url: "https://www.onsoranje.nl/info/82589/first-oranje-fanwalk-2026-world-cup-dallas" },
       { label: "Axios Dallas - World Cup kicks off in Arlington", url: "https://www.axios.com/local/dallas/2026/06/14/world-cup-kicks-off-in-arlington" },
       { label: "Axios Houston - Houston turns orange", url: "https://www.axios.com/local/houston/2026/06/22/houston-turns-orange-as-dutch-fans-flood-the-city" },
+      { label: "MSN / Houston Chronicle - 20,000 fans march to NRG Stadium", url: "https://www.msn.com/en-us/sports/soccer/around-20-000-fans-march-to-houston-s-nrg-stadium-for-netherlands-v-sweden-world-cup-match/ar-AA269Hu7" },
       { label: "Houston Chronicle - Netherlands vs Sweden in Houston", url: "https://www.houstonchronicle.com/world-cup/article/netherlands-sweden-houston-22310913.php" },
       { label: "Chron - Orange Fanwalk explained", url: "https://www.chron.com/culture/article/houston-orange-fanwalk-explained-22305717.php" },
     ],
