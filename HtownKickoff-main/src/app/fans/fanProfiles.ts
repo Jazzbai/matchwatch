@@ -304,6 +304,80 @@ export const fanProfiles: FanProfile[] = [
       { label: "Argentina 2026 schedule reference", url: "https://es.wikipedia.org/wiki/Argentina_en_la_Copa_Mundial_de_F%C3%BAtbol_de_2026" },
     ],
   },
+  {
+    order: 5,
+    slug: "japan",
+    country: "Japan",
+    flagLabel: "JPN",
+    nickname: "Samurai Blue",
+    fanName: "Samurai Blue Supporters",
+    tagline: "Synchronized Vamos Nippon chants, Shibuya-style street energy, and one of the world's most admired fan traditions: leaving the stadium spotless.",
+    blurb: "Japan's supporters bring a unique blend of unmatched passion and deep respect to the world stage. The Samurai Blue fans prove that fierce loyalty and world-class sportsmanship can go hand in hand.",
+    accent: "#005bac",
+    accentDeep: "#0a1538",
+    accentAlt: "#d71920",
+    colors: [
+      { name: "Samurai Blue", hex: "#005bac" },
+      { name: "White", hex: "#ffffff" },
+      { name: "Rising Sun Red", hex: "#d71920" },
+    ],
+    names: [
+      { name: "Samurai Blue", meaning: "The national-team identity used for Japan's men's team and supporters." },
+      { name: "Nippon Supporters", meaning: "Fans rallying around the Japanese name for Japan." },
+      { name: "Vamos Nippon", meaning: "A signature chant that pushes the team forward from kickoff to final whistle." },
+      { name: "Blue Wall", meaning: "The visual impact of thousands of blue shirts, flags, and scarves together." },
+    ],
+    symbols: [
+      "Blue shirts",
+      "Vamos Nippon chants",
+      "Rising sun flags",
+      "Drums and claps",
+      "Shibuya-style street celebrations",
+      "Japan Pride cleanup bags",
+      "Respectful stadium exits",
+    ],
+    ritual: {
+      badge: "Signature ritual",
+      name: "Respect After the Whistle",
+      story: "Japan fans are famous for staying after matches to clean their section before leaving. At the 2026 World Cup, the tradition drew attention again after Japan's 2-2 draw with the Netherlands in Dallas, when supporters collected trash from the stands while still celebrating the Samurai Blue.",
+      records: [
+        "Dallas: Japanese fans cleaned seats after Japan's 2-2 draw with the Netherlands.",
+        "Global identity: the cleanup tradition is now one of the most recognized supporter rituals in world football.",
+        "Match-day contrast: high-energy chants during the game, calm respect for the venue after it.",
+      ],
+    },
+    moments: [
+      {
+        title: "Vamos Nippon sets the rhythm",
+        summary: "Japan supporters use synchronized chants and claps to create a steady match-day pulse, giving the Samurai Blue a clear sound even in neutral stadiums.",
+        angle: "The chant is simple, repeatable, and built to travel.",
+      },
+      {
+        title: "Shibuya energy travels abroad",
+        summary: "Japanese celebrations often mirror the dense, electric feel of Shibuya Crossing: flags, blue shirts, cameras, songs, and quick bursts of street-party momentum.",
+        angle: "The city celebration becomes part of the fan identity.",
+      },
+      {
+        title: "The clean-stadium tradition stands out",
+        summary: "After the match, many Japanese fans switch from full-throttle support to collective care for the shared space, leaving their rows cleaner than they found them.",
+        angle: "For Samurai Blue supporters, respect is part of the performance.",
+      },
+    ],
+    funFacts: [
+      "Japan's national team identity is widely known as Samurai Blue.",
+      "Japanese supporters have received global attention across multiple World Cups for cleaning stadium sections after matches.",
+      "The fan culture blends loud, coordinated support with a strong sense of public responsibility.",
+    ],
+    cta: {
+      title: "Explore Samurai Blue watch parties",
+      text: "Find Japan match-day gatherings, chants, and watch-party venues near you.",
+    },
+    sources: [
+      { label: "JFA - Samurai Blue official site", url: "https://www.jfa.jp/eng/samuraiblue/" },
+      { label: "New York Post - Japanese fans clean stadium after World Cup match", url: "https://nypost.com/2026/06/15/sports/japan-fans-clean-stadium-after-world-cup-thriller-as-giants-qb-lends-a-hand/" },
+      { label: "People - Jameis Winston helps Japanese fans clean seats", url: "https://people.com/jameis-winston-helps-japanese-fans-pick-up-trash-after-world-cup-game-11998607" },
+    ],
+  },
 ];
 
 export function getFanProfile(slug: string) {
