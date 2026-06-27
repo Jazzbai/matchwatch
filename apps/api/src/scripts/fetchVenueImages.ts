@@ -31,7 +31,15 @@ const LIMIT = args['limit'] ? Number(args['limit']) : undefined;
 
 function sleep(ms: number) { return new Promise<void>((r) => setTimeout(r, ms)); }
 
-const s3 = new S3Client({ region: AWS_REGION });
+const s3 = new S3Client({
+    region: AWS_REGION,
+    ...(process.env.S3_ENDPOINT ? {
+        endpoint: process.env.S3_ENDPOINT,
+        forcePathStyle: true,
+        requestChecksumCalculation: 'WHEN_REQUIRED',
+        responseChecksumValidation: 'WHEN_REQUIRED',
+    } as any : {}),
+});
 
 async function searchPlaceId(name: string, city: string): Promise<string | null> {
     const query = encodeURIComponent(`${name} ${city}`);

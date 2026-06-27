@@ -17,6 +17,12 @@ export const STORAGE_MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 
 const s3 = new S3Client({
     region: process.env.AWS_REGION || 'us-east-1',
+    ...(process.env.S3_ENDPOINT ? {
+        endpoint: process.env.S3_ENDPOINT,
+        forcePathStyle: true,
+        requestChecksumCalculation: 'WHEN_REQUIRED',
+        responseChecksumValidation: 'WHEN_REQUIRED',
+    } as any : {}),
     ...(process.env.AWS_ACCESS_KEY_ID ? {
         credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID,
