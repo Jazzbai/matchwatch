@@ -217,7 +217,7 @@ export default function HomePage() {
           <div className="hp-sh">
             <div className="hp-st">
               This week matches
-              <span className="tag">Mon-Fri</span>
+              <span className="tag">Jun 29-Jul 2</span>
             </div>
             <Link href="/world-cup#schedule" className="hp-see">Full WC schedule</Link>
           </div>

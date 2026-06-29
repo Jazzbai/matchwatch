@@ -330,8 +330,10 @@ export const fanProfiles: FanProfile[] = [
     symbols: [
       "Blue shirts",
       "Vamos Nippon chants",
+      "Taiko drums",
+      "Bachi drumsticks",
+      "Oendan cheering squads",
       "Rising sun flags",
-      "Drums and claps",
       "Shibuya-style street celebrations",
       "Japan Pride cleanup bags",
       "Respectful stadium exits",
@@ -343,14 +345,24 @@ export const fanProfiles: FanProfile[] = [
       records: [
         "Dallas: Japanese fans cleaned seats after Japan's 2-2 draw with the Netherlands.",
         "Global identity: the cleanup tradition is now one of the most recognized supporter rituals in world football.",
-        "Match-day contrast: high-energy chants during the game, calm respect for the venue after it.",
+        "Match-day contrast: high-energy chants and Taiko rhythm during the game, calm respect for the venue after it.",
       ],
     },
     moments: [
       {
+        title: "Taiko becomes the heartbeat",
+        summary: "Taiko, or wadaiko, is the traditional Japanese barrel-shaped drum. Struck with wooden bachi sticks, it creates a deep, booming sound that can cut through massive crowds and lead synchronized Vamos Nippon chants.",
+        angle: "The drum does not just make noise. It gives the crowd a pulse.",
+      },
+      {
         title: "Vamos Nippon sets the rhythm",
-        summary: "Japan supporters use synchronized chants and claps to create a steady match-day pulse, giving the Samurai Blue a clear sound even in neutral stadiums.",
+        summary: "Japan supporters use synchronized chants, claps, and Taiko rhythm to create a steady match-day pulse, giving the Samurai Blue a clear sound even in neutral stadiums.",
         angle: "The chant is simple, repeatable, and built to travel.",
+      },
+      {
+        title: "Oendan carry the sound",
+        summary: "Dedicated Japanese cheering squads, known as oendan, help organize the rhythm at soccer matches, baseball games, watch parties, and Fan Festivals so the whole crowd can move together.",
+        angle: "The leaders keep the chant organized, and the drum keeps it alive.",
       },
       {
         title: "Shibuya energy travels abroad",
@@ -365,6 +377,8 @@ export const fanProfiles: FanProfile[] = [
     ],
     funFacts: [
       "Japan's national team identity is widely known as Samurai Blue.",
+      "Wadaiko literally means Japanese drum; Taiko drums range from small handheld drums to massive festival drums.",
+      "Taiko is historically tied to Japanese festivals, theater, and religious ceremonies, so bringing it to a watch party shares more than match-day noise.",
       "Japanese supporters have received global attention across multiple World Cups for cleaning stadium sections after matches.",
       "The fan culture blends loud, coordinated support with a strong sense of public responsibility.",
     ],
