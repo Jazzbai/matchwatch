@@ -326,7 +326,7 @@ export default function WorldCupPage() {
           <div className="wc-tabs">
             {(["group", "knockout", "final"] as ScheduleTab[]).map(t => (
               <button key={t} className={`wc-tab${tab === t ? " on" : ""}`} onClick={() => setTab(t)}>
-                {t === "group" ? "Group Stage" : t === "knockout" ? "Knockouts" : "Final"}
+                {t === "group" ? "This Week" : t === "knockout" ? "Knockouts" : "Final"}
               </button>
             ))}
           </div>
