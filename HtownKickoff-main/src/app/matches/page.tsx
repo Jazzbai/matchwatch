@@ -10,6 +10,7 @@ import { isNationalTeamCompetition } from "../../lib/league-utils";
 import { getMatchDisplay } from "../../lib/match-display";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
 import { FloatingNav } from "../../components/AppShell";
+import { WORLD_CUP_FLAGS, WORLD_CUP_THIS_WEEK } from "../world-cup/schedule";
 
 /* ── CSS ── */
 const MT_VARS = `
@@ -493,17 +494,6 @@ function MatchesPageContent() {
         [filtered]
     );
 
-    /* World Cup / national-team fixtures are excluded from the main list above;
-       surface them in a dedicated rail near the top. */
-    const wcMatches = React.useMemo(() => {
-        const threshold = renderNow - 2 * 60 * 60 * 1000;
-        return MATCHES
-            .filter(m => isNationalTeamCompetition(getLeague(m.leagueId)))
-            .filter(m => asTimestamp(m.matchDateUTC) >= threshold)
-            .sort((a, b) => asTimestamp(a.matchDateUTC) - asTimestamp(b.matchDateUTC))
-            .slice(0, 12);
-    }, [MATCHES, getLeague, renderNow]);
-
     const heroUpcoming = filtered.filter(m => isLive(m.status) || isUpcoming(m.status)).length;
     const heroPlayed = filtered.filter(m => isFinished(m.status)).length;
     const heroWeek = filtered.length;
@@ -539,34 +529,30 @@ function MatchesPageContent() {
             </section>
 
             {/* World Cup fixtures rail */}
-            {wcMatches.length > 0 && (
+            {WORLD_CUP_THIS_WEEK.length > 0 && (
                 <section className="mt-wc">
                     <div className="mt-wc-head">
                         <h2><span className="tag">WC 2026</span> World Cup fixtures</h2>
                         <Link href="/world-cup">All World Cup →</Link>
                     </div>
                     <div className="mt-wc-strip">
-                        {wcMatches.map(m => {
-                            const h = m.homeTeamId ? getTeam(m.homeTeamId) : undefined;
-                            const a = m.awayTeamId ? getTeam(m.awayTeamId) : undefined;
-                            const d = getMatchDisplay(m, { homeTeam: h, awayTeam: a, league: getLeague(m.leagueId) });
-                            const dt = new Date(m.matchDateUTC);
+                        {WORLD_CUP_THIS_WEEK.map(m => {
+                            const homeFlag = WORLD_CUP_FLAGS[m.home];
+                            const awayFlag = WORLD_CUP_FLAGS[m.away];
                             return (
-                                <Link key={m.id} href={`/matches/${m.id}`} className="mt-wc-card">
+                                <Link key={`${m.date}-${m.home}-${m.away}`} href="/world-cup#schedule" className="mt-wc-card">
                                     <div className="mt-wc-meta">
-                                        <span>{getLeague(m.leagueId)?.shortName || "WC 2026"}</span>
-                                        <span>{dt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                                        <span>{m.date}</span>
+                                        <span>{m.time}</span>
                                     </div>
                                     <div className="mt-wc-teams">
-                                        {h?.image && <img src={h.image} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />}
-                                        <span className="mt-wc-team">{d.homeName}</span>
+                                        {homeFlag && <img src={`https://flagcdn.com/24x18/${homeFlag}.png`} width={24} height={18} alt="" />}
+                                        <span className="mt-wc-team">{m.home}</span>
                                     </div>
-                                    {!d.isSingleEvent && (
-                                        <div className="mt-wc-teams" style={{ marginTop: 6 }}>
-                                            {a?.image && <img src={a.image} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />}
-                                            <span className="mt-wc-team">{d.awayName}</span>
-                                        </div>
-                                    )}
+                                    <div className="mt-wc-teams" style={{ marginTop: 6 }}>
+                                        {awayFlag && <img src={`https://flagcdn.com/24x18/${awayFlag}.png`} width={24} height={18} alt="" />}
+                                        <span className="mt-wc-team">{m.away}</span>
+                                    </div>
                                 </Link>
                             );
                         })}
