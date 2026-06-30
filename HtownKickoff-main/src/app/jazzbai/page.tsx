@@ -2792,52 +2792,42 @@ export default function JazzbaiSuperAdminPage() {
 
   const mergeDuplicateStadiums = () => {
     void runAction("merge-stadium-duplicates", async () => {
-      const plan = stadiumsRows.flatMap((row) => {
-        const duplicateInfo = stadiumDuplicateInfoById.get(row.id);
-        if (!row.isActive || !duplicateInfo || row.id === duplicateInfo.suggestedTargetId) return [];
-        return [{
-          sourceStadiumId: row.id,
-          sourceStadiumName: row.name,
-          targetStadiumId: duplicateInfo.suggestedTargetId,
-          groupKey: duplicateInfo.groupKey,
-        }];
+      const preview = await superAdminFetch<{
+        dryRun: true;
+        groupsConsidered: number;
+        mergeCount: number;
+      }>("/stadiums/duplicates/resolve", {
+        method: "POST",
+        body: JSON.stringify({ dryRun: true, includeInactive: false, limit: 200 }),
       });
-      const groupCount = new Set(plan.map((item) => item.groupKey)).size;
 
-      if (plan.length === 0) {
-        window.alert("No active duplicate stadiums were found in the loaded records.");
+      if (preview.mergeCount === 0) {
+        window.alert("No active duplicate stadiums were found.");
         return;
       }
 
       const confirmed = window.confirm(
-        `Merge ${plan.length} duplicate stadium record${plan.length === 1 ? "" : "s"} across ${groupCount} group${groupCount === 1 ? "" : "s"}? The recommended record in each group will be kept.`,
+        `Merge ${preview.mergeCount} duplicate stadium record${preview.mergeCount === 1 ? "" : "s"} across ${preview.groupsConsidered} group${preview.groupsConsidered === 1 ? "" : "s"}? The recommended record in each group will be kept.`,
       );
       if (!confirmed) return;
 
-      let appliedCount = 0;
-      const failures: Array<{ name: string; error: string }> = [];
-      for (const item of plan) {
-        try {
-          await superAdminFetch(`/stadiums/${item.sourceStadiumId}/merge`, {
-            method: "POST",
-            body: JSON.stringify({ targetStadiumId: item.targetStadiumId }),
-          });
-          appliedCount += 1;
-        } catch (err) {
-          failures.push({
-            name: item.sourceStadiumName,
-            error: err instanceof Error ? err.message : "Unknown merge failure",
-          });
-        }
-      }
+      const result = await superAdminFetch<{
+        appliedCount: number;
+        failedCount: number;
+        failed: Array<{ sourceStadiumName: string; error: string }>;
+      }>("/stadiums/duplicates/resolve", {
+        method: "POST",
+        body: JSON.stringify({ dryRun: false, includeInactive: false, limit: 200 }),
+      });
 
       await Promise.all([loadStadiumsAdmin(), loadLookups()]);
-      if (failures.length > 0) {
+      if (result.failedCount > 0) {
+        const firstFailure = result.failed[0];
         throw new Error(
-          `${appliedCount} stadium duplicate${appliedCount === 1 ? "" : "s"} merged; ${failures.length} failed. First failure: ${failures[0].name}: ${failures[0].error}`,
+          `${result.appliedCount} stadium duplicate${result.appliedCount === 1 ? "" : "s"} merged; ${result.failedCount} failed.${firstFailure ? ` First failure: ${firstFailure.sourceStadiumName}: ${firstFailure.error}` : ""}`,
         );
       }
-      window.alert(`${appliedCount} duplicate stadium record${appliedCount === 1 ? "" : "s"} merged successfully.`);
+      window.alert(`${result.appliedCount} duplicate stadium record${result.appliedCount === 1 ? "" : "s"} merged successfully.`);
     });
   };
 
