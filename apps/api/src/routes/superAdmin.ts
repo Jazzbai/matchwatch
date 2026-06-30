@@ -154,7 +154,7 @@ const updateLeagueSchema = z.object({
 const teamSearchQuerySchema = z.object({
     search: z.string().trim().default(''),
     leagueId: z.string().uuid().optional(),
-    limit: z.coerce.number().int().min(1).max(50).default(12),
+    limit: z.coerce.number().int().min(1).max(200).default(12),
     page: z.coerce.number().int().min(1).optional(),
     includeInactive: z.coerce.boolean().optional(),
 });
@@ -214,7 +214,7 @@ const mergeStadiumSchema = z.object({
 
 const stadiumSearchQuerySchema = z.object({
     search: z.string().trim().default(''),
-    limit: z.coerce.number().int().min(1).max(50).default(12),
+    limit: z.coerce.number().int().min(1).max(200).default(12),
     page: z.coerce.number().int().min(1).optional(),
     includeInactive: z.coerce.boolean().optional().default(false),
 });

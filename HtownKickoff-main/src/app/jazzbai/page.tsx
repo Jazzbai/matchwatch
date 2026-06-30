@@ -1935,7 +1935,7 @@ export default function JazzbaiSuperAdminPage() {
     try {
       const params = new URLSearchParams({
         page: "1",
-        limit: "50",
+        limit: "200",
         includeInactive: "true",
       });
       if (teamsSearch.trim()) params.set("search", teamsSearch.trim());
@@ -1956,7 +1956,7 @@ export default function JazzbaiSuperAdminPage() {
     try {
       const params = new URLSearchParams({
         page: "1",
-        limit: "50",
+        limit: "200",
         includeInactive: "true",
       });
       if (stadiumsSearch.trim()) params.set("search", stadiumsSearch.trim());
@@ -2653,6 +2653,7 @@ export default function JazzbaiSuperAdminPage() {
   const teamDuplicateInfoById = (() => {
     const groups = new Map<string, TeamAdminRow[]>();
     for (const row of teamsRows) {
+      if (!row.isActive) continue;
       const normalizedName = normalizeDuplicateTeamName(row.name || "");
       if (!normalizedName) continue;
       const key = `${row.leagueId || "none"}::${normalizedName}`;
@@ -2700,6 +2701,7 @@ export default function JazzbaiSuperAdminPage() {
   const stadiumDuplicateInfoById = (() => {
     const groups = new Map<string, StadiumAdminRow[]>();
     for (const row of stadiumsRows) {
+      if (!row.isActive) continue;
       const key = normalizeDuplicateStadiumKey(row.name || "", row.city, row.country);
       if (!key) continue;
       const existing = groups.get(key) || [];
@@ -2746,6 +2748,99 @@ export default function JazzbaiSuperAdminPage() {
     }
     return info;
   })();
+
+  const mergeDuplicateTeams = () => {
+    void runAction("merge-team-duplicates", async () => {
+      const preview = await superAdminFetch<{
+        dryRun: true;
+        groupsConsidered: number;
+        mergeCount: number;
+      }>("/teams/duplicates/resolve", {
+        method: "POST",
+        body: JSON.stringify({ dryRun: true, includeInactive: false, limit: 200 }),
+      });
+
+      if (preview.mergeCount === 0) {
+        window.alert("No active duplicate teams were found.");
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `Merge ${preview.mergeCount} duplicate team record${preview.mergeCount === 1 ? "" : "s"} across ${preview.groupsConsidered} group${preview.groupsConsidered === 1 ? "" : "s"}? The recommended record in each group will be kept.`,
+      );
+      if (!confirmed) return;
+
+      const result = await superAdminFetch<{
+        appliedCount: number;
+        failedCount: number;
+        failed: Array<{ sourceTeamName: string; error: string }>;
+      }>("/teams/duplicates/resolve", {
+        method: "POST",
+        body: JSON.stringify({ dryRun: false, includeInactive: false, limit: 200 }),
+      });
+
+      await Promise.all([loadTeamsAdmin(), loadLookups()]);
+      if (result.failedCount > 0) {
+        const firstFailure = result.failed[0];
+        throw new Error(
+          `${result.appliedCount} team duplicate${result.appliedCount === 1 ? "" : "s"} merged; ${result.failedCount} failed.${firstFailure ? ` First failure: ${firstFailure.sourceTeamName}: ${firstFailure.error}` : ""}`,
+        );
+      }
+      window.alert(`${result.appliedCount} duplicate team record${result.appliedCount === 1 ? "" : "s"} merged successfully.`);
+    });
+  };
+
+  const mergeDuplicateStadiums = () => {
+    void runAction("merge-stadium-duplicates", async () => {
+      const plan = stadiumsRows.flatMap((row) => {
+        const duplicateInfo = stadiumDuplicateInfoById.get(row.id);
+        if (!row.isActive || !duplicateInfo || row.id === duplicateInfo.suggestedTargetId) return [];
+        return [{
+          sourceStadiumId: row.id,
+          sourceStadiumName: row.name,
+          targetStadiumId: duplicateInfo.suggestedTargetId,
+          groupKey: duplicateInfo.groupKey,
+        }];
+      });
+      const groupCount = new Set(plan.map((item) => item.groupKey)).size;
+
+      if (plan.length === 0) {
+        window.alert("No active duplicate stadiums were found in the loaded records.");
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `Merge ${plan.length} duplicate stadium record${plan.length === 1 ? "" : "s"} across ${groupCount} group${groupCount === 1 ? "" : "s"}? The recommended record in each group will be kept.`,
+      );
+      if (!confirmed) return;
+
+      let appliedCount = 0;
+      const failures: Array<{ name: string; error: string }> = [];
+      for (const item of plan) {
+        try {
+          await superAdminFetch(`/stadiums/${item.sourceStadiumId}/merge`, {
+            method: "POST",
+            body: JSON.stringify({ targetStadiumId: item.targetStadiumId }),
+          });
+          appliedCount += 1;
+        } catch (err) {
+          failures.push({
+            name: item.sourceStadiumName,
+            error: err instanceof Error ? err.message : "Unknown merge failure",
+          });
+        }
+      }
+
+      await Promise.all([loadStadiumsAdmin(), loadLookups()]);
+      if (failures.length > 0) {
+        throw new Error(
+          `${appliedCount} stadium duplicate${appliedCount === 1 ? "" : "s"} merged; ${failures.length} failed. First failure: ${failures[0].name}: ${failures[0].error}`,
+        );
+      }
+      window.alert(`${appliedCount} duplicate stadium record${appliedCount === 1 ? "" : "s"} merged successfully.`);
+    });
+  };
+
   const leagueById = new Map(
     lookupLeagues.map((league) => [league.id, league]),
   );
@@ -4551,7 +4646,14 @@ export default function JazzbaiSuperAdminPage() {
             <div style={cardStyle}>
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Teams ({teamsCount})</h2>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <button
+                    style={smallBtn("danger", submittingAction === "merge-team-duplicates")}
+                    onClick={mergeDuplicateTeams}
+                    disabled={submittingAction === "merge-team-duplicates"}
+                  >
+                    {submittingAction === "merge-team-duplicates" ? "Merging..." : "Find & Merge Duplicates"}
+                  </button>
                   <input value={teamsSearch} onChange={(e) => setTeamsSearch(e.target.value)} placeholder="Search teams" style={{ ...inputStyle, minWidth: 220 }} />
                   <button style={smallBtn("outline", teamsLoading)} onClick={() => void loadTeamsAdmin()} disabled={teamsLoading}>Search</button>
                 </div>
@@ -5051,7 +5153,14 @@ export default function JazzbaiSuperAdminPage() {
             <div style={cardStyle}>
               <div style={sectionHeadStyle}>
                 <h2 style={{ margin: 0, fontSize: 15, color: "var(--foreground)", fontWeight: 800 }}>Stadiums ({stadiumsCount})</h2>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <button
+                    style={smallBtn("danger", submittingAction === "merge-stadium-duplicates")}
+                    onClick={mergeDuplicateStadiums}
+                    disabled={submittingAction === "merge-stadium-duplicates"}
+                  >
+                    {submittingAction === "merge-stadium-duplicates" ? "Merging..." : "Find & Merge Duplicates"}
+                  </button>
                   <input value={stadiumsSearch} onChange={(e) => setStadiumsSearch(e.target.value)} placeholder="Search stadiums" style={{ ...inputStyle, minWidth: 220 }} />
                   <button style={smallBtn("outline", stadiumsLoading)} onClick={() => void loadStadiumsAdmin()} disabled={stadiumsLoading}>Search</button>
                 </div>
