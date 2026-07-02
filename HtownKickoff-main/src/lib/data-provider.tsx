@@ -193,6 +193,47 @@ type ApiMatch = {
     } | null;
 };
 
+type ApiVenue = Partial<Omit<Venue, "state" | "instagram" | "fanTeams">> & {
+    id: string;
+    slug: string;
+    name: string;
+    stateProvince?: string | null;
+    instagramHandle?: string | null;
+    averageRating?: string | number | null;
+    totalReviews?: number | null;
+    ratingOverride?: string | number | null;
+    reviewCountOverride?: number | null;
+    followerCount?: string | number | null;
+    promotedVenueEventId?: string | null;
+    fanTeams?: Venue["fanTeams"];
+};
+
+type ApiVenueEvent = Partial<Omit<VenueEvent, "confirmedBookings" | "entryFee">> & {
+    id: string;
+    venueId?: string;
+    matchId?: string | null;
+    confirmedBookingsCount?: number | string | null;
+    customPrice?: number | string | null;
+    match?: ApiMatch | null;
+};
+
+type ApiPost = Partial<Post> & {
+    id: string;
+    venueId: string;
+};
+
+type ApiReview = Partial<Review> & {
+    id: string;
+    venueId: string;
+    createdAt?: string;
+};
+
+type ApiBooking = Partial<Omit<Booking, "reference">> & {
+    id: string;
+    bookingReference?: string;
+    status?: Booking["status"];
+};
+
 function normalizeImageUrl(value?: string | null) {
     const raw = (value || "").trim();
     if (!raw) return "";
@@ -461,7 +502,20 @@ function shouldSkipBootstrapFetch(pathname: string) {
         || pathname === "/signup"
         || pathname === "/register"
         || pathname === "/register-venue"
-        || pathname.startsWith("/for-venues/register")
+        || pathname === "/forgot-password"
+        || pathname === "/reset-password"
+        || pathname === "/about"
+        || pathname === "/contact"
+        || pathname === "/careers"
+        || pathname.startsWith("/careers/")
+        || pathname === "/partners"
+        || pathname === "/privacy"
+        || pathname === "/terms"
+        || pathname === "/services"
+        || pathname.startsWith("/fans")
+        || pathname.startsWith("/for-venues")
+        || pathname.includes("/fan-festival")
+        || pathname.includes("/fan-zones")
         || pathname.startsWith("/admin")
         || pathname.startsWith("/jazzbai");
 }
@@ -612,8 +666,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const venueBootstrapMaxPages = getVenueBootstrapMaxPages(pathname);
         const [apiMatches, apiVenues, apiBookings, prioritySportsPayload] = await Promise.all([
             safeFetchPaginated<ApiMatch>("/matches?sort=date_asc", MATCH_FETCH_LIMIT, MATCH_MAX_PAGES),
-            safeFetchPaginated<any>("/venues?sort=featured", VENUE_FETCH_LIMIT, venueBootstrapMaxPages),
-            hasToken ? safeFetch<any[]>(`/bookings?page=1&limit=${BOOKING_FETCH_LIMIT}`) : Promise.resolve([] as any[]),
+            safeFetchPaginated<ApiVenue>("/venues?sort=featured", VENUE_FETCH_LIMIT, venueBootstrapMaxPages),
+            hasToken ? safeFetch<ApiBooking[]>(`/bookings?page=1&limit=${BOOKING_FETCH_LIMIT}`) : Promise.resolve([] as ApiBooking[]),
             fetchPrioritySportsMatches(),
         ]);
 
@@ -864,7 +918,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             descriptionSource: null,
             shortDescriptionSource: null,
             priceRangeSource: null,
-            fanTeams: Array.isArray((v as any).fanTeams) ? (v as any).fanTeams : [],
+            fanTeams: Array.isArray(v.fanTeams) ? v.fanTeams : [],
         } satisfies Venue);
         });
 
@@ -889,7 +943,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 const shouldFetchVenueEvents = shouldFetchDeepVenueData;
                 const venueSlugOrId = venue.slug || venue.id;
                 const events = shouldFetchVenueEvents
-                    ? await safeFetchPaginated<any>(`/venues/${venueSlugOrId}/events`, VENUE_FETCH_LIMIT, 6)
+                    ? await safeFetchPaginated<ApiVenueEvent>(`/venues/${venueSlugOrId}/events`, VENUE_FETCH_LIMIT, 6)
                     : [];
 
                 if (!shouldFetchDeepVenueData) {
@@ -897,9 +951,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 }
 
                 const [detail, venuePosts, venueReviews] = await Promise.all([
-                    safeFetch<any>(`/venues/${venueSlugOrId}`),
-                    safeFetchPaginated<any>(`/venues/${venueSlugOrId}/posts`, VENUE_FETCH_LIMIT, 6),
-                    safeFetchPaginated<any>(`/venues/${venueSlugOrId}/reviews`, VENUE_FETCH_LIMIT, 6),
+                    safeFetch<ApiVenue>(`/venues/${venueSlugOrId}`),
+                    safeFetchPaginated<ApiPost>(`/venues/${venueSlugOrId}/posts`, VENUE_FETCH_LIMIT, 6),
+                    safeFetchPaginated<ApiReview>(`/venues/${venueSlugOrId}/reviews`, VENUE_FETCH_LIMIT, 6),
                 ]);
 
                 return { venue, detail, events: events || [], venuePosts: venuePosts || [], venueReviews: venueReviews || [] };
@@ -1032,7 +1086,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
                 mappedVenueEvents.push({
                     id: ev.id,
-                    venueId: ev.venueId,
+                    venueId: ev.venueId || row.venue.id,
                     matchId: eventMatchId,
                     isActive: ev.isActive !== false,
                     bookingLimit: ev.bookingLimit ?? null,
@@ -1076,10 +1130,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 id: b.id,
                 reference: b.bookingReference || b.id,
                 userId: b.userId || "",
-                venueEventId: b.venueEventId,
+                venueEventId: b.venueEventId || "",
                 partySize: Number(b.partySize || 1),
                 specialRequests: b.specialRequests || "",
-                status: b.status,
+                status: b.status || "PENDING",
                 createdAt: b.createdAt || new Date().toISOString(),
             }))
             : [];
@@ -1102,7 +1156,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }, [isApiConnected]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         void fetchFromApi();
     }, [fetchFromApi]);
 

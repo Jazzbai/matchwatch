@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import type { LeafletMouseEvent, Map as LeafletMap, Marker } from "leaflet";
 
 type LocationPickerMapProps = {
     lat: number;
@@ -16,8 +17,8 @@ export function LocationPickerMap({
     zoom = 12,
 }: LocationPickerMapProps) {
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
-    const mapRef = useRef<any>(null);
-    const markerRef = useRef<any>(null);
+    const mapRef = useRef<LeafletMap | null>(null);
+    const markerRef = useRef<Marker | null>(null);
 
     useEffect(() => {
         let mounted = true;
@@ -27,7 +28,7 @@ export function LocationPickerMap({
             if (!mounted || !mapContainerRef.current || mapRef.current) return;
 
             // Use CDN marker assets so markers render correctly in Next standalone builds.
-            delete (L.Icon.Default.prototype as any)._getIconUrl;
+            delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
             L.Icon.Default.mergeOptions({
                 iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
                 iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -47,7 +48,7 @@ export function LocationPickerMap({
 
             markerRef.current = L.marker([lat, lng]).addTo(map);
 
-            map.on("click", (event: any) => {
+            map.on("click", (event: LeafletMouseEvent) => {
                 const selectedLat = Number(event.latlng.lat);
                 const selectedLng = Number(event.latlng.lng);
 

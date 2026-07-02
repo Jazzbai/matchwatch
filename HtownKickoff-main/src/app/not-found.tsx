@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { ArrowLeft, CalendarDays, CircleDot, Lightbulb, MapPin } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 
@@ -84,7 +85,7 @@ export default function NotFoundPage() {
                             marginBottom: "32px",
                         }}
                     >
-                        The page you're looking for has left the pitch. It might have been moved, deleted, or maybe it never existed — like that goal the ref disallowed.
+                        The page you&apos;re looking for has left the pitch. It might have been moved, deleted, or maybe it never existed - like that goal the ref disallowed.
                     </p>
 
                     {/* Status strip */}
@@ -99,18 +100,18 @@ export default function NotFoundPage() {
 
                     {/* CTA Buttons */}
                     <div className="animate-fade-up stagger-4" style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
-                        <a href="/" className="btn-primary" style={{ textDecoration: "none", padding: "14px 28px", display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                        <Link href="/" className="btn-primary" style={{ textDecoration: "none", padding: "14px 28px", display: "inline-flex", alignItems: "center", gap: "8px" }}>
                             <ArrowLeft size={16} />
                             Back to MatchWatch
-                        </a>
-                        <a href="/matches" className="btn-ghost" style={{ textDecoration: "none", padding: "14px 28px", display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                        </Link>
+                        <Link href="/matches" className="btn-ghost" style={{ textDecoration: "none", padding: "14px 28px", display: "inline-flex", alignItems: "center", gap: "8px" }}>
                             <CalendarDays size={16} />
                             Browse Matches
-                        </a>
-                        <a href="/venues" className="btn-ghost" style={{ textDecoration: "none", padding: "14px 28px", display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                        </Link>
+                        <Link href="/venues" className="btn-ghost" style={{ textDecoration: "none", padding: "14px 28px", display: "inline-flex", alignItems: "center", gap: "8px" }}>
                             <MapPin size={16} />
                             Find Venues
-                        </a>
+                        </Link>
                     </div>
 
                     {/* Fun fact */}
