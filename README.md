@@ -123,6 +123,8 @@ npm run teams:backfill-logos --workspace=@matchwatch/api
 
 For local sync scripts, make sure `DATABASE_URL` matches the compose database credentials, for example `postgresql://matchwatch:matchwatch_dev@localhost:5432/matchwatch` or your overridden `POSTGRES_PORT`.
 
+The API match sync worker runs all active sports on startup and nightly jobs. After deployment, MLB appears only after that worker runs successfully or after `matches:sync-baseball` is run against the production database.
+
 ## Environment Overview
 
 Key variables from `.env.example`:
