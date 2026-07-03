@@ -113,9 +113,13 @@ Useful API scripts:
 
 ```bash
 npm run matches:sync-upcoming --workspace=@matchwatch/api
+npm run matches:sync-baseball --workspace=@matchwatch/api
+npm run matches:sync-sports --workspace=@matchwatch/api
 npm run venues:sync-google --workspace=@matchwatch/api
 npm run teams:backfill-logos --workspace=@matchwatch/api
 ```
+
+`matches:sync-baseball` syncs active Baseball leagues, including MLB, through the ESPN scoreboard provider. `matches:sync-sports` runs every active sport in the database, so soccer and baseball fixtures can be refreshed together.
 
 ## Environment Overview
 
@@ -393,6 +397,7 @@ Used by [apps/api/src/workers/matchSync.ts](apps/api/src/workers/matchSync.ts):
   - base derived from `THE_SPORTS_DB_API_KEY`
 - ESPN Scoreboard
   - base: `https://site.api.espn.com/apis/site/v2/sports`
+  - used for MLB through `/baseball/mlb/scoreboard`
 - Jolpica / Ergast-style F1 API
   - base: `https://api.jolpi.ca/ergast`
 

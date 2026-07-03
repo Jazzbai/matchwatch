@@ -37,8 +37,9 @@ const MATCH_MAX_PAGES = 20;
 const BOOKING_FETCH_LIMIT = 50;
 const INTERNAL_VENUE_AMENITIES = new Set(["OFFICIAL_FAN_FEST"]);
 const FLAG_CDN_BASE = "https://flagcdn.com";
-const HOME_PRIORITY_SOCCER_LEAGUE_MATCHERS = [
+const HOME_PRIORITY_LEAGUE_MATCHERS = [
     (name: string) => name === "mls" || name.includes("major league soccer"),
+    (name: string) => name === "mlb" || name.includes("major league baseball"),
     (name: string) => name.includes("premier league"),
     (name: string) => name.includes("la liga"),
     (name: string) => name.includes("bundesliga"),
@@ -609,7 +610,7 @@ async function fetchPrioritySportsMatches(): Promise<{ matches: ApiMatch[]; face
         const candidates = [league.name, league.shortName]
             .map((value) => sanitizeLegalText(value || "").trim().toLowerCase())
             .filter(Boolean);
-        return HOME_PRIORITY_SOCCER_LEAGUE_MATCHERS.some((matcher) => candidates.some((candidate) => matcher(candidate)));
+        return HOME_PRIORITY_LEAGUE_MATCHERS.some((matcher) => candidates.some((candidate) => matcher(candidate)));
     });
 
     if (targetLeagues.length === 0) {
