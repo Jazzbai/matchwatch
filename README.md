@@ -76,8 +76,8 @@ Services:
 - frontend: `http://localhost:3000`
 - api: `http://localhost:4000`
 - api health: `http://localhost:4000/health`
-- postgres: `localhost:5432`
-- redis: `localhost:6379`
+- postgres: `localhost:${POSTGRES_PORT:-5432}`
+- redis: `localhost:${REDIS_PORT:-6379}`
 
 ### Run without Docker
 
@@ -120,6 +120,8 @@ npm run teams:backfill-logos --workspace=@matchwatch/api
 ```
 
 `matches:sync-baseball` syncs active Baseball leagues, including MLB, through the ESPN scoreboard provider. `matches:sync-sports` runs every active sport in the database, so soccer and baseball fixtures can be refreshed together.
+
+For local sync scripts, make sure `DATABASE_URL` matches the compose database credentials, for example `postgresql://matchwatch:matchwatch_dev@localhost:5432/matchwatch` or your overridden `POSTGRES_PORT`.
 
 ## Environment Overview
 

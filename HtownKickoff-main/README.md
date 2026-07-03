@@ -141,7 +141,7 @@ cp .env.example .env
 Important defaults in `.env.example`:
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/matchwatch
+DATABASE_URL=postgresql://matchwatch:matchwatch_dev@localhost:5432/matchwatch
 REDIS_URL=redis://localhost:6379
 PORT=4000
 NEXT_PUBLIC_API_URL=/api/v1
@@ -195,7 +195,7 @@ Default ports:
 
 - frontend: `3100`
 - api: `4000`
-- postgres: `5432`
+- postgres: `${POSTGRES_PORT:-5432}`
 - redis: `6379`
 - mailhog: `8025` and `1025` when enabled
 
