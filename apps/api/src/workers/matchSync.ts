@@ -10,6 +10,7 @@ import { buildTeamIdentityCandidates, normalizeTeamIdentity, scoreTeamIdentityRe
 
 const QUEUE_NAME = 'matchSync';
 const DEFAULT_SYNC_SPORT_SLUG = 'all';
+const UPCOMING_SYNC_REPEAT_CRON = '0 */6 * * *';
 const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
 const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE_URL || 'https://v3.football.api-sports.io';
 const THE_SPORTS_DB_BASE = process.env.THE_SPORTS_DB_BASE_URL
@@ -830,13 +831,7 @@ async function syncLeagueFromEspn(league: LeagueRow, mode: SyncMode = 'UPCOMING'
     const start = new Date(now);
     start.setUTCDate(start.getUTCDate() + (mode === 'LIVE' ? -1 : mode === 'BACKFILL' ? -365 : 0));
     const end = new Date(now);
-    const lookaheadDays = mode === 'LIVE'
-        ? 1
-        : mode === 'BACKFILL'
-            ? 30
-        : externalCode === 'MLS' || externalCode === 'LMX'
-            ? 30
-            : 14;
+    const lookaheadDays = mode === 'LIVE' ? 1 : 30;
     end.setUTCDate(end.getUTCDate() + lookaheadDays);
 
     const eventsById = new Map<string, EspnEvent>();
@@ -1472,6 +1467,11 @@ export async function scheduleMatchSync() {
     await matchSyncQueue.add('nightly-sync', {}, {
         repeat: { pattern: '0 2 * * *' },
         jobId: 'nightly-match-sync',
+    });
+
+    await matchSyncQueue.add('upcoming-sync', {}, {
+        repeat: { pattern: UPCOMING_SYNC_REPEAT_CRON },
+        jobId: 'upcoming-match-sync',
     });
 
     await matchSyncQueue.add('live-status-sync', {}, {
