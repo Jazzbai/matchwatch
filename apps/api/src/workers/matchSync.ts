@@ -11,6 +11,7 @@ import { buildTeamIdentityCandidates, normalizeTeamIdentity, scoreTeamIdentityRe
 const QUEUE_NAME = 'matchSync';
 const DEFAULT_SYNC_SPORT_SLUG = 'all';
 const UPCOMING_SYNC_REPEAT_CRON = '0 */6 * * *';
+const SYNC_LEAGUE_PRIORITY = ['MLB', 'NBA', 'NHL', 'NFL', 'MLS'];
 const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
 const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE_URL || 'https://v3.football.api-sports.io';
 const THE_SPORTS_DB_BASE = process.env.THE_SPORTS_DB_BASE_URL
@@ -396,6 +397,12 @@ function parseTheSportsDbDateTime(dateEvent?: string | null, strTime?: string | 
 
 function mapTheSportsDbLeagueCode(externalId: string) {
     return externalId.trim().toUpperCase();
+}
+
+function syncLeaguePriority(externalId?: string | null) {
+    const code = mapTheSportsDbLeagueCode(externalId || '');
+    const index = SYNC_LEAGUE_PRIORITY.indexOf(code);
+    return index === -1 ? SYNC_LEAGUE_PRIORITY.length : index;
 }
 
 function formatEspnDate(date: Date) {
@@ -1514,14 +1521,37 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
         eq(leagues.isActive, true),
         ...(sportSlug === 'all' ? [] : [eq(sports.slug, sportSlug)]),
         ...(provider === 'API_FOOTBALL' ? [] : [sql`${leagues.externalId} IS NOT NULL`]),
-    ));
+    )).then((rows) => rows.sort((left, right) => {
+        const priorityDiff = syncLeaguePriority(left.league.externalId) - syncLeaguePriority(right.league.externalId);
+        if (priorityDiff !== 0) return priorityDiff;
+        return (left.league.sortOrder || 999) - (right.league.sortOrder || 999);
+    }));
 
     const syncResults: Record<string, SyncResult> = {};
     clearSyncCaches();
 
+    logger.info({
+        provider,
+        sportSlug,
+        mode,
+        targetCount: leagueRows.length,
+        targets: leagueRows.map((row) => ({
+            name: row.league.name,
+            externalId: row.league.externalId,
+            sportSlug: row.sportSlug,
+        })),
+    }, 'Resolved match sync targets');
+
     for (const row of leagueRows) {
         const league = row.league;
         const startedAt = Date.now();
+
+        logger.info({
+            league: league.name,
+            externalId: league.externalId,
+            sportSlug: row.sportSlug,
+            mode,
+        }, 'Syncing league schedule');
 
         const { providerUsed, result } = await syncLeagueWithResolvedProvider(
             league,
@@ -1533,6 +1563,14 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
 
         const durationMs = Date.now() - startedAt;
         syncResults[league.name] = result;
+
+        logger.info({
+            league: league.name,
+            externalId: league.externalId,
+            providerUsed,
+            durationMs,
+            result,
+        }, 'League schedule sync completed');
 
         if (writeHistory) {
             await db.insert(syncHistory).values({
