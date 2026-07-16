@@ -163,9 +163,8 @@ export default function HomePage() {
   const { user } = useAuth();
 
   const now = Date.now();
-  const upcomingMatches = matches
+  const eligibleMatches = matches
     .filter((m) => {
-      if (WORLD_CUP_LEAGUE_IDS.has(m.leagueId) || isWorldCupLeague(getLeague(m.leagueId))) return false;
       const ts = new Date(m.matchDateUTC).getTime();
       if (Number.isNaN(ts)) return false;
       // Keep upcoming games plus anything currently live (started within the last ~4h).
@@ -173,7 +172,13 @@ export default function HomePage() {
       const activeStatus = m.status === "SCHEDULED" || m.status === "TIMED" || m.status === "IN_PLAY";
       return isUpcomingOrLive && activeStatus;
     })
-    .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime())
+    .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime());
+
+  const nonWorldCupMatches = eligibleMatches.filter((m) => (
+    !WORLD_CUP_LEAGUE_IDS.has(m.leagueId) && !isWorldCupLeague(getLeague(m.leagueId))
+  ));
+
+  const upcomingMatches = (nonWorldCupMatches.length > 0 ? nonWorldCupMatches : eligibleMatches)
     .slice(0, 8);
 
   const featuredVenues = venues
@@ -191,16 +196,16 @@ export default function HomePage() {
       <style dangerouslySetInnerHTML={{ __html: MW_VARS + CSS + `body{background:var(--mw-bg)!important;color:var(--mw-fg)!important;}` }} />
       <FloatingNav />
 
-      {/* â”€â”€ Hero â”€â”€ */}
+      {/* Hero */}
       <section className="hp-hero">
         <div className="hp-hero-bg" />
         <div className="hp-hero-scrim" />
         <div className="hp-hero-inner">
-          <span className="hp-kicker"><span className="bd" />World Cup 2026 Â· 11 US host cities</span>
+          <span className="hp-kicker"><span className="bd" />World Cup 2026 &middot; 11 US host cities</span>
           <h1 className="hp-h1">Find your <em>World Cup</em> watch party.</h1>
           <p className="hp-sub">
             The 2026 World Cup comes to North America. Find the bar showing your match, reserve a
-            table, and watch every game with fans near you â€” all summer long.
+            table, and watch every game with fans near you &mdash; all summer long.
           </p>
           <div className="hp-cta-row">
             <Link href="/venues" className="hp-btn primary">Find a bar near me</Link>
@@ -211,11 +216,11 @@ export default function HomePage() {
       </section>
 
       <div className="hp-wrap">
-        {/* â”€â”€ Host cities â”€â”€ */}
+        {/* Host cities */}
         <section className="hp-sec">
           <div className="hp-sh">
             <div className="hp-st">Host cities <span className="tag">WC 2026</span></div>
-            <Link href="/world-cup" className="hp-see">All host cities â†’</Link>
+            <Link href="/world-cup" className="hp-see">All host cities &rarr;</Link>
           </div>
           <div className="hp-strip">
             {HOST_CITIES.map((c) => (
@@ -225,21 +230,21 @@ export default function HomePage() {
                 <div className="hp-city-in">
                   <span className="hp-city-badge">{c.badge}</span>
                   <div className="hp-city-name">{c.name}</div>
-                  <div className="hp-city-meta">Find watch parties â†’</div>
+                  <div className="hp-city-meta">Find watch parties &rarr;</div>
                 </div>
               </Link>
             ))}
           </div>
         </section>
 
-        {/* â”€â”€ Upcoming games (live, multi-sport) â”€â”€ */}
+        {/* Upcoming games (live, multi-sport) */}
         <section className="hp-sec">
           <div className="hp-sh">
             <div className="hp-st">
               Upcoming games
-              <span className="tag">MLS Â· MLB Â· NBA &amp; more</span>
+              <span className="tag">MLS &middot; MLB &middot; NBA &amp; more</span>
             </div>
-            <Link href="/matches" className="hp-see">All matches â†’</Link>
+            <Link href="/matches" className="hp-see">All matches &rarr;</Link>
           </div>
 
           {isLoading && upcomingMatches.length === 0 ? (
@@ -284,7 +289,7 @@ export default function HomePage() {
                       </>
                     ) : null}
                     <div className="hp-match-foot">
-                      <span>{dateLabel} Â· {timeLabel}</span>
+                      <span>{dateLabel} &middot; {timeLabel}</span>
                       {m.stadiumName
                         ? <span className="hp-match-city">{m.stadiumName}</span>
                         : (m.venueCount > 0 ? <span className="hp-match-city">{m.venueCount} venues</span> : null)}
@@ -294,15 +299,15 @@ export default function HomePage() {
               })}
             </div>
           ) : (
-            <div className="hp-empty">No upcoming games scheduled right now â€” check back soon.</div>
+            <div className="hp-empty">No upcoming games scheduled right now &mdash; check back soon.</div>
           )}
         </section>
 
-        {/* â”€â”€ Featured venues â”€â”€ */}
+        {/* Featured venues */}
         <section className="hp-sec">
           <div className="hp-sh">
             <div className="hp-st">Watch-party venues</div>
-            <Link href="/venues" className="hp-see">Browse all venues â†’</Link>
+            <Link href="/venues" className="hp-see">Browse all venues &rarr;</Link>
           </div>
 
           {isLoading && featuredVenues.length === 0 ? (
@@ -328,25 +333,32 @@ export default function HomePage() {
                       {(v.amenities || []).slice(0, 3).map((a) => <span key={a} className="hp-chip">{a}</span>)}
                     </div>
                     <div className="hp-venue-foot">
-                      <span>{v.rating ? `â­ ${v.rating.toFixed(1)}${v.reviewCount ? ` Â· ${v.reviewCount}` : ""}` : "Sports bar"}</span>
-                      <span className="go">Reserve â†’</span>
+                      <span>
+                        {v.rating ? (
+                          <>
+                            &#9733; {v.rating.toFixed(1)}
+                            {v.reviewCount ? <> &middot; {v.reviewCount}</> : null}
+                          </>
+                        ) : "Sports bar"}
+                      </span>
+                      <span className="go">Reserve &rarr;</span>
                     </div>
                   </div>
                 </Link>
               ))}
             </div>
           ) : (
-            <div className="hp-empty">Venues are loading â€” check back in a moment.</div>
+            <div className="hp-empty">Venues are loading &mdash; check back in a moment.</div>
           )}
         </section>
 
-        {/* â”€â”€ How it works â”€â”€ */}
+        {/* How it works */}
         <section className="hp-sec">
           <div className="hp-sh"><div className="hp-st">How it works</div></div>
           <div className="hp-steps">
             {[
               { n: "1", h: "Find your match", p: "Browse World Cup fixtures and every league, with team crests and kickoff times in your timezone." },
-              { n: "2", h: "Pick a venue", p: "See bars hosting your match near you â€” photos, amenities, ratings, and how to get there." },
+              { n: "2", h: "Pick a venue", p: "See bars hosting your match near you - photos, amenities, ratings, and how to get there." },
               { n: "3", h: "Reserve your spot", p: "Book a table in seconds and watch with fans. Venues confirm and you're set." },
             ].map((s) => (
               <div key={s.n} className="hp-step">
@@ -358,31 +370,31 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* â”€â”€ Partners â”€â”€ */}
+        {/* Partners */}
         <section className="hp-sec">
           <div className="hp-sh"><div className="hp-st">Strategic partners</div></div>
           <div className="hp-partners">
             <div className="hp-partner">
               <div className="wm">Team<em>Houston</em></div>
-              <p>The premier platform for Houston&apos;s amateur and semi-pro football scene. Leagues, tournaments, and community events â€” all in one place.</p>
-              <a href="https://www.team-houston.com/" target="_blank" rel="noopener noreferrer">Visit Team Houston â†’</a>
+              <p>The premier platform for Houston&apos;s amateur and semi-pro football scene. Leagues, tournaments, and community events &mdash; all in one place.</p>
+              <a href="https://www.team-houston.com/" target="_blank" rel="noopener noreferrer">Visit Team Houston &rarr;</a>
             </div>
             <div className="hp-partner">
               <div className="wm"><em>Activent</em></div>
               <p>Discover local sports events and activities near you. From pickup games to watch parties, Activent connects Houston&apos;s active community.</p>
-              <a href="https://www.getactivent.com/" target="_blank" rel="noopener noreferrer">Visit Activent â†’</a>
+              <a href="https://www.getactivent.com/" target="_blank" rel="noopener noreferrer">Visit Activent &rarr;</a>
             </div>
           </div>
         </section>
 
-        {/* â”€â”€ List your venue â”€â”€ */}
+        {/* List your venue */}
         <section className="hp-sec">
           <div className="hp-band">
             <div>
               <h2>Run a bar or restaurant?</h2>
               <p>List your venue free, publish the matches you&apos;re showing, and fill every seat on match nights this summer.</p>
             </div>
-            <Link href="/for-venues/register" className="hp-btn primary">List your venue â€” free</Link>
+            <Link href="/for-venues/register" className="hp-btn primary">List your venue &mdash; free</Link>
           </div>
         </section>
       </div>

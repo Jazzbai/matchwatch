@@ -200,6 +200,13 @@ export interface Match {
     youtubeCheckedAt?: string;
 }
 
+function fallbackMatchDate(daysFromNow: number, hourUtc: number, minuteUtc = 0) {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() + daysFromNow);
+    date.setUTCHours(hourUtc, minuteUtc, 0, 0);
+    return date.toISOString();
+}
+
 const RAW_MATCHES: Omit<Match, "isFeatured">[] = [
     // Global Finals 2026 — Group Stage
     { id: "wc-1", homeTeamId: "usa", awayTeamId: "england", leagueId: "wc-2026", matchDateUTC: "2026-06-14T00:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group A", stadiumName: "NRG Stadium, Houston", venueCount: 24, isHot: true },
@@ -210,16 +217,16 @@ const RAW_MATCHES: Omit<Match, "isFeatured">[] = [
     { id: "wc-6", homeTeamId: "portugal", awayTeamId: "senegal", leagueId: "wc-2026", matchDateUTC: "2026-06-19T21:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group F", stadiumName: "NRG Stadium, Houston", venueCount: 11, isHot: false },
     { id: "wc-7", homeTeamId: "netherlands", awayTeamId: "colombia", leagueId: "wc-2026", matchDateUTC: "2026-06-20T18:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group G", stadiumName: "NRG Stadium, Houston", venueCount: 13, isHot: false },
     { id: "wc-8", homeTeamId: "croatia", awayTeamId: "canada", leagueId: "wc-2026", matchDateUTC: "2026-06-21T21:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Match Day 1", stage: "Group H", stadiumName: "NRG Stadium, Houston", venueCount: 9, isHot: false },
-    // Live match
-    { id: "mls-1", homeTeamId: "dynamo", awayTeamId: "austin", leagueId: "mls", matchDateUTC: "2026-02-22T20:00:00Z", status: "IN_PLAY", homeScore: 2, awayScore: 1, matchDay: "Week 4", stage: "Regular Season", stadiumName: "Shell Energy Stadium", venueCount: 12, isHot: false },
+    // Upcoming fallback club matches
+    { id: "mls-1", homeTeamId: "dynamo", awayTeamId: "austin", leagueId: "mls", matchDateUTC: fallbackMatchDate(1, 20), status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Week 4", stage: "Regular Season", stadiumName: "Shell Energy Stadium", venueCount: 12, isHot: false },
     // Finished matches
     { id: "epl-1", homeTeamId: "mancity", awayTeamId: "liverpool", leagueId: "epl", matchDateUTC: "2026-02-21T15:30:00Z", status: "FINISHED", homeScore: 3, awayScore: 3, matchDay: "Matchday 28", stage: "Regular Season", stadiumName: "Etihad Stadium", venueCount: 8, isHot: false },
     { id: "epl-2", homeTeamId: "arsenal", awayTeamId: "chelsea", leagueId: "epl", matchDateUTC: "2026-02-20T20:00:00Z", status: "FINISHED", homeScore: 2, awayScore: 0, matchDay: "Matchday 28", stage: "Regular Season", stadiumName: "Emirates Stadium", venueCount: 6, isHot: false },
     // Upcoming club matches
-    { id: "laliga-1", homeTeamId: "realmadrid", awayTeamId: "barcelona", leagueId: "laliga", matchDateUTC: "2026-03-01T20:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Matchday 26", stage: "El Clásico", stadiumName: "Santiago Bernabéu", venueCount: 16, isHot: true },
-    { id: "mls-2", homeTeamId: "inter-miami", awayTeamId: "lafc", leagueId: "mls", matchDateUTC: "2026-02-28T01:30:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Week 5", stage: "Regular Season", stadiumName: "Chase Stadium", venueCount: 10, isHot: true },
-    { id: "ligamx-1", homeTeamId: "america", awayTeamId: "chivas", leagueId: "ligamx", matchDateUTC: "2026-03-02T01:00:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Jornada 10", stage: "Clásico Nacional", stadiumName: "Estadio Azteca", venueCount: 14, isHot: true },
-    { id: "mls-3", homeTeamId: "dynamo", awayTeamId: "fc-dallas", leagueId: "mls", matchDateUTC: "2026-03-07T01:30:00Z", status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Week 6", stage: "Texas Derby", stadiumName: "Shell Energy Stadium", venueCount: 15, isHot: true },
+    { id: "laliga-1", homeTeamId: "realmadrid", awayTeamId: "barcelona", leagueId: "laliga", matchDateUTC: fallbackMatchDate(2, 20), status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Matchday 26", stage: "El Clasico", stadiumName: "Santiago Bernabeu", venueCount: 16, isHot: true },
+    { id: "mls-2", homeTeamId: "inter-miami", awayTeamId: "lafc", leagueId: "mls", matchDateUTC: fallbackMatchDate(3, 1, 30), status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Week 5", stage: "Regular Season", stadiumName: "Chase Stadium", venueCount: 10, isHot: true },
+    { id: "ligamx-1", homeTeamId: "america", awayTeamId: "chivas", leagueId: "ligamx", matchDateUTC: fallbackMatchDate(4, 1), status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Jornada 10", stage: "Clasico Nacional", stadiumName: "Estadio Azteca", venueCount: 14, isHot: true },
+    { id: "mls-3", homeTeamId: "dynamo", awayTeamId: "fc-dallas", leagueId: "mls", matchDateUTC: fallbackMatchDate(5, 1, 30), status: "SCHEDULED", homeScore: null, awayScore: null, matchDay: "Week 6", stage: "Texas Derby", stadiumName: "Shell Energy Stadium", venueCount: 15, isHot: true },
 ];
 
 export const MATCHES: Match[] = RAW_MATCHES.map((match) => ({
