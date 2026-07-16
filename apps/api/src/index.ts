@@ -161,17 +161,18 @@ async function start() {
                 try {
                     startMatchSyncWorker();
                     await scheduleMatchSync();
-                    if (runStartupMatchSync) {
-                        void runMatchSyncOnce({ sportSlug: 'all', writeHistory: true })
-                            .catch((err) => logger.error({ err }, 'Startup match sync failed'));
-                    } else {
-                        logger.warn('Startup match sync disabled via RUN_STARTUP_MATCH_SYNC=false');
-                    }
                 } catch (err) {
                     logger.error({ err }, 'Match sync worker startup failed');
                 }
             } else {
                 logger.warn('Match sync worker disabled via ENABLE_MATCH_SYNC_WORKER=false');
+            }
+
+            if (runStartupMatchSync) {
+                void runMatchSyncOnce({ sportSlug: 'all', writeHistory: true })
+                    .catch((err) => logger.error({ err }, 'Startup match sync failed'));
+            } else {
+                logger.warn('Startup match sync disabled via RUN_STARTUP_MATCH_SYNC=false');
             }
 
             try {
