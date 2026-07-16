@@ -10,7 +10,6 @@ import { isNationalTeamCompetition } from "../../lib/league-utils";
 import { getMatchDisplay } from "../../lib/match-display";
 import { paginateItems, parsePageParam } from "../../lib/pagination";
 import { FloatingNav } from "../../components/AppShell";
-import { WORLD_CUP_FLAGS, WORLD_CUP_THIS_WEEK } from "../world-cup/schedule";
 
 /* ── CSS ── */
 const MT_VARS = `
@@ -64,6 +63,7 @@ body{background:var(--mt-bg)!important;color:var(--mt-fg)!important;}
 .mt-wc-meta{display:flex;justify-content:space-between;font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--mt-fg-mute);margin-bottom:8px;}
 .mt-wc-teams{display:flex;align-items:center;gap:8px;}
 .mt-wc-teams img{width:22px;height:18px;object-fit:cover;border-radius:2px;flex-shrink:0;}
+.mt-wc-token{width:22px;height:22px;border-radius:999px;display:grid;place-items:center;flex-shrink:0;font-family:'Space Grotesk',var(--font-space),sans-serif;font-size:9px;font-weight:800;color:#fff;}
 .mt-wc-team{font-family:'Space Grotesk',var(--font-space),sans-serif;font-weight:600;font-size:14px;}
 .mt-wc-vs{font-family:'JetBrains Mono',var(--font-mono),monospace;font-size:10px;color:var(--mt-fg-mute);margin:0 2px;}
 .mt-band-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:end;position:relative;z-index:1;}
@@ -224,6 +224,21 @@ function compareMatches(a: Match, b: Match) {
     const ta = asTimestamp(a.matchDateUTC), tb = asTimestamp(b.matchDateUTC);
     if (af && bf) return tb - ta;
     return ta - tb;
+}
+
+const SPORT_ORDER = ["baseball", "basketball", "soccer", "hockey", "american-football"];
+const LEAGUE_ORDER = ["MLB", "NBA", "MLS", "NHL", "NFL"];
+
+function sportRank(sport: { id?: string; slug?: string; shortName?: string; name?: string }) {
+    const candidates = [sport.id, sport.slug, sport.shortName, sport.name].filter(Boolean).map(value => String(value).toLowerCase());
+    const index = SPORT_ORDER.findIndex(key => candidates.some(value => value === key || value.includes(key)));
+    return index === -1 ? SPORT_ORDER.length : index;
+}
+
+function leagueRank(league?: League) {
+    const code = (league?.shortName || league?.logo || league?.name || "").toUpperCase();
+    const index = LEAGUE_ORDER.findIndex(key => code === key || code.includes(key));
+    return index === -1 ? LEAGUE_ORDER.length : index;
 }
 
 function MatchRow({ match, league, home, away, todayKey }: { match: Match; league?: League; home?: Team; away?: Team; todayKey: string }) {
@@ -391,7 +406,9 @@ function MatchesPageContent() {
     const availableSports = React.useMemo(() => {
         const leagueIds = new Set(baseMatches.map(m => m.leagueId));
         const sportIds = new Set(leagues.filter(l => leagueIds.has(l.id)).map(l => l.sportId || "soccer"));
-        return sports.filter(s => sportIds.has(s.id)).sort((a, b) => a.name.localeCompare(b.name));
+        return sports
+            .filter(s => sportIds.has(s.id))
+            .sort((a, b) => sportRank(a) - sportRank(b) || a.name.localeCompare(b.name));
     }, [baseMatches, leagues, sports]);
 
     const sportCounts = React.useMemo(() => {
@@ -410,7 +427,9 @@ function MatchesPageContent() {
                 .filter(m => !selectedSportId || (getLeague(m.leagueId)?.sportId || "soccer") === selectedSportId)
                 .map(m => m.leagueId)
         );
-        return leagues.filter(l => leagueIds.has(l.id)).sort((a, b) => a.name.localeCompare(b.name));
+        return leagues
+            .filter(l => leagueIds.has(l.id))
+            .sort((a, b) => leagueRank(a) - leagueRank(b) || a.name.localeCompare(b.name));
     }, [baseMatches, selectedSportId, leagues, getLeague]);
 
     const leagueCounts = React.useMemo(() => {
@@ -482,9 +501,17 @@ function MatchesPageContent() {
             if (ex) ex.matches.push(m);
             else groups.set(m.leagueId, { league: l, matches: [m] });
         }
-        return Array.from(groups.values());
+        return Array.from(groups.values())
+            .sort((a, b) => leagueRank(a.league) - leagueRank(b.league) || (a.league?.name || "").localeCompare(b.league?.name || ""));
     }, [paginatedMatches, getLeague]);
 
+    const spotlightRail = React.useMemo(() =>
+        baseMatches
+            .filter(m => isLive(m.status) || isUpcoming(m.status))
+            .sort(compareMatches)
+            .slice(0, 8),
+        [baseMatches]
+    );
     const upcomingRail = React.useMemo(() =>
         filtered.filter(m => isLive(m.status) || isUpcoming(m.status)).slice(0, 3),
         [filtered]
@@ -494,9 +521,13 @@ function MatchesPageContent() {
         [filtered]
     );
 
+    const nextWeekTs = renderNow + 7 * 24 * 60 * 60 * 1000;
     const heroUpcoming = filtered.filter(m => isLive(m.status) || isUpcoming(m.status)).length;
     const heroPlayed = filtered.filter(m => isFinished(m.status)).length;
-    const heroWeek = filtered.length;
+    const heroWeek = filtered.filter(m => {
+        const ts = asTimestamp(m.matchDateUTC);
+        return ts >= renderNow && ts <= nextWeekTs;
+    }).length;
 
     const todayDateObj = new Date(`${nowKey}T00:00:00Z`);
     const todayLabel = todayDateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -521,38 +552,44 @@ function MatchesPageContent() {
                         <p className="mt-sub">Browse every upcoming fixture and recent result, find the best bar to watch it at, and lock in your table before the rush.</p>
                     </div>
                     <div className="mt-band-stats">
-                        <div className="mt-bs"><div className="lbl">Upcoming today</div><div className="v">{heroUpcoming}</div></div>
+                        <div className="mt-bs"><div className="lbl">Upcoming</div><div className="v">{heroUpcoming}</div></div>
                         <div className="mt-bs"><div className="lbl">Played</div><div className="v">{heroPlayed}</div></div>
                         <div className="mt-bs"><div className="lbl">This week</div><div className="v"><em>{heroWeek}</em></div></div>
                     </div>
                 </div>
             </section>
 
-            {/* World Cup fixtures rail */}
-            {WORLD_CUP_THIS_WEEK.length > 0 && (
+            {/* Upcoming games rail */}
+            {spotlightRail.length > 0 && (
                 <section className="mt-wc">
                     <div className="mt-wc-head">
-                        <h2><span className="tag">WC 2026</span> World Cup fixtures</h2>
-                        <Link href="/world-cup">All World Cup →</Link>
+                        <h2><span className="tag">LIVE SCHEDULE</span> Upcoming games</h2>
+                        <Link href="/matches">All matches -&gt;</Link>
                     </div>
                     <div className="mt-wc-strip">
-                        {WORLD_CUP_THIS_WEEK.map(m => {
-                            const homeFlag = WORLD_CUP_FLAGS[m.home];
-                            const awayFlag = WORLD_CUP_FLAGS[m.away];
+                        {spotlightRail.map(m => {
+                            const league = getLeague(m.leagueId);
+                            const home = m.homeTeamId ? getTeam(m.homeTeamId) : undefined;
+                            const away = m.awayTeamId ? getTeam(m.awayTeamId) : undefined;
+                            const display = getMatchDisplay(m, { homeTeam: home, awayTeam: away, league });
+                            const dateLabel = new Date(m.matchDateUTC).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                            const timeLabel = isLive(m.status) ? "LIVE" : formatBoardTime(m.matchDateUTC, nowKey);
                             return (
-                                <Link key={`${m.date}-${m.home}-${m.away}`} href="/world-cup#schedule" className="mt-wc-card">
+                                <Link key={m.id} href={`/matches/${m.id}`} className="mt-wc-card">
                                     <div className="mt-wc-meta">
-                                        <span>{m.date}</span>
-                                        <span>{m.time}</span>
+                                        <span>{dateLabel}</span>
+                                        <span>{league?.shortName || league?.name || "MATCH"} · {timeLabel}</span>
                                     </div>
                                     <div className="mt-wc-teams">
-                                        {homeFlag && <img src={`https://flagcdn.com/24x18/${homeFlag}.png`} width={24} height={18} alt="" />}
-                                        <span className="mt-wc-team">{m.home}</span>
+                                        <span className="mt-wc-token" style={{ background: home?.color || "#23272f" }}>{getToken(home, display.homeName)}</span>
+                                        <span className="mt-wc-team">{display.isSingleEvent ? display.title : display.homeName}</span>
                                     </div>
-                                    <div className="mt-wc-teams" style={{ marginTop: 6 }}>
-                                        {awayFlag && <img src={`https://flagcdn.com/24x18/${awayFlag}.png`} width={24} height={18} alt="" />}
-                                        <span className="mt-wc-team">{m.away}</span>
-                                    </div>
+                                    {!display.isSingleEvent && (
+                                        <div className="mt-wc-teams" style={{ marginTop: 6 }}>
+                                            <span className="mt-wc-token" style={{ background: away?.color || "#334" }}>{getToken(away, display.awayName)}</span>
+                                            <span className="mt-wc-team">{display.awayName}</span>
+                                        </div>
+                                    )}
                                 </Link>
                             );
                         })}

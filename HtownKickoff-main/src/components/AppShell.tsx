@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Flag, House, LogIn, LogOut, Menu, Store, Trophy, UserCircle2, X } from "lucide-react";
+import { Building2, House, LogIn, LogOut, Menu, Store, Trophy, UserCircle2, X } from "lucide-react";
 import { useAuth } from "../lib/auth-context";
 
 export function FloatingNav() {
@@ -30,7 +30,6 @@ export function FloatingNav() {
   const navLinks = [
     { label: "Home", href: "/", icon: House },
     { label: "Matches", href: "/matches", icon: Trophy },
-    { label: "Fan Zone", href: "/fans", icon: Flag },
     { label: "Venues", href: "/venues", icon: Store },
     { label: "For Venues", href: "/for-venues", icon: Building2 },
   ];
