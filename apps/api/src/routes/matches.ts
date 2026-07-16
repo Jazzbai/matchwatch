@@ -204,33 +204,44 @@ matchRoutes.get('/facets', async (c) => {
             inArray(matches.status, ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED']),
         );
 
-    const rows = await db.select({
-        leagueId: matches.leagueId,
-        leagueName: leagues.name,
-        leagueShortName: leagues.shortName,
-        leagueLogoUrl: leagues.logoUrl,
-        leagueSportId: leagues.sportId,
-        sportId: sports.id,
-        sportName: sports.name,
-        sportSlug: sports.slug,
-        sportShortName: sports.shortName,
-        homeTeamId: matches.homeTeamId,
-        awayTeamId: matches.awayTeamId,
-    })
-        .from(matches)
-        .leftJoin(leagues, eq(matches.leagueId, leagues.id))
-        .leftJoin(sports, eq(leagues.sportId, sports.id))
-        .where(and(
-            ...(baseWhere ? [baseWhere] : []),
-            ...(sportId ? [eq(leagues.sportId, sportId)] : []),
-        ))
-        .orderBy(asc(matches.matchDateUtc))
-        .limit(800);
+    const whereClause = and(
+        ...(baseWhere ? [baseWhere] : []),
+        ...(sportId ? [eq(leagues.sportId, sportId)] : []),
+    );
+
+    const [leagueRows, teamCandidateRows] = await Promise.all([
+        db.selectDistinct({
+            leagueId: matches.leagueId,
+            leagueName: leagues.name,
+            leagueShortName: leagues.shortName,
+            leagueLogoUrl: leagues.logoUrl,
+            leagueSportId: leagues.sportId,
+            sportId: sports.id,
+            sportName: sports.name,
+            sportSlug: sports.slug,
+            sportShortName: sports.shortName,
+        })
+            .from(matches)
+            .leftJoin(leagues, eq(matches.leagueId, leagues.id))
+            .leftJoin(sports, eq(leagues.sportId, sports.id))
+            .where(whereClause)
+            .orderBy(asc(leagues.name)),
+
+        db.select({
+            homeTeamId: matches.homeTeamId,
+            awayTeamId: matches.awayTeamId,
+        })
+            .from(matches)
+            .leftJoin(leagues, eq(matches.leagueId, leagues.id))
+            .where(whereClause)
+            .orderBy(asc(matches.matchDateUtc))
+            .limit(800),
+    ]);
 
     const teamIds = new Set<string>();
     const leagueMap = new Map<string, { id: string; sportId: string | null; name: string; shortName: string | null; logoUrl: string | null }>();
     const sportMap = new Map<string, { id: string; name: string; slug: string; shortName: string | null }>();
-    for (const row of rows) {
+    for (const row of leagueRows) {
         if (row.sportId && row.sportName && row.sportSlug) {
             sportMap.set(row.sportId, {
                 id: row.sportId,
@@ -248,6 +259,8 @@ matchRoutes.get('/facets', async (c) => {
                 logoUrl: row.leagueLogoUrl,
             });
         }
+    }
+    for (const row of teamCandidateRows) {
         if (row.homeTeamId) teamIds.add(row.homeTeamId);
         if (row.awayTeamId) teamIds.add(row.awayTeamId);
     }
