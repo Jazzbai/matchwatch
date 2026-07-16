@@ -421,6 +421,10 @@ function parseNumericScore(value?: string | null) {
     return Number.isFinite(parsed) ? parsed : null;
 }
 
+function buildEspnTeamExternalId(leagueCode: string, teamId: string) {
+    return trimText(`ESPN-${leagueCode}-${teamId}`, 20);
+}
+
 function mapEspnStatus(type?: EspnStatusType | null): MatchStatus {
     const state = (type?.state || '').trim().toLowerCase();
     const description = `${type?.description || ''} ${type?.detail || ''} ${type?.shortDetail || ''}`.toUpperCase();
@@ -867,14 +871,14 @@ async function syncLeagueFromEspn(league: LeagueRow, mode: SyncMode = 'UPCOMING'
                 leagueId: league.id,
                 name: homeTeam.displayName,
                 shortName: homeTeam.abbreviation || homeTeam.shortDisplayName || homeTeam.displayName,
-                externalId: `ESPN-${homeTeam.id}`,
+                externalId: buildEspnTeamExternalId(externalCode, homeTeam.id),
                 crestUrl: homeTeam.logo || null,
             });
             const away = await upsertTeamRecord({
                 leagueId: league.id,
                 name: awayTeam.displayName,
                 shortName: awayTeam.abbreviation || awayTeam.shortDisplayName || awayTeam.displayName,
-                externalId: `ESPN-${awayTeam.id}`,
+                externalId: buildEspnTeamExternalId(externalCode, awayTeam.id),
                 crestUrl: awayTeam.logo || null,
             });
 
