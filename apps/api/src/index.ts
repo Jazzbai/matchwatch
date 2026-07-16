@@ -40,7 +40,7 @@ import contactRoutes from './routes/contact';
 import matchPointRoutes from './routes/matchPoint';
 import { logger } from './lib/logger';
 import { normalizeEntitySlugs } from './lib/entitySlugs';
-import { scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
+import { runMatchSyncOnce, scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
 import { scheduleYoutubeRecapSync, startYoutubeRecapWorker } from './workers/youtubeRecapSync';
 
 // Create App
@@ -109,6 +109,7 @@ function envFlag(name: string, defaultValue: boolean) {
 const runStartupMigrations = envFlag('RUN_STARTUP_MIGRATIONS', true);
 const runStartupSeed = envFlag('RUN_STARTUP_SEED', true);
 const enableMatchSyncWorker = envFlag('ENABLE_MATCH_SYNC_WORKER', true);
+const runStartupMatchSync = envFlag('RUN_STARTUP_MATCH_SYNC', true);
 
 async function start() {
     if (runStartupMigrations) {
@@ -160,6 +161,12 @@ async function start() {
                 try {
                     startMatchSyncWorker();
                     await scheduleMatchSync();
+                    if (runStartupMatchSync) {
+                        void runMatchSyncOnce({ sportSlug: 'all', writeHistory: true })
+                            .catch((err) => logger.error({ err }, 'Startup match sync failed'));
+                    } else {
+                        logger.warn('Startup match sync disabled via RUN_STARTUP_MATCH_SYNC=false');
+                    }
                 } catch (err) {
                     logger.error({ err }, 'Match sync worker startup failed');
                 }
