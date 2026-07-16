@@ -64,7 +64,7 @@ async function getActiveSportsAndLeagues(sportSlug: string) {
     return {
         sports: sportRows,
         leagues: leagueRows,
-        syncTargets: leagueRows.filter((row) => row.isActive && row.sportSlug === sportSlug),
+        syncTargets: leagueRows.filter((row) => row.isActive && (sportSlug === 'all' || row.sportSlug === sportSlug)),
     };
 }
 
@@ -86,7 +86,7 @@ async function getUpcomingCounts() {
 
 async function main() {
     const args = parseArgs(process.argv.slice(2));
-    const sportSlug = typeof args.get('sport') === 'string' ? String(args.get('sport')).trim() : 'soccer';
+    const sportSlug = typeof args.get('sport') === 'string' ? String(args.get('sport')).trim() : 'all';
     const providerOverride = asProvider(args.get('provider'));
     const mode = asSyncMode(args.get('mode')) || 'UPCOMING';
     const listOnly = args.has('list-only');

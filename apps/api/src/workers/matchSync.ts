@@ -9,6 +9,7 @@ import { ensureSeasonForDate, refreshLeagueStandingsSnapshot } from '../lib/stan
 import { buildTeamIdentityCandidates, normalizeTeamIdentity, scoreTeamIdentityRecord } from '../lib/teamIdentity';
 
 const QUEUE_NAME = 'matchSync';
+const DEFAULT_SYNC_SPORT_SLUG = 'all';
 const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
 const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE_URL || 'https://v3.football.api-sports.io';
 const THE_SPORTS_DB_BASE = process.env.THE_SPORTS_DB_BASE_URL
@@ -1497,7 +1498,7 @@ export async function runMatchSyncOnce(options: MatchSyncRunOptions = {}) {
                 : undefined;
     const apiFootballApiKey = process.env.API_FOOTBALL_API_KEY;
     const footballDataApiKey = process.env.FOOTBALL_DATA_API_KEY;
-    const sportSlug = options.sportSlug || 'soccer';
+    const sportSlug = options.sportSlug || DEFAULT_SYNC_SPORT_SLUG;
     const mode = options.mode || 'UPCOMING';
     const writeHistory = options.writeHistory ?? true;
 
@@ -1581,7 +1582,7 @@ export function startMatchSyncWorker() {
         if (job.name === 'live-status-sync') {
             return runLiveStatusRefreshOnce();
         }
-        return runMatchSyncOnce({ providerOverride: provider, sportSlug: 'soccer', writeHistory: true });
+        return runMatchSyncOnce({ providerOverride: provider, sportSlug: DEFAULT_SYNC_SPORT_SLUG, writeHistory: true });
     }, {
         connection: redis,
         concurrency: 1,
