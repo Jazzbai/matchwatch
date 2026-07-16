@@ -30,7 +30,6 @@ export function FloatingNav() {
   const navLinks = [
     { label: "Home", href: "/", icon: House },
     { label: "Matches", href: "/matches", icon: Trophy },
-    { label: "World Cup", href: "/world-cup", icon: Trophy },
     { label: "Fan Zone", href: "/fans", icon: Flag },
     { label: "Venues", href: "/venues", icon: Store },
     { label: "For Venues", href: "/for-venues", icon: Building2 },

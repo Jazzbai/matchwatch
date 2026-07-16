@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useData } from "../lib/data-provider";
 import { useAuth } from "../lib/auth-context";
 import { FloatingNav } from "../components/AppShell";
-import { WORLD_CUP_FLAGS, WORLD_CUP_THIS_WEEK } from "./world-cup/schedule";
 
 /* 11 US host cities. `image` is an optional photo in /public/cities/; when the
    file is absent the gradient shows through as a designed fallback. */
@@ -151,10 +150,31 @@ function Crest({ src, label, color }: { src?: string; label: string; color?: str
   );
 }
 
+const WORLD_CUP_LEAGUE_IDS = new Set(["wc-2026"]);
+const isWorldCupLeague = (league?: { externalId?: string; shortName?: string; name?: string } | null) => {
+  if (!league) return false;
+  const ext = (league.externalId || "").toUpperCase();
+  const label = `${league.shortName || ""} ${league.name || ""}`.toLowerCase();
+  return ext === "WC" || label.includes("world cup") || label.includes("global finals");
+};
+
 export default function HomePage() {
-  const { venues, isLoading } = useData();
+  const { venues, matches, isLoading, getTeam, getLeague } = useData();
   const { user } = useAuth();
-  const railMatches = WORLD_CUP_THIS_WEEK;
+
+  const now = Date.now();
+  const upcomingMatches = matches
+    .filter((m) => {
+      if (WORLD_CUP_LEAGUE_IDS.has(m.leagueId) || isWorldCupLeague(getLeague(m.leagueId))) return false;
+      const ts = new Date(m.matchDateUTC).getTime();
+      if (Number.isNaN(ts)) return false;
+      // Keep upcoming games plus anything currently live (started within the last ~4h).
+      const isUpcomingOrLive = ts >= now - 4 * 60 * 60 * 1000;
+      const activeStatus = m.status === "SCHEDULED" || m.status === "TIMED" || m.status === "IN_PLAY";
+      return isUpcomingOrLive && activeStatus;
+    })
+    .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime())
+    .slice(0, 8);
 
   const featuredVenues = venues
     .filter((venue) => {
@@ -212,52 +232,69 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* â”€â”€ Tonight / this week â”€â”€ */}
+        {/* â”€â”€ Upcoming games (live, multi-sport) â”€â”€ */}
         <section className="hp-sec">
           <div className="hp-sh">
             <div className="hp-st">
-              This week matches
-              <span className="tag">Jun 29-Jul 2</span>
+              Upcoming games
+              <span className="tag">MLS Â· MLB Â· NBA &amp; more</span>
             </div>
-            <Link href="/world-cup#schedule" className="hp-see">Full WC schedule</Link>
+            <Link href="/matches" className="hp-see">All matches â†’</Link>
           </div>
 
-          {isLoading && railMatches.length === 0 ? (
+          {isLoading && upcomingMatches.length === 0 ? (
             <div className="hp-grid">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="hp-match" style={{ opacity: 0.4, minHeight: 150 }} />
               ))}
             </div>
-          ) : railMatches.length > 0 ? (
+          ) : upcomingMatches.length > 0 ? (
             <div className="hp-grid">
-              {railMatches.map((m) => {
-                const homeFlag = WORLD_CUP_FLAGS[m.home];
-                const awayFlag = WORLD_CUP_FLAGS[m.away];
+              {upcomingMatches.map((m) => {
+                const league = getLeague(m.leagueId);
+                const homeTeam = getTeam(m.homeTeamId);
+                const awayTeam = getTeam(m.awayTeamId);
+                const homeName = m.homeTeamName || homeTeam?.name || m.eventTitle || "TBD";
+                const awayName = m.awayTeamName || awayTeam?.name || "";
+                const dt = new Date(m.matchDateUTC);
+                const dateLabel = dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                const timeLabel = dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+                const isLive = m.status === "IN_PLAY";
                 return (
-                  <Link key={`${m.group}-${m.home}-${m.away}`} href="/world-cup#schedule" className="hp-match">
+                  <Link key={m.id} href={`/matches/${m.id}`} className="hp-match">
                     <div className="hp-match-top">
-                      <span>{m.group}</span>
-                      {m.tag ? <span className="hp-match-tag">{m.tag}</span> : <span>{m.date}</span>}
+                      <span className="hp-match-tag">{league?.shortName || league?.name || "Match"}</span>
+                      {isLive
+                        ? <span className="hp-live"><span className="dot" />LIVE</span>
+                        : <span>{dateLabel}</span>}
                     </div>
                     <div className="hp-team">
-                      {homeFlag && <img src={`https://flagcdn.com/24x18/${homeFlag}.png`} width={24} height={18} alt="" />}
-                      <span className="hp-team-name">{m.home}</span>
+                      <Crest src={homeTeam?.image} label={homeName} color={homeTeam?.color} />
+                      <span className="hp-team-name">{homeName}</span>
+                      {m.homeScore != null && <span className="hp-score">{m.homeScore}</span>}
                     </div>
-                    <div className="hp-vs">VS</div>
-                    <div className="hp-team away">
-                      <span className="hp-team-name">{m.away}</span>
-                      {awayFlag && <img src={`https://flagcdn.com/24x18/${awayFlag}.png`} width={24} height={18} alt="" />}
-                    </div>
+                    {awayName ? (
+                      <>
+                        <div className="hp-vs">VS</div>
+                        <div className="hp-team away">
+                          {m.awayScore != null && <span className="hp-score" style={{ marginLeft: 0, marginRight: "auto" }}>{m.awayScore}</span>}
+                          <span className="hp-team-name">{awayName}</span>
+                          <Crest src={awayTeam?.image} label={awayName} color={awayTeam?.color} />
+                        </div>
+                      </>
+                    ) : null}
                     <div className="hp-match-foot">
-                      <span>{m.date} · {m.time}</span>
-                      <span className="hp-match-city">{m.city}</span>
+                      <span>{dateLabel} Â· {timeLabel}</span>
+                      {m.stadiumName
+                        ? <span className="hp-match-city">{m.stadiumName}</span>
+                        : (m.venueCount > 0 ? <span className="hp-match-city">{m.venueCount} venues</span> : null)}
                     </div>
                   </Link>
                 );
               })}
             </div>
           ) : (
-            <div className="hp-empty">No matches scheduled right now â€” check back soon.</div>
+            <div className="hp-empty">No upcoming games scheduled right now â€” check back soon.</div>
           )}
         </section>
 

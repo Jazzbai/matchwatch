@@ -47,7 +47,7 @@ const HOME_PRIORITY_SOCCER_LEAGUE_MATCHERS = [
     (name: string) => name.includes("champions league") || name.includes("ucl"),
     (name: string) => name.includes("fifa european qualifiers") || name.includes("wc-qualifiers"),
 ];
-const PRIORITY_SOCCER_LEAGUE_CODES = ["MLS", "PL", "PD", "BL1", "SA", "FL1", "CL"];
+const PRIORITY_LEAGUE_CODES = ["MLS", "MLB", "NBA", "NHL", "PL", "PD", "BL1", "SA", "FL1", "CL"];
 
 type ApiMeta = {
     page: number;
@@ -538,11 +538,11 @@ async function safeFetchPaginated<T>(
     return rows;
 }
 
-async function fetchPrioritySoccerMatches(): Promise<{ matches: ApiMatch[]; facets: ApiMatchFacets | null }> {
+async function fetchPrioritySportsMatches(): Promise<{ matches: ApiMatch[]; facets: ApiMatchFacets | null }> {
     const [facets, directMatches] = await Promise.all([
         safeFetch<ApiMatchFacets>("/matches/facets"),
         safeFetchPaginated<ApiMatch>(
-            `/matches?sort=date_asc&upcoming_only=true&league=${encodeURIComponent(PRIORITY_SOCCER_LEAGUE_CODES.join(","))}`,
+            `/matches?sort=date_asc&upcoming_only=true&league=${encodeURIComponent(PRIORITY_LEAGUE_CODES.join(","))}`,
             MATCH_FETCH_LIMIT,
             MATCH_MAX_PAGES,
         ),
@@ -610,11 +610,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         const hasToken = typeof window !== "undefined" && Boolean(localStorage.getItem("accessToken"));
         const venueBootstrapMaxPages = getVenueBootstrapMaxPages(pathname);
-        const [apiMatches, apiVenues, apiBookings, prioritySoccerPayload] = await Promise.all([
+        const [apiMatches, apiVenues, apiBookings, prioritySportsPayload] = await Promise.all([
             safeFetchPaginated<ApiMatch>("/matches?sort=date_asc", MATCH_FETCH_LIMIT, MATCH_MAX_PAGES),
             safeFetchPaginated<any>("/venues?sort=featured", VENUE_FETCH_LIMIT, venueBootstrapMaxPages),
             hasToken ? safeFetch<any[]>(`/bookings?page=1&limit=${BOOKING_FETCH_LIMIT}`) : Promise.resolve([] as any[]),
-            fetchPrioritySoccerMatches(),
+            fetchPrioritySportsMatches(),
         ]);
 
         if (!apiMatches || !apiVenues) {
@@ -627,7 +627,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         for (const match of apiMatches) {
             mergedApiMatchMap.set(match.id, match);
         }
-        for (const match of prioritySoccerPayload.matches) {
+        for (const match of prioritySportsPayload.matches) {
             mergedApiMatchMap.set(match.id, match);
         }
         const allApiMatches = Array.from(mergedApiMatchMap.values()).sort((a, b) => {
@@ -704,7 +704,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             });
         };
 
-        for (const sport of prioritySoccerPayload.facets?.sports || []) {
+        for (const sport of prioritySportsPayload.facets?.sports || []) {
             upsertSport({
                 id: sport.id,
                 name: sport.name,
@@ -713,7 +713,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             });
         }
 
-        for (const league of prioritySoccerPayload.facets?.leagues || []) {
+        for (const league of prioritySportsPayload.facets?.leagues || []) {
             upsertLeague({
                 id: league.id,
                 sportId: league.sportId || undefined,

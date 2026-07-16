@@ -46,6 +46,7 @@ export const LEAGUES: League[] = [
     { id: "ucl", sportId: "soccer", name: "UEFA Champions League", shortName: "UCL", logo: "UCL", country: "EU", externalId: "CL" },
     { id: "ligamx", sportId: "soccer", name: "Liga MX", shortName: "Liga MX", logo: "LMX", country: "MX", externalId: "LMX" },
     { id: "nwsl", sportId: "soccer", name: "NWSL", shortName: "NWSL", logo: "NWSL", country: "US", externalId: "NWSL" },
+    { id: "mlb", sportId: "baseball", name: "Major League Baseball", shortName: "MLB", logo: "MLB", country: "US", externalId: "MLB" },
 ];
 
 // ─── Country ─────────────────────────────────────
@@ -125,6 +126,42 @@ export const CLUB_TEAMS: Team[] = [
     { id: "america", name: "Club América", shortName: "América", crest: "TEAM", color: "#FFD200", leagueId: "ligamx", country: "MX", image: TEAM_IMAGES[1] },
     { id: "chivas", name: "CD Guadalajara", shortName: "Chivas", crest: "TEAM", color: "#CD0E2C", leagueId: "ligamx", country: "MX", image: TEAM_IMAGES[2] },
     { id: "tigres", name: "Tigres UANL", shortName: "Tigres", crest: "TEAM", color: "#FDB913", leagueId: "ligamx", country: "MX", image: TEAM_IMAGES[3] },
+    // MLB — American League East
+    { id: "baltimore-orioles", name: "Baltimore Orioles", shortName: "Orioles", crest: "TEAM", color: "#DF4601", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "boston-red-sox", name: "Boston Red Sox", shortName: "Red Sox", crest: "TEAM", color: "#BD3039", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "new-york-yankees", name: "New York Yankees", shortName: "Yankees", crest: "TEAM", color: "#0C2340", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "tampa-bay-rays", name: "Tampa Bay Rays", shortName: "Rays", crest: "TEAM", color: "#092C5C", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "toronto-blue-jays", name: "Toronto Blue Jays", shortName: "Blue Jays", crest: "TEAM", color: "#134A8E", leagueId: "mlb", country: "CA", image: "", teamType: "franchise" },
+    // MLB — American League Central
+    { id: "chicago-white-sox", name: "Chicago White Sox", shortName: "White Sox", crest: "TEAM", color: "#27251F", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "cleveland-guardians", name: "Cleveland Guardians", shortName: "Guardians", crest: "TEAM", color: "#0C2340", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "detroit-tigers", name: "Detroit Tigers", shortName: "Tigers", crest: "TEAM", color: "#0C2340", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "kansas-city-royals", name: "Kansas City Royals", shortName: "Royals", crest: "TEAM", color: "#004687", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "minnesota-twins", name: "Minnesota Twins", shortName: "Twins", crest: "TEAM", color: "#002B5C", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    // MLB — American League West
+    { id: "houston-astros", name: "Houston Astros", shortName: "Astros", crest: "TEAM", color: "#002D62", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "los-angeles-angels", name: "Los Angeles Angels", shortName: "Angels", crest: "TEAM", color: "#BA0021", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "athletics", name: "Athletics", shortName: "Athletics", crest: "TEAM", color: "#003831", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "seattle-mariners", name: "Seattle Mariners", shortName: "Mariners", crest: "TEAM", color: "#0C2C56", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "texas-rangers", name: "Texas Rangers", shortName: "Rangers", crest: "TEAM", color: "#003278", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    // MLB — National League East
+    { id: "atlanta-braves", name: "Atlanta Braves", shortName: "Braves", crest: "TEAM", color: "#CE1141", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "miami-marlins", name: "Miami Marlins", shortName: "Marlins", crest: "TEAM", color: "#00A3E0", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "new-york-mets", name: "New York Mets", shortName: "Mets", crest: "TEAM", color: "#002D72", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "philadelphia-phillies", name: "Philadelphia Phillies", shortName: "Phillies", crest: "TEAM", color: "#E81828", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "washington-nationals", name: "Washington Nationals", shortName: "Nationals", crest: "TEAM", color: "#AB0003", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    // MLB — National League Central
+    { id: "chicago-cubs", name: "Chicago Cubs", shortName: "Cubs", crest: "TEAM", color: "#0E3386", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "cincinnati-reds", name: "Cincinnati Reds", shortName: "Reds", crest: "TEAM", color: "#C6011F", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "milwaukee-brewers", name: "Milwaukee Brewers", shortName: "Brewers", crest: "TEAM", color: "#12284B", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "pittsburgh-pirates", name: "Pittsburgh Pirates", shortName: "Pirates", crest: "TEAM", color: "#27251F", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "st-louis-cardinals", name: "St. Louis Cardinals", shortName: "Cardinals", crest: "TEAM", color: "#C41E3A", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    // MLB — National League West
+    { id: "arizona-diamondbacks", name: "Arizona Diamondbacks", shortName: "D-backs", crest: "TEAM", color: "#A71930", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "colorado-rockies", name: "Colorado Rockies", shortName: "Rockies", crest: "TEAM", color: "#333366", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "los-angeles-dodgers", name: "Los Angeles Dodgers", shortName: "Dodgers", crest: "TEAM", color: "#005A9C", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "san-diego-padres", name: "San Diego Padres", shortName: "Padres", crest: "TEAM", color: "#2F241D", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
+    { id: "san-francisco-giants", name: "San Francisco Giants", shortName: "Giants", crest: "TEAM", color: "#FD5A1E", leagueId: "mlb", country: "US", image: "", teamType: "franchise" },
 ];
 
 export const ALL_TEAMS = [...NATIONAL_TEAMS, ...CLUB_TEAMS];
