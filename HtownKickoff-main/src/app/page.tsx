@@ -2,25 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
-import { useData } from "../lib/data-provider";
-import { useAuth } from "../lib/auth-context";
 import { FloatingNav } from "../components/AppShell";
-
-/* 11 US host cities. `image` is an optional photo in /public/cities/; when the
-   file is absent the gradient shows through as a designed fallback. */
-const HOST_CITIES = [
-  { name: "New York / New Jersey", slug: "new-york", badge: "THE FINAL", g: "linear-gradient(145deg,#001840,#8b0000)", image: "/cities/new-york.webp" },
-  { name: "Los Angeles", slug: "los-angeles", badge: "SEMIFINAL", g: "linear-gradient(145deg,#2d0a6e,#c8a200)", image: "/cities/los-angeles.webp" },
-  { name: "Dallas", slug: "dallas", badge: "TOP HOST", g: "linear-gradient(145deg,#001a40,#7a5500)", image: "/cities/dallas.webp" },
-  { name: "Houston", slug: "houston", badge: "OPENING", g: "linear-gradient(145deg,#001840,#b84a00)", image: "/cities/houston.webp" },
-  { name: "Miami", slug: "miami", badge: "BEACH CITY", g: "linear-gradient(145deg,#003060,#a83200)", image: "/cities/miami.webp" },
-  { name: "Atlanta", slug: "atlanta", badge: "SOCCER CITY", g: "linear-gradient(145deg,#0a0000,#7a0020)", image: "/cities/atlanta.webp" },
-  { name: "San Francisco Bay Area", slug: "san-francisco", badge: "TECH CITY", g: "linear-gradient(145deg,#5a0000,#6a5000)", image: "/cities/san-francisco.webp" },
-  { name: "Philadelphia", slug: "philadelphia", badge: "LIBERTY CITY", g: "linear-gradient(145deg,#002030,#3a4a50)", image: "/cities/philadelphia.webp" },
-  { name: "Seattle", slug: "seattle", badge: "SOCCER CAPITAL", g: "linear-gradient(145deg,#001030,#1a4a00)", image: "/cities/seattle.webp" },
-  { name: "Boston", slug: "boston", badge: "HISTORIC CITY", g: "linear-gradient(145deg,#6a0010,#001030)", image: "/cities/boston.webp" },
-  { name: "Kansas City", slug: "kansas-city", badge: "HEART OF USA", g: "linear-gradient(145deg,#6a0010,#7a5000)", image: "/cities/kansas-city.webp" },
-];
+import { useAuth } from "../lib/auth-context";
+import { type League, type Match, type Sport, type Team, type Venue, type VenueEvent } from "../lib/data";
+import { useData } from "../lib/data-provider";
 
 const MW_VARS = `
   :root{
@@ -31,373 +16,460 @@ const MW_VARS = `
 `;
 
 const CSS = `
-  .hp{background:var(--mw-bg);color:var(--mw-fg);}
+  .hp{background:#07090d;color:var(--mw-fg);min-height:100vh;}
+  .hp a{color:inherit;text-decoration:none;}
   .hp-wrap{max-width:1200px;margin-inline:auto;padding:0 clamp(16px,4vw,28px);}
+  .hp-grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.035) 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(180deg,transparent,#000 28%,#000 72%,transparent);}
 
-  /* Hero */
-  .hp-hero{position:relative;overflow:hidden;border-bottom:1px solid var(--mw-line);min-height:560px;display:flex;align-items:center;}
-  .hp-hero-bg{position:absolute;inset:0;background:#06070a url(/home-hero.webp) center/cover no-repeat;}
-  .hp-hero-scrim{position:absolute;inset:0;background:linear-gradient(110deg,rgba(6,7,10,0.94) 0%,rgba(6,7,10,0.78) 40%,rgba(6,7,10,0.45) 100%),linear-gradient(0deg,var(--mw-bg) 2%,transparent 40%);}
-  .hp-hero-inner{position:relative;z-index:2;max-width:1200px;margin-inline:auto;width:100%;padding:150px clamp(16px,4vw,28px) 64px;}
-  .hp-kicker{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mw-accent);font-weight:700;border:1px solid color-mix(in srgb,var(--mw-accent) 32%,transparent);padding:5px 12px;border-radius:999px;margin-bottom:20px;}
-  .hp-kicker .bd{width:6px;height:6px;border-radius:50%;background:var(--mw-accent);animation:hpPulse 1.4s ease-in-out infinite;}
-  @keyframes hpPulse{0%,100%{opacity:.4;}50%{opacity:1;}}
-  .hp-h1{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:900;font-size:clamp(2.4rem,6vw,4.2rem);line-height:0.98;letter-spacing:-0.025em;margin:0 0 16px;color:#fff;max-width:720px;text-wrap:balance;}
+  .hp-hero{position:relative;overflow:hidden;border-bottom:1px solid rgba(255,255,255,0.07);}
+  .hp-hero-bg{position:absolute;inset:0;background:radial-gradient(120% 90% at 12% 0%,color-mix(in srgb,var(--mw-accent) 22%,transparent),transparent 55%),radial-gradient(90% 80% at 92% 20%,rgba(30,70,160,0.28),transparent 60%),#06070a;}
+  .hp-hero-inner{position:relative;z-index:2;max-width:1200px;margin-inline:auto;width:100%;padding:118px clamp(16px,4vw,28px) 88px;}
+  .hp-kicker{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mw-accent);font-weight:700;border:1px solid color-mix(in srgb,var(--mw-accent) 32%,transparent);padding:6px 13px;border-radius:999px;margin-bottom:22px;}
+  .hp-kicker .dot{width:6px;height:6px;border-radius:50%;background:var(--mw-accent);animation:hpPulse 1.4s ease-in-out infinite;}
+  @keyframes hpPulse{0%,100%{opacity:.35;}50%{opacity:1;}}
+  .hp-h1{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:clamp(2.6rem,6.4vw,4.6rem);line-height:.98;letter-spacing:-.03em;margin:0 0 20px;max-width:820px;color:#fff;text-wrap:balance;}
   .hp-h1 em{font-style:normal;color:var(--mw-accent);}
-  .hp-sub{max-width:560px;font-size:1.05rem;line-height:1.55;color:rgba(255,255,255,0.78);margin:0 0 28px;}
-  .hp-cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;}
-  .hp-btn{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:999px;font-size:14px;font-weight:800;text-decoration:none;border:1px solid rgba(255,255,255,0.22);color:#fff;transition:all .18s;cursor:pointer;}
-  .hp-btn:hover{border-color:rgba(255,255,255,0.5);}
-  .hp-btn.primary{background:var(--mw-accent);color:var(--mw-ink);border-color:var(--mw-accent);}
-  .hp-btn.primary:hover{transform:translateY(-2px);box-shadow:0 12px 32px color-mix(in srgb,var(--mw-accent) 35%,transparent);}
+  .hp-sub{max-width:600px;font-size:1.08rem;line-height:1.6;color:rgba(255,255,255,.76);margin:0 0 32px;}
+  .hp-cta-row{display:flex;flex-wrap:wrap;gap:12px;}
+  .hp-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-weight:700;font-size:14px;padding:14px 26px;border-radius:999px;border:1px solid rgba(255,255,255,.22);transition:all .18s;}
+  .hp-btn:hover{border-color:rgba(255,255,255,.5);transform:translateY(-1px);}
+  .hp-btn.primary{background:var(--mw-accent);color:var(--mw-ink);border-color:var(--mw-accent);font-weight:800;}
+  .hp-btn.primary:hover{box-shadow:0 14px 34px color-mix(in srgb,var(--mw-accent) 32%,transparent);}
+  .hp-stats{display:flex;flex-wrap:wrap;gap:26px;margin-top:44px;}
+  .hp-stat-n{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:24px;color:#fff;}
+  .hp-stat-l{font-family:var(--font-mono),monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8b93a1;margin-top:2px;}
 
-  /* Section scaffolding */
-  .hp-sec{padding:48px 0;border-top:1px solid var(--mw-line);}
+  .hp-sec{padding:52px 0;border-top:1px solid rgba(255,255,255,.07);}
   .hp-sec:first-of-type{border-top:0;}
   .hp-sh{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:22px;}
-  .hp-st{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:1.5rem;letter-spacing:-0.01em;display:flex;align-items:center;gap:12px;}
-  .hp-st .tag{font-family:var(--font-mono),monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--mw-accent);border:1px solid color-mix(in srgb,var(--mw-accent) 35%,transparent);padding:3px 8px;border-radius:6px;}
-  .hp-see{font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mw-dim);text-decoration:none;white-space:nowrap;}
+  .hp-st{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:1.5rem;letter-spacing:-.01em;display:flex;align-items:center;gap:12px;min-width:0;}
+  .hp-tag{font-family:var(--font-mono),monospace;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--mw-accent);border:1px solid color-mix(in srgb,var(--mw-accent) 35%,transparent);padding:3px 8px;border-radius:6px;white-space:nowrap;}
+  .hp-see{font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8b93a1;white-space:nowrap;}
   .hp-see:hover{color:var(--mw-accent);}
 
-  /* City strip */
-  .hp-strip{display:flex;gap:14px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;}
-  .hp-strip::-webkit-scrollbar{display:none;}
-  .hp-city{position:relative;flex:0 0 248px;height:200px;border-radius:12px;overflow:hidden;border:1px solid var(--mw-line);text-decoration:none;transition:transform .18s,box-shadow .18s,border-color .18s;}
-  .hp-city:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,0,0,0.45);border-color:color-mix(in srgb,var(--mw-accent) 35%,transparent);}
-  .hp-city-bg{position:absolute;inset:0;}
-  .hp-city-scrim{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,0.82) 0%,rgba(0,0,0,0.1) 55%,transparent 100%);}
-  .hp-city-in{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;padding:14px;}
-  .hp-city-badge{align-self:flex-start;font-family:var(--font-mono),monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.9);background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.18);padding:3px 7px;border-radius:999px;margin-bottom:8px;backdrop-filter:blur(4px);}
-  .hp-city-name{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:1.15rem;color:#fff;line-height:1.1;}
-  .hp-city-meta{font-family:var(--font-mono),monospace;font-size:10px;letter-spacing:0.06em;color:rgba(255,255,255,0.7);margin-top:4px;text-transform:uppercase;}
+  .hp-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:16px;}
+  .hp-tab{cursor:pointer;font-family:var(--font-mono),monospace;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:8px 14px;border-radius:999px;transition:all .15s;background:transparent;color:#8b93a1;border:1px solid rgba(255,255,255,.14);}
+  .hp-tab:hover{color:#fff;border-color:rgba(255,255,255,.35);}
+  .hp-tab.on{background:var(--mw-accent);color:var(--mw-ink);border-color:var(--mw-accent);}
 
-  /* Match cards */
-  .hp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
-  .hp-match{border:1px solid var(--mw-line);border-radius:12px;background:var(--mw-card);padding:16px;display:flex;flex-direction:column;gap:12px;text-decoration:none;color:inherit;transition:border-color .14s,transform .14s;}
+  .hp-leagues{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:14px;}
+  .hp-league{display:flex;align-items:center;gap:14px;background:#12161d;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;transition:all .16s;}
+  .hp-league:hover{border-color:color-mix(in srgb,var(--mw-accent) 40%,transparent);transform:translateY(-3px);}
+  .hp-league-mark{width:48px;height:48px;border-radius:10px;flex-shrink:0;display:grid;place-items:center;font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:14px;letter-spacing:-.02em;color:#fff;border:1px solid rgba(255,255,255,.1);overflow:hidden;}
+  .hp-league-mark img{width:36px;height:36px;object-fit:contain;}
+  .hp-league-name{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:700;font-size:13px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hp-league-count{font-family:var(--font-mono),monospace;font-size:11px;color:var(--mw-accent);font-weight:600;margin-top:3px;}
+
+  .hp-games{display:grid;grid-template-columns:repeat(auto-fill,minmax(288px,1fr));gap:14px;}
+  .hp-match{border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#12161d;padding:16px;display:flex;flex-direction:column;gap:12px;transition:all .16s;}
   .hp-match:hover{border-color:color-mix(in srgb,var(--mw-accent) 32%,transparent);transform:translateY(-2px);}
-  .hp-match-top{display:flex;align-items:center;justify-content:space-between;font-family:var(--font-mono),monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mw-dim);}
+  .hp-match-top{display:flex;align-items:center;justify-content:space-between;font-family:var(--font-mono),monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#8b93a1;}
   .hp-match-tag{color:var(--mw-accent);font-weight:800;}
-  .hp-match-city{color:var(--mw-accent);font-weight:700;}
-  .hp-live{display:inline-flex;align-items:center;gap:5px;color:var(--mw-accent);font-weight:700;}
-  .hp-live .dot{width:6px;height:6px;border-radius:50%;background:var(--mw-accent);box-shadow:0 0 8px var(--mw-accent);animation:hpPulse 1.3s infinite;}
-  .hp-team{display:flex;align-items:center;gap:10px;}
-  .hp-team.away{justify-content:flex-end;text-align:right;}
-  .hp-team img{width:30px;height:30px;object-fit:contain;flex-shrink:0;}
-  .hp-crest{width:30px;height:30px;border-radius:6px;display:grid;place-items:center;font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:700;font-size:11px;color:#fff;flex-shrink:0;}
-  .hp-team-name{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:600;font-size:15px;}
-  .hp-score{margin-left:auto;font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:700;font-size:18px;}
-  .hp-vs{font-family:var(--font-mono),monospace;font-size:11px;color:var(--mw-dim);font-weight:800;text-align:center;}
-  .hp-match-foot{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px dashed var(--mw-line);font-family:var(--font-mono),monospace;font-size:11px;color:var(--mw-dim);}
-  .hp-match-foot .go{color:var(--mw-accent);font-weight:700;}
+  .hp-team{display:flex;align-items:center;gap:10px;min-width:0;}
+  .hp-team-name{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hp-crest{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:700;font-size:11px;color:#fff;flex-shrink:0;overflow:hidden;}
+  .hp-crest img{width:28px;height:28px;object-fit:contain;}
+  .hp-vs{font-family:var(--font-mono),monospace;font-size:11px;color:#8b93a1;font-weight:800;text-align:center;}
+  .hp-match-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.1);font-family:var(--font-mono),monospace;font-size:11px;color:#8b93a1;}
+  .hp-match-foot strong{color:var(--mw-accent);font-weight:700;white-space:nowrap;}
 
-  /* Venue cards */
-  .hp-venue{border:1px solid var(--mw-line);border-radius:12px;overflow:hidden;background:var(--mw-card);text-decoration:none;color:inherit;display:flex;flex-direction:column;transition:border-color .14s,transform .14s;}
-  .hp-venue:hover{border-color:color-mix(in srgb,var(--mw-accent) 32%,transparent);transform:translateY(-2px);}
-  .hp-venue-img{position:relative;aspect-ratio:16/10;background:linear-gradient(135deg,#2a1d14,#0d0f14);overflow:hidden;}
-  .hp-venue-img img{width:100%;height:100%;object-fit:cover;}
-  .hp-venue-glyph{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:40px;color:rgba(255,255,255,0.16);}
-  .hp-venue-pill{position:absolute;top:8px;left:8px;font-family:var(--font-mono),monospace;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,0.55);padding:3px 7px;border-radius:999px;backdrop-filter:blur(4px);}
-  .hp-venue-body{padding:14px;display:flex;flex-direction:column;gap:6px;}
-  .hp-venue-city{font-family:var(--font-mono),monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mw-dim);}
-  .hp-venue-name{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:700;font-size:17px;line-height:1.15;}
-  .hp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;}
-  .hp-chip{font-family:var(--font-mono),monospace;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--mw-dim);border:1px solid var(--mw-line);padding:3px 7px;border-radius:999px;}
-  .hp-venue-foot{margin-top:auto;padding-top:10px;display:flex;align-items:center;justify-content:space-between;font-family:var(--font-mono),monospace;font-size:11px;color:var(--mw-dim);}
-  .hp-venue-foot .go{color:var(--mw-accent);font-weight:700;}
+  .hp-venue-layout{display:grid;grid-template-columns:1.35fr 1fr;gap:18px;}
+  .hp-spotlight{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);min-height:384px;display:flex;flex-direction:column;justify-content:flex-end;transition:border-color .16s;}
+  .hp-spotlight:hover{border-color:color-mix(in srgb,var(--mw-accent) 45%,transparent);}
+  .hp-spot-bg{position:absolute;inset:0;background:linear-gradient(145deg,#12224a,#0d0f14);}
+  .hp-spot-bg img{width:100%;height:100%;object-fit:cover;}
+  .hp-spot-mono{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:120px;color:rgba(255,255,255,.07);}
+  .hp-spot-scrim{position:absolute;inset:0;background:linear-gradient(0deg,rgba(4,5,8,.95) 8%,rgba(4,5,8,.35) 55%,transparent 100%);}
+  .hp-spot-body{position:relative;z-index:2;padding:24px;}
+  .hp-pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .hp-pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono),monospace;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--mw-accent);background:rgba(0,0,0,.5);border:1px solid color-mix(in srgb,var(--mw-accent) 40%,transparent);padding:5px 10px;border-radius:999px;}
+  .hp-pill.muted{color:#c8cfda;border-color:rgba(255,255,255,.14);}
+  .hp-spot-name{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:30px;line-height:1.05;margin-bottom:10px;color:#fff;}
+  .hp-spot-meta{font-family:var(--font-mono),monospace;font-size:12px;color:#c8cfda;margin-bottom:16px;}
+  .hp-spot-actions{display:flex;flex-wrap:wrap;align-items:center;gap:14px;font-family:var(--font-mono),monospace;font-size:12px;}
+  .hp-spot-actions strong{color:#fff;}
+  .hp-spot-actions em{font-style:normal;color:var(--mw-accent);font-weight:700;}
+  .hp-reserve{margin-left:auto;display:inline-flex;align-items:center;gap:8px;background:var(--mw-accent);color:var(--mw-ink);font-weight:800;font-size:13px;padding:11px 20px;border-radius:999px;}
+  .hp-rail{display:flex;flex-direction:column;gap:12px;}
+  .hp-rail-card{display:flex;align-items:center;gap:14px;background:#12161d;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;transition:all .16s;}
+  .hp-rail-card:hover{border-color:rgba(255,255,255,.22);transform:translateY(-2px);}
+  .hp-rail-img{width:56px;height:56px;border-radius:10px;flex-shrink:0;display:grid;place-items:center;font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:800;font-size:18px;color:rgba(255,255,255,.85);overflow:hidden;}
+  .hp-rail-img img{width:100%;height:100%;object-fit:cover;}
+  .hp-rail-city{font-family:var(--font-mono),monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#8b93a1;}
+  .hp-rail-name{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:700;font-size:15px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hp-rail-meta{font-family:var(--font-mono),monospace;font-size:11px;color:#c8cfda;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hp-rail-score{text-align:right;flex-shrink:0;font-family:var(--font-mono),monospace;}
+  .hp-rail-score strong{font-size:12px;color:#fff;}
+  .hp-rail-score span{display:block;font-size:11px;color:var(--mw-accent);font-weight:700;margin-top:3px;}
 
-  /* How it works */
   .hp-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
-  .hp-step{border:1px solid var(--mw-line);border-radius:12px;background:var(--mw-card);padding:22px;}
-  .hp-step .n{font-family:var(--font-mono),monospace;font-size:12px;font-weight:700;color:var(--mw-ink);background:var(--mw-accent);width:28px;height:28px;border-radius:8px;display:grid;place-items:center;margin-bottom:12px;}
+  .hp-step{border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#12161d;padding:24px;}
+  .hp-step .n{font-family:var(--font-mono),monospace;font-size:12px;font-weight:700;color:var(--mw-ink);background:var(--mw-accent);width:28px;height:28px;border-radius:8px;display:grid;place-items:center;margin-bottom:14px;}
   .hp-step h3{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:700;font-size:16px;margin:0 0 6px;}
-  .hp-step p{font-size:13px;color:var(--mw-dim);line-height:1.5;margin:0;}
+  .hp-step p{font-size:13px;color:#8b93a1;line-height:1.55;margin:0;}
+  .hp-band{border:1px solid rgba(255,255,255,.08);border-radius:16px;background:linear-gradient(120deg,color-mix(in srgb,var(--mw-accent) 12%,transparent),transparent 60%),#12161d;padding:38px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;}
+  .hp-band h2{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:900;font-size:1.7rem;margin:0 0 6px;}
+  .hp-band p{font-size:14px;color:#8b93a1;max-width:520px;margin:0;}
+  .hp-empty{padding:36px 20px;text-align:center;border:1px dashed rgba(255,255,255,.12);border-radius:12px;color:#8b93a1;font-size:14px;}
+  .hp-footer{border-top:1px solid rgba(255,255,255,.07);}
+  .hp-footer-inner{max-width:1200px;margin:0 auto;padding:28px clamp(16px,4vw,28px);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;}
 
-  /* Partners */
-  .hp-partners{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--mw-line);border-radius:12px;overflow:hidden;}
-  .hp-partner{padding:24px;border-right:1px solid var(--mw-line);display:flex;flex-direction:column;gap:12px;}
-  .hp-partner:last-child{border-right:0;}
-  .hp-partner .wm{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:900;font-size:22px;letter-spacing:-0.03em;}
-  .hp-partner .wm em{font-style:normal;color:var(--mw-accent);}
-  .hp-partner p{font-size:13px;color:var(--mw-dim);line-height:1.55;flex:1;margin:0;}
-  .hp-partner a{align-self:flex-start;font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--mw-accent);text-decoration:none;border:1px solid var(--mw-accent);padding:8px 14px;border-radius:999px;}
-  .hp-partner a:hover{background:var(--mw-accent);color:var(--mw-ink);}
-
-  /* Bottom CTA band */
-  .hp-band{border:1px solid var(--mw-line);border-radius:12px;background:linear-gradient(120deg,color-mix(in srgb,var(--mw-accent) 10%,transparent),transparent 60%),var(--mw-card);padding:36px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;}
-  .hp-band h2{font-family:var(--font-space),'Space Grotesk',sans-serif;font-weight:900;font-size:1.6rem;margin:0 0 6px;}
-  .hp-band p{font-size:14px;color:var(--mw-dim);margin:0;max-width:520px;}
-
-  .hp-empty{padding:36px 20px;text-align:center;border:1px dashed var(--mw-line);border-radius:12px;color:var(--mw-dim);font-size:14px;}
-
-  @media(max-width:760px){
-    .hp-hero-inner{padding:128px 16px 48px;}
-    .hp-steps,.hp-partners{grid-template-columns:1fr;}
-    .hp-partner{border-right:0;border-bottom:1px solid var(--mw-line);}
-    .hp-partner:last-child{border-bottom:0;}
-  }
+  @media(max-width:900px){.hp-venue-layout{grid-template-columns:1fr;}.hp-spotlight{min-height:320px;}.hp-steps{grid-template-columns:1fr;}.hp-sh{align-items:flex-start;flex-direction:column;}.hp-reserve{margin-left:0;}}
+  @media(max-width:640px){.hp-hero-inner{padding:112px 16px 62px;}.hp-st{flex-wrap:wrap;}.hp-games,.hp-leagues{grid-template-columns:1fr;}.hp-spot-name{font-size:24px;}.hp-band{padding:24px;}}
 `;
 
-function Crest({ src, label, color }: { src?: string; label: string; color?: string }) {
-  const [failed, setFailed] = React.useState(false);
-  if (src && !failed) {
-    return <img src={src} alt="" onError={() => setFailed(true)} />;
-  }
-  return (
-    <span className="hp-crest" style={{ background: color || "var(--mw-accent)" }}>
-      {label.substring(0, 2).toUpperCase()}
-    </span>
-  );
+const SPORT_ORDER = ["soccer", "baseball", "basketball", "hockey", "american-football", "motorsport"];
+
+function isPublicVenue(venue: Venue) {
+  const name = venue.name.toLowerCase();
+  return !venue.amenities?.includes("OFFICIAL_FAN_FEST")
+    && !name.includes("fifa fan festival")
+    && !name.includes("fifa fan zone")
+    && !name.includes("official fifa fan zone");
 }
 
-const WORLD_CUP_LEAGUE_IDS = new Set(["wc-2026"]);
-const isWorldCupLeague = (league?: { externalId?: string; shortName?: string; name?: string } | null) => {
-  if (!league) return false;
-  const ext = (league.externalId || "").toUpperCase();
-  const label = `${league.shortName || ""} ${league.name || ""}`.toLowerCase();
-  return ext === "WC" || label.includes("world cup") || label.includes("global finals");
-};
+function isUpcomingMatch(match: Match, now: number) {
+  const ts = new Date(match.matchDateUTC).getTime();
+  if (!Number.isFinite(ts)) return false;
+  const active = match.status === "SCHEDULED" || match.status === "TIMED" || match.status === "IN_PLAY" || match.status === "PAUSED";
+  return active && ts >= now - 4 * 60 * 60 * 1000;
+}
+
+function formatCount(value: number) {
+  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
+  return String(value);
+}
+
+function initials(value: string) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "MW";
+  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
+
+function colorFor(value: string) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) hash = value.charCodeAt(i) + ((hash << 5) - hash);
+  const colors = ["#12224a", "#41111c", "#4a2109", "#1c2430", "#0a2e1a", "#2a0a3e", "#3a1400", "#0a3a2e"];
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function gradientFor(value: string) {
+  return `linear-gradient(145deg,${colorFor(value)},#0a0c11)`;
+}
+
+function leagueCode(league?: League) {
+  return (league?.shortName || league?.logo || league?.name || "MW").slice(0, 4).toUpperCase();
+}
+
+function sportRank(sport?: Sport) {
+  const key = (sport?.slug || sport?.id || "").toLowerCase();
+  const rank = SPORT_ORDER.findIndex((item) => key === item || key.includes(item));
+  return rank === -1 ? SPORT_ORDER.length : rank;
+}
+
+function formatMatchWhen(match: Match) {
+  const date = new Date(match.matchDateUTC);
+  if (!Number.isFinite(date.getTime())) return "Time TBD";
+  const day = date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  const time = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `${day} / ${time}`;
+}
+
+function TeamMark({ team, label }: { team?: Team; label: string }) {
+  const [failed, setFailed] = React.useState(false);
+  if (team?.image && !failed) {
+    return (
+      <span className="hp-crest" style={{ background: "transparent" }}>
+        <img src={team.image} alt="" onError={() => setFailed(true)} />
+      </span>
+    );
+  }
+  return <span className="hp-crest" style={{ background: team?.color || gradientFor(label) }}>{team?.shortName?.slice(0, 3).toUpperCase() || initials(label)}</span>;
+}
+
+function VenueImage({ venue, className }: { venue: Venue; className: string }) {
+  const [failed, setFailed] = React.useState(false);
+  if (venue.coverImageUrl && !failed) {
+    return <img src={venue.coverImageUrl} alt="" onError={() => setFailed(true)} />;
+  }
+  return <span className={className}>{initials(venue.name)}</span>;
+}
 
 export default function HomePage() {
-  const { venues, matches, isLoading, getTeam, getLeague } = useData();
+  const { venues, matches, leagues, sports, venueEvents, isLoading, getTeam, getLeague } = useData();
   const { user } = useAuth();
-
+  const [selectedSportId, setSelectedSportId] = React.useState<string | null>(null);
+  const [spotlightIndex, setSpotlightIndex] = React.useState(0);
   const now = Date.now();
-  const eligibleMatches = matches
-    .filter((m) => {
-      const ts = new Date(m.matchDateUTC).getTime();
-      if (Number.isNaN(ts)) return false;
-      // Keep upcoming games plus anything currently live (started within the last ~4h).
-      const isUpcomingOrLive = ts >= now - 4 * 60 * 60 * 1000;
-      const activeStatus = m.status === "SCHEDULED" || m.status === "TIMED" || m.status === "IN_PLAY";
-      return isUpcomingOrLive && activeStatus;
+  const weekEnd = now + 7 * 24 * 60 * 60 * 1000;
+
+  const upcomingMatches = React.useMemo(() => matches
+    .filter((match) => isUpcomingMatch(match, now))
+    .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime()), [matches, now]);
+
+  const leagueWeekCounts = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const match of upcomingMatches) {
+      const ts = new Date(match.matchDateUTC).getTime();
+      if (ts <= weekEnd) counts.set(match.leagueId, (counts.get(match.leagueId) || 0) + 1);
+    }
+    return counts;
+  }, [upcomingMatches, weekEnd]);
+
+  const sportCounts = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const match of upcomingMatches) {
+      const league = getLeague(match.leagueId);
+      const sportId = league?.sportId || "soccer";
+      counts.set(sportId, (counts.get(sportId) || 0) + 1);
+    }
+    return counts;
+  }, [getLeague, upcomingMatches]);
+
+  const availableSports = React.useMemo(() => sports
+    .filter((sport) => sportCounts.has(sport.id))
+    .sort((a, b) => sportRank(a) - sportRank(b) || a.name.localeCompare(b.name)), [sportCounts, sports]);
+
+  const visibleLeagues = React.useMemo(() => leagues
+    .filter((league) => leagueWeekCounts.has(league.id))
+    .filter((league) => !selectedSportId || (league.sportId || "soccer") === selectedSportId)
+    .sort((a, b) => (leagueWeekCounts.get(b.id) || 0) - (leagueWeekCounts.get(a.id) || 0) || a.name.localeCompare(b.name))
+    .slice(0, 12), [leagueWeekCounts, leagues, selectedSportId]);
+
+  const visibleMatches = React.useMemo(() => upcomingMatches
+    .filter((match) => {
+      const league = getLeague(match.leagueId);
+      return !selectedSportId || (league?.sportId || "soccer") === selectedSportId;
     })
-    .sort((a, b) => new Date(a.matchDateUTC).getTime() - new Date(b.matchDateUTC).getTime());
+    .slice(0, 8), [getLeague, selectedSportId, upcomingMatches]);
 
-  const nonWorldCupMatches = eligibleMatches.filter((m) => (
-    !WORLD_CUP_LEAGUE_IDS.has(m.leagueId) && !isWorldCupLeague(getLeague(m.leagueId))
-  ));
+  const publicVenues = React.useMemo(() => venues
+    .filter(isPublicVenue)
+    .sort((a, b) => {
+      if ((b.upcomingEventsCount || 0) !== (a.upcomingEventsCount || 0)) return (b.upcomingEventsCount || 0) - (a.upcomingEventsCount || 0);
+      if ((b.rating || 0) !== (a.rating || 0)) return (b.rating || 0) - (a.rating || 0);
+      return a.name.localeCompare(b.name);
+    }), [venues]);
 
-  const upcomingMatches = (nonWorldCupMatches.length > 0 ? nonWorldCupMatches : eligibleMatches)
-    .slice(0, 8);
+  const venueEventsByVenue = React.useMemo(() => {
+    const map = new Map<string, VenueEvent[]>();
+    for (const event of venueEvents) {
+      const rows = map.get(event.venueId) || [];
+      rows.push(event);
+      map.set(event.venueId, rows);
+    }
+    return map;
+  }, [venueEvents]);
 
-  const featuredVenues = venues
-    .filter((venue) => {
-      const name = venue.name.toLowerCase();
-      return !venue.amenities?.includes("OFFICIAL_FAN_FEST") &&
-        !name.includes("fifa fan festival") &&
-        !name.includes("fifa fan zone") &&
-        !name.includes("official fifa fan zone");
-    })
-    .slice(0, 8);
+  const spotlightVenue = publicVenues[spotlightIndex % Math.max(publicVenues.length, 1)];
+  const railVenues = publicVenues.filter((venue) => venue.id !== spotlightVenue?.id).slice(0, 4);
+  const dynamicLeagueCount = new Set(upcomingMatches.map((match) => match.leagueId)).size;
+  const dynamicSportLabel = availableSports.length > 0 ? `${availableSports.length} sports live` : "Live sports schedule";
 
   return (
     <div className="hp">
-      <style dangerouslySetInnerHTML={{ __html: MW_VARS + CSS + `body{background:var(--mw-bg)!important;color:var(--mw-fg)!important;}` }} />
+      <style dangerouslySetInnerHTML={{ __html: MW_VARS + CSS + "body{background:#07090d!important;color:var(--mw-fg)!important;}" }} />
       <FloatingNav />
 
-      {/* Hero */}
-      <section className="hp-hero">
+      <section id="top" className="hp-hero">
         <div className="hp-hero-bg" />
-        <div className="hp-hero-scrim" />
+        <div className="hp-grid-bg" />
         <div className="hp-hero-inner">
-          <span className="hp-kicker"><span className="bd" />World Cup 2026 &middot; 11 US host cities</span>
-          <h1 className="hp-h1">Find your <em>World Cup</em> watch party.</h1>
+          <span className="hp-kicker"><span className="dot" />Watch parties for every sport &middot; World Cup 2026</span>
+          <h1 className="hp-h1">Find your crowd for every <em>match.</em></h1>
           <p className="hp-sub">
-            The 2026 World Cup comes to North America. Find the bar showing your match, reserve a
-            table, and watch every game with fans near you &mdash; all summer long.
+            From global tournaments to MLS, MLB, NBA, NFL, and more, find the bar showing your game,
+            reserve a table, and watch with real fans near you.
           </p>
           <div className="hp-cta-row">
             <Link href="/venues" className="hp-btn primary">Find a bar near me</Link>
-            <Link href="/world-cup" className="hp-btn">Explore host cities</Link>
+            <Link href="/matches" className="hp-btn">Browse matches</Link>
             {!user && <Link href="/login?view=signup" className="hp-btn">Join free</Link>}
+          </div>
+          <div className="hp-stats">
+            <div><div className="hp-stat-n">{formatCount(upcomingMatches.length)}</div><div className="hp-stat-l">upcoming games</div></div>
+            <div><div className="hp-stat-n">{formatCount(publicVenues.length)}</div><div className="hp-stat-l">watch-party venues</div></div>
+            <div><div className="hp-stat-n">{formatCount(dynamicLeagueCount)}</div><div className="hp-stat-l">leagues live</div></div>
           </div>
         </div>
       </section>
 
       <div className="hp-wrap">
-        {/* Host cities */}
-        <section className="hp-sec">
+        <section id="leagues" className="hp-sec">
           <div className="hp-sh">
-            <div className="hp-st">Host cities <span className="tag">WC 2026</span></div>
-            <Link href="/world-cup" className="hp-see">All host cities &rarr;</Link>
-          </div>
-          <div className="hp-strip">
-            {HOST_CITIES.map((c) => (
-              <Link key={c.slug} href={`/world-cup/${c.slug}`} className="hp-city">
-                <div className="hp-city-bg" style={{ background: `url(${c.image}) center/cover no-repeat, ${c.g}` }} />
-                <div className="hp-city-scrim" />
-                <div className="hp-city-in">
-                  <span className="hp-city-badge">{c.badge}</span>
-                  <div className="hp-city-name">{c.name}</div>
-                  <div className="hp-city-meta">Find watch parties &rarr;</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* Upcoming games (live, multi-sport) */}
-        <section className="hp-sec">
-          <div className="hp-sh">
-            <div className="hp-st">
-              Upcoming games
-              <span className="tag">MLS &middot; MLB &middot; NBA &amp; more</span>
-            </div>
+            <div className="hp-st">Follow every league <span className="hp-tag">Live counts</span></div>
             <Link href="/matches" className="hp-see">All matches &rarr;</Link>
           </div>
-
-          {isLoading && upcomingMatches.length === 0 ? (
-            <div className="hp-grid">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="hp-match" style={{ opacity: 0.4, minHeight: 150 }} />
+          <div className="hp-tabs">
+            <button className={`hp-tab${selectedSportId === null ? " on" : ""}`} onClick={() => setSelectedSportId(null)}>
+              All {upcomingMatches.length}
+            </button>
+            {availableSports.map((sport) => (
+              <button key={sport.id} className={`hp-tab${selectedSportId === sport.id ? " on" : ""}`} onClick={() => setSelectedSportId(sport.id)}>
+                {sport.shortName || sport.name} {sportCounts.get(sport.id) || 0}
+              </button>
+            ))}
+          </div>
+          {visibleLeagues.length > 0 ? (
+            <div className="hp-leagues">
+              {visibleLeagues.map((league) => (
+                <Link key={league.id} href={`/matches?league=${league.id}`} className="hp-league">
+                  <div className="hp-league-mark" style={{ background: league.image ? "rgba(255,255,255,.92)" : gradientFor(league.id) }}>
+                    {league.image ? <img src={league.image} alt="" /> : leagueCode(league)}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="hp-league-name">{league.name}</div>
+                    <div className="hp-league-count">{leagueWeekCounts.get(league.id) || 0} this week</div>
+                  </div>
+                </Link>
               ))}
             </div>
-          ) : upcomingMatches.length > 0 ? (
-            <div className="hp-grid">
-              {upcomingMatches.map((m) => {
-                const league = getLeague(m.leagueId);
-                const homeTeam = getTeam(m.homeTeamId);
-                const awayTeam = getTeam(m.awayTeamId);
-                const homeName = m.homeTeamName || homeTeam?.name || m.eventTitle || "TBD";
-                const awayName = m.awayTeamName || awayTeam?.name || "";
-                const dt = new Date(m.matchDateUTC);
-                const dateLabel = dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-                const timeLabel = dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-                const isLive = m.status === "IN_PLAY";
+          ) : (
+            <div className="hp-empty">{isLoading ? "Loading league schedule..." : "No active league schedule found."}</div>
+          )}
+        </section>
+
+        <section id="games" className="hp-sec">
+          <div className="hp-sh">
+            <div className="hp-st">Upcoming games <span className="hp-tag">{dynamicSportLabel}</span></div>
+            <Link href="/matches" className="hp-see">All matches &rarr;</Link>
+          </div>
+          {visibleMatches.length > 0 ? (
+            <div className="hp-games">
+              {visibleMatches.map((match) => {
+                const league = getLeague(match.leagueId);
+                const home = match.homeTeamId ? getTeam(match.homeTeamId) : undefined;
+                const away = match.awayTeamId ? getTeam(match.awayTeamId) : undefined;
+                const homeName = match.homeTeamName || home?.name || match.eventTitle || "TBD";
+                const awayName = match.awayTeamName || away?.name || "";
                 return (
-                  <Link key={m.id} href={`/matches/${m.id}`} className="hp-match">
+                  <Link key={match.id} href={`/matches/${match.id}`} className="hp-match">
                     <div className="hp-match-top">
                       <span className="hp-match-tag">{league?.shortName || league?.name || "Match"}</span>
-                      {isLive
-                        ? <span className="hp-live"><span className="dot" />LIVE</span>
-                        : <span>{dateLabel}</span>}
+                      <span>{match.status === "IN_PLAY" ? "Live" : new Date(match.matchDateUTC).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
                     </div>
                     <div className="hp-team">
-                      <Crest src={homeTeam?.image} label={homeName} color={homeTeam?.color} />
+                      <TeamMark team={home} label={homeName} />
                       <span className="hp-team-name">{homeName}</span>
-                      {m.homeScore != null && <span className="hp-score">{m.homeScore}</span>}
                     </div>
+                    {awayName ? <div className="hp-vs">VS</div> : null}
                     {awayName ? (
-                      <>
-                        <div className="hp-vs">VS</div>
-                        <div className="hp-team away">
-                          {m.awayScore != null && <span className="hp-score" style={{ marginLeft: 0, marginRight: "auto" }}>{m.awayScore}</span>}
-                          <span className="hp-team-name">{awayName}</span>
-                          <Crest src={awayTeam?.image} label={awayName} color={awayTeam?.color} />
-                        </div>
-                      </>
+                      <div className="hp-team">
+                        <TeamMark team={away} label={awayName} />
+                        <span className="hp-team-name">{awayName}</span>
+                      </div>
                     ) : null}
                     <div className="hp-match-foot">
-                      <span>{dateLabel} &middot; {timeLabel}</span>
-                      {m.stadiumName
-                        ? <span className="hp-match-city">{m.stadiumName}</span>
-                        : (m.venueCount > 0 ? <span className="hp-match-city">{m.venueCount} venues</span> : null)}
+                      <span>{formatMatchWhen(match)}</span>
+                      <strong>{match.venueCount || 0} venues</strong>
                     </div>
                   </Link>
                 );
               })}
             </div>
           ) : (
-            <div className="hp-empty">No upcoming games scheduled right now &mdash; check back soon.</div>
+            <div className="hp-empty">{isLoading ? "Loading upcoming games..." : "No upcoming games scheduled right now."}</div>
           )}
         </section>
 
-        {/* Featured venues */}
-        <section className="hp-sec">
+        <section id="venues" className="hp-sec">
           <div className="hp-sh">
-            <div className="hp-st">Watch-party venues</div>
-            <Link href="/venues" className="hp-see">Browse all venues &rarr;</Link>
-          </div>
-
-          {isLoading && featuredVenues.length === 0 ? (
-            <div className="hp-grid">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="hp-venue" style={{ opacity: 0.4, minHeight: 240 }} />
-              ))}
+            <div className="hp-st">Where fans are watching <span className="hp-tag">{publicVenues[0]?.city || "Local venues"}</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              {publicVenues.length > 1 ? (
+                <button className="hp-tab" type="button" onClick={() => setSpotlightIndex((value) => value + 1)}>Shuffle</button>
+              ) : null}
+              <Link href="/venues" className="hp-see">Browse all venues &rarr;</Link>
             </div>
-          ) : featuredVenues.length > 0 ? (
-            <div className="hp-grid">
-              {featuredVenues.map((v) => (
-                <Link key={v.id} href={`/venues/${v.slug || v.id}`} className="hp-venue">
-                  <div className="hp-venue-img">
-                    {v.coverImageUrl
-                      ? <img src={v.coverImageUrl} alt={v.name} loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                      : <span className="hp-venue-glyph">{v.name.split(" ").map((w) => w[0]).join("").substring(0, 2).toUpperCase()}</span>}
-                    {(v.upcomingEventsCount || 0) > 0 && <span className="hp-venue-pill">{v.upcomingEventsCount} events</span>}
+          </div>
+          {spotlightVenue ? (
+            <div className="hp-venue-layout">
+              <Link href={`/venues/${spotlightVenue.slug || spotlightVenue.id}`} className="hp-spotlight">
+                <div className="hp-spot-bg" style={{ background: gradientFor(spotlightVenue.id) }}>
+                  <VenueImage venue={spotlightVenue} className="hp-spot-mono" />
+                </div>
+                <div className="hp-spot-scrim" />
+                <div className="hp-spot-body">
+                  <div className="hp-pill-row">
+                    <span className="hp-pill"><span className="dot" />Featured venue</span>
+                    <span className="hp-pill muted">{spotlightVenue.city}{spotlightVenue.state ? `, ${spotlightVenue.state}` : ""}</span>
                   </div>
-                  <div className="hp-venue-body">
-                    <div className="hp-venue-city">{v.city}{v.state ? `, ${v.state}` : ""}</div>
-                    <div className="hp-venue-name">{v.name}</div>
-                    <div className="hp-chips">
-                      {(v.amenities || []).slice(0, 3).map((a) => <span key={a} className="hp-chip">{a}</span>)}
-                    </div>
-                    <div className="hp-venue-foot">
-                      <span>
-                        {v.rating ? (
-                          <>
-                            &#9733; {v.rating.toFixed(1)}
-                            {v.reviewCount ? <> &middot; {v.reviewCount}</> : null}
-                          </>
-                        ) : "Sports bar"}
-                      </span>
-                      <span className="go">Reserve &rarr;</span>
-                    </div>
+                  <div className="hp-spot-name">{spotlightVenue.name}</div>
+                  <div className="hp-spot-meta">
+                    {(venueEventsByVenue.get(spotlightVenue.id)?.[0]?.title || spotlightVenue.fanTeams?.[0]?.teamName || spotlightVenue.shortDescription || "Live sports watch parties")}
                   </div>
-                </Link>
-              ))}
+                  <div className="hp-spot-actions">
+                    <strong>{spotlightVenue.rating ? `Star ${spotlightVenue.rating.toFixed(1)}` : "Rated venue"}</strong>
+                    <em>{spotlightVenue.upcomingEventsCount || venueEventsByVenue.get(spotlightVenue.id)?.length || 0} upcoming events</em>
+                    <span className="hp-reserve">Reserve &rarr;</span>
+                  </div>
+                </div>
+              </Link>
+              <div className="hp-rail">
+                {railVenues.map((venue) => (
+                  <Link key={venue.id} href={`/venues/${venue.slug || venue.id}`} className="hp-rail-card">
+                    <div className="hp-rail-img" style={{ background: gradientFor(venue.id) }}>
+                      <VenueImage venue={venue} className="" />
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="hp-rail-city">{venue.city}{venue.state ? `, ${venue.state}` : ""}</div>
+                      <div className="hp-rail-name">{venue.name}</div>
+                      <div className="hp-rail-meta">{venue.fanTeams?.[0]?.teamName || venue.shortDescription || "Sports watch parties"}</div>
+                    </div>
+                    <div className="hp-rail-score">
+                      <strong>{venue.rating ? venue.rating.toFixed(1) : "New"}</strong>
+                      <span>{venue.upcomingEventsCount || venueEventsByVenue.get(venue.id)?.length || 0} events</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           ) : (
-            <div className="hp-empty">Venues are loading &mdash; check back in a moment.</div>
+            <div className="hp-empty">{isLoading ? "Loading venues..." : "No venues are available right now."}</div>
           )}
         </section>
 
-        {/* How it works */}
         <section className="hp-sec">
-          <div className="hp-sh"><div className="hp-st">How it works</div></div>
+          <div className="hp-st" style={{ marginBottom: 22 }}>How it works</div>
           <div className="hp-steps">
-            {[
-              { n: "1", h: "Find your match", p: "Browse World Cup fixtures and every league, with team crests and kickoff times in your timezone." },
-              { n: "2", h: "Pick a venue", p: "See bars hosting your match near you - photos, amenities, ratings, and how to get there." },
-              { n: "3", h: "Reserve your spot", p: "Book a table in seconds and watch with fans. Venues confirm and you're set." },
-            ].map((s) => (
-              <div key={s.n} className="hp-step">
-                <div className="n">{s.n}</div>
-                <h3>{s.h}</h3>
-                <p>{s.p}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Partners */}
-        <section className="hp-sec">
-          <div className="hp-sh"><div className="hp-st">Strategic partners</div></div>
-          <div className="hp-partners">
-            <div className="hp-partner">
-              <div className="wm">Team<em>Houston</em></div>
-              <p>The premier platform for Houston&apos;s amateur and semi-pro football scene. Leagues, tournaments, and community events &mdash; all in one place.</p>
-              <a href="https://www.team-houston.com/" target="_blank" rel="noopener noreferrer">Visit Team Houston &rarr;</a>
+            <div className="hp-step">
+              <div className="n">1</div>
+              <h3>Find your match</h3>
+              <p>Browse live schedule data across {formatCount(dynamicLeagueCount)} active leagues and kickoff times in your timezone.</p>
             </div>
-            <div className="hp-partner">
-              <div className="wm"><em>Activent</em></div>
-              <p>Discover local sports events and activities near you. From pickup games to watch parties, Activent connects Houston&apos;s active community.</p>
-              <a href="https://www.getactivent.com/" target="_blank" rel="noopener noreferrer">Visit Activent &rarr;</a>
+            <div className="hp-step">
+              <div className="n">2</div>
+              <h3>Pick a venue</h3>
+              <p>Compare {formatCount(publicVenues.length)} current venues by city, ratings, amenities, and hosted events.</p>
+            </div>
+            <div className="hp-step">
+              <div className="n">3</div>
+              <h3>Reserve your spot</h3>
+              <p>Open a match or venue, see who is showing the game, and reserve before the room fills.</p>
             </div>
           </div>
         </section>
 
-        {/* List your venue */}
         <section className="hp-sec">
           <div className="hp-band">
             <div>
               <h2>Run a bar or restaurant?</h2>
-              <p>List your venue free, publish the matches you&apos;re showing, and fill every seat on match nights this summer.</p>
+              <p>List your venue, publish the matches you are showing, and connect with fans looking for a place to watch.</p>
             </div>
             <Link href="/for-venues/register" className="hp-btn primary">List your venue &mdash; free</Link>
           </div>
         </section>
       </div>
+
+      <footer className="hp-footer">
+        <div className="hp-footer-inner">
+          <div style={{ fontFamily: "var(--font-space),'Space Grotesk',sans-serif", fontWeight: 800 }}>MatchWatch</div>
+          <div style={{ fontFamily: "var(--font-mono),monospace", fontSize: 11, color: "#6b7280" }}>
+            {formatCount(upcomingMatches.length)} upcoming games &middot; {formatCount(publicVenues.length)} venues
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
