@@ -30,7 +30,7 @@ redis.on('connect', () => {
     console.log('Redis connected');
 });
 
-// Attempt connection (non-blocking)
-redis.connect().catch(() => {
-    // Error already handled by the error event
-});
+// Keep Redis lazy: scripts that only need database access should be able to
+// import modules with Redis helpers without requiring a Redis server.
+// ioredis will connect on the first command, and BullMQ workers connect when
+// they are actually started.

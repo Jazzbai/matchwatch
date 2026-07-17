@@ -148,7 +148,7 @@ export default async function FanCountryPage({ params }: PageProps) {
                   <h3>{moment.title}</h3>
                 </div>
                 <p>{moment.summary}</p>
-                <p className="fan-angle">"{moment.angle}"</p>
+                <p className="fan-angle">&quot;{moment.angle}&quot;</p>
               </div>
             ))}
           </div>

@@ -76,8 +76,8 @@ Services:
 - frontend: `http://localhost:3000`
 - api: `http://localhost:4000`
 - api health: `http://localhost:4000/health`
-- postgres: `localhost:5432`
-- redis: `localhost:6379`
+- postgres: `localhost:${POSTGRES_PORT:-5432}`
+- redis: `localhost:${REDIS_PORT:-6379}`
 
 ### Run without Docker
 
@@ -113,9 +113,17 @@ Useful API scripts:
 
 ```bash
 npm run matches:sync-upcoming --workspace=@matchwatch/api
+npm run matches:sync-baseball --workspace=@matchwatch/api
+npm run matches:sync-sports --workspace=@matchwatch/api
 npm run venues:sync-google --workspace=@matchwatch/api
 npm run teams:backfill-logos --workspace=@matchwatch/api
 ```
+
+`matches:sync-baseball` syncs active Baseball leagues, including MLB, through the ESPN scoreboard provider. `matches:sync-sports` runs every active sport in the database, so soccer and baseball fixtures can be refreshed together.
+
+For local sync scripts, make sure `DATABASE_URL` matches the compose database credentials, for example `postgresql://matchwatch:matchwatch_dev@localhost:5432/matchwatch` or your overridden `POSTGRES_PORT`.
+
+The API match sync worker runs all active sports on startup and nightly jobs. After deployment, MLB appears only after that worker runs successfully or after `matches:sync-baseball` is run against the production database.
 
 ## Environment Overview
 
@@ -393,6 +401,7 @@ Used by [apps/api/src/workers/matchSync.ts](apps/api/src/workers/matchSync.ts):
   - base derived from `THE_SPORTS_DB_API_KEY`
 - ESPN Scoreboard
   - base: `https://site.api.espn.com/apis/site/v2/sports`
+  - used for MLB through `/baseball/mlb/scoreboard`
 - Jolpica / Ergast-style F1 API
   - base: `https://api.jolpi.ca/ergast`
 

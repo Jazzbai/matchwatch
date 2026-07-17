@@ -212,6 +212,17 @@ const mergeStadiumSchema = z.object({
     targetStadiumId: z.string().uuid(),
 });
 
+const stadiumDuplicateQuerySchema = z.object({
+    includeInactive: z.coerce.boolean().optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(100),
+});
+
+const resolveStadiumDuplicatesSchema = z.object({
+    includeInactive: z.coerce.boolean().optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(100),
+    dryRun: z.coerce.boolean().default(true),
+});
+
 const stadiumSearchQuerySchema = z.object({
     search: z.string().trim().default(''),
     limit: z.coerce.number().int().min(1).max(200).default(12),
@@ -2664,6 +2675,82 @@ superAdminRoutes.get('/stadiums', async (c) => {
     })), paginationMeta(page, parsed.data.limit, Number(totalResult?.count || 0))));
 });
 
+superAdminRoutes.get('/stadiums/duplicates', async (c) => {
+    const parsed = stadiumDuplicateQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid query', parsed.error.issues), 400);
+    }
+    const { allGroups, groups } = await getStadiumDuplicateGroups(parsed.data);
+
+    return c.json(apiResponse({
+        groups,
+        totalGroups: allGroups.length,
+    }));
+});
+
+superAdminRoutes.post('/stadiums/duplicates/resolve', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = resolveStadiumDuplicatesSchema.safeParse(body);
+    if (!parsed.success) {
+        return c.json(apiError('VALIDATION_ERROR', 'Invalid input', parsed.error.issues), 400);
+    }
+
+    const { groups } = await getStadiumDuplicateGroups(parsed.data);
+    const plan = groups.flatMap((group) => group.members
+        .filter((member) => member.id !== group.preferredStadiumId)
+        .map((member) => ({
+            normalizedLocation: group.normalizedLocation,
+            sourceStadiumId: member.id,
+            sourceStadiumName: member.name,
+            targetStadiumId: group.preferredStadiumId,
+            targetStadiumName: group.preferredStadiumName,
+            sourceActive: member.isActive,
+            targetActive: group.members.find((candidate) => candidate.id === group.preferredStadiumId)?.isActive ?? false,
+        })));
+
+    if (parsed.data.dryRun) {
+        return c.json(apiResponse({
+            dryRun: true,
+            groupsConsidered: groups.length,
+            mergeCount: plan.length,
+            plan,
+        }));
+    }
+
+    const applied = [];
+    const failed = [];
+
+    for (const item of plan) {
+        if (!item.targetStadiumId) {
+            failed.push({ ...item, error: 'Missing canonical target stadium' });
+            continue;
+        }
+
+        try {
+            const result = await mergeStadiumRecords(item.sourceStadiumId, item.targetStadiumId);
+            applied.push({
+                ...item,
+                targetSlug: result.targetSlug,
+            });
+        } catch (error) {
+            failed.push({
+                ...item,
+                error: error instanceof Error ? error.message : 'Unknown merge failure',
+            });
+        }
+    }
+
+    return c.json(apiResponse({
+        dryRun: false,
+        groupsConsidered: groups.length,
+        mergeCount: plan.length,
+        appliedCount: applied.length,
+        failedCount: failed.length,
+        applied,
+        failed,
+    }));
+});
+
 superAdminRoutes.post('/stadiums', async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const parsed = createStadiumSchema.safeParse(body);
@@ -2830,146 +2917,18 @@ superAdminRoutes.post('/stadiums/:stadiumId/merge', async (c) => {
         return c.json(apiError('VALIDATION_ERROR', 'Source and target stadiums must be different'), 400);
     }
 
-    const [[source], [target]] = await Promise.all([
-        db.select().from(stadiums).where(eq(stadiums.id, sourceStadiumId)).limit(1),
-        db.select().from(stadiums).where(eq(stadiums.id, targetStadiumId)).limit(1),
-    ]);
-
-    if (!source || !target) {
-        return c.json(apiError('NOT_FOUND', 'Source or target stadium not found'), 404);
+    try {
+        const result = await mergeStadiumRecords(sourceStadiumId, targetStadiumId);
+        return c.json(apiResponse({
+            message: 'Stadium merged',
+            ...result,
+        }));
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to merge stadiums';
+        if (message.includes('not found')) return c.json(apiError('NOT_FOUND', message), 404);
+        if (message.includes('must')) return c.json(apiError('VALIDATION_ERROR', message), 400);
+        return c.json(apiError('INTERNAL_ERROR', message), 500);
     }
-
-    const sourceKey = normalizeDuplicateStadiumKey(source.name, source.city, source.country);
-    const targetKey = normalizeDuplicateStadiumKey(target.name, target.city, target.country);
-    if (!sourceKey || sourceKey !== targetKey) {
-        return c.json(apiError('VALIDATION_ERROR', 'Stadiums must share the same normalized name and location to merge'), 400);
-    }
-
-    const mergedAliases = Array.from(new Set([
-        ...(target.aliases || []),
-        ...(source.aliases || []),
-        source.name,
-        source.shortName || '',
-    ].map((value) => value.trim()).filter(Boolean)));
-
-    const targetUpdates: Record<string, unknown> = {
-        aliases: mergedAliases,
-        isActive: target.isActive || source.isActive,
-        updatedAt: new Date(),
-    };
-
-    if (!normalizeOptionalText(target.shortName) && normalizeOptionalText(source.shortName)) targetUpdates.shortName = source.shortName;
-    if (!normalizeOptionalText(target.imageUrl) && normalizeOptionalText(source.imageUrl)) {
-        targetUpdates.imageUrl = source.imageUrl;
-        targetUpdates.imageSource = source.imageSource;
-    }
-    if (!normalizeOptionalText(target.heroImageUrl) && normalizeOptionalText(source.heroImageUrl)) {
-        targetUpdates.heroImageUrl = source.heroImageUrl;
-        targetUpdates.heroImageSource = source.heroImageSource;
-    }
-    if (!normalizeOptionalText(target.website) && normalizeOptionalText(source.website)) {
-        targetUpdates.website = source.website;
-        targetUpdates.websiteSource = source.websiteSource;
-    }
-    if (!normalizeOptionalText(target.shortDescription) && normalizeOptionalText(source.shortDescription)) {
-        targetUpdates.shortDescription = source.shortDescription;
-        targetUpdates.shortDescriptionSource = source.shortDescriptionSource;
-    }
-    if (!normalizeOptionalText(target.description) && normalizeOptionalText(source.description)) {
-        targetUpdates.description = source.description;
-        targetUpdates.descriptionSource = source.descriptionSource;
-    }
-    if (!normalizeOptionalText(target.addressLine1) && normalizeOptionalText(source.addressLine1)) targetUpdates.addressLine1 = source.addressLine1;
-    if (!normalizeOptionalText(target.city) && normalizeOptionalText(source.city)) targetUpdates.city = source.city;
-    if (!normalizeOptionalText(target.stateProvince) && normalizeOptionalText(source.stateProvince)) targetUpdates.stateProvince = source.stateProvince;
-    if (!normalizeOptionalText(target.country) && normalizeOptionalText(source.country)) targetUpdates.country = source.country;
-    if (!normalizeOptionalText(target.postalCode) && normalizeOptionalText(source.postalCode)) targetUpdates.postalCode = source.postalCode;
-    if (target.lat == null && source.lat != null) targetUpdates.lat = source.lat;
-    if (target.lng == null && source.lng != null) targetUpdates.lng = source.lng;
-    if (target.capacity == null && source.capacity != null) targetUpdates.capacity = source.capacity;
-    if (target.openedYear == null && source.openedYear != null) targetUpdates.openedYear = source.openedYear;
-    if (!normalizeOptionalText(target.surface) && normalizeOptionalText(source.surface)) targetUpdates.surface = source.surface;
-    if (!normalizeOptionalText(target.externalId) && normalizeOptionalText(source.externalId)) targetUpdates.externalId = source.externalId;
-    if (!normalizeOptionalText(target.googlePlaceId) && normalizeOptionalText(source.googlePlaceId)) {
-        targetUpdates.googlePlaceId = source.googlePlaceId;
-        targetUpdates.googleSourceSnapshot = source.googleSourceSnapshot;
-        targetUpdates.googleLastSyncedAt = source.googleLastSyncedAt || new Date();
-        targetUpdates.googleSyncStatus = source.googleSyncStatus;
-        targetUpdates.googleSyncError = source.googleSyncError;
-    }
-    if ((target.enrichmentStatus === 'NEVER_SYNCED' || !target.enrichedAt) && source.enrichmentStatus === 'SYNCED') {
-        targetUpdates.enrichmentSnapshot = source.enrichmentSnapshot;
-        targetUpdates.enrichedAt = source.enrichedAt;
-        targetUpdates.enrichmentStatus = source.enrichmentStatus;
-        targetUpdates.enrichmentError = source.enrichmentError;
-    }
-
-    const sourceArchivedSlug = await allocateCanonicalSlug('stadium', `${source.name} archived`, {
-        shortName: source.shortName,
-        excludeId: source.id,
-    });
-
-    await db.transaction(async (tx) => {
-        const sourceLinkedTeamRows = await tx.select({ teamId: teamStadiumLinks.teamId }).from(teamStadiumLinks).where(eq(teamStadiumLinks.stadiumId, sourceStadiumId));
-        const targetLinkedTeamRows = await tx.select({ teamId: teamStadiumLinks.teamId }).from(teamStadiumLinks).where(eq(teamStadiumLinks.stadiumId, targetStadiumId));
-        const sourcePrimaryTeamRows = await tx.select({ id: teams.id }).from(teams).where(eq(teams.primaryStadiumId, sourceStadiumId));
-        const targetPrimaryTeamRows = await tx.select({ id: teams.id }).from(teams).where(eq(teams.primaryStadiumId, targetStadiumId));
-        const affectedTeamIds = Array.from(new Set([
-            ...sourceLinkedTeamRows.map((row) => row.teamId),
-            ...targetLinkedTeamRows.map((row) => row.teamId),
-            ...sourcePrimaryTeamRows.map((row) => row.id),
-            ...targetPrimaryTeamRows.map((row) => row.id),
-        ]));
-
-        await tx.update(matches).set({ stadiumId: targetStadiumId, updatedAt: new Date() }).where(eq(matches.stadiumId, sourceStadiumId));
-
-        await tx.execute(sql`
-            delete from team_stadium_links as source_link
-            using team_stadium_links as target_link
-            where source_link.team_id = target_link.team_id
-              and source_link.stadium_id = ${sourceStadiumId}
-              and target_link.stadium_id = ${targetStadiumId}
-        `);
-        await tx.update(teamStadiumLinks).set({ stadiumId: targetStadiumId, updatedAt: new Date() }).where(eq(teamStadiumLinks.stadiumId, sourceStadiumId));
-        await tx.update(teams).set({ primaryStadiumId: targetStadiumId }).where(eq(teams.primaryStadiumId, sourceStadiumId));
-        await tx.update(stadiums).set(targetUpdates).where(eq(stadiums.id, targetStadiumId));
-
-        for (const teamId of affectedTeamIds) {
-            const [team] = await tx.select({ primaryStadiumId: teams.primaryStadiumId }).from(teams).where(eq(teams.id, teamId)).limit(1);
-            if (!team) continue;
-            const links = await tx.select({ stadiumId: teamStadiumLinks.stadiumId, isPrimary: teamStadiumLinks.isPrimary })
-                .from(teamStadiumLinks)
-                .where(and(eq(teamStadiumLinks.teamId, teamId), eq(teamStadiumLinks.isActive, true)));
-            const secondaryStadiumIds = links
-                .map((row) => row.stadiumId)
-                .filter((stadiumId) => stadiumId !== team.primaryStadiumId);
-            await syncTeamStadiumState(tx, teamId, team.primaryStadiumId || null, secondaryStadiumIds);
-        }
-
-        if (source.slug && source.slug !== target.slug) {
-            await tx.insert(entitySlugRedirects).values({
-                entityType: 'stadium',
-                entityId: targetStadiumId,
-                slug: source.slug,
-                updatedAt: new Date(),
-            }).onConflictDoNothing();
-        }
-
-        await tx.update(stadiums).set({
-            slug: sourceArchivedSlug,
-            externalId: null,
-            googlePlaceId: null,
-            isActive: false,
-            updatedAt: new Date(),
-        }).where(eq(stadiums.id, sourceStadiumId));
-    });
-
-    return c.json(apiResponse({
-        message: 'Stadium merged',
-        sourceStadiumId,
-        targetStadiumId,
-        targetSlug: target.slug,
-    }));
 });
 
 superAdminRoutes.delete('/stadiums/:stadiumId', async (c) => {
@@ -5170,6 +5129,163 @@ async function getTeamDuplicateGroups(input: z.infer<typeof teamDuplicateQuerySc
     };
 }
 
+type StadiumDuplicateSourceRow = {
+    id: string;
+    name: string;
+    slug: string;
+    shortName: string | null;
+    aliases: string[] | null;
+    imageUrl: string | null;
+    heroImageUrl: string | null;
+    website: string | null;
+    city: string | null;
+    country: string | null;
+    googlePlaceId: string | null;
+    googleSyncStatus: string;
+    enrichmentStatus: string;
+    shortDescription: string | null;
+    description: string | null;
+    externalId: string | null;
+    isActive: boolean;
+    createdAt: Date;
+};
+
+type StadiumDuplicateGroup = {
+    normalizedLocation: string;
+    memberCount: number;
+    activeCount: number;
+    preferredStadiumId: string | null;
+    preferredStadiumName: string | null;
+    members: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        shortName: string | null;
+        aliases: string[];
+        imageUrl: string | null;
+        googlePlaceId: string | null;
+        city: string | null;
+        country: string | null;
+        isActive: boolean;
+        createdAt: Date;
+        identityScore: number;
+    }>;
+};
+
+function scoreStadiumIdentityRecord(row: StadiumDuplicateSourceRow) {
+    return (
+        (row.isActive ? 100 : 0)
+        + (normalizeOptionalText(row.googlePlaceId) ? 30 : 0)
+        + (row.googleSyncStatus === 'SYNCED' ? 20 : row.googleSyncStatus === 'ERROR' ? -5 : 0)
+        + (row.enrichmentStatus === 'SYNCED' ? 16 : row.enrichmentStatus === 'ERROR' ? -4 : 0)
+        + (normalizeOptionalText(row.website) ? 8 : 0)
+        + (normalizeOptionalText(row.heroImageUrl) ? 6 : 0)
+        + (normalizeOptionalText(row.imageUrl) ? 4 : 0)
+        + (normalizeOptionalText(row.description) ? 4 : 0)
+        + (normalizeOptionalText(row.shortDescription) ? 2 : 0)
+        + (normalizeOptionalText(row.externalId) ? 2 : 0)
+    );
+}
+
+function pickPreferredStadiumRecord(rows: StadiumDuplicateSourceRow[]) {
+    const activeRows = rows.filter((row) => row.isActive);
+    const candidateRows = activeRows.length > 0 ? activeRows : rows;
+    return [...candidateRows].sort((left, right) => {
+        const scoreDiff = scoreStadiumIdentityRecord(right) - scoreStadiumIdentityRecord(left);
+        if (scoreDiff !== 0) return scoreDiff;
+        return left.createdAt.getTime() - right.createdAt.getTime();
+    })[0] || null;
+}
+
+async function getStadiumDuplicateGroups(input: z.infer<typeof stadiumDuplicateQuerySchema>) {
+    const whereParts = [];
+    if (!input.includeInactive) {
+        whereParts.push(eq(stadiums.isActive, true));
+    }
+
+    const queryWhere = whereParts.length ? and(...whereParts) : undefined;
+    const rows = await db.select({
+        id: stadiums.id,
+        name: stadiums.name,
+        slug: stadiums.slug,
+        shortName: stadiums.shortName,
+        aliases: stadiums.aliases,
+        imageUrl: stadiums.imageUrl,
+        heroImageUrl: stadiums.heroImageUrl,
+        website: stadiums.website,
+        city: stadiums.city,
+        country: stadiums.country,
+        googlePlaceId: stadiums.googlePlaceId,
+        googleSyncStatus: stadiums.googleSyncStatus,
+        enrichmentStatus: stadiums.enrichmentStatus,
+        shortDescription: stadiums.shortDescription,
+        description: stadiums.description,
+        externalId: stadiums.externalId,
+        isActive: stadiums.isActive,
+        createdAt: stadiums.createdAt,
+    }).from(stadiums)
+        .where(queryWhere)
+        .orderBy(stadiums.name, stadiums.city, stadiums.country, stadiums.createdAt) as StadiumDuplicateSourceRow[];
+
+    const grouped = new Map<string, StadiumDuplicateSourceRow[]>();
+    for (const row of rows) {
+        const groupKey = normalizeDuplicateStadiumKey(row.name, row.city, row.country);
+        if (!groupKey) continue;
+        const existing = grouped.get(groupKey) || [];
+        existing.push(row);
+        grouped.set(groupKey, existing);
+    }
+
+    const allGroups = Array.from(grouped.entries())
+        .map(([groupKey, members]) => {
+            if (members.length < 2) return null;
+            const preferred = pickPreferredStadiumRecord(members);
+            const orderedMembers = [...members].sort((left, right) => {
+                if (preferred) {
+                    if (left.id === preferred.id) return -1;
+                    if (right.id === preferred.id) return 1;
+                }
+                const scoreDiff = scoreStadiumIdentityRecord(right) - scoreStadiumIdentityRecord(left);
+                if (scoreDiff !== 0) return scoreDiff;
+                if (left.isActive !== right.isActive) return left.isActive ? -1 : 1;
+                return left.name.localeCompare(right.name);
+            });
+
+            return {
+                normalizedLocation: groupKey,
+                memberCount: members.length,
+                activeCount: members.filter((member) => member.isActive).length,
+                preferredStadiumId: preferred?.id || null,
+                preferredStadiumName: preferred?.name || null,
+                members: orderedMembers.map((member) => ({
+                    id: member.id,
+                    name: member.name,
+                    slug: member.slug,
+                    shortName: member.shortName,
+                    aliases: member.aliases || [],
+                    imageUrl: member.imageUrl,
+                    googlePlaceId: member.googlePlaceId,
+                    city: member.city,
+                    country: member.country,
+                    isActive: member.isActive,
+                    createdAt: member.createdAt,
+                    identityScore: scoreStadiumIdentityRecord(member),
+                })),
+            } satisfies StadiumDuplicateGroup;
+        })
+        .filter((group): group is StadiumDuplicateGroup => Boolean(group))
+        .sort((left, right) => (
+            right.memberCount - left.memberCount
+            || right.activeCount - left.activeCount
+            || left.normalizedLocation.localeCompare(right.normalizedLocation)
+        ));
+
+    return {
+        allGroups,
+        groups: allGroups.slice(0, input.limit),
+    };
+}
+
 async function mergeTeamRecords(sourceTeamId: string, targetTeamId: string) {
     const [[source], [target]] = await Promise.all([
         db.select({
@@ -5378,6 +5494,148 @@ async function mergeTeamRecords(sourceTeamId: string, targetTeamId: string) {
     return {
         sourceTeamId,
         targetTeamId,
+        targetSlug: target.slug,
+    };
+}
+
+async function mergeStadiumRecords(sourceStadiumId: string, targetStadiumId: string) {
+    const [[source], [target]] = await Promise.all([
+        db.select().from(stadiums).where(eq(stadiums.id, sourceStadiumId)).limit(1),
+        db.select().from(stadiums).where(eq(stadiums.id, targetStadiumId)).limit(1),
+    ]);
+
+    if (!source || !target) {
+        throw new Error('Source or target stadium not found');
+    }
+
+    const sourceKey = normalizeDuplicateStadiumKey(source.name, source.city, source.country);
+    const targetKey = normalizeDuplicateStadiumKey(target.name, target.city, target.country);
+    if (!sourceKey || sourceKey !== targetKey) {
+        throw new Error('Stadiums must share the same normalized name and location to merge');
+    }
+
+    const mergedAliases = Array.from(new Set([
+        ...(target.aliases || []),
+        ...(source.aliases || []),
+        source.name,
+        source.shortName || '',
+    ].map((value) => value.trim()).filter(Boolean)));
+
+    const targetUpdates: Record<string, unknown> = {
+        aliases: mergedAliases,
+        isActive: target.isActive || source.isActive,
+        updatedAt: new Date(),
+    };
+
+    if (!normalizeOptionalText(target.shortName) && normalizeOptionalText(source.shortName)) targetUpdates.shortName = source.shortName;
+    if (!normalizeOptionalText(target.imageUrl) && normalizeOptionalText(source.imageUrl)) {
+        targetUpdates.imageUrl = source.imageUrl;
+        targetUpdates.imageSource = source.imageSource;
+    }
+    if (!normalizeOptionalText(target.heroImageUrl) && normalizeOptionalText(source.heroImageUrl)) {
+        targetUpdates.heroImageUrl = source.heroImageUrl;
+        targetUpdates.heroImageSource = source.heroImageSource;
+    }
+    if (!normalizeOptionalText(target.website) && normalizeOptionalText(source.website)) {
+        targetUpdates.website = source.website;
+        targetUpdates.websiteSource = source.websiteSource;
+    }
+    if (!normalizeOptionalText(target.shortDescription) && normalizeOptionalText(source.shortDescription)) {
+        targetUpdates.shortDescription = source.shortDescription;
+        targetUpdates.shortDescriptionSource = source.shortDescriptionSource;
+    }
+    if (!normalizeOptionalText(target.description) && normalizeOptionalText(source.description)) {
+        targetUpdates.description = source.description;
+        targetUpdates.descriptionSource = source.descriptionSource;
+    }
+    if (!normalizeOptionalText(target.addressLine1) && normalizeOptionalText(source.addressLine1)) targetUpdates.addressLine1 = source.addressLine1;
+    if (!normalizeOptionalText(target.city) && normalizeOptionalText(source.city)) targetUpdates.city = source.city;
+    if (!normalizeOptionalText(target.stateProvince) && normalizeOptionalText(source.stateProvince)) targetUpdates.stateProvince = source.stateProvince;
+    if (!normalizeOptionalText(target.country) && normalizeOptionalText(source.country)) targetUpdates.country = source.country;
+    if (!normalizeOptionalText(target.postalCode) && normalizeOptionalText(source.postalCode)) targetUpdates.postalCode = source.postalCode;
+    if (target.lat == null && source.lat != null) targetUpdates.lat = source.lat;
+    if (target.lng == null && source.lng != null) targetUpdates.lng = source.lng;
+    if (target.capacity == null && source.capacity != null) targetUpdates.capacity = source.capacity;
+    if (target.openedYear == null && source.openedYear != null) targetUpdates.openedYear = source.openedYear;
+    if (!normalizeOptionalText(target.surface) && normalizeOptionalText(source.surface)) targetUpdates.surface = source.surface;
+    if (!normalizeOptionalText(target.externalId) && normalizeOptionalText(source.externalId)) targetUpdates.externalId = source.externalId;
+    if (!normalizeOptionalText(target.googlePlaceId) && normalizeOptionalText(source.googlePlaceId)) {
+        targetUpdates.googlePlaceId = source.googlePlaceId;
+        targetUpdates.googleSourceSnapshot = source.googleSourceSnapshot;
+        targetUpdates.googleLastSyncedAt = source.googleLastSyncedAt || new Date();
+        targetUpdates.googleSyncStatus = source.googleSyncStatus;
+        targetUpdates.googleSyncError = source.googleSyncError;
+    }
+    if ((target.enrichmentStatus === 'NEVER_SYNCED' || !target.enrichedAt) && source.enrichmentStatus === 'SYNCED') {
+        targetUpdates.enrichmentSnapshot = source.enrichmentSnapshot;
+        targetUpdates.enrichedAt = source.enrichedAt;
+        targetUpdates.enrichmentStatus = source.enrichmentStatus;
+        targetUpdates.enrichmentError = source.enrichmentError;
+    }
+
+    const sourceArchivedSlug = await allocateCanonicalSlug('stadium', `${source.name} archived`, {
+        shortName: source.shortName,
+        excludeId: source.id,
+    });
+
+    await db.transaction(async (tx) => {
+        const sourceLinkedTeamRows = await tx.select({ teamId: teamStadiumLinks.teamId }).from(teamStadiumLinks).where(eq(teamStadiumLinks.stadiumId, sourceStadiumId));
+        const targetLinkedTeamRows = await tx.select({ teamId: teamStadiumLinks.teamId }).from(teamStadiumLinks).where(eq(teamStadiumLinks.stadiumId, targetStadiumId));
+        const sourcePrimaryTeamRows = await tx.select({ id: teams.id }).from(teams).where(eq(teams.primaryStadiumId, sourceStadiumId));
+        const targetPrimaryTeamRows = await tx.select({ id: teams.id }).from(teams).where(eq(teams.primaryStadiumId, targetStadiumId));
+        const affectedTeamIds = Array.from(new Set([
+            ...sourceLinkedTeamRows.map((row) => row.teamId),
+            ...targetLinkedTeamRows.map((row) => row.teamId),
+            ...sourcePrimaryTeamRows.map((row) => row.id),
+            ...targetPrimaryTeamRows.map((row) => row.id),
+        ]));
+
+        await tx.update(matches).set({ stadiumId: targetStadiumId, updatedAt: new Date() }).where(eq(matches.stadiumId, sourceStadiumId));
+
+        await tx.execute(sql`
+            delete from team_stadium_links as source_link
+            using team_stadium_links as target_link
+            where source_link.team_id = target_link.team_id
+              and source_link.stadium_id = ${sourceStadiumId}
+              and target_link.stadium_id = ${targetStadiumId}
+        `);
+        await tx.update(teamStadiumLinks).set({ stadiumId: targetStadiumId, updatedAt: new Date() }).where(eq(teamStadiumLinks.stadiumId, sourceStadiumId));
+        await tx.update(teams).set({ primaryStadiumId: targetStadiumId }).where(eq(teams.primaryStadiumId, sourceStadiumId));
+        await tx.update(stadiums).set(targetUpdates).where(eq(stadiums.id, targetStadiumId));
+
+        for (const teamId of affectedTeamIds) {
+            const [team] = await tx.select({ primaryStadiumId: teams.primaryStadiumId }).from(teams).where(eq(teams.id, teamId)).limit(1);
+            if (!team) continue;
+            const links = await tx.select({ stadiumId: teamStadiumLinks.stadiumId, isPrimary: teamStadiumLinks.isPrimary })
+                .from(teamStadiumLinks)
+                .where(and(eq(teamStadiumLinks.teamId, teamId), eq(teamStadiumLinks.isActive, true)));
+            const secondaryStadiumIds = links
+                .map((row) => row.stadiumId)
+                .filter((stadiumId) => stadiumId !== team.primaryStadiumId);
+            await syncTeamStadiumState(tx, teamId, team.primaryStadiumId || null, secondaryStadiumIds);
+        }
+
+        if (source.slug && source.slug !== target.slug) {
+            await tx.insert(entitySlugRedirects).values({
+                entityType: 'stadium',
+                entityId: targetStadiumId,
+                slug: source.slug,
+                updatedAt: new Date(),
+            }).onConflictDoNothing();
+        }
+
+        await tx.update(stadiums).set({
+            slug: sourceArchivedSlug,
+            externalId: null,
+            googlePlaceId: null,
+            isActive: false,
+            updatedAt: new Date(),
+        }).where(eq(stadiums.id, sourceStadiumId));
+    });
+
+    return {
+        sourceStadiumId,
+        targetStadiumId,
         targetSlug: target.slug,
     };
 }

@@ -13,6 +13,9 @@
     "db:generate": "turbo run db:generate --filter=@matchwatch/api",
     "db:migrate": "turbo run db:migrate --filter=@matchwatch/api",
     "db:seed": "turbo run db:seed --filter=@matchwatch/api",
+    "matches:sync-upcoming": "npm run matches:sync-upcoming --workspace=@matchwatch/api",
+    "matches:sync-baseball": "npm run matches:sync-baseball --workspace=@matchwatch/api",
+    "matches:sync-sports": "npm run matches:sync-sports --workspace=@matchwatch/api",
     "venues:sanitize-export": "node scripts/sanitize_venues_export.mjs",
     "venues:import-sanitized": "node scripts/import_sanitized_venues_export.mjs"
   },

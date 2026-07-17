@@ -142,9 +142,28 @@ async function main() {
     }, null, 2));
 }
 
+function formatError(error: unknown) {
+    const anyError = error as { code?: unknown; errors?: unknown };
+    if (
+        anyError?.code === 'ECONNREFUSED'
+        || (Array.isArray(anyError?.errors) && anyError.errors.some((entry) => (entry as { code?: unknown })?.code === 'ECONNREFUSED'))
+    ) {
+        return [
+            'Database connection refused.',
+            `Set DATABASE_URL or start the local Postgres service before running match sync.`,
+            `Default DATABASE_URL: postgresql://matchwatch:matchwatch_dev@localhost:5432/matchwatch`,
+            error instanceof Error ? (error.stack || error.message || error.name) : String(error),
+        ].join('\n');
+    }
+    if (error instanceof Error) {
+        return error.stack || error.message || error.name;
+    }
+    return String(error);
+}
+
 main()
     .then(() => process.exit(0))
     .catch((error) => {
-        console.error(error instanceof Error ? error.message : error);
+        console.error(formatError(error));
         process.exit(1);
     });
