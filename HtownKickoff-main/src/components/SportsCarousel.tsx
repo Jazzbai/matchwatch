@@ -1,26 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useData } from "../lib/data-provider";
 import styles from "./SportsCarousel.module.css";
 
 const slides = [
   {
     category: "Basketball / NBA",
-    title: "From courtside to capital",
-    subtitle: "The business engine behind the league",
-    text: "Big stars, packed arenas, and a global fan base. Explore how the NBA turns game night into an experience beyond the court.",
+    title: "LeBron James",
+    subtitle: "A legacy beyond the court",
+    text: "From NBA greatness to sponsorships and media, LeBron shows how an athlete's influence reaches far beyond game night.",
     image: "https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=1600&q=80",
   },
   {
     category: "Baseball",
-    title: "More than a day at the ballpark",
-    subtitle: "Tradition meets modern hospitality",
-    text: "A familiar team. A favorite gathering place. Discover the hospitality and traditions that make baseball a shared experience.",
+    title: "Jackie Robinson",
+    subtitle: "A legacy that changed the game",
+    text: "A baseball pioneer whose courage and impact endure. Celebrate the stories and traditions that bring generations of fans together.",
     image: "https://images.unsplash.com/photo-1579952363873-27d3bfad9c0d?auto=format&fit=crop&w=1600&q=80",
   },
   {
     category: "Soccer / Messi",
-    title: "Global stars. Local connections.",
+    title: "Lionel Messi",
     subtitle: "Messi, Inter Miami, and the power of fandom",
     text: "From Messi and Inter Miami to your neighborhood sports bar, the world's game brings fans together wherever they watch.",
     image: "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1600&q=80",
@@ -28,6 +30,12 @@ const slides = [
 ];
 
 export default function SportsCarousel() {
+  const { venues, isLoading } = useData();
+  const featuredBars = venues.filter((venue) =>
+    !venue.amenities?.includes("OFFICIAL_FAN_FEST") &&
+    !/fifa fan festival|fifa fan zone|official fifa fan zone/i.test(venue.name)
+  ).sort((a, b) => (b.rating || 0) - (a.rating || 0) ||
+    (b.upcomingEventsCount || 0) - (a.upcomingEventsCount || 0) || a.name.localeCompare(b.name)).slice(0, 3);
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [rotationEnabled, setRotationEnabled] = useState(true);
@@ -50,13 +58,14 @@ export default function SportsCarousel() {
   const move = (direction: number) => setActive((value) => (value + direction + slides.length) % slides.length);
 
   return (
-    <section className={styles.carousel} aria-label="The business of sports" aria-roledescription="carousel"
+    <div className={styles.layout}>
+    <section className={styles.carousel} aria-label="Sports legends" aria-roledescription="carousel"
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)} onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
       }}>
       <div className={styles.heading}>
-        <h2>The business of sports</h2>
+        <h2>Legends of the game</h2>
         <button type="button" onClick={() => {
           if (reducedMotion) { setReducedMotion(false); setRotationEnabled(true); }
           else setRotationEnabled((value) => !value);
@@ -93,5 +102,29 @@ export default function SportsCarousel() {
         <button type="button" aria-label="Next slide" onClick={() => move(1)}>&rarr;</button>
       </div>
     </section>
+    <aside className={styles.bars} aria-label="Featured sports bars">
+      <div className={styles.barHeading}>
+        <div><span className={styles.category}>Your next game night</span><h2>Featured sports bars</h2></div>
+        <Link href="/venues">View all &rarr;</Link>
+      </div>
+      <div className={styles.barList}>
+        {featuredBars.map((venue, index) => (
+          <Link className={styles.barCard} key={venue.id} href={`/venues/${venue.slug || venue.id}`}>
+            <div className={styles.barPhoto} style={venue.coverImageUrl ? { backgroundImage: `url(${JSON.stringify(venue.coverImageUrl)})` } : undefined}>
+              {!venue.coverImageUrl && <span>{venue.name.slice(0, 2).toUpperCase()}</span>}
+              <span className={styles.rank}>0{index + 1}</span>
+            </div>
+            <div className={styles.barCopy}>
+              <span className={styles.city}>{[venue.city, venue.state].filter(Boolean).join(", ")}</span>
+              <h3>{venue.name}</h3>
+              <p>{venue.rating ? `★ ${venue.rating.toFixed(1)}` : "Discover this venue"}{venue.upcomingEventsCount ? ` · ${venue.upcomingEventsCount} events` : ""}</p>
+            </div>
+            <span className={styles.barArrow} aria-hidden="true">&nearr;</span>
+          </Link>
+        ))}
+        {featuredBars.length === 0 && <p className={styles.empty}>{isLoading ? "Finding your next watch spot…" : "Explore venues to find your next watch spot."}</p>}
+      </div>
+    </aside>
+    </div>
   );
 }
