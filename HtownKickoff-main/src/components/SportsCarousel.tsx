@@ -3,35 +3,48 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useData } from "../lib/data-provider";
+import type { Venue } from "../lib/data";
 import styles from "./SportsCarousel.module.css";
 
 const slides = [
   {
     category: "Basketball / NBA",
-    title: "LeBron James",
+    title: "Beyond the court",
     subtitle: "A legacy beyond the court",
-    text: "From NBA greatness to sponsorships and media, LeBron shows how an athlete's influence reaches far beyond game night.",
-    image: "https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=1600&q=80",
+    text: "Championship moments, global fandom, and the energy of game night. Basketball brings the crowd together.",
+    image: "/images/home/basketball.jpg",
   },
   {
     category: "Baseball",
-    title: "Jackie Robinson",
+    title: "For the love of the game",
     subtitle: "A legacy that changed the game",
     text: "A baseball pioneer whose courage and impact endure. Celebrate the stories and traditions that bring generations of fans together.",
-    image: "https://images.unsplash.com/photo-1579952363873-27d3bfad9c0d?auto=format&fit=crop&w=1600&q=80",
+    image: "/images/home/baseball.jpg",
   },
   {
-    category: "Soccer / Messi",
-    title: "Lionel Messi",
-    subtitle: "Messi, Inter Miami, and the power of fandom",
-    text: "From Messi and Inter Miami to your neighborhood sports bar, the world's game brings fans together wherever they watch.",
-    image: "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1600&q=80",
+    category: "Soccer",
+    title: "One game. A world of fans.",
+    subtitle: "Global passion, local watch parties",
+    text: "From the stadium to your neighborhood sports bar, share every goal with a crowd that feels it too.",
+    image: "/images/home/soccer.jpg",
   },
 ];
 
+function BarPhoto({ venue, onUnavailable }: { venue: Venue; onUnavailable: (id: string) => void }) {
+  const photos = Array.from(new Set([venue.coverImageUrl, ...(venue.galleryImageUrls || [])].filter((url): url is string => Boolean(url))));
+  const [photoIndex, setPhotoIndex] = useState(0);
+  return <img src={photos[photoIndex]} alt={`${venue.name} venue`} loading="lazy" onError={() => {
+    if (photoIndex + 1 < photos.length) setPhotoIndex((value) => value + 1);
+    else onUnavailable(venue.id);
+  }} />;
+}
+
 export default function SportsCarousel() {
   const { venues, isLoading } = useData();
+  const [unavailablePhotos, setUnavailablePhotos] = useState<string[]>([]);
   const featuredBars = venues.filter((venue) =>
+    !unavailablePhotos.includes(venue.id) &&
+    Boolean(venue.coverImageUrl || venue.galleryImageUrls?.length) &&
     !venue.amenities?.includes("OFFICIAL_FAN_FEST") &&
     !/fifa fan festival|fifa fan zone|official fifa fan zone/i.test(venue.name)
   ).sort((a, b) => (b.rating || 0) - (a.rating || 0) ||
@@ -59,13 +72,13 @@ export default function SportsCarousel() {
 
   return (
     <div className={styles.layout}>
-    <section className={styles.carousel} aria-label="Sports legends" aria-roledescription="carousel"
+    <section className={styles.carousel} aria-label="Game day inspiration" aria-roledescription="carousel"
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)} onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
       }}>
       <div className={styles.heading}>
-        <h2>Legends of the game</h2>
+        <h2>Made for game day</h2>
         <button type="button" onClick={() => {
           if (reducedMotion) { setReducedMotion(false); setRotationEnabled(true); }
           else setRotationEnabled((value) => !value);
@@ -101,6 +114,7 @@ export default function SportsCarousel() {
         </div>
         <button type="button" aria-label="Next slide" onClick={() => move(1)}>&rarr;</button>
       </div>
+      <a className={styles.credits} href="/images/home/credits.html" target="_blank" rel="noreferrer">Photo credits</a>
     </section>
     <aside className={styles.bars} aria-label="Featured sports bars">
       <div className={styles.barHeading}>
@@ -110,8 +124,8 @@ export default function SportsCarousel() {
       <div className={styles.barList}>
         {featuredBars.map((venue, index) => (
           <Link className={styles.barCard} key={venue.id} href={`/venues/${venue.slug || venue.id}`}>
-            <div className={styles.barPhoto} style={venue.coverImageUrl ? { backgroundImage: `url(${JSON.stringify(venue.coverImageUrl)})` } : undefined}>
-              {!venue.coverImageUrl && <span>{venue.name.slice(0, 2).toUpperCase()}</span>}
+            <div className={styles.barPhoto}>
+              <BarPhoto key={`${venue.id}:${venue.coverImageUrl}`} venue={venue} onUnavailable={(id) => setUnavailablePhotos((current) => current.includes(id) ? current : [...current, id])} />
               <span className={styles.rank}>0{index + 1}</span>
             </div>
             <div className={styles.barCopy}>
