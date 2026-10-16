@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { FloatingNav } from "../components/AppShell";
+import SportsCarousel from "../components/SportsCarousel";
 import { useAuth } from "../lib/auth-context";
 import { type League, type Match, type Sport, type Team, type Venue, type VenueEvent } from "../lib/data";
 import { useData } from "../lib/data-provider";
@@ -296,6 +297,7 @@ export default function HomePage() {
       </section>
 
       <div className="hp-wrap">
+        <SportsCarousel />
         <section id="leagues" className="hp-sec">
           <div className="hp-sh">
             <div className="hp-st">Follow every league <span className="hp-tag">Live counts</span></div>

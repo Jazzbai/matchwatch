@@ -1,0 +1,18 @@
+.carousel { padding: 40px 0 24px; color: #fff; }
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.heading h2 { font-family: var(--font-space), sans-serif; font-size: clamp(20px, 3vw, 28px); font-weight: 800; }
+.carousel button { cursor: pointer; color: #fff; border: 1px solid #ffffff30; background: #12161d; border-radius: 999px; padding: 8px 14px; }
+.carousel button:focus-visible { outline: 2px solid var(--mw-accent); outline-offset: 4px; }
+.viewport { overflow: hidden; border: 1px solid #ffffff20; border-radius: 18px; }
+.track { display: flex; transition: transform 650ms ease; }
+.slide { flex: 0 0 100%; min-width: 0; box-sizing: border-box; padding: clamp(24px, 5vw, 60px); background-color: #12161d; background-size: cover; background-position: center; }
+.category { display: inline-block; color: var(--mw-accent); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 24px; }
+.slide h3 { max-width: 760px; font-family: var(--font-space), sans-serif; font-size: clamp(28px, 4.5vw, 52px); font-weight: 800; line-height: 1.08; margin-bottom: 16px; }
+.slide p { max-width: 660px; color: #d0d6e1; line-height: 1.65; font-size: 15px; }
+.slide .subtitle { font-weight: 700; color: #fff; margin-bottom: 12px; }
+.controls { display: flex; align-items: center; justify-content: center; gap: 24px; margin-top: 16px; }
+.dots { display: flex; gap: 4px; }
+.dots button { position: relative; width: 36px; height: 36px; padding: 0; border: 0; background: transparent; }
+.dots button::after { content: ""; position: absolute; width: 9px; height: 9px; top: 14px; left: 14px; border-radius: 50%; background: #77808f; }
+.dots button.active::after { background: var(--mw-accent); }
+@media (prefers-reduced-motion: reduce) { .track { transition: none; } }
