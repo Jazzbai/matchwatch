@@ -8,21 +8,21 @@ const slides = [
     category: "Basketball / NBA",
     title: "From courtside to capital",
     subtitle: "The business engine behind the league",
-    text: "Premium seating, jersey sponsorships, media rights, and loyal fans power the NBA. Global stars bring that energy beyond the court into merchandise, hospitality, and watch parties.",
+    text: "Big stars, packed arenas, and a global fan base. Explore how the NBA turns game night into an experience beyond the court.",
     image: "https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=1600&q=80",
   },
   {
     category: "Baseball",
     title: "More than a day at the ballpark",
     subtitle: "Tradition meets modern hospitality",
-    text: "From suites and family ticket bundles to local sponsors and game-day dining, baseball turns every stadium visit into an experience. Find your own gathering place for the next big game.",
+    text: "A familiar team. A favorite gathering place. Discover the hospitality and traditions that make baseball a shared experience.",
     image: "https://images.unsplash.com/photo-1579952363873-27d3bfad9c0d?auto=format&fit=crop&w=1600&q=80",
   },
   {
     category: "Soccer / Messi",
     title: "Global stars. Local connections.",
     subtitle: "Messi, Inter Miami, and the power of fandom",
-    text: "Soccer brings international fan culture into local venues. From club merchandise to match-day hospitality, stars like Messi inspire communities to come together and share the game.",
+    text: "From Messi and Inter Miami to your neighborhood sports bar, the world's game brings fans together wherever they watch.",
     image: "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1600&q=80",
   },
 ];
@@ -68,12 +68,15 @@ export default function SportsCarousel() {
         <div className={styles.track} style={{ transform: `translateX(-${active * 100}%)` }}>
           {slides.map((slide, index) => (
             <article key={slide.category} className={styles.slide} aria-hidden={index !== active}
-              aria-roledescription="slide" aria-label={`${index + 1} of ${slides.length}`}
-              style={{ backgroundImage: `linear-gradient(90deg,rgba(5,8,14,.94),rgba(5,8,14,.55)),url("${slide.image}")` }}>
+              aria-roledescription="slide" aria-label={`${index + 1} of ${slides.length}`}>
+              <div className={styles.copy}>
               <span className={styles.category}>{slide.category}</span>
               <h3>{slide.title}</h3>
               <p className={styles.subtitle}>{slide.subtitle}</p>
               <p>{slide.text}</p>
+              <span className={styles.slideNumber}>0{index + 1} <span>/ 0{slides.length}</span></span>
+              </div>
+              <div className={styles.image} style={{ backgroundImage: `url("${slide.image}")` }} aria-hidden="true" />
             </article>
           ))}
         </div>
