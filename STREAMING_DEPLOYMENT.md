@@ -13,7 +13,7 @@ This is an independent MatchWatch prototype for presenting a streaming and recap
 
 Sample prices ($4.99 per match and $9.99 per month/channel) are illustrative only. Monthly passes do not create or renew subscriptions. No AI analysis, rights verification, automatic highlight editing, real video broadcasting, or payment processing is claimed.
 
-Custom games and simulated passes live in browser localStorage. Custom game links work only in that browser. Seeded sample links work across devices. The sample player is clearly labeled; it uses publicly hosted demonstration footage, not the depicted fixture. You can select a local video instead for an offline presentation.
+Custom games and simulated passes live in browser localStorage. Custom game links work only in that browser. Seeded sample links work across devices. The sample player is clearly labeled; it uses locally bundled demonstration footage, not the depicted fixture. You can select a local video instead for an offline presentation.
 
 ## Publish at stream.matchwatch.us using Coolify
 
@@ -28,3 +28,4 @@ Camera access and clipboard sharing require HTTPS or localhost and browser permi
 ## Competition fit
 
 The event brief offers Assisted Auto-Production and Rights and Compliance tracks. This demo supplies a viewer and creator presentation layer; it does not yet implement either complete competition challenge. Integrating the provided ScorePlay/TwelveLabs services and a producer-approval or rights-check workflow requires the event brief and access credentials. Keep those credentials out of source control.
+
