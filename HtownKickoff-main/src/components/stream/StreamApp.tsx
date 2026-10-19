@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { Play, Radio, Search, Share2, Video, ArrowUpRight, Clock, Tv } from 'lucide-react';
 import { demoApi as api, grantDemoPass, hasDemoPass, resetDemo } from './demo';
 import styles from './StreamApp.module.css';
+import YoutubeLibrary from './YoutubeLibrary';
 
 type Broadcast = { id: string; alias: string; title: string; description: string; sport: string; scheduledAt: string; state: string; hasRecap: boolean; access: string };
 type Tab = 'All' | 'Live' | 'Upcoming' | 'Recaps';
@@ -119,7 +120,8 @@ export default function StreamApp({ mode }: { mode: 'browse' | 'watch' | 'studio
           </div>
           <div className={styles.heroNote}><span className={styles.badge}>INDEPENDENT BROADCASTS</span><p>Your seat. Your camera. Your crowd.</p></div>
         </section>
-        <div className={styles.intro}><div><span className={styles.eyebrow}>THE MATCHWATCH NETWORK</span><h2>Find your game.</h2></div><span>{items.filter((i) => i.state === 'LIVE').length} live · {items.filter((i) => i.hasRecap).length} recordings</span></div>
+        <YoutubeLibrary />
+        <div className={styles.intro}><div><span className={styles.eyebrow}>HACKATHON SAMPLE BROADCASTS</span><h2>Explore the streaming demo.</h2></div><span>{items.filter((i) => i.state === 'LIVE').length} demo live · {items.filter((i) => i.hasRecap).length} demo recordings</span></div>
         {featured && <div className={styles.featured}><Radio size={20} /><div><small>{featured.state === 'LIVE' ? 'ON AIR NOW' : 'COMING UP'}</small><Link href={`/stream/watch/${featured.id}`}>{featured.title}</Link></div><span>{when(featured.scheduledAt)}</span><Link href={`/stream/watch/${featured.id}`} className={styles.secondary}>Open stream <ArrowUpRight size={16} /></Link></div>}
         <section id="catalog">
           <div className={styles.toolbar}><div className={styles.tabs}>{(['All', 'Live', 'Upcoming', 'Recaps'] as Tab[]).map((value) => <button key={value} aria-pressed={tab === value} onClick={() => setTab(value)}>{value}</button>)}</div><label className={styles.search}><Search size={16} /><input aria-label="Search streams" placeholder="Search games or streamers" value={query} onChange={(e) => setQuery(e.target.value)} /></label></div>

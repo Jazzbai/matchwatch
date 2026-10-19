@@ -1,2 +1,2 @@
-import StreamApp from '../../components/stream/StreamApp';
-export default function Page() { return <StreamApp mode="browse" />; }
+import GamesDashboard from '../../components/stream/GamesDashboard';
+export default function Page() { return <GamesDashboard />; }

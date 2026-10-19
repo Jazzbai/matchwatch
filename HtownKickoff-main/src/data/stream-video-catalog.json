@@ -1,0 +1,5375 @@
+{
+  "schemaVersion": 1,
+  "audience": "US",
+  "checkedAt": "2026-10-19T05:33:29.620Z",
+  "from": "2026-10-12T05:33:21.556Z",
+  "to": "2026-10-19T05:33:21.556Z",
+  "coverage": [
+    "NBA",
+    "WNBA",
+    "Premier League",
+    "La Liga",
+    "Bundesliga",
+    "Serie A",
+    "Ligue 1",
+    "MLS",
+    "Liga MX",
+    "Champions League",
+    "MLB",
+    "NFL"
+  ],
+  "totalGames": 159,
+  "entries": [
+    {
+      "gameId": "usa.1-761889",
+      "gameDate": "2026-10-18T21:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "3wNdo48AByg",
+        "title": "FC Cincinnati vs. Columbus Crew | Full Match Highlights | Hell is Real DESPERATION DERBY!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/3wNdo48AByg/hqdefault.jpg",
+        "publishedAt": "2026-10-18T23:26:45Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873007",
+      "gameDate": "2026-10-19T00:20Z",
+      "kind": "recaps",
+      "video": {
+        "id": "5xB0vJWbJG4",
+        "title": "Dallas Cowboys vs Green Bay Packers Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/5xB0vJWbJG4/hqdefault.jpg",
+        "publishedAt": "2026-10-19T04:04:04Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873006",
+      "gameDate": "2026-10-18T20:25Z",
+      "kind": "recaps",
+      "video": {
+        "id": "B5OVcasfeTU",
+        "title": "Los Angeles Chargers vs Kansas City Chiefs Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/B5OVcasfeTU/hqdefault.jpg",
+        "publishedAt": "2026-10-18T23:48:28Z"
+      }
+    },
+    {
+      "gameId": "esp.1-401882839",
+      "gameDate": "2026-10-18T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "wOPfaS4mjSk",
+        "title": "Real Madrid vs. Sevilla | LALIGA Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/wOPfaS4mjSk/hqdefault.jpg",
+        "publishedAt": "2026-10-18T21:21:00Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874765",
+      "gameDate": "2026-10-18T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "l-HjruOX_hk",
+        "title": "Bianconeri Stunned On Home Soil | JUVENTUS-LAZIO | HIGHLIGHTS | Serie A 2026/27",
+        "channel": "Serie A",
+        "thumbnail": "https://i.ytimg.com/vi/l-HjruOX_hk/hqdefault.jpg",
+        "publishedAt": "2026-10-18T21:26:26Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873005",
+      "gameDate": "2026-10-18T20:25Z",
+      "kind": "recaps",
+      "video": {
+        "id": "JCwv4Mrkdd8",
+        "title": "Buffalo Bills vs. Las Vegas Raiders Game Highlights | NFL 2026 Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/JCwv4Mrkdd8/hqdefault.jpg",
+        "publishedAt": "2026-10-18T23:57:16Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873004",
+      "gameDate": "2026-10-18T20:05Z",
+      "kind": "recaps",
+      "video": {
+        "id": "kXX4xq2el10",
+        "title": "Arizona Cardinals vs. Los Angeles Rams Game Highlights | NFL 2026 Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/kXX4xq2el10/hqdefault.jpg",
+        "publishedAt": "2026-10-18T23:11:28Z"
+      }
+    },
+    {
+      "gameId": "mlb-401930515",
+      "gameDate": "2026-10-18T21:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "A3x9CAYUapM",
+        "title": "RAYS vs. GUARDIANS: ALCS Full Game Highlights (October 18) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/A3x9CAYUapM/hqdefault.jpg",
+        "publishedAt": "2026-10-19T00:41:59Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876434",
+      "gameDate": "2026-10-18T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "o0CHjL5VlxM",
+        "title": "Lyon vs Nice | EXTENDED HIGHLIGHTS Ligue 1 | 10/19/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/o0CHjL5VlxM/hqdefault.jpg",
+        "publishedAt": "2026-10-18T21:51:44Z"
+      }
+    },
+    {
+      "gameId": "nfl-401872999",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "mM3TtQBh3WU",
+        "title": "Bears vs. Falcons Week 6 Recap | NFL Daily",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/mM3TtQBh3WU/hqdefault.jpg",
+        "publishedAt": "2026-10-19T04:56:40Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873003",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "MJZhpnKoY7E",
+        "title": "Tennessee Titans vs Indianapolis Colts Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/MJZhpnKoY7E/hqdefault.jpg",
+        "publishedAt": "2026-10-18T20:37:34Z"
+      }
+    },
+    {
+      "gameId": "nfl-401872997",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "agBZnbbPCq0",
+        "title": "Baltimore Ravens vs. Cleveland Browns Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/agBZnbbPCq0/hqdefault.jpg",
+        "publishedAt": "2026-10-18T20:09:05Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873000",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "a1M5YngTbus",
+        "title": "New Orleans Saints vs. New York Giants Game Highlights | NFL 2026 Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/a1M5YngTbus/hqdefault.jpg",
+        "publishedAt": "2026-10-18T21:01:48Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873001",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "CDcGaEkMy6s",
+        "title": "New York Jets vs New England Patriots Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/CDcGaEkMy6s/hqdefault.jpg",
+        "publishedAt": "2026-10-18T20:32:47Z"
+      }
+    },
+    {
+      "gameId": "nfl-401872998",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "y60LUXkkNt4",
+        "title": "Panthers vs. Eagles Week 6 Recap | NFL Daily",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/y60LUXkkNt4/hqdefault.jpg",
+        "publishedAt": "2026-10-19T05:07:54Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873002",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "vf4ksuXiQ1M",
+        "title": "Pittsburgh Steelers vs. Tampa Bay Buccaneers Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/vf4ksuXiQ1M/hqdefault.jpg",
+        "publishedAt": "2026-10-18T21:00:06Z"
+      }
+    },
+    {
+      "gameId": "esp.1-401882841",
+      "gameDate": "2026-10-18T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "ZWJo0GQfhx8",
+        "title": "Malaga vs. Real Sociedad | LALIGA Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/ZWJo0GQfhx8/hqdefault.jpg",
+        "publishedAt": "2026-10-18T18:44:30Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401878769",
+      "gameDate": "2026-10-18T15:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "tOg0zFIes84",
+        "title": "Nottingham Forest v. Arsenal | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/tOg0zFIes84/hqdefault.jpg",
+        "publishedAt": "2026-10-18T18:07:22Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874978",
+      "gameDate": "2026-10-18T16:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "_EZ2z-7BA9Y",
+        "title": "Rossoneri Claim Five-Goal Thriller | MILAN-ATALANTA | HIGHLIGHTS | Serie A 2026/27",
+        "channel": "Serie A",
+        "thumbnail": "https://i.ytimg.com/vi/_EZ2z-7BA9Y/hqdefault.jpg",
+        "publishedAt": "2026-10-18T18:51:35Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884768",
+      "gameDate": "2026-10-18T15:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "VZWkQH7EmgA",
+        "title": "Hoffenheim Edge Past Gladbach! | BORUSSIA M'GLADBACH - HOFFENHEIM | Highlights | MD 6 – Bundesliga",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/VZWkQH7EmgA/hqdefault.jpg",
+        "publishedAt": "2026-10-18T17:34:35Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876435",
+      "gameDate": "2026-10-18T15:15Z",
+      "kind": "recaps",
+      "video": {
+        "id": "JcNN13P3I4Y",
+        "title": "Lorient vs AS Monaco | HIGHLIGHTS Ligue 1 | 10/18/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/JcNN13P3I4Y/hqdefault.jpg",
+        "publishedAt": "2026-10-18T18:34:43Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876433",
+      "gameDate": "2026-10-18T15:15Z",
+      "kind": "recaps",
+      "video": {
+        "id": "P1CotwGrD0w",
+        "title": "Paris FC vs Stade Rennes | HIGHLIGHTS Ligue 1 | 10/18/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/P1CotwGrD0w/hqdefault.jpg",
+        "publishedAt": "2026-10-18T19:17:10Z"
+      }
+    },
+    {
+      "gameId": "nfl-401872996",
+      "gameDate": "2026-10-18T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "JIO56Ib7zSA",
+        "title": "Texans vs. Jaguars Week 6 Recap | NFL Daily",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/JIO56Ib7zSA/hqdefault.jpg",
+        "publishedAt": "2026-10-19T05:16:35Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884771",
+      "gameDate": "2026-10-18T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "h0rpQpv_J6U",
+        "title": "SCHICK Making HISTORY! | BAYER 04 LEVERKUSEN - SC FREIBURG | Highlights | MD 6 – Bundesliga 2026/27",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/h0rpQpv_J6U/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:01Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879263",
+      "gameDate": "2026-10-18T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "2vn7-LwP2yc",
+        "title": "Bournemouth v. Sunderland | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/2vn7-LwP2yc/hqdefault.jpg",
+        "publishedAt": "2026-10-18T16:33:10Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879261",
+      "gameDate": "2026-10-18T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "7xiDxjNX7Cw",
+        "title": "Brighton v. Crystal Palace | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/7xiDxjNX7Cw/hqdefault.jpg",
+        "publishedAt": "2026-10-18T15:43:27Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879260",
+      "gameDate": "2026-10-18T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "TksUXmxf2AU",
+        "title": "Leeds United v. Manchester United | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/TksUXmxf2AU/hqdefault.jpg",
+        "publishedAt": "2026-10-18T15:48:40Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874774",
+      "gameDate": "2026-10-18T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "FMZ7CptAQuc",
+        "title": "Liberali Scores First With Como | FIORENTINA-COMO | HIGHLIGHTS | Serie A 2026/27",
+        "channel": "Serie A",
+        "thumbnail": "https://i.ytimg.com/vi/FMZ7CptAQuc/hqdefault.jpg",
+        "publishedAt": "2026-10-18T16:22:09Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876439",
+      "gameDate": "2026-10-18T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "N4aIiVsOXxI",
+        "title": "Angers vs Marseille | HIGHLIGHTS Ligue 1 | 10/18/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/N4aIiVsOXxI/hqdefault.jpg",
+        "publishedAt": "2026-10-18T16:48:59Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874771",
+      "gameDate": "2026-10-18T10:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "g4xQSEBW6E0",
+        "title": "Standout Performance Earns Lecce Three Points | UDINESE-LECCE | HIGHLIGHTS | Serie A 2026/27",
+        "channel": "Serie A",
+        "thumbnail": "https://i.ytimg.com/vi/g4xQSEBW6E0/hqdefault.jpg",
+        "publishedAt": "2026-10-18T13:12:13Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761888",
+      "gameDate": "2026-10-18T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "b4Z7iVqu-3o",
+        "title": "Portland Timbers vs. Colorado Rapids | Full Match Highlights | PENALTY VAR DRAMA!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/b4Z7iVqu-3o/hqdefault.jpg",
+        "publishedAt": "2026-10-18T04:57:25Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761887",
+      "gameDate": "2026-10-18T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "wIQ9JtRBApE",
+        "title": "LA Galaxy vs. San Diego FC | Full Match Highlights | WILD 4-GOAL FIRST-HALF in SOCAL RIVALRY!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/wIQ9JtRBApE/hqdefault.jpg",
+        "publishedAt": "2026-10-18T05:01:26Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761886",
+      "gameDate": "2026-10-18T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "U9C9CRTQUvM",
+        "title": "San Jose Earthquakes vs. Nashville SC | Full Match Highlights | SUPPORTERS' SHIELD UP FOR GRABS!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/U9C9CRTQUvM/hqdefault.jpg",
+        "publishedAt": "2026-10-18T04:54:19Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761885",
+      "gameDate": "2026-10-18T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "xBiJyVWHffI",
+        "title": "Seattle Sounders FC vs. CF Montréal | Full Match Highlights",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/xBiJyVWHffI/hqdefault.jpg",
+        "publishedAt": "2026-10-18T04:56:09Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761882",
+      "gameDate": "2026-10-18T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "4f_KWJOS3O4",
+        "title": "Austin FC vs. Vancouver Whitecaps FC | Full Match Highlights | Diaby GOLAZO!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/4f_KWJOS3O4/hqdefault.jpg",
+        "publishedAt": "2026-10-18T02:56:09Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761883",
+      "gameDate": "2026-10-18T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "dtQX86q9cOk",
+        "title": "Houston Dynamo FC vs. FC Dallas | Full Match Highlights | Texas Derby Drama!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/dtQX86q9cOk/hqdefault.jpg",
+        "publishedAt": "2026-10-18T03:19:12Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761884",
+      "gameDate": "2026-10-18T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "DCEisH-pPSM",
+        "title": "Sporting Kansas City vs. Real Salt Lake | Full Match Highlights | Josuha Guilavogui Brace!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/DCEisH-pPSM/hqdefault.jpg",
+        "publishedAt": "2026-10-18T02:50:58Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908027",
+      "gameDate": "2026-10-18T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "A3x9CAYUapM",
+        "title": "RAYS vs. GUARDIANS: ALCS Full Game Highlights (October 18) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/A3x9CAYUapM/hqdefault.jpg",
+        "publishedAt": "2026-10-19T00:41:59Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761880",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "AWBTVCYHT3Q",
+        "title": "Atlanta United vs. Inter Miami CF | Full Match Highlights | Messi Scores Twice!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/AWBTVCYHT3Q/hqdefault.jpg",
+        "publishedAt": "2026-10-18T02:11:08Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761879",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "rhCu8Ofmq_c",
+        "title": "New England Revolution vs. Chicago Fire FC | Full Match Highlights | TOP-4 in the EAST BATTLE!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/rhCu8Ofmq_c/hqdefault.jpg",
+        "publishedAt": "2026-10-18T01:46:46Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761881",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "soCPavW95po",
+        "title": "Orlando City vs. D.C. United | Full Match Highlights | Griezmann Brace!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/soCPavW95po/hqdefault.jpg",
+        "publishedAt": "2026-10-18T01:51:19Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761877",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "0a8FiFwPzpA",
+        "title": "New York City FC vs. LAFC | Full Match Highlights | FREE-KICK BANGER!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/0a8FiFwPzpA/hqdefault.jpg",
+        "publishedAt": "2026-10-18T01:53:44Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761878",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "17OUYQiyvrc",
+        "title": "Red Bull New York vs. Toronto FC | Full Match Highlights",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/17OUYQiyvrc/hqdefault.jpg",
+        "publishedAt": "2026-10-18T01:59:38Z"
+      }
+    },
+    {
+      "gameId": "esp.1-401882838",
+      "gameDate": "2026-10-17T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "gf1WArKmQc4",
+        "title": "Valencia vs. Athletic Club | LALIGA Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/gf1WArKmQc4/hqdefault.jpg",
+        "publishedAt": "2026-10-17T21:39:33Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761876",
+      "gameDate": "2026-10-17T20:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "dd-9C99o9WI",
+        "title": "Minnesota United vs. St. Louis CITY SC | Full Match Highlights | 3-Goal Comeback Win!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/dd-9C99o9WI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T22:53:50Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876436",
+      "gameDate": "2026-10-17T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "SlCbDukwNRw",
+        "title": "Lille vs Stade Brest | HIGHLIGHTS Ligue 1 | 10/17/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/SlCbDukwNRw/hqdefault.jpg",
+        "publishedAt": "2026-10-17T21:41:23Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761875",
+      "gameDate": "2026-10-17T18:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "LW8XBALYV8E",
+        "title": "Philadelphia Union vs. Charlotte FC | Full Match Highlights | 4-Goal Battle!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/LW8XBALYV8E/hqdefault.jpg",
+        "publishedAt": "2026-10-17T21:48:36Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876431",
+      "gameDate": "2026-10-17T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "cBvHuyXjd7M",
+        "title": "Troyes vs Lens | HIGHLIGHTS Ligue 1 | 10/17/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/cBvHuyXjd7M/hqdefault.jpg",
+        "publishedAt": "2026-10-17T21:13:48Z"
+      }
+    },
+    {
+      "gameId": "wnba-401918305",
+      "gameDate": "2026-10-17T19:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "CTJGJH9hPVU",
+        "title": "Atlanta Dream vs. Golden State Valkyries | FULL GAME HIGHLIGHTS | October 17, 2026",
+        "channel": "WNBA",
+        "thumbnail": "https://i.ytimg.com/vi/CTJGJH9hPVU/hqdefault.jpg",
+        "publishedAt": "2026-10-18T00:29:05Z"
+      }
+    },
+    {
+      "gameId": "esp.1-401882846",
+      "gameDate": "2026-10-17T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "b9T_zHMAnKo",
+        "title": "Real Betis vs. Barcelona | LALIGA Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/b9T_zHMAnKo/hqdefault.jpg",
+        "publishedAt": "2026-10-17T20:31:38Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879258",
+      "gameDate": "2026-10-17T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "WKz2XqemdLI",
+        "title": "Newcastle United v. Aston Villa | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/WKz2XqemdLI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T18:59:55Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884772",
+      "gameDate": "2026-10-17T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "KRp3Z2Dd9ZA",
+        "title": "Luis Díaz With A Hattrick! | FC BAYERN - RB LEIPZIG | Highlights | Matchday 6 – Bundesliga 2026/27",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/KRp3Z2Dd9ZA/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:25Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876432",
+      "gameDate": "2026-10-17T15:15Z",
+      "kind": "recaps",
+      "video": {
+        "id": "3YtHtnWkfcY",
+        "title": "RC Strasbourg vs Paris Saint-Germain | EXTENDED HIGHLIGHTS Ligue 1 | 10/17/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/3YtHtnWkfcY/hqdefault.jpg",
+        "publishedAt": "2026-10-17T17:52:25Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879262",
+      "gameDate": "2026-10-17T14:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "yivzQLxZgPI",
+        "title": "Brentford v. Liverpool | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/yivzQLxZgPI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T18:04:17Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401878770",
+      "gameDate": "2026-10-17T14:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "Wv2e6iihj0o",
+        "title": "Fulham v. Hull City | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/Wv2e6iihj0o/hqdefault.jpg",
+        "publishedAt": "2026-10-17T17:29:46Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879259",
+      "gameDate": "2026-10-17T14:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "czf2arTi4u4",
+        "title": "Manchester City v. Ipswich Town | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/czf2arTi4u4/hqdefault.jpg",
+        "publishedAt": "2026-10-17T17:03:26Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884769",
+      "gameDate": "2026-10-17T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "GdZlemofc6w",
+        "title": "Hard-fought Point At Home! | UNION BERLIN - BORUSSIA DORTMUND | Highlights | Matchday 6 – Bundesliga",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/GdZlemofc6w/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:36Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884765",
+      "gameDate": "2026-10-17T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "b-N55HGj9Uk",
+        "title": "Another Away Win For Mainz! | SCHALKE 04 - MAINZ 05 | Highlights | Matchday 6 – Bundesliga 2026/27",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/b-N55HGj9Uk/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:00Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884764",
+      "gameDate": "2026-10-17T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "ZLodZlpthrg",
+        "title": "FOUR Penalties In One Game! | SV ELVERSBERG - FC AUGSBURG | Highlights | Matchday 6 – Bundesliga",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/ZLodZlpthrg/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:33Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884766",
+      "gameDate": "2026-10-17T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "h82jd-71LEU",
+        "title": "Füllkrug Brace Saves Point! | WERDER BREMEN - SC PADERBORN | Highlights | Matchday 6 – Bundesliga",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/h82jd-71LEU/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:28Z"
+      }
+    },
+    {
+      "gameId": "esp.1-401882843",
+      "gameDate": "2026-10-17T12:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "lMojazr0PPI",
+        "title": "Espanyol vs. Atletico Madrid | LALIGA Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/lMojazr0PPI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T14:26:32Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874760",
+      "gameDate": "2026-10-17T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "exh7dd4aydI",
+        "title": "Adams Delivers HUGE Upset! | VENEZIA-NAPOLI | HIGHLIGHTS | Serie A 2026/27",
+        "channel": "Serie A",
+        "thumbnail": "https://i.ytimg.com/vi/exh7dd4aydI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T15:42:25Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401878771",
+      "gameDate": "2026-10-17T11:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "eXsWnTusr2o",
+        "title": "Everton v. Chelsea | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/eXsWnTusr2o/hqdefault.jpg",
+        "publishedAt": "2026-10-17T14:08:33Z"
+      }
+    },
+    {
+      "gameId": "nba-401898719",
+      "gameDate": "2026-10-17T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "qhU2hqJ9rhc",
+        "title": "NUGGETS at LAKERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/qhU2hqJ9rhc/hqdefault.jpg",
+        "publishedAt": "2026-10-17T05:40:04Z"
+      }
+    },
+    {
+      "gameId": "nba-401908948",
+      "gameDate": "2026-10-17T02:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "fT671wr14Ys",
+        "title": "JAZZ at SUNS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/fT671wr14Ys/hqdefault.jpg",
+        "publishedAt": "2026-10-17T05:12:00Z"
+      }
+    },
+    {
+      "gameId": "nba-401898409",
+      "gameDate": "2026-10-17T02:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "xDunS4-w5Hg",
+        "title": "TRAIL BLAZERS at WARRIORS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/xDunS4-w5Hg/hqdefault.jpg",
+        "publishedAt": "2026-10-17T05:03:24Z"
+      }
+    },
+    {
+      "gameId": "nba-401898408",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "pFRSoI2InLU",
+        "title": "HAWKS at MAVERICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/pFRSoI2InLU/hqdefault.jpg",
+        "publishedAt": "2026-10-17T03:10:28Z"
+      }
+    },
+    {
+      "gameId": "nba-401898843",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "1VjaB6MynyU",
+        "title": "KINGS at SPURS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/1VjaB6MynyU/hqdefault.jpg",
+        "publishedAt": "2026-10-17T02:48:46Z"
+      }
+    },
+    {
+      "gameId": "nba-401901822",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "4Vk445ZPOCE",
+        "title": "HORNETS at GRIZZLIES | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/4Vk445ZPOCE/hqdefault.jpg",
+        "publishedAt": "2026-10-17T02:47:18Z"
+      }
+    },
+    {
+      "gameId": "nba-401906509",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "qz8Usmdv0QM",
+        "title": "WIZARDS at PELICANS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/qz8Usmdv0QM/hqdefault.jpg",
+        "publishedAt": "2026-10-17T03:06:15Z"
+      }
+    },
+    {
+      "gameId": "nba-401908943",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "XmFFZxa6tM4",
+        "title": "TIMBERWOLVES at BULLS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/XmFFZxa6tM4/hqdefault.jpg",
+        "publishedAt": "2026-10-17T02:51:01Z"
+      }
+    },
+    {
+      "gameId": "nba-401898406",
+      "gameDate": "2026-10-16T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "vILUjksgw2Q",
+        "title": "HEAT at MAGIC | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/vILUjksgw2Q/hqdefault.jpg",
+        "publishedAt": "2026-10-17T01:50:06Z"
+      }
+    },
+    {
+      "gameId": "nba-401898407",
+      "gameDate": "2026-10-16T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "h0LDSDljJMw",
+        "title": "CELTICS at 76ERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/h0LDSDljJMw/hqdefault.jpg",
+        "publishedAt": "2026-10-17T01:53:24Z"
+      }
+    },
+    {
+      "gameId": "nba-401908946",
+      "gameDate": "2026-10-16T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "Zwp1XDQlhl8",
+        "title": "RAPTORS at PISTONS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/Zwp1XDQlhl8/hqdefault.jpg",
+        "publishedAt": "2026-10-17T02:22:50Z"
+      }
+    },
+    {
+      "gameId": "nba-401914126",
+      "gameDate": "2026-10-16T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "1UcL1Xxx7sI",
+        "title": "BUCKS at PACERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/1UcL1Xxx7sI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T01:52:07Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876437",
+      "gameDate": "2026-10-16T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "i3GPYvIk3GQ",
+        "title": "Le Mans vs Toulouse | HIGHLIGHTS Ligue 1 | 10/16/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/i3GPYvIk3GQ/hqdefault.jpg",
+        "publishedAt": "2026-10-16T21:14:03Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874959",
+      "gameDate": "2026-10-16T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "TsJhp3kZolA",
+        "title": "Raimondo Hits THREE! | FROSINONE-SASSUOLO | HIGHLIGHTS | Serie A 2026/27",
+        "channel": "Serie A",
+        "thumbnail": "https://i.ytimg.com/vi/TsJhp3kZolA/hqdefault.jpg",
+        "publishedAt": "2026-10-16T21:29:08Z"
+      }
+    },
+    {
+      "gameId": "nba-401908622",
+      "gameDate": "2026-10-16T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "bmrciQpiHFI",
+        "title": "THUNDER at ROCKETS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 15, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/bmrciQpiHFI/hqdefault.jpg",
+        "publishedAt": "2026-10-16T03:12:09Z"
+      }
+    },
+    {
+      "gameId": "nba-401908945",
+      "gameDate": "2026-10-15T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "KcLfEwwzAw4",
+        "title": "RAPTORS at KNICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 15, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/KcLfEwwzAw4/hqdefault.jpg",
+        "publishedAt": "2026-10-16T02:38:21Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908033",
+      "gameDate": "2026-10-16T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "uG1mRyXzyg8",
+        "title": "THE FINAL OUT! All calls of the Brewers' 2026 NLCS sweep vs. the Dodgers! | MLB Highlights",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/uG1mRyXzyg8/hqdefault.jpg",
+        "publishedAt": "2026-10-17T00:30:04Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908025",
+      "gameDate": "2026-10-15T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "FI5hnCF0CBY",
+        "title": "RAYS vs. GUARDIANS: ALCS Full Game 3 Highlights (October 15) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/FI5hnCF0CBY/hqdefault.jpg",
+        "publishedAt": "2026-10-15T20:07:51Z"
+      }
+    },
+    {
+      "gameId": "nba-401918011",
+      "gameDate": "2026-10-15T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "ou4fHN6d3Ww",
+        "title": "NUGGETS at CLIPPERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/ou4fHN6d3Ww/hqdefault.jpg",
+        "publishedAt": "2026-10-15T05:17:30Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761874",
+      "gameDate": "2026-10-15T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "PszrO5TDv24",
+        "title": "LA Galaxy vs. Portland Timbers | Full Match Highlights | Marco Reus GOAL AND ASSIST!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/PszrO5TDv24/hqdefault.jpg",
+        "publishedAt": "2026-10-15T05:02:48Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761873",
+      "gameDate": "2026-10-15T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "Y5bnjRuMEo0",
+        "title": "LAFC vs. Austin FC | Full Match Highlights | the Son & Bouanga Show BACK IN ACTION!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/Y5bnjRuMEo0/hqdefault.jpg",
+        "publishedAt": "2026-10-15T05:04:03Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761872",
+      "gameDate": "2026-10-15T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "3PSwfgiktrM",
+        "title": "San Diego FC vs. Houston Dynamo FC | Full Match Highlights | WILD 5-GOAL FIRST HALF!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/3PSwfgiktrM/hqdefault.jpg",
+        "publishedAt": "2026-10-15T05:00:17Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761871",
+      "gameDate": "2026-10-15T01:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "65GM8SOfv6U",
+        "title": "Colorado Rapids vs. Minnesota United | Full Match Highlights | RED CARD DRAMA!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/65GM8SOfv6U/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:59:41Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761870",
+      "gameDate": "2026-10-15T01:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "jnaFjKP7kMQ",
+        "title": "Real Salt Lake vs. San Jose Earthquakes | Full Match Highlights",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/jnaFjKP7kMQ/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:55:48Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761869",
+      "gameDate": "2026-10-15T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "hK3YQ6Ilqws",
+        "title": "Chicago Fire FC vs. Philadelphia Union | Full Match Highlights | Damiani BRACE!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/hK3YQ6Ilqws/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:05:54Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761867",
+      "gameDate": "2026-10-15T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "ai5wjB_NI5E",
+        "title": "FC Dallas vs. Seattle Sounders | Full Match Highlights | Kaick Banger!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/ai5wjB_NI5E/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:16:28Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761866",
+      "gameDate": "2026-10-15T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "OSomDuioFcI",
+        "title": "Nashville SC vs. Sporting Kansas City | Full Match Highlights | STEP TOWARD SUPPORTERS' SHIELD!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/OSomDuioFcI/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:20:40Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761868",
+      "gameDate": "2026-10-15T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "DNR9eEQ661k",
+        "title": "St. Louis CITY SC vs. Vancouver Whitecaps FC | Full Match Highlights | Streak Stalled!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/DNR9eEQ661k/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:13:32Z"
+      }
+    },
+    {
+      "gameId": "nba-401898722",
+      "gameDate": "2026-10-15T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "j-rTz31Pems",
+        "title": "SUNS at SPURS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/j-rTz31Pems/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:46:12Z"
+      }
+    },
+    {
+      "gameId": "nba-401901825",
+      "gameDate": "2026-10-15T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "PMhkej9WpJA",
+        "title": "PELICANS at MAVERICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/PMhkej9WpJA/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:15:37Z"
+      }
+    },
+    {
+      "gameId": "nba-401914125",
+      "gameDate": "2026-10-15T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "BMlNel_dUyk",
+        "title": "PISTONS at TIMBERWOLVES | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/BMlNel_dUyk/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:12:30Z"
+      }
+    },
+    {
+      "gameId": "nba-401908942",
+      "gameDate": "2026-10-15T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "bmqwoekTXg8",
+        "title": "BULLS at BUCKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/bmqwoekTXg8/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:36:49Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908032",
+      "gameDate": "2026-10-15T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "ZVjnWhgxzjM",
+        "title": "BREWERS vs. DODGERS: NLCS Full Game 4 Highlights (October 15) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/ZVjnWhgxzjM/hqdefault.jpg",
+        "publishedAt": "2026-10-16T03:39:06Z"
+      }
+    },
+    {
+      "gameId": "nba-401898404",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "4Mtdux5j_5U",
+        "title": "NETS at HEAT | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/4Mtdux5j_5U/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:22:53Z"
+      }
+    },
+    {
+      "gameId": "nba-401898405",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "KRTK_zDU5l0",
+        "title": "HORNETS at CELTICS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/KRTK_zDU5l0/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:19:39Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761864",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "WFjKwLQzLUg",
+        "title": "CF Montréal vs. Atlanta United | Full Match Highlights",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/WFjKwLQzLUg/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:35:21Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761865",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "44izXrax-LM",
+        "title": "Columbus Crew vs. Charlotte FC | Full Match Highlights | 2 GOALS IN 2 MINUTES TO TURN IT AROUND!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/44izXrax-LM/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:14:29Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761863",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "W8d18-0yc2M",
+        "title": "D.C. United vs. Red Bull New York | Full Match Highlights | TIGHT 10-MAN FINISH!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/W8d18-0yc2M/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:27:36Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761861",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "GoDS5z5rrNQ",
+        "title": "Inter Miami vs. NYCFC | MLS Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/GoDS5z5rrNQ/hqdefault.jpg",
+        "publishedAt": "2026-10-15T01:47:28Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761862",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "gfhm_dlLr3g",
+        "title": "FC Cincinnati vs. New England Revolution | Full Match Highlights | Dor Turgeman Two-Goal Boost!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/gfhm_dlLr3g/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:14:42Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915409",
+      "gameDate": "2026-10-14T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "0sM6Q35Uz6Q",
+        "title": "Aston Villa vs. Fenerbahçe: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/0sM6Q35Uz6Q/hqdefault.jpg",
+        "publishedAt": "2026-10-14T21:18:00Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761860",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "R0-AAHFtkC0",
+        "title": "Toronto FC vs. Orlando City SC | MLS Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/R0-AAHFtkC0/hqdefault.jpg",
+        "publishedAt": "2026-10-15T01:53:18Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915405",
+      "gameDate": "2026-10-14T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "3bv07599jg8",
+        "title": "Slovan Bratislava vs. Stuttgart: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/3bv07599jg8/hqdefault.jpg",
+        "publishedAt": "2026-10-14T21:38:36Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915408",
+      "gameDate": "2026-10-14T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "PzIp2qFER8c",
+        "title": "Real Betis vs. Porto: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/PzIp2qFER8c/hqdefault.jpg",
+        "publishedAt": "2026-10-14T21:28:58Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915406",
+      "gameDate": "2026-10-14T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "RSJmQVbmC7g",
+        "title": "Shakhtar Donetsk vs. AEK Athens: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/RSJmQVbmC7g/hqdefault.jpg",
+        "publishedAt": "2026-10-14T21:47:52Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915416",
+      "gameDate": "2026-10-14T16:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "kbThokCccLE",
+        "title": "Feyenoord vs. Como: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/kbThokCccLE/hqdefault.jpg",
+        "publishedAt": "2026-10-14T18:58:51Z"
+      }
+    },
+    {
+      "gameId": "nba-401898718",
+      "gameDate": "2026-10-14T02:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "x6ajbvY0OjQ",
+        "title": "WARRIORS at LAKERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/x6ajbvY0OjQ/hqdefault.jpg",
+        "publishedAt": "2026-10-14T04:47:17Z"
+      }
+    },
+    {
+      "gameId": "nba-401901826",
+      "gameDate": "2026-10-14T02:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "p9iE4bGvMP8",
+        "title": "TRAIL BLAZERS at KINGS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/p9iE4bGvMP8/hqdefault.jpg",
+        "publishedAt": "2026-10-14T04:50:50Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908024",
+      "gameDate": "2026-10-14T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "XQSGs9VWueA",
+        "title": "GUARDIANS vs. RAYS: ALCS Full Game 2 Highlights (October 13) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/XQSGs9VWueA/hqdefault.jpg",
+        "publishedAt": "2026-10-14T03:21:39Z"
+      }
+    },
+    {
+      "gameId": "nba-401908621",
+      "gameDate": "2026-10-14T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "xsl01r9uQLQ",
+        "title": "PACERS at THUNDER | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/xsl01r9uQLQ/hqdefault.jpg",
+        "publishedAt": "2026-10-14T03:06:04Z"
+      }
+    },
+    {
+      "gameId": "nba-401898403",
+      "gameDate": "2026-10-13T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "c9qZ9Dc6ZvM",
+        "title": "CAVALIERS at MAGIC | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/c9qZ9Dc6ZvM/hqdefault.jpg",
+        "publishedAt": "2026-10-14T01:38:23Z"
+      }
+    },
+    {
+      "gameId": "nba-401908944",
+      "gameDate": "2026-10-13T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "EyQytP1xKiY",
+        "title": "KNICKS at RAPTORS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/EyQytP1xKiY/hqdefault.jpg",
+        "publishedAt": "2026-10-14T01:47:25Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915417",
+      "gameDate": "2026-10-13T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "XUOlW5FdU9U",
+        "title": "Arsenal vs. Lille: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/XUOlW5FdU9U/hqdefault.jpg",
+        "publishedAt": "2026-10-13T21:07:56Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915435",
+      "gameDate": "2026-10-13T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "t1eAl5hqxdQ",
+        "title": "HIGHLIGHTS | GALATASARAY 1 vs 4 FC BARCELONA | UEFA CHAMPIONS LEAGUE 26/27 🔵🔴",
+        "channel": "FC Barcelona",
+        "thumbnail": "https://i.ytimg.com/vi/t1eAl5hqxdQ/hqdefault.jpg",
+        "publishedAt": "2026-10-14T21:00:01Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915410",
+      "gameDate": "2026-10-13T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "rv_KVk0TUEc",
+        "title": "Villarreal vs. Napoli: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/rv_KVk0TUEc/hqdefault.jpg",
+        "publishedAt": "2026-10-13T21:12:00Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915418",
+      "gameDate": "2026-10-13T16:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "O0dFStaNdKc",
+        "title": "Lens vs. Sporting CP: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/O0dFStaNdKc/hqdefault.jpg",
+        "publishedAt": "2026-10-13T19:02:53Z"
+      }
+    },
+    {
+      "gameId": "nba-401898721",
+      "gameDate": "2026-10-13T01:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "6pSjgLvoVYQ",
+        "title": "SPURS at JAZZ | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/6pSjgLvoVYQ/hqdefault.jpg",
+        "publishedAt": "2026-10-13T03:54:28Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908023",
+      "gameDate": "2026-10-13T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "XQSGs9VWueA",
+        "title": "GUARDIANS vs. RAYS: ALCS Full Game 2 Highlights (October 13) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/XQSGs9VWueA/hqdefault.jpg",
+        "publishedAt": "2026-10-14T03:21:39Z"
+      }
+    },
+    {
+      "gameId": "nba-401914124",
+      "gameDate": "2026-10-12T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "CqagxE5kpXU",
+        "title": "TIMBERWOLVES at KNICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/CqagxE5kpXU/hqdefault.jpg",
+        "publishedAt": "2026-10-13T02:22:09Z"
+      }
+    },
+    {
+      "gameId": "nba-401898402",
+      "gameDate": "2026-10-12T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "iNBVspsJJQc",
+        "title": "THUNDER at HAWKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/iNBVspsJJQc/hqdefault.jpg",
+        "publishedAt": "2026-10-13T01:48:03Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908031",
+      "gameDate": "2026-10-12T21:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "RuiDL7ihiEI",
+        "title": "DODGERS vs. BREWERS NLCS Game 2 Full Game Highlights (October 12) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/RuiDL7ihiEI/hqdefault.jpg",
+        "publishedAt": "2026-10-13T01:39:49Z"
+      }
+    },
+    {
+      "gameId": "nba-401901824",
+      "gameDate": "2026-10-12T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "EwhoARz1yB4",
+        "title": "NETS at WIZARDS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/EwhoARz1yB4/hqdefault.jpg",
+        "publishedAt": "2026-10-13T01:51:26Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879267",
+      "gameDate": "2026-10-12T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "eBNeQHQznNE",
+        "title": "Coventry City v. Newcastle United | PREMIER LEAGUE HIGHLIGHTS | 10/12/2026 | NBC Sports",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/eBNeQHQznNE/hqdefault.jpg",
+        "publishedAt": "2026-10-12T21:41:25Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874763",
+      "gameDate": "2026-10-12T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "fENdA68nFsA",
+        "title": "First Home Win For Torino | TORINO-UDINESE | HIGHLIGHTS | Serie A 2026/27",
+        "channel": "Serie A",
+        "thumbnail": "https://i.ytimg.com/vi/fENdA68nFsA/hqdefault.jpg",
+        "publishedAt": "2026-10-12T21:25:56Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401875005",
+      "gameDate": "2026-10-12T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "k0GwbvnzNFU",
+        "title": "La Dea Halt Winless Run! | ATALANTA-VENEZIA | HIGHLIGHTS | Serie A 2026/27",
+        "channel": "Serie A",
+        "thumbnail": "https://i.ytimg.com/vi/k0GwbvnzNFU/hqdefault.jpg",
+        "publishedAt": "2026-10-12T19:24:41Z"
+      }
+    }
+  ],
+  "games": [
+    {
+      "id": "mex.1-401876938",
+      "sport": "Soccer",
+      "league": "Liga MX",
+      "date": "2026-10-19T01:00Z",
+      "home": "Monterrey",
+      "away": "Pachuca",
+      "homeTerms": [
+        "Monterrey",
+        "Monterrey",
+        "Monterrey"
+      ],
+      "awayTerms": [
+        "Pachuca",
+        "Pachuca",
+        "Pachuca"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/220.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/234.png",
+      "homeScore": "2",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876938/pachuca-monterrey",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401873007",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-19T00:20Z",
+      "home": "Green Bay Packers",
+      "away": "Dallas Cowboys",
+      "homeTerms": [
+        "Green Bay Packers",
+        "Packers",
+        "Packers"
+      ],
+      "awayTerms": [
+        "Dallas Cowboys",
+        "Cowboys",
+        "Cowboys"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/gb.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/dal.png",
+      "homeScore": "23",
+      "awayScore": "13",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401873007/cowboys-packers",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761889",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-18T21:00Z",
+      "home": "FC Cincinnati",
+      "away": "Columbus Crew",
+      "homeTerms": [
+        "FC Cincinnati",
+        "Cincinnati",
+        "FC Cincinnati"
+      ],
+      "awayTerms": [
+        "Columbus Crew",
+        "Columbus",
+        "Columbus Crew"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/18267.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/183.png",
+      "homeScore": "0",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761889/columbus-crew-fc-cincinnati",
+      "uniquePairing": true
+    },
+    {
+      "id": "mlb-401930515",
+      "sport": "Baseball",
+      "league": "MLB",
+      "date": "2026-10-18T21:00Z",
+      "home": "Cleveland Guardians",
+      "away": "Tampa Bay Rays",
+      "homeTerms": [
+        "Cleveland Guardians",
+        "Guardians",
+        "Guardians"
+      ],
+      "awayTerms": [
+        "Tampa Bay Rays",
+        "Rays",
+        "Rays"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/cle.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/tb.png",
+      "homeScore": "1",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/mlb/game/_/gameId/401930515/rays-guardians",
+      "uniquePairing": false
+    },
+    {
+      "id": "nfl-401873006",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T20:25Z",
+      "home": "Kansas City Chiefs",
+      "away": "Los Angeles Chargers",
+      "homeTerms": [
+        "Kansas City Chiefs",
+        "Chiefs",
+        "Chiefs"
+      ],
+      "awayTerms": [
+        "Los Angeles Chargers",
+        "Chargers",
+        "Chargers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/kc.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/lac.png",
+      "homeScore": "22",
+      "awayScore": "6",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401873006/chargers-chiefs",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401873005",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T20:25Z",
+      "home": "Las Vegas Raiders",
+      "away": "Buffalo Bills",
+      "homeTerms": [
+        "Las Vegas Raiders",
+        "Raiders",
+        "Raiders"
+      ],
+      "awayTerms": [
+        "Buffalo Bills",
+        "Bills",
+        "Bills"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/lv.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/buf.png",
+      "homeScore": "30",
+      "awayScore": "33",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401873005/bills-raiders",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401873004",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T20:05Z",
+      "home": "Los Angeles Rams",
+      "away": "Arizona Cardinals",
+      "homeTerms": [
+        "Los Angeles Rams",
+        "Rams",
+        "Rams"
+      ],
+      "awayTerms": [
+        "Arizona Cardinals",
+        "Cardinals",
+        "Cardinals"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/lar.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/ari.png",
+      "homeScore": "16",
+      "awayScore": "18",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401873004/cardinals-rams",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882839",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-18T19:00Z",
+      "home": "Real Madrid",
+      "away": "Sevilla",
+      "homeTerms": [
+        "Real Madrid",
+        "Real Madrid",
+        "Real Madrid"
+      ],
+      "awayTerms": [
+        "Sevilla",
+        "Sevilla",
+        "Sevilla"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/86.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/243.png",
+      "homeScore": "4",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882839/sevilla-real-madrid",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874765",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-18T18:45Z",
+      "home": "Juventus",
+      "away": "Lazio",
+      "homeTerms": [
+        "Juventus",
+        "Juventus",
+        "Juventus"
+      ],
+      "awayTerms": [
+        "Lazio",
+        "Lazio",
+        "Lazio"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/111.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/112.png",
+      "homeScore": "0",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874765/lazio-juventus",
+      "uniquePairing": true
+    },
+    {
+      "id": "fra.1-401876434",
+      "sport": "Soccer",
+      "league": "Ligue 1",
+      "date": "2026-10-18T18:45Z",
+      "home": "Lyon",
+      "away": "Nice",
+      "homeTerms": [
+        "Lyon",
+        "Lyon",
+        "Lyon"
+      ],
+      "awayTerms": [
+        "Nice",
+        "Nice",
+        "Nice"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/167.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/2502.png",
+      "homeScore": "2",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876434/nice-lyon",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401872999",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T17:00Z",
+      "home": "Atlanta Falcons",
+      "away": "Chicago Bears",
+      "homeTerms": [
+        "Atlanta Falcons",
+        "Falcons",
+        "Falcons"
+      ],
+      "awayTerms": [
+        "Chicago Bears",
+        "Bears",
+        "Bears"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/atl.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/chi.png",
+      "homeScore": "23",
+      "awayScore": "31",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401872999/bears-falcons",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401872997",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T17:00Z",
+      "home": "Cleveland Browns",
+      "away": "Baltimore Ravens",
+      "homeTerms": [
+        "Cleveland Browns",
+        "Browns",
+        "Browns"
+      ],
+      "awayTerms": [
+        "Baltimore Ravens",
+        "Ravens",
+        "Ravens"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/cle.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/bal.png",
+      "homeScore": "13",
+      "awayScore": "10",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401872997/ravens-browns",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401873003",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T17:00Z",
+      "home": "Indianapolis Colts",
+      "away": "Tennessee Titans",
+      "homeTerms": [
+        "Indianapolis Colts",
+        "Colts",
+        "Colts"
+      ],
+      "awayTerms": [
+        "Tennessee Titans",
+        "Titans",
+        "Titans"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/ind.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/ten.png",
+      "homeScore": "20",
+      "awayScore": "26",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401873003/titans-colts",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401873001",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T17:00Z",
+      "home": "New England Patriots",
+      "away": "New York Jets",
+      "homeTerms": [
+        "New England Patriots",
+        "Patriots",
+        "Patriots"
+      ],
+      "awayTerms": [
+        "New York Jets",
+        "Jets",
+        "Jets"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/ne.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/nyj.png",
+      "homeScore": "26",
+      "awayScore": "19",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401873001/jets-patriots",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401873000",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T17:00Z",
+      "home": "New York Giants",
+      "away": "New Orleans Saints",
+      "homeTerms": [
+        "New York Giants",
+        "Giants",
+        "Giants"
+      ],
+      "awayTerms": [
+        "New Orleans Saints",
+        "Saints",
+        "Saints"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/nyg.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/no.png",
+      "homeScore": "27",
+      "awayScore": "34",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401873000/saints-giants",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401872998",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T17:00Z",
+      "home": "Philadelphia Eagles",
+      "away": "Carolina Panthers",
+      "homeTerms": [
+        "Philadelphia Eagles",
+        "Eagles",
+        "Eagles"
+      ],
+      "awayTerms": [
+        "Carolina Panthers",
+        "Panthers",
+        "Panthers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/phi.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/car.png",
+      "homeScore": "14",
+      "awayScore": "25",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401872998/panthers-eagles",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401873002",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T17:00Z",
+      "home": "Tampa Bay Buccaneers",
+      "away": "Pittsburgh Steelers",
+      "homeTerms": [
+        "Tampa Bay Buccaneers",
+        "Buccaneers",
+        "Buccaneers"
+      ],
+      "awayTerms": [
+        "Pittsburgh Steelers",
+        "Steelers",
+        "Steelers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/tb.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/pit.png",
+      "homeScore": "19",
+      "awayScore": "26",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401873002/steelers-buccaneers",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882841",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-18T16:30Z",
+      "home": "Málaga",
+      "away": "Real Sociedad",
+      "homeTerms": [
+        "Málaga",
+        "Málaga",
+        "Málaga"
+      ],
+      "awayTerms": [
+        "Real Sociedad",
+        "Real Sociedad",
+        "Real Sociedad"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/99.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/89.png",
+      "homeScore": "2",
+      "awayScore": "5",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882841/real-sociedad-malaga",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874978",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-18T16:00Z",
+      "home": "AC Milan",
+      "away": "Atalanta",
+      "homeTerms": [
+        "AC Milan",
+        "Milan",
+        "AC Milan"
+      ],
+      "awayTerms": [
+        "Atalanta",
+        "Atalanta",
+        "Atalanta"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/103.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/105.png",
+      "homeScore": "3",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874978/atalanta-ac-milan",
+      "uniquePairing": true
+    },
+    {
+      "id": "eng.1-401878769",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-18T15:30Z",
+      "home": "Nottingham Forest",
+      "away": "Arsenal",
+      "homeTerms": [
+        "Nottingham Forest",
+        "Nottm Forest",
+        "Nottingham Forest"
+      ],
+      "awayTerms": [
+        "Arsenal",
+        "Arsenal",
+        "Arsenal"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/393.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/359.png",
+      "homeScore": "0",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401878769/arsenal-nottingham-forest",
+      "uniquePairing": true
+    },
+    {
+      "id": "ger.1-401884768",
+      "sport": "Soccer",
+      "league": "Bundesliga",
+      "date": "2026-10-18T15:30Z",
+      "home": "Borussia Mönchengladbach",
+      "away": "TSG Hoffenheim",
+      "homeTerms": [
+        "Borussia Mönchengladbach",
+        "Gladbach",
+        "Borussia Mönchengladbach"
+      ],
+      "awayTerms": [
+        "TSG Hoffenheim",
+        "Hoffenheim",
+        "TSG Hoffenheim"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/268.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/7911.png",
+      "homeScore": "1",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401884768/tsg-hoffenheim-borussia-monchengladbach",
+      "uniquePairing": true
+    },
+    {
+      "id": "fra.1-401876438",
+      "sport": "Soccer",
+      "league": "Ligue 1",
+      "date": "2026-10-18T15:15Z",
+      "home": "Le Havre AC",
+      "away": "AJ Auxerre",
+      "homeTerms": [
+        "Le Havre AC",
+        "Le Havre AC",
+        "Le Havre AC"
+      ],
+      "awayTerms": [
+        "AJ Auxerre",
+        "Auxerre",
+        "AJ Auxerre"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/3236.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/172.png",
+      "homeScore": "1",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876438/aj-auxerre-le-havre-ac",
+      "uniquePairing": true
+    },
+    {
+      "id": "fra.1-401876435",
+      "sport": "Soccer",
+      "league": "Ligue 1",
+      "date": "2026-10-18T15:15Z",
+      "home": "Lorient",
+      "away": "AS Monaco",
+      "homeTerms": [
+        "Lorient",
+        "Lorient",
+        "Lorient"
+      ],
+      "awayTerms": [
+        "AS Monaco",
+        "Monaco",
+        "AS Monaco"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/273.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/174.png",
+      "homeScore": "1",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876435/as-monaco-lorient",
+      "uniquePairing": true
+    },
+    {
+      "id": "fra.1-401876433",
+      "sport": "Soccer",
+      "league": "Ligue 1",
+      "date": "2026-10-18T15:15Z",
+      "home": "Paris FC",
+      "away": "Stade Rennais",
+      "homeTerms": [
+        "Paris FC",
+        "Paris FC",
+        "Paris FC"
+      ],
+      "awayTerms": [
+        "Stade Rennais",
+        "Rennes",
+        "Stade Rennais"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/6851.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/169.png",
+      "homeScore": "4",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876433/stade-rennais-paris-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882845",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-18T14:15Z",
+      "home": "Celta Vigo",
+      "away": "Alavés",
+      "homeTerms": [
+        "Celta Vigo",
+        "Celta Vigo",
+        "Celta Vigo"
+      ],
+      "awayTerms": [
+        "Alavés",
+        "Alavés",
+        "Alavés"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/85.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/96.png",
+      "homeScore": "2",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882845/alaves-celta-vigo",
+      "uniquePairing": true
+    },
+    {
+      "id": "ger.1-401884771",
+      "sport": "Soccer",
+      "league": "Bundesliga",
+      "date": "2026-10-18T13:30Z",
+      "home": "Bayer Leverkusen",
+      "away": "SC Freiburg",
+      "homeTerms": [
+        "Bayer Leverkusen",
+        "Leverkusen",
+        "Bayer Leverkusen"
+      ],
+      "awayTerms": [
+        "SC Freiburg",
+        "Freiburg",
+        "SC Freiburg"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/131.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/126.png",
+      "homeScore": "2",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401884771/sc-freiburg-bayer-leverkusen",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401872996",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-18T13:30Z",
+      "home": "Jacksonville Jaguars",
+      "away": "Houston Texans",
+      "homeTerms": [
+        "Jacksonville Jaguars",
+        "Jaguars",
+        "Jaguars"
+      ],
+      "awayTerms": [
+        "Houston Texans",
+        "Texans",
+        "Texans"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/jax.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/hou.png",
+      "homeScore": "31",
+      "awayScore": "34",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401872996/texans-jaguars",
+      "uniquePairing": true
+    },
+    {
+      "id": "eng.1-401879263",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-18T13:00Z",
+      "home": "AFC Bournemouth",
+      "away": "Sunderland",
+      "homeTerms": [
+        "AFC Bournemouth",
+        "Bournemouth",
+        "AFC Bournemouth"
+      ],
+      "awayTerms": [
+        "Sunderland",
+        "Sunderland",
+        "Sunderland"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/349.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/366.png",
+      "homeScore": "2",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401879263/sunderland-afc-bournemouth",
+      "uniquePairing": true
+    },
+    {
+      "id": "eng.1-401879261",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-18T13:00Z",
+      "home": "Brighton & Hove Albion",
+      "away": "Crystal Palace",
+      "homeTerms": [
+        "Brighton & Hove Albion",
+        "Brighton",
+        "Brighton & Hove Albion"
+      ],
+      "awayTerms": [
+        "Crystal Palace",
+        "C Palace",
+        "Crystal Palace"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/331.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/384.png",
+      "homeScore": "5",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401879261/crystal-palace-brighton-hove-albion",
+      "uniquePairing": true
+    },
+    {
+      "id": "eng.1-401879260",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-18T13:00Z",
+      "home": "Leeds United",
+      "away": "Manchester United",
+      "homeTerms": [
+        "Leeds United",
+        "Leeds",
+        "Leeds United"
+      ],
+      "awayTerms": [
+        "Manchester United",
+        "Man United",
+        "Manchester United"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/357.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/360.png",
+      "homeScore": "1",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401879260/manchester-united-leeds-united",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874774",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-18T13:00Z",
+      "home": "Fiorentina",
+      "away": "Como",
+      "homeTerms": [
+        "Fiorentina",
+        "Fiorentina",
+        "Fiorentina"
+      ],
+      "awayTerms": [
+        "Como",
+        "Como",
+        "Como"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/109.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/2572.png",
+      "homeScore": "1",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874774/como-fiorentina",
+      "uniquePairing": true
+    },
+    {
+      "id": "fra.1-401876439",
+      "sport": "Soccer",
+      "league": "Ligue 1",
+      "date": "2026-10-18T13:00Z",
+      "home": "Angers",
+      "away": "Marseille",
+      "homeTerms": [
+        "Angers",
+        "Angers",
+        "Angers"
+      ],
+      "awayTerms": [
+        "Marseille",
+        "Marseille",
+        "Marseille"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/7868.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/176.png",
+      "homeScore": "2",
+      "awayScore": "5",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876439/marseille-angers",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882840",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-18T12:00Z",
+      "home": "Osasuna",
+      "away": "Racing Santander",
+      "homeTerms": [
+        "Osasuna",
+        "Osasuna",
+        "Osasuna"
+      ],
+      "awayTerms": [
+        "Racing Santander",
+        "Racing",
+        "Racing Santander"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/97.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/87.png",
+      "homeScore": "2",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882840/racing-santander-osasuna",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874771",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-18T10:30Z",
+      "home": "Udinese",
+      "away": "Lecce",
+      "homeTerms": [
+        "Udinese",
+        "Udinese",
+        "Udinese"
+      ],
+      "awayTerms": [
+        "Lecce",
+        "Lecce",
+        "Lecce"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/118.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/113.png",
+      "homeScore": "0",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874771/lecce-udinese",
+      "uniquePairing": true
+    },
+    {
+      "id": "mex.1-401876939",
+      "sport": "Soccer",
+      "league": "Liga MX",
+      "date": "2026-10-18T03:10Z",
+      "home": "Cruz Azul",
+      "away": "FC Juárez",
+      "homeTerms": [
+        "Cruz Azul",
+        "Cruz Azul",
+        "Cruz Azul"
+      ],
+      "awayTerms": [
+        "FC Juárez",
+        "Juárez",
+        "FC Juárez"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/218.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/17851.png",
+      "homeScore": "5",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876939/fc-juarez-cruz-azul",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761887",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-18T02:30Z",
+      "home": "LA Galaxy",
+      "away": "San Diego FC",
+      "homeTerms": [
+        "LA Galaxy",
+        "LA Galaxy",
+        "LA Galaxy"
+      ],
+      "awayTerms": [
+        "San Diego FC",
+        "San Diego",
+        "San Diego FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/187.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/22529.png",
+      "homeScore": "2",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761887/san-diego-fc-la-galaxy",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761888",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-18T02:30Z",
+      "home": "Portland Timbers",
+      "away": "Colorado Rapids",
+      "homeTerms": [
+        "Portland Timbers",
+        "Portland",
+        "Portland Timbers"
+      ],
+      "awayTerms": [
+        "Colorado Rapids",
+        "Colorado",
+        "Colorado Rapids"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/9723.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/184.png",
+      "homeScore": "0",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761888/colorado-rapids-portland-timbers",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761886",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-18T02:30Z",
+      "home": "San Jose Earthquakes",
+      "away": "Nashville SC",
+      "homeTerms": [
+        "San Jose Earthquakes",
+        "San Jose",
+        "San Jose Earthquakes"
+      ],
+      "awayTerms": [
+        "Nashville SC",
+        "Nashville",
+        "Nashville SC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/191.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/18986.png",
+      "homeScore": "1",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761886/nashville-sc-san-jose-earthquakes",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761885",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-18T02:30Z",
+      "home": "Seattle Sounders FC",
+      "away": "CF Montréal",
+      "homeTerms": [
+        "Seattle Sounders FC",
+        "Seattle",
+        "Seattle Sounders FC"
+      ],
+      "awayTerms": [
+        "CF Montréal",
+        "CF Montréal",
+        "CF Montréal"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/9726.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/9720.png",
+      "homeScore": "1",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761885/cf-montreal-seattle-sounders-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "mex.1-401876941",
+      "sport": "Soccer",
+      "league": "Liga MX",
+      "date": "2026-10-18T01:00Z",
+      "home": "León",
+      "away": "América",
+      "homeTerms": [
+        "León",
+        "León",
+        "León"
+      ],
+      "awayTerms": [
+        "América",
+        "América",
+        "América"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/228.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/227.png",
+      "homeScore": "3",
+      "awayScore": "5",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876941/america-leon",
+      "uniquePairing": true
+    },
+    {
+      "id": "mex.1-401876940",
+      "sport": "Soccer",
+      "league": "Liga MX",
+      "date": "2026-10-18T01:00Z",
+      "home": "Toluca",
+      "away": "Atlético de San Luis",
+      "homeTerms": [
+        "Toluca",
+        "Toluca",
+        "Toluca"
+      ],
+      "awayTerms": [
+        "Atlético de San Luis",
+        "Atl. San Luis",
+        "Atlético de San Luis"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/223.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/15720.png",
+      "homeScore": "1",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876940/atletico-de-san-luis-toluca",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761882",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-18T00:30Z",
+      "home": "Austin FC",
+      "away": "Vancouver Whitecaps",
+      "homeTerms": [
+        "Austin FC",
+        "Austin",
+        "Austin FC"
+      ],
+      "awayTerms": [
+        "Vancouver Whitecaps",
+        "Vancouver",
+        "Vancouver Whitecaps"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/20906.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/9727.png",
+      "homeScore": "1",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761882/vancouver-whitecaps-austin-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761883",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-18T00:30Z",
+      "home": "Houston Dynamo FC",
+      "away": "FC Dallas",
+      "homeTerms": [
+        "Houston Dynamo FC",
+        "Houston",
+        "Houston Dynamo FC"
+      ],
+      "awayTerms": [
+        "FC Dallas",
+        "Dallas",
+        "FC Dallas"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/6077.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/185.png",
+      "homeScore": "2",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761883/fc-dallas-houston-dynamo-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761884",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-18T00:30Z",
+      "home": "Sporting Kansas City",
+      "away": "Real Salt Lake",
+      "homeTerms": [
+        "Sporting Kansas City",
+        "Kansas City",
+        "Sporting Kansas City"
+      ],
+      "awayTerms": [
+        "Real Salt Lake",
+        "Salt Lake",
+        "Real Salt Lake"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/186.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/4771.png",
+      "homeScore": "1",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761884/real-salt-lake-sporting-kansas-city",
+      "uniquePairing": true
+    },
+    {
+      "id": "mlb-401908027",
+      "sport": "Baseball",
+      "league": "MLB",
+      "date": "2026-10-18T00:00Z",
+      "home": "Cleveland Guardians",
+      "away": "Tampa Bay Rays",
+      "homeTerms": [
+        "Cleveland Guardians",
+        "Guardians",
+        "Guardians"
+      ],
+      "awayTerms": [
+        "Tampa Bay Rays",
+        "Rays",
+        "Rays"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/cle.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/tb.png",
+      "homeScore": "3",
+      "awayScore": "7",
+      "sourceUrl": "https://www.espn.com/mlb/game/_/gameId/401908027/rays-guardians",
+      "uniquePairing": false
+    },
+    {
+      "id": "usa.1-761880",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-17T23:30Z",
+      "home": "Atlanta United FC",
+      "away": "Inter Miami CF",
+      "homeTerms": [
+        "Atlanta United FC",
+        "Atlanta",
+        "Atlanta United FC"
+      ],
+      "awayTerms": [
+        "Inter Miami CF",
+        "Miami",
+        "Inter Miami CF"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/18418.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/20232.png",
+      "homeScore": "1",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761880/inter-miami-cf-atlanta-united-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761879",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-17T23:30Z",
+      "home": "New England Revolution",
+      "away": "Chicago Fire FC",
+      "homeTerms": [
+        "New England Revolution",
+        "New England",
+        "New England Revolution"
+      ],
+      "awayTerms": [
+        "Chicago Fire FC",
+        "Chicago",
+        "Chicago Fire FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/189.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/182.png",
+      "homeScore": "1",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761879/chicago-fire-fc-new-england-revolution",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761877",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-17T23:30Z",
+      "home": "New York City FC",
+      "away": "LAFC",
+      "homeTerms": [
+        "New York City FC",
+        "NYCFC",
+        "New York City FC"
+      ],
+      "awayTerms": [
+        "LAFC",
+        "LAFC",
+        "LAFC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/17606.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/18966.png",
+      "homeScore": "1",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761877/lafc-new-york-city-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761881",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-17T23:30Z",
+      "home": "Orlando City SC",
+      "away": "D.C. United",
+      "homeTerms": [
+        "Orlando City SC",
+        "Orlando",
+        "Orlando City SC"
+      ],
+      "awayTerms": [
+        "D.C. United",
+        "D.C. United",
+        "D.C. United"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/12011.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/193.png",
+      "homeScore": "4",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761881/dc-united-orlando-city-sc",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761878",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-17T23:30Z",
+      "home": "Red Bull New York",
+      "away": "Toronto FC",
+      "homeTerms": [
+        "Red Bull New York",
+        "Red Bull NY",
+        "Red Bull New York"
+      ],
+      "awayTerms": [
+        "Toronto FC",
+        "Toronto",
+        "Toronto FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/190.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/7318.png",
+      "homeScore": "0",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761878/toronto-fc-red-bull-new-york",
+      "uniquePairing": true
+    },
+    {
+      "id": "mex.1-401876943",
+      "sport": "Soccer",
+      "league": "Liga MX",
+      "date": "2026-10-17T23:07Z",
+      "home": "Guadalajara",
+      "away": "Tigres UANL",
+      "homeTerms": [
+        "Guadalajara",
+        "Guadalajara",
+        "Guadalajara"
+      ],
+      "awayTerms": [
+        "Tigres UANL",
+        "Tigres",
+        "Tigres UANL"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/219.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/232.png",
+      "homeScore": "1",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876943/tigres-uanl-guadalajara",
+      "uniquePairing": true
+    },
+    {
+      "id": "mex.1-401876942",
+      "sport": "Soccer",
+      "league": "Liga MX",
+      "date": "2026-10-17T23:00Z",
+      "home": "Santos",
+      "away": "Querétaro",
+      "homeTerms": [
+        "Santos",
+        "Santos",
+        "Santos"
+      ],
+      "awayTerms": [
+        "Querétaro",
+        "Queretaro",
+        "Querétaro"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/225.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/222.png",
+      "homeScore": "5",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876942/queretaro-santos",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761876",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-17T20:30Z",
+      "home": "Minnesota United FC",
+      "away": "St. Louis CITY SC",
+      "homeTerms": [
+        "Minnesota United FC",
+        "Minnesota",
+        "Minnesota United FC"
+      ],
+      "awayTerms": [
+        "St. Louis CITY SC",
+        "St. Louis",
+        "St. Louis CITY SC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/17362.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/21812.png",
+      "homeScore": "3",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761876/st-louis-city-sc-minnesota-united-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "wnba-401918305",
+      "sport": "Basketball",
+      "league": "WNBA",
+      "date": "2026-10-17T19:30Z",
+      "home": "Golden State Valkyries",
+      "away": "Atlanta Dream",
+      "homeTerms": [
+        "Golden State Valkyries",
+        "Valkyries",
+        "Valkyries"
+      ],
+      "awayTerms": [
+        "Atlanta Dream",
+        "Dream",
+        "Dream"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/wnba/500/scoreboard/gs.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/wnba/500/atl.png",
+      "homeScore": "68",
+      "awayScore": "64",
+      "sourceUrl": "https://www.espn.com/wnba/game/_/gameId/401918305/dream-valkyries",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882838",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-17T19:00Z",
+      "home": "Valencia",
+      "away": "Athletic Club",
+      "homeTerms": [
+        "Valencia",
+        "Valencia",
+        "Valencia"
+      ],
+      "awayTerms": [
+        "Athletic Club",
+        "Athletic",
+        "Athletic Club"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/94.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/93.png",
+      "homeScore": "0",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882838/athletic-club-valencia",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874935",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-17T18:45Z",
+      "home": "AS Roma",
+      "away": "Genoa",
+      "homeTerms": [
+        "AS Roma",
+        "AS Roma",
+        "AS Roma"
+      ],
+      "awayTerms": [
+        "Genoa",
+        "Genoa",
+        "Genoa"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/104.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/3263.png",
+      "homeScore": "2",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874935/genoa-as-roma",
+      "uniquePairing": true
+    },
+    {
+      "id": "fra.1-401876436",
+      "sport": "Soccer",
+      "league": "Ligue 1",
+      "date": "2026-10-17T18:45Z",
+      "home": "Lille",
+      "away": "Brest",
+      "homeTerms": [
+        "Lille",
+        "Lille",
+        "Lille"
+      ],
+      "awayTerms": [
+        "Brest",
+        "Brest",
+        "Brest"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/166.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/6997.png",
+      "homeScore": "1",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876436/brest-lille",
+      "uniquePairing": true
+    },
+    {
+      "id": "fra.1-401876431",
+      "sport": "Soccer",
+      "league": "Ligue 1",
+      "date": "2026-10-17T18:45Z",
+      "home": "Troyes",
+      "away": "Lens",
+      "homeTerms": [
+        "Troyes",
+        "Troyes",
+        "Troyes"
+      ],
+      "awayTerms": [
+        "Lens",
+        "Lens",
+        "Lens"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/170.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/175.png",
+      "homeScore": "1",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876431/lens-troyes",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761875",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-17T18:30Z",
+      "home": "Philadelphia Union",
+      "away": "Charlotte FC",
+      "homeTerms": [
+        "Philadelphia Union",
+        "Philadelphia",
+        "Philadelphia Union"
+      ],
+      "awayTerms": [
+        "Charlotte FC",
+        "Charlotte",
+        "Charlotte FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/10739.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/21300.png",
+      "homeScore": "2",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761875/charlotte-fc-philadelphia-union",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882846",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-17T16:30Z",
+      "home": "Real Betis",
+      "away": "Barcelona",
+      "homeTerms": [
+        "Real Betis",
+        "Betis",
+        "Real Betis"
+      ],
+      "awayTerms": [
+        "Barcelona",
+        "Barcelona",
+        "Barcelona"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/244.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/83.png",
+      "homeScore": "2",
+      "awayScore": "5",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882846/barcelona-real-betis",
+      "uniquePairing": true
+    },
+    {
+      "id": "eng.1-401879258",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-17T16:30Z",
+      "home": "Newcastle United",
+      "away": "Aston Villa",
+      "homeTerms": [
+        "Newcastle United",
+        "Newcastle",
+        "Newcastle United"
+      ],
+      "awayTerms": [
+        "Aston Villa",
+        "Aston Villa",
+        "Aston Villa"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/361.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/362.png",
+      "homeScore": "0",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401879258/aston-villa-newcastle-united",
+      "uniquePairing": true
+    },
+    {
+      "id": "ger.1-401884772",
+      "sport": "Soccer",
+      "league": "Bundesliga",
+      "date": "2026-10-17T16:30Z",
+      "home": "Bayern Munich",
+      "away": "RB Leipzig",
+      "homeTerms": [
+        "Bayern Munich",
+        "Bayern",
+        "Bayern Munich"
+      ],
+      "awayTerms": [
+        "RB Leipzig",
+        "RB Leipzig",
+        "RB Leipzig"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/132.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/11420.png",
+      "homeScore": "6",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401884772/rb-leipzig-bayern-munich",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874953",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-17T16:00Z",
+      "home": "Bologna",
+      "away": "Internazionale",
+      "homeTerms": [
+        "Bologna",
+        "Bologna",
+        "Bologna"
+      ],
+      "awayTerms": [
+        "Internazionale",
+        "Inter Milan",
+        "Internazionale"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/107.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/110.png",
+      "homeScore": "1",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874953/internazionale-bologna",
+      "uniquePairing": true
+    },
+    {
+      "id": "fra.1-401876432",
+      "sport": "Soccer",
+      "league": "Ligue 1",
+      "date": "2026-10-17T15:15Z",
+      "home": "Strasbourg",
+      "away": "Paris Saint-Germain",
+      "homeTerms": [
+        "Strasbourg",
+        "Strasbourg",
+        "Strasbourg"
+      ],
+      "awayTerms": [
+        "Paris Saint-Germain",
+        "Paris Saint-Germain"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/180.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/160.png",
+      "homeScore": "1",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876432/paris-saint-germain-strasbourg",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882837",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-17T14:15Z",
+      "home": "Villarreal",
+      "away": "Elche",
+      "homeTerms": [
+        "Villarreal",
+        "Villarreal",
+        "Villarreal"
+      ],
+      "awayTerms": [
+        "Elche",
+        "Elche",
+        "Elche"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/102.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/3751.png",
+      "homeScore": "0",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882837/elche-villarreal",
+      "uniquePairing": true
+    },
+    {
+      "id": "eng.1-401879262",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-17T14:00Z",
+      "home": "Brentford",
+      "away": "Liverpool",
+      "homeTerms": [
+        "Brentford",
+        "Brentford",
+        "Brentford"
+      ],
+      "awayTerms": [
+        "Liverpool",
+        "Liverpool",
+        "Liverpool"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/337.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/364.png",
+      "homeScore": "1",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401879262/liverpool-brentford",
+      "uniquePairing": true
+    },
+    {
+      "id": "eng.1-401878770",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-17T14:00Z",
+      "home": "Fulham",
+      "away": "Hull City",
+      "homeTerms": [
+        "Fulham",
+        "Fulham",
+        "Fulham"
+      ],
+      "awayTerms": [
+        "Hull City",
+        "Hull",
+        "Hull City"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/370.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/306.png",
+      "homeScore": "1",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401878770/hull-city-fulham",
+      "uniquePairing": true
+    },
+    {
+      "id": "eng.1-401879259",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-17T14:00Z",
+      "home": "Manchester City",
+      "away": "Ipswich Town",
+      "homeTerms": [
+        "Manchester City",
+        "Man City",
+        "Manchester City"
+      ],
+      "awayTerms": [
+        "Ipswich Town",
+        "Ipswich",
+        "Ipswich Town"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/382.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/373.png",
+      "homeScore": "3",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401879259/ipswich-town-manchester-city",
+      "uniquePairing": true
+    },
+    {
+      "id": "ger.1-401884769",
+      "sport": "Soccer",
+      "league": "Bundesliga",
+      "date": "2026-10-17T13:30Z",
+      "home": "1. FC Union Berlin",
+      "away": "Borussia Dortmund",
+      "homeTerms": [
+        "1. FC Union Berlin",
+        "Union Berlin",
+        "1. FC Union Berlin"
+      ],
+      "awayTerms": [
+        "Borussia Dortmund",
+        "Dortmund",
+        "Borussia Dortmund"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/598.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/124.png",
+      "homeScore": "0",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401884769/borussia-dortmund-1-fc-union-berlin",
+      "uniquePairing": true
+    },
+    {
+      "id": "ger.1-401884767",
+      "sport": "Soccer",
+      "league": "Bundesliga",
+      "date": "2026-10-17T13:30Z",
+      "home": "Hamburg SV",
+      "away": "VfB Stuttgart",
+      "homeTerms": [
+        "Hamburg SV",
+        "Hamburg",
+        "Hamburg SV"
+      ],
+      "awayTerms": [
+        "VfB Stuttgart",
+        "Stuttgart",
+        "VfB Stuttgart"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/127.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/134.png",
+      "homeScore": "1",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401884767/vfb-stuttgart-hamburg-sv",
+      "uniquePairing": true
+    },
+    {
+      "id": "ger.1-401884765",
+      "sport": "Soccer",
+      "league": "Bundesliga",
+      "date": "2026-10-17T13:30Z",
+      "home": "Schalke 04",
+      "away": "Mainz",
+      "homeTerms": [
+        "Schalke 04",
+        "Schalke",
+        "Schalke 04"
+      ],
+      "awayTerms": [
+        "Mainz",
+        "Mainz",
+        "Mainz"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/133.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/2950.png",
+      "homeScore": "0",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401884765/mainz-schalke-04",
+      "uniquePairing": true
+    },
+    {
+      "id": "ger.1-401884764",
+      "sport": "Soccer",
+      "league": "Bundesliga",
+      "date": "2026-10-17T13:30Z",
+      "home": "SV Elversberg",
+      "away": "FC Augsburg",
+      "homeTerms": [
+        "SV Elversberg",
+        "Elversberg",
+        "SV Elversberg"
+      ],
+      "awayTerms": [
+        "FC Augsburg",
+        "Augsburg",
+        "FC Augsburg"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/10388.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/3841.png",
+      "homeScore": "4",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401884764/fc-augsburg-sv-elversberg",
+      "uniquePairing": true
+    },
+    {
+      "id": "ger.1-401884766",
+      "sport": "Soccer",
+      "league": "Bundesliga",
+      "date": "2026-10-17T13:30Z",
+      "home": "Werder Bremen",
+      "away": "SC Paderborn 07",
+      "homeTerms": [
+        "Werder Bremen",
+        "Bremen",
+        "Werder Bremen"
+      ],
+      "awayTerms": [
+        "SC Paderborn 07",
+        "Paderborn",
+        "SC Paderborn 07"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/137.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/3307.png",
+      "homeScore": "2",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401884766/sc-paderborn-07-werder-bremen",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874760",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-17T13:00Z",
+      "home": "Venezia",
+      "away": "Napoli",
+      "homeTerms": [
+        "Venezia",
+        "Venezia",
+        "Venezia"
+      ],
+      "awayTerms": [
+        "Napoli",
+        "Napoli",
+        "Napoli"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/17530.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/114.png",
+      "homeScore": "1",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874760/napoli-venezia",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882843",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-17T12:00Z",
+      "home": "Espanyol",
+      "away": "Atlético Madrid",
+      "homeTerms": [
+        "Espanyol",
+        "Espanyol",
+        "Espanyol"
+      ],
+      "awayTerms": [
+        "Atlético Madrid",
+        "Atlético",
+        "Atlético Madrid"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/88.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/1068.png",
+      "homeScore": "0",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882843/atletico-madrid-espanyol",
+      "uniquePairing": true
+    },
+    {
+      "id": "eng.1-401878771",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-17T11:30Z",
+      "home": "Everton",
+      "away": "Chelsea",
+      "homeTerms": [
+        "Everton",
+        "Everton",
+        "Everton"
+      ],
+      "awayTerms": [
+        "Chelsea",
+        "Chelsea",
+        "Chelsea"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/368.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/363.png",
+      "homeScore": "0",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401878771/chelsea-everton",
+      "uniquePairing": true
+    },
+    {
+      "id": "mex.1-401876944",
+      "sport": "Soccer",
+      "league": "Liga MX",
+      "date": "2026-10-17T03:05Z",
+      "home": "Tijuana",
+      "away": "Puebla",
+      "homeTerms": [
+        "Tijuana",
+        "Tijuana",
+        "Tijuana"
+      ],
+      "awayTerms": [
+        "Puebla",
+        "Puebla",
+        "Puebla"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/10125.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/231.png",
+      "homeScore": "0",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876944/puebla-tijuana",
+      "uniquePairing": true
+    },
+    {
+      "id": "mex.1-401876945",
+      "sport": "Soccer",
+      "league": "Liga MX",
+      "date": "2026-10-17T03:00Z",
+      "home": "Atlante",
+      "away": "Pumas UNAM",
+      "homeTerms": [
+        "Atlante",
+        "Atlante",
+        "Atlante"
+      ],
+      "awayTerms": [
+        "Pumas UNAM",
+        "UNAM",
+        "Pumas UNAM"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/226.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/233.png",
+      "homeScore": "1",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876945/pumas-unam-atlante",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898719",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-17T02:30Z",
+      "home": "Los Angeles Lakers",
+      "away": "Denver Nuggets",
+      "homeTerms": [
+        "Los Angeles Lakers",
+        "Lakers",
+        "Lakers"
+      ],
+      "awayTerms": [
+        "Denver Nuggets",
+        "Nuggets",
+        "Nuggets"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/lal.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/den.png",
+      "homeScore": "106",
+      "awayScore": "121",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898719/nuggets-lakers",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898409",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-17T02:00Z",
+      "home": "Golden State Warriors",
+      "away": "Portland Trail Blazers",
+      "homeTerms": [
+        "Golden State Warriors",
+        "Warriors",
+        "Warriors"
+      ],
+      "awayTerms": [
+        "Portland Trail Blazers",
+        "Trail Blazers",
+        "Trail Blazers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/gs.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/por.png",
+      "homeScore": "128",
+      "awayScore": "118",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898409/trail-blazers-warriors",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401908948",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-17T02:00Z",
+      "home": "Phoenix Suns",
+      "away": "Utah Jazz",
+      "homeTerms": [
+        "Phoenix Suns",
+        "Suns",
+        "Suns"
+      ],
+      "awayTerms": [
+        "Utah Jazz",
+        "Jazz",
+        "Jazz"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/phx.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/utah.png",
+      "homeScore": "116",
+      "awayScore": "119",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401908948/jazz-suns",
+      "uniquePairing": true
+    },
+    {
+      "id": "mex.1-401876946",
+      "sport": "Soccer",
+      "league": "Liga MX",
+      "date": "2026-10-17T01:00Z",
+      "home": "Necaxa",
+      "away": "Atlas",
+      "homeTerms": [
+        "Necaxa",
+        "Necaxa",
+        "Necaxa"
+      ],
+      "awayTerms": [
+        "Atlas",
+        "Atlas",
+        "Atlas"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/229.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/216.png",
+      "homeScore": "0",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876946/atlas-necaxa",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898408",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-17T00:00Z",
+      "home": "Dallas Mavericks",
+      "away": "Atlanta Hawks",
+      "homeTerms": [
+        "Dallas Mavericks",
+        "Mavericks",
+        "Mavericks"
+      ],
+      "awayTerms": [
+        "Atlanta Hawks",
+        "Hawks",
+        "Hawks"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/dal.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/atl.png",
+      "homeScore": "111",
+      "awayScore": "135",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898408/hawks-mavericks",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898843",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-17T00:00Z",
+      "home": "San Antonio Spurs",
+      "away": "Sacramento Kings",
+      "homeTerms": [
+        "San Antonio Spurs",
+        "Spurs",
+        "Spurs"
+      ],
+      "awayTerms": [
+        "Sacramento Kings",
+        "Kings",
+        "Kings"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/sa.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/sac.png",
+      "homeScore": "126",
+      "awayScore": "97",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898843/kings-spurs",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401901822",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-17T00:00Z",
+      "home": "Memphis Grizzlies",
+      "away": "Charlotte Hornets",
+      "homeTerms": [
+        "Memphis Grizzlies",
+        "Grizzlies",
+        "Grizzlies"
+      ],
+      "awayTerms": [
+        "Charlotte Hornets",
+        "Hornets",
+        "Hornets"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/mem.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/cha.png",
+      "homeScore": "116",
+      "awayScore": "98",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401901822/hornets-grizzlies",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401906509",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-17T00:00Z",
+      "home": "New Orleans Pelicans",
+      "away": "Washington Wizards",
+      "homeTerms": [
+        "New Orleans Pelicans",
+        "Pelicans",
+        "Pelicans"
+      ],
+      "awayTerms": [
+        "Washington Wizards",
+        "Wizards",
+        "Wizards"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/no.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/wsh.png",
+      "homeScore": "107",
+      "awayScore": "106",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401906509/wizards-pelicans",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401908943",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-17T00:00Z",
+      "home": "Chicago Bulls",
+      "away": "Minnesota Timberwolves",
+      "homeTerms": [
+        "Chicago Bulls",
+        "Bulls",
+        "Bulls"
+      ],
+      "awayTerms": [
+        "Minnesota Timberwolves",
+        "Timberwolves",
+        "Timberwolves"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/chi.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/min.png",
+      "homeScore": "133",
+      "awayScore": "116",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401908943/timberwolves-bulls",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898406",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-16T23:00Z",
+      "home": "Orlando Magic",
+      "away": "Miami Heat",
+      "homeTerms": [
+        "Orlando Magic",
+        "Magic",
+        "Magic"
+      ],
+      "awayTerms": [
+        "Miami Heat",
+        "Heat",
+        "Heat"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/orl.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/mia.png",
+      "homeScore": "136",
+      "awayScore": "115",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898406/heat-magic",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898407",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-16T23:00Z",
+      "home": "Philadelphia 76ers",
+      "away": "Boston Celtics",
+      "homeTerms": [
+        "Philadelphia 76ers",
+        "76ers",
+        "76ers"
+      ],
+      "awayTerms": [
+        "Boston Celtics",
+        "Celtics",
+        "Celtics"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/phi.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/bos.png",
+      "homeScore": "120",
+      "awayScore": "125",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898407/celtics-76ers",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401908946",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-16T23:00Z",
+      "home": "Detroit Pistons",
+      "away": "Toronto Raptors",
+      "homeTerms": [
+        "Detroit Pistons",
+        "Pistons",
+        "Pistons"
+      ],
+      "awayTerms": [
+        "Toronto Raptors",
+        "Raptors",
+        "Raptors"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/det.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/tor.png",
+      "homeScore": "129",
+      "awayScore": "125",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401908946/raptors-pistons",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401914126",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-16T23:00Z",
+      "home": "Indiana Pacers",
+      "away": "Milwaukee Bucks",
+      "homeTerms": [
+        "Indiana Pacers",
+        "Pacers",
+        "Pacers"
+      ],
+      "awayTerms": [
+        "Milwaukee Bucks",
+        "Bucks",
+        "Bucks"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/ind.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/mil.png",
+      "homeScore": "127",
+      "awayScore": "128",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401914126/bucks-pacers",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882844",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-16T19:00Z",
+      "home": "Deportivo",
+      "away": "Levante",
+      "homeTerms": [
+        "Deportivo",
+        "Deportivo",
+        "Deportivo"
+      ],
+      "awayTerms": [
+        "Levante",
+        "Levante",
+        "Levante"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/90.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/1538.png",
+      "homeScore": "1",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882844/levante-deportivo",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874959",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-16T18:45Z",
+      "home": "Frosinone",
+      "away": "Sassuolo",
+      "homeTerms": [
+        "Frosinone",
+        "Frosinone",
+        "Frosinone"
+      ],
+      "awayTerms": [
+        "Sassuolo",
+        "Sassuolo",
+        "Sassuolo"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/4057.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/3997.png",
+      "homeScore": "4",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874959/sassuolo-frosinone",
+      "uniquePairing": true
+    },
+    {
+      "id": "fra.1-401876437",
+      "sport": "Soccer",
+      "league": "Ligue 1",
+      "date": "2026-10-16T18:45Z",
+      "home": "Le Mans",
+      "away": "Toulouse",
+      "homeTerms": [
+        "Le Mans",
+        "Le Mans",
+        "Le Mans"
+      ],
+      "awayTerms": [
+        "Toulouse",
+        "Toulouse",
+        "Toulouse"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/2697.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/179.png",
+      "homeScore": "0",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401876437/toulouse-le-mans",
+      "uniquePairing": true
+    },
+    {
+      "id": "ger.1-401884770",
+      "sport": "Soccer",
+      "league": "Bundesliga",
+      "date": "2026-10-16T18:30Z",
+      "home": "Eintracht Frankfurt",
+      "away": "FC Cologne",
+      "homeTerms": [
+        "Eintracht Frankfurt",
+        "Frankfurt",
+        "Eintracht Frankfurt"
+      ],
+      "awayTerms": [
+        "FC Cologne",
+        "Cologne",
+        "FC Cologne"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/125.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/122.png",
+      "homeScore": "1",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401884770/fc-cologne-eintracht-frankfurt",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401908622",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-16T00:30Z",
+      "home": "Houston Rockets",
+      "away": "Oklahoma City Thunder",
+      "homeTerms": [
+        "Houston Rockets",
+        "Rockets",
+        "Rockets"
+      ],
+      "awayTerms": [
+        "Oklahoma City Thunder",
+        "Thunder",
+        "Thunder"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/hou.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/okc.png",
+      "homeScore": "116",
+      "awayScore": "89",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401908622/thunder-rockets",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401872995",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-16T00:15Z",
+      "home": "Denver Broncos",
+      "away": "Seattle Seahawks",
+      "homeTerms": [
+        "Denver Broncos",
+        "Broncos",
+        "Broncos"
+      ],
+      "awayTerms": [
+        "Seattle Seahawks",
+        "Seahawks",
+        "Seahawks"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/den.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/sea.png",
+      "homeScore": "17",
+      "awayScore": "14",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401872995/seahawks-broncos",
+      "uniquePairing": true
+    },
+    {
+      "id": "mlb-401908033",
+      "sport": "Baseball",
+      "league": "MLB",
+      "date": "2026-10-16T00:00Z",
+      "home": "Los Angeles Dodgers",
+      "away": "Milwaukee Brewers",
+      "homeTerms": [
+        "Los Angeles Dodgers",
+        "Dodgers",
+        "Dodgers"
+      ],
+      "awayTerms": [
+        "Milwaukee Brewers",
+        "Brewers",
+        "Brewers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/lad.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/mil.png",
+      "homeScore": "4",
+      "awayScore": "6",
+      "sourceUrl": "https://www.espn.com/mlb/game/_/gameId/401908033/brewers-dodgers",
+      "uniquePairing": false
+    },
+    {
+      "id": "nba-401908945",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-15T23:30Z",
+      "home": "New York Knicks",
+      "away": "Toronto Raptors",
+      "homeTerms": [
+        "New York Knicks",
+        "Knicks",
+        "Knicks"
+      ],
+      "awayTerms": [
+        "Toronto Raptors",
+        "Raptors",
+        "Raptors"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/ny.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/tor.png",
+      "homeScore": "122",
+      "awayScore": "120",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401908945/raptors-knicks",
+      "uniquePairing": false
+    },
+    {
+      "id": "mlb-401908025",
+      "sport": "Baseball",
+      "league": "MLB",
+      "date": "2026-10-15T17:00Z",
+      "home": "Cleveland Guardians",
+      "away": "Tampa Bay Rays",
+      "homeTerms": [
+        "Cleveland Guardians",
+        "Guardians",
+        "Guardians"
+      ],
+      "awayTerms": [
+        "Tampa Bay Rays",
+        "Rays",
+        "Rays"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/cle.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/tb.png",
+      "homeScore": "3",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/mlb/game/_/gameId/401908025/rays-guardians",
+      "uniquePairing": false
+    },
+    {
+      "id": "nba-401918011",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-15T02:30Z",
+      "home": "LA Clippers",
+      "away": "Denver Nuggets",
+      "homeTerms": [
+        "LA Clippers",
+        "Clippers",
+        "Clippers"
+      ],
+      "awayTerms": [
+        "Denver Nuggets",
+        "Nuggets",
+        "Nuggets"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/lac.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/den.png",
+      "homeScore": "122",
+      "awayScore": "110",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401918011/nuggets-clippers",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761874",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-15T02:30Z",
+      "home": "LA Galaxy",
+      "away": "Portland Timbers",
+      "homeTerms": [
+        "LA Galaxy",
+        "LA Galaxy",
+        "LA Galaxy"
+      ],
+      "awayTerms": [
+        "Portland Timbers",
+        "Portland",
+        "Portland Timbers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/187.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/9723.png",
+      "homeScore": "2",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761874/portland-timbers-la-galaxy",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761873",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-15T02:30Z",
+      "home": "LAFC",
+      "away": "Austin FC",
+      "homeTerms": [
+        "LAFC",
+        "LAFC",
+        "LAFC"
+      ],
+      "awayTerms": [
+        "Austin FC",
+        "Austin",
+        "Austin FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/18966.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/20906.png",
+      "homeScore": "3",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761873/austin-fc-lafc",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761872",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-15T02:30Z",
+      "home": "San Diego FC",
+      "away": "Houston Dynamo FC",
+      "homeTerms": [
+        "San Diego FC",
+        "San Diego",
+        "San Diego FC"
+      ],
+      "awayTerms": [
+        "Houston Dynamo FC",
+        "Houston",
+        "Houston Dynamo FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/22529.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/6077.png",
+      "homeScore": "3",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761872/houston-dynamo-fc-san-diego-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761871",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-15T01:30Z",
+      "home": "Colorado Rapids",
+      "away": "Minnesota United FC",
+      "homeTerms": [
+        "Colorado Rapids",
+        "Colorado",
+        "Colorado Rapids"
+      ],
+      "awayTerms": [
+        "Minnesota United FC",
+        "Minnesota",
+        "Minnesota United FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/184.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/17362.png",
+      "homeScore": "2",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761871/minnesota-united-fc-colorado-rapids",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761870",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-15T01:30Z",
+      "home": "Real Salt Lake",
+      "away": "San Jose Earthquakes",
+      "homeTerms": [
+        "Real Salt Lake",
+        "Salt Lake",
+        "Real Salt Lake"
+      ],
+      "awayTerms": [
+        "San Jose Earthquakes",
+        "San Jose",
+        "San Jose Earthquakes"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/4771.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/191.png",
+      "homeScore": "1",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761870/san-jose-earthquakes-real-salt-lake",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761869",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-15T00:30Z",
+      "home": "Chicago Fire FC",
+      "away": "Philadelphia Union",
+      "homeTerms": [
+        "Chicago Fire FC",
+        "Chicago",
+        "Chicago Fire FC"
+      ],
+      "awayTerms": [
+        "Philadelphia Union",
+        "Philadelphia",
+        "Philadelphia Union"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/182.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/10739.png",
+      "homeScore": "1",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761869/philadelphia-union-chicago-fire-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761867",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-15T00:30Z",
+      "home": "FC Dallas",
+      "away": "Seattle Sounders FC",
+      "homeTerms": [
+        "FC Dallas",
+        "Dallas",
+        "FC Dallas"
+      ],
+      "awayTerms": [
+        "Seattle Sounders FC",
+        "Seattle",
+        "Seattle Sounders FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/185.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/9726.png",
+      "homeScore": "1",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761867/seattle-sounders-fc-fc-dallas",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761866",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-15T00:30Z",
+      "home": "Nashville SC",
+      "away": "Sporting Kansas City",
+      "homeTerms": [
+        "Nashville SC",
+        "Nashville",
+        "Nashville SC"
+      ],
+      "awayTerms": [
+        "Sporting Kansas City",
+        "Kansas City",
+        "Sporting Kansas City"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/18986.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/186.png",
+      "homeScore": "4",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761866/sporting-kansas-city-nashville-sc",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761868",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-15T00:30Z",
+      "home": "St. Louis CITY SC",
+      "away": "Vancouver Whitecaps",
+      "homeTerms": [
+        "St. Louis CITY SC",
+        "St. Louis",
+        "St. Louis CITY SC"
+      ],
+      "awayTerms": [
+        "Vancouver Whitecaps",
+        "Vancouver",
+        "Vancouver Whitecaps"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/21812.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/9727.png",
+      "homeScore": "0",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761868/vancouver-whitecaps-st-louis-city-sc",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898722",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-15T00:00Z",
+      "home": "San Antonio Spurs",
+      "away": "Phoenix Suns",
+      "homeTerms": [
+        "San Antonio Spurs",
+        "Spurs",
+        "Spurs"
+      ],
+      "awayTerms": [
+        "Phoenix Suns",
+        "Suns",
+        "Suns"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/sa.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/phx.png",
+      "homeScore": "123",
+      "awayScore": "103",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898722/suns-spurs",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401901825",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-15T00:00Z",
+      "home": "Dallas Mavericks",
+      "away": "New Orleans Pelicans",
+      "homeTerms": [
+        "Dallas Mavericks",
+        "Mavericks",
+        "Mavericks"
+      ],
+      "awayTerms": [
+        "New Orleans Pelicans",
+        "Pelicans",
+        "Pelicans"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/dal.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/no.png",
+      "homeScore": "97",
+      "awayScore": "101",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401901825/pelicans-mavericks",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401908942",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-15T00:00Z",
+      "home": "Milwaukee Bucks",
+      "away": "Chicago Bulls",
+      "homeTerms": [
+        "Milwaukee Bucks",
+        "Bucks",
+        "Bucks"
+      ],
+      "awayTerms": [
+        "Chicago Bulls",
+        "Bulls",
+        "Bulls"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/mil.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/chi.png",
+      "homeScore": "104",
+      "awayScore": "125",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401908942/bulls-bucks",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401914125",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-15T00:00Z",
+      "home": "Minnesota Timberwolves",
+      "away": "Detroit Pistons",
+      "homeTerms": [
+        "Minnesota Timberwolves",
+        "Timberwolves",
+        "Timberwolves"
+      ],
+      "awayTerms": [
+        "Detroit Pistons",
+        "Pistons",
+        "Pistons"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/min.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/det.png",
+      "homeScore": "106",
+      "awayScore": "128",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401914125/pistons-timberwolves",
+      "uniquePairing": true
+    },
+    {
+      "id": "mlb-401908032",
+      "sport": "Baseball",
+      "league": "MLB",
+      "date": "2026-10-15T00:00Z",
+      "home": "Los Angeles Dodgers",
+      "away": "Milwaukee Brewers",
+      "homeTerms": [
+        "Los Angeles Dodgers",
+        "Dodgers",
+        "Dodgers"
+      ],
+      "awayTerms": [
+        "Milwaukee Brewers",
+        "Brewers",
+        "Brewers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/lad.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/mil.png",
+      "homeScore": "2",
+      "awayScore": "6",
+      "sourceUrl": "https://www.espn.com/mlb/game/_/gameId/401908032/brewers-dodgers",
+      "uniquePairing": false
+    },
+    {
+      "id": "nba-401898404",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-14T23:30Z",
+      "home": "Miami Heat",
+      "away": "Brooklyn Nets",
+      "homeTerms": [
+        "Miami Heat",
+        "Heat",
+        "Heat"
+      ],
+      "awayTerms": [
+        "Brooklyn Nets",
+        "Nets",
+        "Nets"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/mia.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/bkn.png",
+      "homeScore": "144",
+      "awayScore": "128",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898404/nets-heat",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898405",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-14T23:30Z",
+      "home": "Boston Celtics",
+      "away": "Charlotte Hornets",
+      "homeTerms": [
+        "Boston Celtics",
+        "Celtics",
+        "Celtics"
+      ],
+      "awayTerms": [
+        "Charlotte Hornets",
+        "Hornets",
+        "Hornets"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/bos.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/cha.png",
+      "homeScore": "114",
+      "awayScore": "93",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898405/hornets-celtics",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761864",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-14T23:30Z",
+      "home": "CF Montréal",
+      "away": "Atlanta United FC",
+      "homeTerms": [
+        "CF Montréal",
+        "CF Montréal",
+        "CF Montréal"
+      ],
+      "awayTerms": [
+        "Atlanta United FC",
+        "Atlanta",
+        "Atlanta United FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/9720.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/18418.png",
+      "homeScore": "0",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761864/atlanta-united-fc-cf-montreal",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761865",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-14T23:30Z",
+      "home": "Columbus Crew",
+      "away": "Charlotte FC",
+      "homeTerms": [
+        "Columbus Crew",
+        "Columbus",
+        "Columbus Crew"
+      ],
+      "awayTerms": [
+        "Charlotte FC",
+        "Charlotte",
+        "Charlotte FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/183.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/21300.png",
+      "homeScore": "3",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761865/charlotte-fc-columbus-crew",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761863",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-14T23:30Z",
+      "home": "D.C. United",
+      "away": "Red Bull New York",
+      "homeTerms": [
+        "D.C. United",
+        "D.C. United",
+        "D.C. United"
+      ],
+      "awayTerms": [
+        "Red Bull New York",
+        "Red Bull NY",
+        "Red Bull New York"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/193.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/190.png",
+      "homeScore": "2",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761863/red-bull-new-york-dc-united",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761862",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-14T23:30Z",
+      "home": "FC Cincinnati",
+      "away": "New England Revolution",
+      "homeTerms": [
+        "FC Cincinnati",
+        "Cincinnati",
+        "FC Cincinnati"
+      ],
+      "awayTerms": [
+        "New England Revolution",
+        "New England",
+        "New England Revolution"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/18267.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/189.png",
+      "homeScore": "2",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761862/new-england-revolution-fc-cincinnati",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761861",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-14T23:30Z",
+      "home": "Inter Miami CF",
+      "away": "New York City FC",
+      "homeTerms": [
+        "Inter Miami CF",
+        "Miami",
+        "Inter Miami CF"
+      ],
+      "awayTerms": [
+        "New York City FC",
+        "NYCFC",
+        "New York City FC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/20232.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/17606.png",
+      "homeScore": "2",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761861/new-york-city-fc-inter-miami-cf",
+      "uniquePairing": true
+    },
+    {
+      "id": "usa.1-761860",
+      "sport": "Soccer",
+      "league": "MLS",
+      "date": "2026-10-14T23:30Z",
+      "home": "Toronto FC",
+      "away": "Orlando City SC",
+      "homeTerms": [
+        "Toronto FC",
+        "Toronto",
+        "Toronto FC"
+      ],
+      "awayTerms": [
+        "Orlando City SC",
+        "Orlando",
+        "Orlando City SC"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/7318.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/12011.png",
+      "homeScore": "3",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761860/orlando-city-sc-toronto-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915414",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-14T19:00Z",
+      "home": "AS Roma",
+      "away": "Real Madrid",
+      "homeTerms": [
+        "AS Roma",
+        "AS Roma",
+        "AS Roma"
+      ],
+      "awayTerms": [
+        "Real Madrid",
+        "Real Madrid",
+        "Real Madrid"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/104.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/86.png",
+      "homeScore": "3",
+      "awayScore": "4",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915414/real-madrid-as-roma",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915409",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-14T19:00Z",
+      "home": "Aston Villa",
+      "away": "Fenerbahce",
+      "homeTerms": [
+        "Aston Villa",
+        "Aston Villa",
+        "Aston Villa"
+      ],
+      "awayTerms": [
+        "Fenerbahce",
+        "Fenerbahce",
+        "Fenerbahce"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/362.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/436.png",
+      "homeScore": "6",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915409/fenerbahce-aston-villa",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915393",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-14T19:00Z",
+      "home": "Bodo/Glimt",
+      "away": "Borussia Dortmund",
+      "homeTerms": [
+        "Bodo/Glimt",
+        "Bodo/Glimt",
+        "Bodo/Glimt"
+      ],
+      "awayTerms": [
+        "Borussia Dortmund",
+        "Dortmund",
+        "Borussia Dortmund"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/2980.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/124.png",
+      "homeScore": "1",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915393/borussia-dortmund-bodoglimt",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915407",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-14T19:00Z",
+      "home": "Manchester City",
+      "away": "Paris Saint-Germain",
+      "homeTerms": [
+        "Manchester City",
+        "Man City",
+        "Manchester City"
+      ],
+      "awayTerms": [
+        "Paris Saint-Germain",
+        "Paris Saint-Germain"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/382.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/160.png",
+      "homeScore": "2",
+      "awayScore": "4",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915407/paris-saint-germain-manchester-city",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915408",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-14T19:00Z",
+      "home": "Real Betis",
+      "away": "FC Porto",
+      "homeTerms": [
+        "Real Betis",
+        "Betis",
+        "Real Betis"
+      ],
+      "awayTerms": [
+        "FC Porto",
+        "FC Porto",
+        "FC Porto"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/244.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/437.png",
+      "homeScore": "3",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915408/fc-porto-real-betis",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915406",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-14T19:00Z",
+      "home": "Shakhtar Donetsk",
+      "away": "AEK Athens",
+      "homeTerms": [
+        "Shakhtar Donetsk",
+        "Shakhtar",
+        "Shakhtar Donetsk"
+      ],
+      "awayTerms": [
+        "AEK Athens",
+        "AEK Athens",
+        "AEK Athens"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/493.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/887.png",
+      "homeScore": "3",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915406/aek-athens-shakhtar-donetsk",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915405",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-14T19:00Z",
+      "home": "Slovan Bratislava",
+      "away": "VfB Stuttgart",
+      "homeTerms": [
+        "Slovan Bratislava",
+        "S Bratislava",
+        "Slovan Bratislava"
+      ],
+      "awayTerms": [
+        "VfB Stuttgart",
+        "Stuttgart",
+        "VfB Stuttgart"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/521.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/134.png",
+      "homeScore": "0",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915405/vfb-stuttgart-slovan-bratislava",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915416",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-14T16:45Z",
+      "home": "Feyenoord Rotterdam",
+      "away": "Como",
+      "homeTerms": [
+        "Feyenoord Rotterdam",
+        "Feyenoord",
+        "Feyenoord Rotterdam"
+      ],
+      "awayTerms": [
+        "Como",
+        "Como",
+        "Como"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/142.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/2572.png",
+      "homeScore": "3",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915416/como-feyenoord-rotterdam",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915415",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-14T16:45Z",
+      "home": "LASK Linz",
+      "away": "Liverpool",
+      "homeTerms": [
+        "LASK Linz",
+        "LASK Linz",
+        "LASK Linz"
+      ],
+      "awayTerms": [
+        "Liverpool",
+        "Liverpool",
+        "Liverpool"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/4411.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/364.png",
+      "homeScore": "3",
+      "awayScore": "6",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915415/liverpool-lask-linz",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898718",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-14T02:00Z",
+      "home": "Los Angeles Lakers",
+      "away": "Golden State Warriors",
+      "homeTerms": [
+        "Los Angeles Lakers",
+        "Lakers",
+        "Lakers"
+      ],
+      "awayTerms": [
+        "Golden State Warriors",
+        "Warriors",
+        "Warriors"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/lal.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/gs.png",
+      "homeScore": "89",
+      "awayScore": "101",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898718/warriors-lakers",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401901826",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-14T02:00Z",
+      "home": "Sacramento Kings",
+      "away": "Portland Trail Blazers",
+      "homeTerms": [
+        "Sacramento Kings",
+        "Kings",
+        "Kings"
+      ],
+      "awayTerms": [
+        "Portland Trail Blazers",
+        "Trail Blazers",
+        "Trail Blazers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/sac.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/por.png",
+      "homeScore": "98",
+      "awayScore": "110",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401901826/trail-blazers-kings",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401908621",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-14T00:00Z",
+      "home": "Oklahoma City Thunder",
+      "away": "Indiana Pacers",
+      "homeTerms": [
+        "Oklahoma City Thunder",
+        "Thunder",
+        "Thunder"
+      ],
+      "awayTerms": [
+        "Indiana Pacers",
+        "Pacers",
+        "Pacers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/okc.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/ind.png",
+      "homeScore": "114",
+      "awayScore": "112",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401908621/pacers-thunder",
+      "uniquePairing": true
+    },
+    {
+      "id": "mlb-401908024",
+      "sport": "Baseball",
+      "league": "MLB",
+      "date": "2026-10-14T00:00Z",
+      "home": "Tampa Bay Rays",
+      "away": "Cleveland Guardians",
+      "homeTerms": [
+        "Tampa Bay Rays",
+        "Rays",
+        "Rays"
+      ],
+      "awayTerms": [
+        "Cleveland Guardians",
+        "Guardians",
+        "Guardians"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/tb.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/cle.png",
+      "homeScore": "3",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/mlb/game/_/gameId/401908024/guardians-rays",
+      "uniquePairing": false
+    },
+    {
+      "id": "nba-401898403",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-13T23:00Z",
+      "home": "Orlando Magic",
+      "away": "Cleveland Cavaliers",
+      "homeTerms": [
+        "Orlando Magic",
+        "Magic",
+        "Magic"
+      ],
+      "awayTerms": [
+        "Cleveland Cavaliers",
+        "Cavaliers",
+        "Cavaliers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/orl.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/cle.png",
+      "homeScore": "132",
+      "awayScore": "116",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898403/cavaliers-magic",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401908944",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-13T23:00Z",
+      "home": "Toronto Raptors",
+      "away": "New York Knicks",
+      "homeTerms": [
+        "Toronto Raptors",
+        "Raptors",
+        "Raptors"
+      ],
+      "awayTerms": [
+        "New York Knicks",
+        "Knicks",
+        "Knicks"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/tor.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/ny.png",
+      "homeScore": "148",
+      "awayScore": "98",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401908944/knicks-raptors",
+      "uniquePairing": false
+    },
+    {
+      "id": "uefa.champions-401915417",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-13T19:00Z",
+      "home": "Arsenal",
+      "away": "Lille",
+      "homeTerms": [
+        "Arsenal",
+        "Arsenal",
+        "Arsenal"
+      ],
+      "awayTerms": [
+        "Lille",
+        "Lille",
+        "Lille"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/359.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/166.png",
+      "homeScore": "3",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915417/lille-arsenal",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915412",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-13T19:00Z",
+      "home": "Atlético Madrid",
+      "away": "Manchester United",
+      "homeTerms": [
+        "Atlético Madrid",
+        "Atlético",
+        "Atlético Madrid"
+      ],
+      "awayTerms": [
+        "Manchester United",
+        "Man United",
+        "Manchester United"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/1068.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/360.png",
+      "homeScore": "2",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915412/manchester-united-atletico-madrid",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915435",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-13T19:00Z",
+      "home": "Galatasaray",
+      "away": "Barcelona",
+      "homeTerms": [
+        "Galatasaray",
+        "Galatasaray",
+        "Galatasaray"
+      ],
+      "awayTerms": [
+        "Barcelona",
+        "Barcelona",
+        "Barcelona"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/432.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/83.png",
+      "homeScore": "1",
+      "awayScore": "4",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915435/barcelona-galatasaray",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915413",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-13T19:00Z",
+      "home": "Internazionale",
+      "away": "Club Brugge",
+      "homeTerms": [
+        "Internazionale",
+        "Inter Milan",
+        "Internazionale"
+      ],
+      "awayTerms": [
+        "Club Brugge",
+        "Club Brugge",
+        "Club Brugge"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/110.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/570.png",
+      "homeScore": "3",
+      "awayScore": "4",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915413/club-brugge-internazionale",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915434",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-13T19:00Z",
+      "home": "RB Leipzig",
+      "away": "PSV Eindhoven",
+      "homeTerms": [
+        "RB Leipzig",
+        "RB Leipzig",
+        "RB Leipzig"
+      ],
+      "awayTerms": [
+        "PSV Eindhoven",
+        "PSV Eindhoven"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/11420.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/148.png",
+      "homeScore": "1",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915434/psv-eindhoven-rb-leipzig",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915411",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-13T19:00Z",
+      "home": "Viking FK",
+      "away": "Bayern Munich",
+      "homeTerms": [
+        "Viking FK",
+        "Viking FK",
+        "Viking FK"
+      ],
+      "awayTerms": [
+        "Bayern Munich",
+        "Bayern",
+        "Bayern Munich"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/510.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/132.png",
+      "homeScore": "3",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915411/bayern-munich-viking-fk",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915410",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-13T19:00Z",
+      "home": "Villarreal",
+      "away": "Napoli",
+      "homeTerms": [
+        "Villarreal",
+        "Villarreal",
+        "Villarreal"
+      ],
+      "awayTerms": [
+        "Napoli",
+        "Napoli",
+        "Napoli"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/102.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/114.png",
+      "homeScore": "3",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915410/napoli-villarreal",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915418",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-13T16:45Z",
+      "home": "Lens",
+      "away": "Sporting CP",
+      "homeTerms": [
+        "Lens",
+        "Lens",
+        "Lens"
+      ],
+      "awayTerms": [
+        "Sporting CP",
+        "Sporting",
+        "Sporting CP"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/175.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/2250.png",
+      "homeScore": "0",
+      "awayScore": "2",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915418/sporting-cp-lens",
+      "uniquePairing": true
+    },
+    {
+      "id": "uefa.champions-401915436",
+      "sport": "Soccer",
+      "league": "Champions League",
+      "date": "2026-10-13T16:45Z",
+      "home": "Sabah FK",
+      "away": "Slavia Prague",
+      "homeTerms": [
+        "Sabah FK",
+        "Sabah",
+        "Sabah FK"
+      ],
+      "awayTerms": [
+        "Slavia Prague",
+        "Slavia Prague",
+        "Slavia Prague"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/21922.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/494.png",
+      "homeScore": "2",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401915436/slavia-prague-sabah-fk",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898721",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-13T01:00Z",
+      "home": "Utah Jazz",
+      "away": "San Antonio Spurs",
+      "homeTerms": [
+        "Utah Jazz",
+        "Jazz",
+        "Jazz"
+      ],
+      "awayTerms": [
+        "San Antonio Spurs",
+        "Spurs",
+        "Spurs"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/utah.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/sa.png",
+      "homeScore": "119",
+      "awayScore": "109",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898721/spurs-jazz",
+      "uniquePairing": true
+    },
+    {
+      "id": "nfl-401872994",
+      "sport": "Football",
+      "league": "NFL",
+      "date": "2026-10-13T00:15Z",
+      "home": "Los Angeles Rams",
+      "away": "Buffalo Bills",
+      "homeTerms": [
+        "Los Angeles Rams",
+        "Rams",
+        "Rams"
+      ],
+      "awayTerms": [
+        "Buffalo Bills",
+        "Bills",
+        "Bills"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/lar.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/buf.png",
+      "homeScore": "34",
+      "awayScore": "37",
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401872994/bills-rams",
+      "uniquePairing": true
+    },
+    {
+      "id": "mlb-401908023",
+      "sport": "Baseball",
+      "league": "MLB",
+      "date": "2026-10-13T00:00Z",
+      "home": "Tampa Bay Rays",
+      "away": "Cleveland Guardians",
+      "homeTerms": [
+        "Tampa Bay Rays",
+        "Rays",
+        "Rays"
+      ],
+      "awayTerms": [
+        "Cleveland Guardians",
+        "Guardians",
+        "Guardians"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/tb.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/cle.png",
+      "homeScore": "3",
+      "awayScore": "7",
+      "sourceUrl": "https://www.espn.com/mlb/game/_/gameId/401908023/guardians-rays",
+      "uniquePairing": false
+    },
+    {
+      "id": "nba-401914124",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-12T23:30Z",
+      "home": "New York Knicks",
+      "away": "Minnesota Timberwolves",
+      "homeTerms": [
+        "New York Knicks",
+        "Knicks",
+        "Knicks"
+      ],
+      "awayTerms": [
+        "Minnesota Timberwolves",
+        "Timberwolves",
+        "Timberwolves"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/ny.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/min.png",
+      "homeScore": "104",
+      "awayScore": "122",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401914124/timberwolves-knicks",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401898402",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-12T23:00Z",
+      "home": "Atlanta Hawks",
+      "away": "Oklahoma City Thunder",
+      "homeTerms": [
+        "Atlanta Hawks",
+        "Hawks",
+        "Hawks"
+      ],
+      "awayTerms": [
+        "Oklahoma City Thunder",
+        "Thunder",
+        "Thunder"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/atl.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/okc.png",
+      "homeScore": "113",
+      "awayScore": "110",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401898402/thunder-hawks",
+      "uniquePairing": true
+    },
+    {
+      "id": "nba-401901824",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-12T23:00Z",
+      "home": "Washington Wizards",
+      "away": "Brooklyn Nets",
+      "homeTerms": [
+        "Washington Wizards",
+        "Wizards",
+        "Wizards"
+      ],
+      "awayTerms": [
+        "Brooklyn Nets",
+        "Nets",
+        "Nets"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/wsh.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/bkn.png",
+      "homeScore": "122",
+      "awayScore": "131",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401901824/nets-wizards",
+      "uniquePairing": true
+    },
+    {
+      "id": "mlb-401908031",
+      "sport": "Baseball",
+      "league": "MLB",
+      "date": "2026-10-12T21:00Z",
+      "home": "Milwaukee Brewers",
+      "away": "Los Angeles Dodgers",
+      "homeTerms": [
+        "Milwaukee Brewers",
+        "Brewers",
+        "Brewers"
+      ],
+      "awayTerms": [
+        "Los Angeles Dodgers",
+        "Dodgers",
+        "Dodgers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/mil.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/lad.png",
+      "homeScore": "7",
+      "awayScore": "4",
+      "sourceUrl": "https://www.espn.com/mlb/game/_/gameId/401908031/dodgers-brewers",
+      "uniquePairing": false
+    },
+    {
+      "id": "nba-401914130",
+      "sport": "Basketball",
+      "league": "NBA",
+      "date": "2026-10-12T20:00Z",
+      "home": "Portland Trail Blazers",
+      "away": "London Lions",
+      "homeTerms": [
+        "Portland Trail Blazers",
+        "Trail Blazers",
+        "Trail Blazers"
+      ],
+      "awayTerms": [
+        "London Lions",
+        "Lions",
+        "Lions"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/por.png",
+      "awayLogo": "",
+      "homeScore": "119",
+      "awayScore": "66",
+      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401914130/lions-trail-blazers",
+      "uniquePairing": true
+    },
+    {
+      "id": "eng.1-401879267",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-12T19:00Z",
+      "home": "Coventry City",
+      "away": "Newcastle United",
+      "homeTerms": [
+        "Coventry City",
+        "Coventry",
+        "Coventry City"
+      ],
+      "awayTerms": [
+        "Newcastle United",
+        "Newcastle",
+        "Newcastle United"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/388.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/361.png",
+      "homeScore": "4",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401879267/newcastle-united-coventry-city",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882852",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-12T19:00Z",
+      "home": "Levante",
+      "away": "Sevilla",
+      "homeTerms": [
+        "Levante",
+        "Levante",
+        "Levante"
+      ],
+      "awayTerms": [
+        "Sevilla",
+        "Sevilla",
+        "Sevilla"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/1538.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/243.png",
+      "homeScore": "3",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882852/sevilla-levante",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874763",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-12T18:45Z",
+      "home": "Torino",
+      "away": "Udinese",
+      "homeTerms": [
+        "Torino",
+        "Torino",
+        "Torino"
+      ],
+      "awayTerms": [
+        "Udinese",
+        "Udinese",
+        "Udinese"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/239.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/118.png",
+      "homeScore": "2",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874763/udinese-torino",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401875005",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-12T16:30Z",
+      "home": "Atalanta",
+      "away": "Venezia",
+      "homeTerms": [
+        "Atalanta",
+        "Atalanta",
+        "Atalanta"
+      ],
+      "awayTerms": [
+        "Venezia",
+        "Venezia",
+        "Venezia"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/105.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/17530.png",
+      "homeScore": "3",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401875005/venezia-atalanta",
+      "uniquePairing": true
+    }
+  ]
+}

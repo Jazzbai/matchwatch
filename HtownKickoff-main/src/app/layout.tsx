@@ -4,7 +4,7 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import { AuthProvider } from "../lib/auth-context";
-import { DataProvider } from "../lib/data-provider";
+import RouteDataProvider from "../components/RouteDataProvider";
 import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({
@@ -84,7 +84,7 @@ export default function RootLayout({
     >
       <body suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false} disableTransitionOnChange>
-          <AuthProvider><DataProvider>{children}</DataProvider></AuthProvider>
+          <AuthProvider><RouteDataProvider>{children}</RouteDataProvider></AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -399,7 +399,7 @@ export default function HomePage() {
                   </div>
                   <div className="hp-spot-name">{spotlightVenue.name}</div>
                   <div className="hp-spot-meta">
-                    {(venueEventsByVenue.get(spotlightVenue.id)?.[0]?.title || spotlightVenue.fanTeams?.[0]?.teamName || spotlightVenue.shortDescription || "Live sports watch parties")}
+                    {(venueEventsByVenue.get(spotlightVenue.id)?.[0]?.specialNotes || spotlightVenue.fanTeams?.[0]?.teamName || spotlightVenue.shortDescription || "Live sports watch parties")}
                   </div>
                   <div className="hp-spot-actions">
                     <strong>{spotlightVenue.rating ? `Star ${spotlightVenue.rating.toFixed(1)}` : "Rated venue"}</strong>
