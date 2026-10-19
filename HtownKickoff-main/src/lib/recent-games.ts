@@ -4,7 +4,7 @@ const competitions: Record<YoutubeSport, Array<[string, string, string]>> = {
   Soccer: [['soccer', 'eng.1', 'Premier League'], ['soccer', 'esp.1', 'La Liga'], ['soccer', 'ger.1', 'Bundesliga'], ['soccer', 'ita.1', 'Serie A'], ['soccer', 'fra.1', 'Ligue 1'], ['soccer', 'usa.1', 'MLS'], ['soccer', 'mex.1', 'Liga MX'], ['soccer', 'uefa.champions', 'Champions League']],
   Basketball: [['basketball', 'nba', 'NBA'], ['basketball', 'wnba', 'WNBA']],
   Baseball: [['baseball', 'mlb', 'MLB']],
-  Football: [['football', 'nfl', 'NFL']],
+  Football: [['football', 'nfl', 'NFL'], ['football', 'college-football', 'College Football']],
 };
 type Scoreboard = { events?: Array<{ id: string; date: string; links?: Array<{ href: string }>; status?: { type?: { completed?: boolean } }; competitions?: Array<{ status?: { type?: { completed?: boolean } }; competitors?: Array<{ homeAway: string; score?: string; team?: { displayName?: string; shortDisplayName?: string; name?: string; logo?: string } }> }> }> };
 type Feed = { games: RecentGame[]; from: string; to: string; coverage: string[]; failedRequests: number };

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "audience": "US",
-  "checkedAt": "2026-10-19T05:33:29.620Z",
-  "from": "2026-10-12T05:33:21.556Z",
-  "to": "2026-10-19T05:33:21.556Z",
+  "checkedAt": "2026-10-19T22:30:37.547Z",
+  "from": "2026-10-12T22:30:28.370Z",
+  "to": "2026-10-19T22:30:28.370Z",
   "coverage": [
     "NBA",
     "WNBA",
@@ -16,1548 +16,106 @@
     "Liga MX",
     "Champions League",
     "MLB",
-    "NFL"
-  ],
-  "totalGames": 159,
-  "entries": [
-    {
-      "gameId": "usa.1-761889",
-      "gameDate": "2026-10-18T21:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "3wNdo48AByg",
-        "title": "FC Cincinnati vs. Columbus Crew | Full Match Highlights | Hell is Real DESPERATION DERBY!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/3wNdo48AByg/hqdefault.jpg",
-        "publishedAt": "2026-10-18T23:26:45Z"
-      }
-    },
-    {
-      "gameId": "nfl-401873007",
-      "gameDate": "2026-10-19T00:20Z",
-      "kind": "recaps",
-      "video": {
-        "id": "5xB0vJWbJG4",
-        "title": "Dallas Cowboys vs Green Bay Packers Game Highlights | 2026 NFL Season Week 6",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/5xB0vJWbJG4/hqdefault.jpg",
-        "publishedAt": "2026-10-19T04:04:04Z"
-      }
-    },
-    {
-      "gameId": "nfl-401873006",
-      "gameDate": "2026-10-18T20:25Z",
-      "kind": "recaps",
-      "video": {
-        "id": "B5OVcasfeTU",
-        "title": "Los Angeles Chargers vs Kansas City Chiefs Game Highlights | 2026 NFL Season Week 6",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/B5OVcasfeTU/hqdefault.jpg",
-        "publishedAt": "2026-10-18T23:48:28Z"
-      }
-    },
-    {
-      "gameId": "esp.1-401882839",
-      "gameDate": "2026-10-18T19:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "wOPfaS4mjSk",
-        "title": "Real Madrid vs. Sevilla | LALIGA Highlights | ESPN FC",
-        "channel": "ESPN FC",
-        "thumbnail": "https://i.ytimg.com/vi/wOPfaS4mjSk/hqdefault.jpg",
-        "publishedAt": "2026-10-18T21:21:00Z"
-      }
-    },
-    {
-      "gameId": "ita.1-401874765",
-      "gameDate": "2026-10-18T18:45Z",
-      "kind": "recaps",
-      "video": {
-        "id": "l-HjruOX_hk",
-        "title": "Bianconeri Stunned On Home Soil | JUVENTUS-LAZIO | HIGHLIGHTS | Serie A 2026/27",
-        "channel": "Serie A",
-        "thumbnail": "https://i.ytimg.com/vi/l-HjruOX_hk/hqdefault.jpg",
-        "publishedAt": "2026-10-18T21:26:26Z"
-      }
-    },
-    {
-      "gameId": "nfl-401873005",
-      "gameDate": "2026-10-18T20:25Z",
-      "kind": "recaps",
-      "video": {
-        "id": "JCwv4Mrkdd8",
-        "title": "Buffalo Bills vs. Las Vegas Raiders Game Highlights | NFL 2026 Season Week 6",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/JCwv4Mrkdd8/hqdefault.jpg",
-        "publishedAt": "2026-10-18T23:57:16Z"
-      }
-    },
-    {
-      "gameId": "nfl-401873004",
-      "gameDate": "2026-10-18T20:05Z",
-      "kind": "recaps",
-      "video": {
-        "id": "kXX4xq2el10",
-        "title": "Arizona Cardinals vs. Los Angeles Rams Game Highlights | NFL 2026 Season Week 6",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/kXX4xq2el10/hqdefault.jpg",
-        "publishedAt": "2026-10-18T23:11:28Z"
-      }
-    },
-    {
-      "gameId": "mlb-401930515",
-      "gameDate": "2026-10-18T21:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "A3x9CAYUapM",
-        "title": "RAYS vs. GUARDIANS: ALCS Full Game Highlights (October 18) | 2026 MLB Postseason",
-        "channel": "MLB",
-        "thumbnail": "https://i.ytimg.com/vi/A3x9CAYUapM/hqdefault.jpg",
-        "publishedAt": "2026-10-19T00:41:59Z"
-      }
-    },
-    {
-      "gameId": "fra.1-401876434",
-      "gameDate": "2026-10-18T18:45Z",
-      "kind": "recaps",
-      "video": {
-        "id": "o0CHjL5VlxM",
-        "title": "Lyon vs Nice | EXTENDED HIGHLIGHTS Ligue 1 | 10/19/2026 | beIN SPORTS USA",
-        "channel": "beIN SPORTS USA",
-        "thumbnail": "https://i.ytimg.com/vi/o0CHjL5VlxM/hqdefault.jpg",
-        "publishedAt": "2026-10-18T21:51:44Z"
-      }
-    },
-    {
-      "gameId": "nfl-401872999",
-      "gameDate": "2026-10-18T17:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "mM3TtQBh3WU",
-        "title": "Bears vs. Falcons Week 6 Recap | NFL Daily",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/mM3TtQBh3WU/hqdefault.jpg",
-        "publishedAt": "2026-10-19T04:56:40Z"
-      }
-    },
-    {
-      "gameId": "nfl-401873003",
-      "gameDate": "2026-10-18T17:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "MJZhpnKoY7E",
-        "title": "Tennessee Titans vs Indianapolis Colts Game Highlights | 2026 NFL Season Week 6",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/MJZhpnKoY7E/hqdefault.jpg",
-        "publishedAt": "2026-10-18T20:37:34Z"
-      }
-    },
-    {
-      "gameId": "nfl-401872997",
-      "gameDate": "2026-10-18T17:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "agBZnbbPCq0",
-        "title": "Baltimore Ravens vs. Cleveland Browns Game Highlights | 2026 NFL Season Week 6",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/agBZnbbPCq0/hqdefault.jpg",
-        "publishedAt": "2026-10-18T20:09:05Z"
-      }
-    },
-    {
-      "gameId": "nfl-401873000",
-      "gameDate": "2026-10-18T17:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "a1M5YngTbus",
-        "title": "New Orleans Saints vs. New York Giants Game Highlights | NFL 2026 Season Week 6",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/a1M5YngTbus/hqdefault.jpg",
-        "publishedAt": "2026-10-18T21:01:48Z"
-      }
-    },
-    {
-      "gameId": "nfl-401873001",
-      "gameDate": "2026-10-18T17:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "CDcGaEkMy6s",
-        "title": "New York Jets vs New England Patriots Game Highlights | 2026 NFL Season Week 6",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/CDcGaEkMy6s/hqdefault.jpg",
-        "publishedAt": "2026-10-18T20:32:47Z"
-      }
-    },
-    {
-      "gameId": "nfl-401872998",
-      "gameDate": "2026-10-18T17:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "y60LUXkkNt4",
-        "title": "Panthers vs. Eagles Week 6 Recap | NFL Daily",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/y60LUXkkNt4/hqdefault.jpg",
-        "publishedAt": "2026-10-19T05:07:54Z"
-      }
-    },
-    {
-      "gameId": "nfl-401873002",
-      "gameDate": "2026-10-18T17:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "vf4ksuXiQ1M",
-        "title": "Pittsburgh Steelers vs. Tampa Bay Buccaneers Game Highlights | 2026 NFL Season Week 6",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/vf4ksuXiQ1M/hqdefault.jpg",
-        "publishedAt": "2026-10-18T21:00:06Z"
-      }
-    },
-    {
-      "gameId": "esp.1-401882841",
-      "gameDate": "2026-10-18T16:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "ZWJo0GQfhx8",
-        "title": "Malaga vs. Real Sociedad | LALIGA Highlights | ESPN FC",
-        "channel": "ESPN FC",
-        "thumbnail": "https://i.ytimg.com/vi/ZWJo0GQfhx8/hqdefault.jpg",
-        "publishedAt": "2026-10-18T18:44:30Z"
-      }
-    },
-    {
-      "gameId": "eng.1-401878769",
-      "gameDate": "2026-10-18T15:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "tOg0zFIes84",
-        "title": "Nottingham Forest v. Arsenal | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
-        "channel": "NBC Sports",
-        "thumbnail": "https://i.ytimg.com/vi/tOg0zFIes84/hqdefault.jpg",
-        "publishedAt": "2026-10-18T18:07:22Z"
-      }
-    },
-    {
-      "gameId": "ita.1-401874978",
-      "gameDate": "2026-10-18T16:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "_EZ2z-7BA9Y",
-        "title": "Rossoneri Claim Five-Goal Thriller | MILAN-ATALANTA | HIGHLIGHTS | Serie A 2026/27",
-        "channel": "Serie A",
-        "thumbnail": "https://i.ytimg.com/vi/_EZ2z-7BA9Y/hqdefault.jpg",
-        "publishedAt": "2026-10-18T18:51:35Z"
-      }
-    },
-    {
-      "gameId": "ger.1-401884768",
-      "gameDate": "2026-10-18T15:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "VZWkQH7EmgA",
-        "title": "Hoffenheim Edge Past Gladbach! | BORUSSIA M'GLADBACH - HOFFENHEIM | Highlights | MD 6 – Bundesliga",
-        "channel": "Bundesliga",
-        "thumbnail": "https://i.ytimg.com/vi/VZWkQH7EmgA/hqdefault.jpg",
-        "publishedAt": "2026-10-18T17:34:35Z"
-      }
-    },
-    {
-      "gameId": "fra.1-401876435",
-      "gameDate": "2026-10-18T15:15Z",
-      "kind": "recaps",
-      "video": {
-        "id": "JcNN13P3I4Y",
-        "title": "Lorient vs AS Monaco | HIGHLIGHTS Ligue 1 | 10/18/2026 | beIN SPORTS USA",
-        "channel": "beIN SPORTS USA",
-        "thumbnail": "https://i.ytimg.com/vi/JcNN13P3I4Y/hqdefault.jpg",
-        "publishedAt": "2026-10-18T18:34:43Z"
-      }
-    },
-    {
-      "gameId": "fra.1-401876433",
-      "gameDate": "2026-10-18T15:15Z",
-      "kind": "recaps",
-      "video": {
-        "id": "P1CotwGrD0w",
-        "title": "Paris FC vs Stade Rennes | HIGHLIGHTS Ligue 1 | 10/18/2026 | beIN SPORTS USA",
-        "channel": "beIN SPORTS USA",
-        "thumbnail": "https://i.ytimg.com/vi/P1CotwGrD0w/hqdefault.jpg",
-        "publishedAt": "2026-10-18T19:17:10Z"
-      }
-    },
-    {
-      "gameId": "nfl-401872996",
-      "gameDate": "2026-10-18T13:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "JIO56Ib7zSA",
-        "title": "Texans vs. Jaguars Week 6 Recap | NFL Daily",
-        "channel": "NFL",
-        "thumbnail": "https://i.ytimg.com/vi/JIO56Ib7zSA/hqdefault.jpg",
-        "publishedAt": "2026-10-19T05:16:35Z"
-      }
-    },
-    {
-      "gameId": "ger.1-401884771",
-      "gameDate": "2026-10-18T13:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "h0rpQpv_J6U",
-        "title": "SCHICK Making HISTORY! | BAYER 04 LEVERKUSEN - SC FREIBURG | Highlights | MD 6 – Bundesliga 2026/27",
-        "channel": "Bundesliga",
-        "thumbnail": "https://i.ytimg.com/vi/h0rpQpv_J6U/hqdefault.jpg",
-        "publishedAt": "2026-10-18T22:00:01Z"
-      }
-    },
-    {
-      "gameId": "eng.1-401879263",
-      "gameDate": "2026-10-18T13:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "2vn7-LwP2yc",
-        "title": "Bournemouth v. Sunderland | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
-        "channel": "NBC Sports",
-        "thumbnail": "https://i.ytimg.com/vi/2vn7-LwP2yc/hqdefault.jpg",
-        "publishedAt": "2026-10-18T16:33:10Z"
-      }
-    },
-    {
-      "gameId": "eng.1-401879261",
-      "gameDate": "2026-10-18T13:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "7xiDxjNX7Cw",
-        "title": "Brighton v. Crystal Palace | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
-        "channel": "NBC Sports",
-        "thumbnail": "https://i.ytimg.com/vi/7xiDxjNX7Cw/hqdefault.jpg",
-        "publishedAt": "2026-10-18T15:43:27Z"
-      }
-    },
-    {
-      "gameId": "eng.1-401879260",
-      "gameDate": "2026-10-18T13:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "TksUXmxf2AU",
-        "title": "Leeds United v. Manchester United | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
-        "channel": "NBC Sports",
-        "thumbnail": "https://i.ytimg.com/vi/TksUXmxf2AU/hqdefault.jpg",
-        "publishedAt": "2026-10-18T15:48:40Z"
-      }
-    },
-    {
-      "gameId": "ita.1-401874774",
-      "gameDate": "2026-10-18T13:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "FMZ7CptAQuc",
-        "title": "Liberali Scores First With Como | FIORENTINA-COMO | HIGHLIGHTS | Serie A 2026/27",
-        "channel": "Serie A",
-        "thumbnail": "https://i.ytimg.com/vi/FMZ7CptAQuc/hqdefault.jpg",
-        "publishedAt": "2026-10-18T16:22:09Z"
-      }
-    },
-    {
-      "gameId": "fra.1-401876439",
-      "gameDate": "2026-10-18T13:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "N4aIiVsOXxI",
-        "title": "Angers vs Marseille | HIGHLIGHTS Ligue 1 | 10/18/2026 | beIN SPORTS USA",
-        "channel": "beIN SPORTS USA",
-        "thumbnail": "https://i.ytimg.com/vi/N4aIiVsOXxI/hqdefault.jpg",
-        "publishedAt": "2026-10-18T16:48:59Z"
-      }
-    },
-    {
-      "gameId": "ita.1-401874771",
-      "gameDate": "2026-10-18T10:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "g4xQSEBW6E0",
-        "title": "Standout Performance Earns Lecce Three Points | UDINESE-LECCE | HIGHLIGHTS | Serie A 2026/27",
-        "channel": "Serie A",
-        "thumbnail": "https://i.ytimg.com/vi/g4xQSEBW6E0/hqdefault.jpg",
-        "publishedAt": "2026-10-18T13:12:13Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761888",
-      "gameDate": "2026-10-18T02:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "b4Z7iVqu-3o",
-        "title": "Portland Timbers vs. Colorado Rapids | Full Match Highlights | PENALTY VAR DRAMA!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/b4Z7iVqu-3o/hqdefault.jpg",
-        "publishedAt": "2026-10-18T04:57:25Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761887",
-      "gameDate": "2026-10-18T02:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "wIQ9JtRBApE",
-        "title": "LA Galaxy vs. San Diego FC | Full Match Highlights | WILD 4-GOAL FIRST-HALF in SOCAL RIVALRY!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/wIQ9JtRBApE/hqdefault.jpg",
-        "publishedAt": "2026-10-18T05:01:26Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761886",
-      "gameDate": "2026-10-18T02:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "U9C9CRTQUvM",
-        "title": "San Jose Earthquakes vs. Nashville SC | Full Match Highlights | SUPPORTERS' SHIELD UP FOR GRABS!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/U9C9CRTQUvM/hqdefault.jpg",
-        "publishedAt": "2026-10-18T04:54:19Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761885",
-      "gameDate": "2026-10-18T02:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "xBiJyVWHffI",
-        "title": "Seattle Sounders FC vs. CF Montréal | Full Match Highlights",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/xBiJyVWHffI/hqdefault.jpg",
-        "publishedAt": "2026-10-18T04:56:09Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761882",
-      "gameDate": "2026-10-18T00:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "4f_KWJOS3O4",
-        "title": "Austin FC vs. Vancouver Whitecaps FC | Full Match Highlights | Diaby GOLAZO!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/4f_KWJOS3O4/hqdefault.jpg",
-        "publishedAt": "2026-10-18T02:56:09Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761883",
-      "gameDate": "2026-10-18T00:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "dtQX86q9cOk",
-        "title": "Houston Dynamo FC vs. FC Dallas | Full Match Highlights | Texas Derby Drama!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/dtQX86q9cOk/hqdefault.jpg",
-        "publishedAt": "2026-10-18T03:19:12Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761884",
-      "gameDate": "2026-10-18T00:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "DCEisH-pPSM",
-        "title": "Sporting Kansas City vs. Real Salt Lake | Full Match Highlights | Josuha Guilavogui Brace!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/DCEisH-pPSM/hqdefault.jpg",
-        "publishedAt": "2026-10-18T02:50:58Z"
-      }
-    },
-    {
-      "gameId": "mlb-401908027",
-      "gameDate": "2026-10-18T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "A3x9CAYUapM",
-        "title": "RAYS vs. GUARDIANS: ALCS Full Game Highlights (October 18) | 2026 MLB Postseason",
-        "channel": "MLB",
-        "thumbnail": "https://i.ytimg.com/vi/A3x9CAYUapM/hqdefault.jpg",
-        "publishedAt": "2026-10-19T00:41:59Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761880",
-      "gameDate": "2026-10-17T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "AWBTVCYHT3Q",
-        "title": "Atlanta United vs. Inter Miami CF | Full Match Highlights | Messi Scores Twice!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/AWBTVCYHT3Q/hqdefault.jpg",
-        "publishedAt": "2026-10-18T02:11:08Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761879",
-      "gameDate": "2026-10-17T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "rhCu8Ofmq_c",
-        "title": "New England Revolution vs. Chicago Fire FC | Full Match Highlights | TOP-4 in the EAST BATTLE!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/rhCu8Ofmq_c/hqdefault.jpg",
-        "publishedAt": "2026-10-18T01:46:46Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761881",
-      "gameDate": "2026-10-17T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "soCPavW95po",
-        "title": "Orlando City vs. D.C. United | Full Match Highlights | Griezmann Brace!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/soCPavW95po/hqdefault.jpg",
-        "publishedAt": "2026-10-18T01:51:19Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761877",
-      "gameDate": "2026-10-17T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "0a8FiFwPzpA",
-        "title": "New York City FC vs. LAFC | Full Match Highlights | FREE-KICK BANGER!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/0a8FiFwPzpA/hqdefault.jpg",
-        "publishedAt": "2026-10-18T01:53:44Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761878",
-      "gameDate": "2026-10-17T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "17OUYQiyvrc",
-        "title": "Red Bull New York vs. Toronto FC | Full Match Highlights",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/17OUYQiyvrc/hqdefault.jpg",
-        "publishedAt": "2026-10-18T01:59:38Z"
-      }
-    },
-    {
-      "gameId": "esp.1-401882838",
-      "gameDate": "2026-10-17T19:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "gf1WArKmQc4",
-        "title": "Valencia vs. Athletic Club | LALIGA Highlights | ESPN FC",
-        "channel": "ESPN FC",
-        "thumbnail": "https://i.ytimg.com/vi/gf1WArKmQc4/hqdefault.jpg",
-        "publishedAt": "2026-10-17T21:39:33Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761876",
-      "gameDate": "2026-10-17T20:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "dd-9C99o9WI",
-        "title": "Minnesota United vs. St. Louis CITY SC | Full Match Highlights | 3-Goal Comeback Win!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/dd-9C99o9WI/hqdefault.jpg",
-        "publishedAt": "2026-10-17T22:53:50Z"
-      }
-    },
-    {
-      "gameId": "fra.1-401876436",
-      "gameDate": "2026-10-17T18:45Z",
-      "kind": "recaps",
-      "video": {
-        "id": "SlCbDukwNRw",
-        "title": "Lille vs Stade Brest | HIGHLIGHTS Ligue 1 | 10/17/2026 | beIN SPORTS USA",
-        "channel": "beIN SPORTS USA",
-        "thumbnail": "https://i.ytimg.com/vi/SlCbDukwNRw/hqdefault.jpg",
-        "publishedAt": "2026-10-17T21:41:23Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761875",
-      "gameDate": "2026-10-17T18:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "LW8XBALYV8E",
-        "title": "Philadelphia Union vs. Charlotte FC | Full Match Highlights | 4-Goal Battle!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/LW8XBALYV8E/hqdefault.jpg",
-        "publishedAt": "2026-10-17T21:48:36Z"
-      }
-    },
-    {
-      "gameId": "fra.1-401876431",
-      "gameDate": "2026-10-17T18:45Z",
-      "kind": "recaps",
-      "video": {
-        "id": "cBvHuyXjd7M",
-        "title": "Troyes vs Lens | HIGHLIGHTS Ligue 1 | 10/17/2026 | beIN SPORTS USA",
-        "channel": "beIN SPORTS USA",
-        "thumbnail": "https://i.ytimg.com/vi/cBvHuyXjd7M/hqdefault.jpg",
-        "publishedAt": "2026-10-17T21:13:48Z"
-      }
-    },
-    {
-      "gameId": "wnba-401918305",
-      "gameDate": "2026-10-17T19:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "CTJGJH9hPVU",
-        "title": "Atlanta Dream vs. Golden State Valkyries | FULL GAME HIGHLIGHTS | October 17, 2026",
-        "channel": "WNBA",
-        "thumbnail": "https://i.ytimg.com/vi/CTJGJH9hPVU/hqdefault.jpg",
-        "publishedAt": "2026-10-18T00:29:05Z"
-      }
-    },
-    {
-      "gameId": "esp.1-401882846",
-      "gameDate": "2026-10-17T16:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "b9T_zHMAnKo",
-        "title": "Real Betis vs. Barcelona | LALIGA Highlights | ESPN FC",
-        "channel": "ESPN FC",
-        "thumbnail": "https://i.ytimg.com/vi/b9T_zHMAnKo/hqdefault.jpg",
-        "publishedAt": "2026-10-17T20:31:38Z"
-      }
-    },
-    {
-      "gameId": "eng.1-401879258",
-      "gameDate": "2026-10-17T16:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "WKz2XqemdLI",
-        "title": "Newcastle United v. Aston Villa | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
-        "channel": "NBC Sports",
-        "thumbnail": "https://i.ytimg.com/vi/WKz2XqemdLI/hqdefault.jpg",
-        "publishedAt": "2026-10-17T18:59:55Z"
-      }
-    },
-    {
-      "gameId": "ger.1-401884772",
-      "gameDate": "2026-10-17T16:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "KRp3Z2Dd9ZA",
-        "title": "Luis Díaz With A Hattrick! | FC BAYERN - RB LEIPZIG | Highlights | Matchday 6 – Bundesliga 2026/27",
-        "channel": "Bundesliga",
-        "thumbnail": "https://i.ytimg.com/vi/KRp3Z2Dd9ZA/hqdefault.jpg",
-        "publishedAt": "2026-10-18T22:00:25Z"
-      }
-    },
-    {
-      "gameId": "fra.1-401876432",
-      "gameDate": "2026-10-17T15:15Z",
-      "kind": "recaps",
-      "video": {
-        "id": "3YtHtnWkfcY",
-        "title": "RC Strasbourg vs Paris Saint-Germain | EXTENDED HIGHLIGHTS Ligue 1 | 10/17/2026 | beIN SPORTS USA",
-        "channel": "beIN SPORTS USA",
-        "thumbnail": "https://i.ytimg.com/vi/3YtHtnWkfcY/hqdefault.jpg",
-        "publishedAt": "2026-10-17T17:52:25Z"
-      }
-    },
-    {
-      "gameId": "eng.1-401879262",
-      "gameDate": "2026-10-17T14:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "yivzQLxZgPI",
-        "title": "Brentford v. Liverpool | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
-        "channel": "NBC Sports",
-        "thumbnail": "https://i.ytimg.com/vi/yivzQLxZgPI/hqdefault.jpg",
-        "publishedAt": "2026-10-17T18:04:17Z"
-      }
-    },
-    {
-      "gameId": "eng.1-401878770",
-      "gameDate": "2026-10-17T14:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "Wv2e6iihj0o",
-        "title": "Fulham v. Hull City | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
-        "channel": "NBC Sports",
-        "thumbnail": "https://i.ytimg.com/vi/Wv2e6iihj0o/hqdefault.jpg",
-        "publishedAt": "2026-10-17T17:29:46Z"
-      }
-    },
-    {
-      "gameId": "eng.1-401879259",
-      "gameDate": "2026-10-17T14:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "czf2arTi4u4",
-        "title": "Manchester City v. Ipswich Town | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
-        "channel": "NBC Sports",
-        "thumbnail": "https://i.ytimg.com/vi/czf2arTi4u4/hqdefault.jpg",
-        "publishedAt": "2026-10-17T17:03:26Z"
-      }
-    },
-    {
-      "gameId": "ger.1-401884769",
-      "gameDate": "2026-10-17T13:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "GdZlemofc6w",
-        "title": "Hard-fought Point At Home! | UNION BERLIN - BORUSSIA DORTMUND | Highlights | Matchday 6 – Bundesliga",
-        "channel": "Bundesliga",
-        "thumbnail": "https://i.ytimg.com/vi/GdZlemofc6w/hqdefault.jpg",
-        "publishedAt": "2026-10-18T22:00:36Z"
-      }
-    },
-    {
-      "gameId": "ger.1-401884765",
-      "gameDate": "2026-10-17T13:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "b-N55HGj9Uk",
-        "title": "Another Away Win For Mainz! | SCHALKE 04 - MAINZ 05 | Highlights | Matchday 6 – Bundesliga 2026/27",
-        "channel": "Bundesliga",
-        "thumbnail": "https://i.ytimg.com/vi/b-N55HGj9Uk/hqdefault.jpg",
-        "publishedAt": "2026-10-18T22:00:00Z"
-      }
-    },
-    {
-      "gameId": "ger.1-401884764",
-      "gameDate": "2026-10-17T13:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "ZLodZlpthrg",
-        "title": "FOUR Penalties In One Game! | SV ELVERSBERG - FC AUGSBURG | Highlights | Matchday 6 – Bundesliga",
-        "channel": "Bundesliga",
-        "thumbnail": "https://i.ytimg.com/vi/ZLodZlpthrg/hqdefault.jpg",
-        "publishedAt": "2026-10-18T22:00:33Z"
-      }
-    },
-    {
-      "gameId": "ger.1-401884766",
-      "gameDate": "2026-10-17T13:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "h82jd-71LEU",
-        "title": "Füllkrug Brace Saves Point! | WERDER BREMEN - SC PADERBORN | Highlights | Matchday 6 – Bundesliga",
-        "channel": "Bundesliga",
-        "thumbnail": "https://i.ytimg.com/vi/h82jd-71LEU/hqdefault.jpg",
-        "publishedAt": "2026-10-18T22:00:28Z"
-      }
-    },
-    {
-      "gameId": "esp.1-401882843",
-      "gameDate": "2026-10-17T12:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "lMojazr0PPI",
-        "title": "Espanyol vs. Atletico Madrid | LALIGA Highlights | ESPN FC",
-        "channel": "ESPN FC",
-        "thumbnail": "https://i.ytimg.com/vi/lMojazr0PPI/hqdefault.jpg",
-        "publishedAt": "2026-10-17T14:26:32Z"
-      }
-    },
-    {
-      "gameId": "ita.1-401874760",
-      "gameDate": "2026-10-17T13:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "exh7dd4aydI",
-        "title": "Adams Delivers HUGE Upset! | VENEZIA-NAPOLI | HIGHLIGHTS | Serie A 2026/27",
-        "channel": "Serie A",
-        "thumbnail": "https://i.ytimg.com/vi/exh7dd4aydI/hqdefault.jpg",
-        "publishedAt": "2026-10-17T15:42:25Z"
-      }
-    },
-    {
-      "gameId": "eng.1-401878771",
-      "gameDate": "2026-10-17T11:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "eXsWnTusr2o",
-        "title": "Everton v. Chelsea | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
-        "channel": "NBC Sports",
-        "thumbnail": "https://i.ytimg.com/vi/eXsWnTusr2o/hqdefault.jpg",
-        "publishedAt": "2026-10-17T14:08:33Z"
-      }
-    },
-    {
-      "gameId": "nba-401898719",
-      "gameDate": "2026-10-17T02:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "qhU2hqJ9rhc",
-        "title": "NUGGETS at LAKERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/qhU2hqJ9rhc/hqdefault.jpg",
-        "publishedAt": "2026-10-17T05:40:04Z"
-      }
-    },
-    {
-      "gameId": "nba-401908948",
-      "gameDate": "2026-10-17T02:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "fT671wr14Ys",
-        "title": "JAZZ at SUNS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/fT671wr14Ys/hqdefault.jpg",
-        "publishedAt": "2026-10-17T05:12:00Z"
-      }
-    },
-    {
-      "gameId": "nba-401898409",
-      "gameDate": "2026-10-17T02:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "xDunS4-w5Hg",
-        "title": "TRAIL BLAZERS at WARRIORS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/xDunS4-w5Hg/hqdefault.jpg",
-        "publishedAt": "2026-10-17T05:03:24Z"
-      }
-    },
-    {
-      "gameId": "nba-401898408",
-      "gameDate": "2026-10-17T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "pFRSoI2InLU",
-        "title": "HAWKS at MAVERICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/pFRSoI2InLU/hqdefault.jpg",
-        "publishedAt": "2026-10-17T03:10:28Z"
-      }
-    },
-    {
-      "gameId": "nba-401898843",
-      "gameDate": "2026-10-17T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "1VjaB6MynyU",
-        "title": "KINGS at SPURS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/1VjaB6MynyU/hqdefault.jpg",
-        "publishedAt": "2026-10-17T02:48:46Z"
-      }
-    },
-    {
-      "gameId": "nba-401901822",
-      "gameDate": "2026-10-17T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "4Vk445ZPOCE",
-        "title": "HORNETS at GRIZZLIES | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/4Vk445ZPOCE/hqdefault.jpg",
-        "publishedAt": "2026-10-17T02:47:18Z"
-      }
-    },
-    {
-      "gameId": "nba-401906509",
-      "gameDate": "2026-10-17T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "qz8Usmdv0QM",
-        "title": "WIZARDS at PELICANS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/qz8Usmdv0QM/hqdefault.jpg",
-        "publishedAt": "2026-10-17T03:06:15Z"
-      }
-    },
-    {
-      "gameId": "nba-401908943",
-      "gameDate": "2026-10-17T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "XmFFZxa6tM4",
-        "title": "TIMBERWOLVES at BULLS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/XmFFZxa6tM4/hqdefault.jpg",
-        "publishedAt": "2026-10-17T02:51:01Z"
-      }
-    },
-    {
-      "gameId": "nba-401898406",
-      "gameDate": "2026-10-16T23:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "vILUjksgw2Q",
-        "title": "HEAT at MAGIC | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/vILUjksgw2Q/hqdefault.jpg",
-        "publishedAt": "2026-10-17T01:50:06Z"
-      }
-    },
-    {
-      "gameId": "nba-401898407",
-      "gameDate": "2026-10-16T23:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "h0LDSDljJMw",
-        "title": "CELTICS at 76ERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/h0LDSDljJMw/hqdefault.jpg",
-        "publishedAt": "2026-10-17T01:53:24Z"
-      }
-    },
-    {
-      "gameId": "nba-401908946",
-      "gameDate": "2026-10-16T23:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "Zwp1XDQlhl8",
-        "title": "RAPTORS at PISTONS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/Zwp1XDQlhl8/hqdefault.jpg",
-        "publishedAt": "2026-10-17T02:22:50Z"
-      }
-    },
-    {
-      "gameId": "nba-401914126",
-      "gameDate": "2026-10-16T23:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "1UcL1Xxx7sI",
-        "title": "BUCKS at PACERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/1UcL1Xxx7sI/hqdefault.jpg",
-        "publishedAt": "2026-10-17T01:52:07Z"
-      }
-    },
-    {
-      "gameId": "fra.1-401876437",
-      "gameDate": "2026-10-16T18:45Z",
-      "kind": "recaps",
-      "video": {
-        "id": "i3GPYvIk3GQ",
-        "title": "Le Mans vs Toulouse | HIGHLIGHTS Ligue 1 | 10/16/2026 | beIN SPORTS USA",
-        "channel": "beIN SPORTS USA",
-        "thumbnail": "https://i.ytimg.com/vi/i3GPYvIk3GQ/hqdefault.jpg",
-        "publishedAt": "2026-10-16T21:14:03Z"
-      }
-    },
-    {
-      "gameId": "ita.1-401874959",
-      "gameDate": "2026-10-16T18:45Z",
-      "kind": "recaps",
-      "video": {
-        "id": "TsJhp3kZolA",
-        "title": "Raimondo Hits THREE! | FROSINONE-SASSUOLO | HIGHLIGHTS | Serie A 2026/27",
-        "channel": "Serie A",
-        "thumbnail": "https://i.ytimg.com/vi/TsJhp3kZolA/hqdefault.jpg",
-        "publishedAt": "2026-10-16T21:29:08Z"
-      }
-    },
-    {
-      "gameId": "nba-401908622",
-      "gameDate": "2026-10-16T00:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "bmrciQpiHFI",
-        "title": "THUNDER at ROCKETS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 15, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/bmrciQpiHFI/hqdefault.jpg",
-        "publishedAt": "2026-10-16T03:12:09Z"
-      }
-    },
-    {
-      "gameId": "nba-401908945",
-      "gameDate": "2026-10-15T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "KcLfEwwzAw4",
-        "title": "RAPTORS at KNICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 15, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/KcLfEwwzAw4/hqdefault.jpg",
-        "publishedAt": "2026-10-16T02:38:21Z"
-      }
-    },
-    {
-      "gameId": "mlb-401908033",
-      "gameDate": "2026-10-16T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "uG1mRyXzyg8",
-        "title": "THE FINAL OUT! All calls of the Brewers' 2026 NLCS sweep vs. the Dodgers! | MLB Highlights",
-        "channel": "MLB",
-        "thumbnail": "https://i.ytimg.com/vi/uG1mRyXzyg8/hqdefault.jpg",
-        "publishedAt": "2026-10-17T00:30:04Z"
-      }
-    },
-    {
-      "gameId": "mlb-401908025",
-      "gameDate": "2026-10-15T17:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "FI5hnCF0CBY",
-        "title": "RAYS vs. GUARDIANS: ALCS Full Game 3 Highlights (October 15) | 2026 MLB Postseason",
-        "channel": "MLB",
-        "thumbnail": "https://i.ytimg.com/vi/FI5hnCF0CBY/hqdefault.jpg",
-        "publishedAt": "2026-10-15T20:07:51Z"
-      }
-    },
-    {
-      "gameId": "nba-401918011",
-      "gameDate": "2026-10-15T02:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "ou4fHN6d3Ww",
-        "title": "NUGGETS at CLIPPERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/ou4fHN6d3Ww/hqdefault.jpg",
-        "publishedAt": "2026-10-15T05:17:30Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761874",
-      "gameDate": "2026-10-15T02:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "PszrO5TDv24",
-        "title": "LA Galaxy vs. Portland Timbers | Full Match Highlights | Marco Reus GOAL AND ASSIST!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/PszrO5TDv24/hqdefault.jpg",
-        "publishedAt": "2026-10-15T05:02:48Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761873",
-      "gameDate": "2026-10-15T02:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "Y5bnjRuMEo0",
-        "title": "LAFC vs. Austin FC | Full Match Highlights | the Son & Bouanga Show BACK IN ACTION!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/Y5bnjRuMEo0/hqdefault.jpg",
-        "publishedAt": "2026-10-15T05:04:03Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761872",
-      "gameDate": "2026-10-15T02:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "3PSwfgiktrM",
-        "title": "San Diego FC vs. Houston Dynamo FC | Full Match Highlights | WILD 5-GOAL FIRST HALF!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/3PSwfgiktrM/hqdefault.jpg",
-        "publishedAt": "2026-10-15T05:00:17Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761871",
-      "gameDate": "2026-10-15T01:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "65GM8SOfv6U",
-        "title": "Colorado Rapids vs. Minnesota United | Full Match Highlights | RED CARD DRAMA!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/65GM8SOfv6U/hqdefault.jpg",
-        "publishedAt": "2026-10-15T03:59:41Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761870",
-      "gameDate": "2026-10-15T01:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "jnaFjKP7kMQ",
-        "title": "Real Salt Lake vs. San Jose Earthquakes | Full Match Highlights",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/jnaFjKP7kMQ/hqdefault.jpg",
-        "publishedAt": "2026-10-15T03:55:48Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761869",
-      "gameDate": "2026-10-15T00:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "hK3YQ6Ilqws",
-        "title": "Chicago Fire FC vs. Philadelphia Union | Full Match Highlights | Damiani BRACE!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/hK3YQ6Ilqws/hqdefault.jpg",
-        "publishedAt": "2026-10-15T03:05:54Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761867",
-      "gameDate": "2026-10-15T00:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "ai5wjB_NI5E",
-        "title": "FC Dallas vs. Seattle Sounders | Full Match Highlights | Kaick Banger!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/ai5wjB_NI5E/hqdefault.jpg",
-        "publishedAt": "2026-10-15T03:16:28Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761866",
-      "gameDate": "2026-10-15T00:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "OSomDuioFcI",
-        "title": "Nashville SC vs. Sporting Kansas City | Full Match Highlights | STEP TOWARD SUPPORTERS' SHIELD!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/OSomDuioFcI/hqdefault.jpg",
-        "publishedAt": "2026-10-15T03:20:40Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761868",
-      "gameDate": "2026-10-15T00:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "DNR9eEQ661k",
-        "title": "St. Louis CITY SC vs. Vancouver Whitecaps FC | Full Match Highlights | Streak Stalled!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/DNR9eEQ661k/hqdefault.jpg",
-        "publishedAt": "2026-10-15T03:13:32Z"
-      }
-    },
-    {
-      "gameId": "nba-401898722",
-      "gameDate": "2026-10-15T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "j-rTz31Pems",
-        "title": "SUNS at SPURS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/j-rTz31Pems/hqdefault.jpg",
-        "publishedAt": "2026-10-15T02:46:12Z"
-      }
-    },
-    {
-      "gameId": "nba-401901825",
-      "gameDate": "2026-10-15T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "PMhkej9WpJA",
-        "title": "PELICANS at MAVERICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/PMhkej9WpJA/hqdefault.jpg",
-        "publishedAt": "2026-10-15T03:15:37Z"
-      }
-    },
-    {
-      "gameId": "nba-401914125",
-      "gameDate": "2026-10-15T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "BMlNel_dUyk",
-        "title": "PISTONS at TIMBERWOLVES | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/BMlNel_dUyk/hqdefault.jpg",
-        "publishedAt": "2026-10-15T03:12:30Z"
-      }
-    },
-    {
-      "gameId": "nba-401908942",
-      "gameDate": "2026-10-15T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "bmqwoekTXg8",
-        "title": "BULLS at BUCKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/bmqwoekTXg8/hqdefault.jpg",
-        "publishedAt": "2026-10-15T03:36:49Z"
-      }
-    },
-    {
-      "gameId": "mlb-401908032",
-      "gameDate": "2026-10-15T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "ZVjnWhgxzjM",
-        "title": "BREWERS vs. DODGERS: NLCS Full Game 4 Highlights (October 15) | 2026 MLB Postseason",
-        "channel": "MLB",
-        "thumbnail": "https://i.ytimg.com/vi/ZVjnWhgxzjM/hqdefault.jpg",
-        "publishedAt": "2026-10-16T03:39:06Z"
-      }
-    },
-    {
-      "gameId": "nba-401898404",
-      "gameDate": "2026-10-14T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "4Mtdux5j_5U",
-        "title": "NETS at HEAT | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/4Mtdux5j_5U/hqdefault.jpg",
-        "publishedAt": "2026-10-15T02:22:53Z"
-      }
-    },
-    {
-      "gameId": "nba-401898405",
-      "gameDate": "2026-10-14T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "KRTK_zDU5l0",
-        "title": "HORNETS at CELTICS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/KRTK_zDU5l0/hqdefault.jpg",
-        "publishedAt": "2026-10-15T02:19:39Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761864",
-      "gameDate": "2026-10-14T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "WFjKwLQzLUg",
-        "title": "CF Montréal vs. Atlanta United | Full Match Highlights",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/WFjKwLQzLUg/hqdefault.jpg",
-        "publishedAt": "2026-10-15T02:35:21Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761865",
-      "gameDate": "2026-10-14T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "44izXrax-LM",
-        "title": "Columbus Crew vs. Charlotte FC | Full Match Highlights | 2 GOALS IN 2 MINUTES TO TURN IT AROUND!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/44izXrax-LM/hqdefault.jpg",
-        "publishedAt": "2026-10-15T02:14:29Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761863",
-      "gameDate": "2026-10-14T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "W8d18-0yc2M",
-        "title": "D.C. United vs. Red Bull New York | Full Match Highlights | TIGHT 10-MAN FINISH!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/W8d18-0yc2M/hqdefault.jpg",
-        "publishedAt": "2026-10-15T02:27:36Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761861",
-      "gameDate": "2026-10-14T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "GoDS5z5rrNQ",
-        "title": "Inter Miami vs. NYCFC | MLS Highlights | ESPN FC",
-        "channel": "ESPN FC",
-        "thumbnail": "https://i.ytimg.com/vi/GoDS5z5rrNQ/hqdefault.jpg",
-        "publishedAt": "2026-10-15T01:47:28Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761862",
-      "gameDate": "2026-10-14T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "gfhm_dlLr3g",
-        "title": "FC Cincinnati vs. New England Revolution | Full Match Highlights | Dor Turgeman Two-Goal Boost!",
-        "channel": "Major League Soccer",
-        "thumbnail": "https://i.ytimg.com/vi/gfhm_dlLr3g/hqdefault.jpg",
-        "publishedAt": "2026-10-15T02:14:42Z"
-      }
-    },
-    {
-      "gameId": "uefa.champions-401915409",
-      "gameDate": "2026-10-14T19:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "0sM6Q35Uz6Q",
-        "title": "Aston Villa vs. Fenerbahçe: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
-        "channel": "CBS Sports Golazo",
-        "thumbnail": "https://i.ytimg.com/vi/0sM6Q35Uz6Q/hqdefault.jpg",
-        "publishedAt": "2026-10-14T21:18:00Z"
-      }
-    },
-    {
-      "gameId": "usa.1-761860",
-      "gameDate": "2026-10-14T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "R0-AAHFtkC0",
-        "title": "Toronto FC vs. Orlando City SC | MLS Highlights | ESPN FC",
-        "channel": "ESPN FC",
-        "thumbnail": "https://i.ytimg.com/vi/R0-AAHFtkC0/hqdefault.jpg",
-        "publishedAt": "2026-10-15T01:53:18Z"
-      }
-    },
-    {
-      "gameId": "uefa.champions-401915405",
-      "gameDate": "2026-10-14T19:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "3bv07599jg8",
-        "title": "Slovan Bratislava vs. Stuttgart: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
-        "channel": "CBS Sports Golazo",
-        "thumbnail": "https://i.ytimg.com/vi/3bv07599jg8/hqdefault.jpg",
-        "publishedAt": "2026-10-14T21:38:36Z"
-      }
-    },
-    {
-      "gameId": "uefa.champions-401915408",
-      "gameDate": "2026-10-14T19:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "PzIp2qFER8c",
-        "title": "Real Betis vs. Porto: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
-        "channel": "CBS Sports Golazo",
-        "thumbnail": "https://i.ytimg.com/vi/PzIp2qFER8c/hqdefault.jpg",
-        "publishedAt": "2026-10-14T21:28:58Z"
-      }
-    },
-    {
-      "gameId": "uefa.champions-401915406",
-      "gameDate": "2026-10-14T19:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "RSJmQVbmC7g",
-        "title": "Shakhtar Donetsk vs. AEK Athens: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
-        "channel": "CBS Sports Golazo",
-        "thumbnail": "https://i.ytimg.com/vi/RSJmQVbmC7g/hqdefault.jpg",
-        "publishedAt": "2026-10-14T21:47:52Z"
-      }
-    },
-    {
-      "gameId": "uefa.champions-401915416",
-      "gameDate": "2026-10-14T16:45Z",
-      "kind": "recaps",
-      "video": {
-        "id": "kbThokCccLE",
-        "title": "Feyenoord vs. Como: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
-        "channel": "CBS Sports Golazo",
-        "thumbnail": "https://i.ytimg.com/vi/kbThokCccLE/hqdefault.jpg",
-        "publishedAt": "2026-10-14T18:58:51Z"
-      }
-    },
-    {
-      "gameId": "nba-401898718",
-      "gameDate": "2026-10-14T02:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "x6ajbvY0OjQ",
-        "title": "WARRIORS at LAKERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/x6ajbvY0OjQ/hqdefault.jpg",
-        "publishedAt": "2026-10-14T04:47:17Z"
-      }
-    },
-    {
-      "gameId": "nba-401901826",
-      "gameDate": "2026-10-14T02:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "p9iE4bGvMP8",
-        "title": "TRAIL BLAZERS at KINGS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/p9iE4bGvMP8/hqdefault.jpg",
-        "publishedAt": "2026-10-14T04:50:50Z"
-      }
-    },
-    {
-      "gameId": "mlb-401908024",
-      "gameDate": "2026-10-14T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "XQSGs9VWueA",
-        "title": "GUARDIANS vs. RAYS: ALCS Full Game 2 Highlights (October 13) | 2026 MLB Postseason",
-        "channel": "MLB",
-        "thumbnail": "https://i.ytimg.com/vi/XQSGs9VWueA/hqdefault.jpg",
-        "publishedAt": "2026-10-14T03:21:39Z"
-      }
-    },
-    {
-      "gameId": "nba-401908621",
-      "gameDate": "2026-10-14T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "xsl01r9uQLQ",
-        "title": "PACERS at THUNDER | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/xsl01r9uQLQ/hqdefault.jpg",
-        "publishedAt": "2026-10-14T03:06:04Z"
-      }
-    },
-    {
-      "gameId": "nba-401898403",
-      "gameDate": "2026-10-13T23:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "c9qZ9Dc6ZvM",
-        "title": "CAVALIERS at MAGIC | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/c9qZ9Dc6ZvM/hqdefault.jpg",
-        "publishedAt": "2026-10-14T01:38:23Z"
-      }
-    },
-    {
-      "gameId": "nba-401908944",
-      "gameDate": "2026-10-13T23:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "EyQytP1xKiY",
-        "title": "KNICKS at RAPTORS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/EyQytP1xKiY/hqdefault.jpg",
-        "publishedAt": "2026-10-14T01:47:25Z"
-      }
-    },
-    {
-      "gameId": "uefa.champions-401915417",
-      "gameDate": "2026-10-13T19:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "XUOlW5FdU9U",
-        "title": "Arsenal vs. Lille: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
-        "channel": "CBS Sports Golazo",
-        "thumbnail": "https://i.ytimg.com/vi/XUOlW5FdU9U/hqdefault.jpg",
-        "publishedAt": "2026-10-13T21:07:56Z"
-      }
-    },
-    {
-      "gameId": "uefa.champions-401915435",
-      "gameDate": "2026-10-13T19:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "t1eAl5hqxdQ",
-        "title": "HIGHLIGHTS | GALATASARAY 1 vs 4 FC BARCELONA | UEFA CHAMPIONS LEAGUE 26/27 🔵🔴",
-        "channel": "FC Barcelona",
-        "thumbnail": "https://i.ytimg.com/vi/t1eAl5hqxdQ/hqdefault.jpg",
-        "publishedAt": "2026-10-14T21:00:01Z"
-      }
-    },
-    {
-      "gameId": "uefa.champions-401915410",
-      "gameDate": "2026-10-13T19:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "rv_KVk0TUEc",
-        "title": "Villarreal vs. Napoli: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
-        "channel": "CBS Sports Golazo",
-        "thumbnail": "https://i.ytimg.com/vi/rv_KVk0TUEc/hqdefault.jpg",
-        "publishedAt": "2026-10-13T21:12:00Z"
-      }
-    },
-    {
-      "gameId": "uefa.champions-401915418",
-      "gameDate": "2026-10-13T16:45Z",
-      "kind": "recaps",
-      "video": {
-        "id": "O0dFStaNdKc",
-        "title": "Lens vs. Sporting CP: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
-        "channel": "CBS Sports Golazo",
-        "thumbnail": "https://i.ytimg.com/vi/O0dFStaNdKc/hqdefault.jpg",
-        "publishedAt": "2026-10-13T19:02:53Z"
-      }
-    },
-    {
-      "gameId": "nba-401898721",
-      "gameDate": "2026-10-13T01:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "6pSjgLvoVYQ",
-        "title": "SPURS at JAZZ | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/6pSjgLvoVYQ/hqdefault.jpg",
-        "publishedAt": "2026-10-13T03:54:28Z"
-      }
-    },
-    {
-      "gameId": "mlb-401908023",
-      "gameDate": "2026-10-13T00:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "XQSGs9VWueA",
-        "title": "GUARDIANS vs. RAYS: ALCS Full Game 2 Highlights (October 13) | 2026 MLB Postseason",
-        "channel": "MLB",
-        "thumbnail": "https://i.ytimg.com/vi/XQSGs9VWueA/hqdefault.jpg",
-        "publishedAt": "2026-10-14T03:21:39Z"
-      }
-    },
-    {
-      "gameId": "nba-401914124",
-      "gameDate": "2026-10-12T23:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "CqagxE5kpXU",
-        "title": "TIMBERWOLVES at KNICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/CqagxE5kpXU/hqdefault.jpg",
-        "publishedAt": "2026-10-13T02:22:09Z"
-      }
-    },
-    {
-      "gameId": "nba-401898402",
-      "gameDate": "2026-10-12T23:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "iNBVspsJJQc",
-        "title": "THUNDER at HAWKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/iNBVspsJJQc/hqdefault.jpg",
-        "publishedAt": "2026-10-13T01:48:03Z"
-      }
-    },
-    {
-      "gameId": "mlb-401908031",
-      "gameDate": "2026-10-12T21:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "RuiDL7ihiEI",
-        "title": "DODGERS vs. BREWERS NLCS Game 2 Full Game Highlights (October 12) | 2026 MLB Postseason",
-        "channel": "MLB",
-        "thumbnail": "https://i.ytimg.com/vi/RuiDL7ihiEI/hqdefault.jpg",
-        "publishedAt": "2026-10-13T01:39:49Z"
-      }
-    },
-    {
-      "gameId": "nba-401901824",
-      "gameDate": "2026-10-12T23:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "EwhoARz1yB4",
-        "title": "NETS at WIZARDS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
-        "channel": "NBA",
-        "thumbnail": "https://i.ytimg.com/vi/EwhoARz1yB4/hqdefault.jpg",
-        "publishedAt": "2026-10-13T01:51:26Z"
-      }
-    },
-    {
-      "gameId": "eng.1-401879267",
-      "gameDate": "2026-10-12T19:00Z",
-      "kind": "recaps",
-      "video": {
-        "id": "eBNeQHQznNE",
-        "title": "Coventry City v. Newcastle United | PREMIER LEAGUE HIGHLIGHTS | 10/12/2026 | NBC Sports",
-        "channel": "NBC Sports",
-        "thumbnail": "https://i.ytimg.com/vi/eBNeQHQznNE/hqdefault.jpg",
-        "publishedAt": "2026-10-12T21:41:25Z"
-      }
-    },
-    {
-      "gameId": "ita.1-401874763",
-      "gameDate": "2026-10-12T18:45Z",
-      "kind": "recaps",
-      "video": {
-        "id": "fENdA68nFsA",
-        "title": "First Home Win For Torino | TORINO-UDINESE | HIGHLIGHTS | Serie A 2026/27",
-        "channel": "Serie A",
-        "thumbnail": "https://i.ytimg.com/vi/fENdA68nFsA/hqdefault.jpg",
-        "publishedAt": "2026-10-12T21:25:56Z"
-      }
-    },
-    {
-      "gameId": "ita.1-401875005",
-      "gameDate": "2026-10-12T16:30Z",
-      "kind": "recaps",
-      "video": {
-        "id": "k0GwbvnzNFU",
-        "title": "La Dea Halt Winless Run! | ATALANTA-VENEZIA | HIGHLIGHTS | Serie A 2026/27",
-        "channel": "Serie A",
-        "thumbnail": "https://i.ytimg.com/vi/k0GwbvnzNFU/hqdefault.jpg",
-        "publishedAt": "2026-10-12T19:24:41Z"
-      }
-    }
+    "NFL",
+    "College Football"
   ],
   "games": [
+    {
+      "id": "eng.1-401879257",
+      "sport": "Soccer",
+      "league": "Premier League",
+      "date": "2026-10-19T19:00Z",
+      "home": "Tottenham Hotspur",
+      "away": "Coventry City",
+      "homeTerms": [
+        "Tottenham Hotspur",
+        "Spurs",
+        "Tottenham Hotspur"
+      ],
+      "awayTerms": [
+        "Coventry City",
+        "Coventry",
+        "Coventry City"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/367.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/388.png",
+      "homeScore": "3",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401879257/coventry-city-tottenham-hotspur",
+      "uniquePairing": true
+    },
+    {
+      "id": "esp.1-401882842",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-19T19:00Z",
+      "home": "Getafe",
+      "away": "Rayo Vallecano",
+      "homeTerms": [
+        "Getafe",
+        "Getafe",
+        "Getafe"
+      ],
+      "awayTerms": [
+        "Rayo Vallecano",
+        "Rayo",
+        "Rayo Vallecano"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/2922.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/101.png",
+      "homeScore": "1",
+      "awayScore": "1",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882842/rayo-vallecano-getafe",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874784",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-19T18:45Z",
+      "home": "Parma",
+      "away": "Torino",
+      "homeTerms": [
+        "Parma",
+        "Parma",
+        "Parma"
+      ],
+      "awayTerms": [
+        "Torino",
+        "Torino",
+        "Torino"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/115.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/239.png",
+      "homeScore": "0",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874784/torino-parma",
+      "uniquePairing": true
+    },
+    {
+      "id": "ita.1-401874762",
+      "sport": "Soccer",
+      "league": "Serie A",
+      "date": "2026-10-19T16:30Z",
+      "home": "Monza",
+      "away": "Cagliari",
+      "homeTerms": [
+        "Monza",
+        "Monza",
+        "Monza"
+      ],
+      "awayTerms": [
+        "Cagliari",
+        "Cagliari",
+        "Cagliari"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/4007.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/2925.png",
+      "homeScore": "4",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874762/cagliari-monza",
+      "uniquePairing": true
+    },
     {
       "id": "mex.1-401876938",
       "sport": "Soccer",
@@ -2495,6 +1053,54 @@
       "uniquePairing": true
     },
     {
+      "id": "college-football-401858269",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-18T02:30Z",
+      "home": "California Golden Bears",
+      "away": "Wake Forest Demon Deacons",
+      "homeTerms": [
+        "California Golden Bears",
+        "California",
+        "Golden Bears"
+      ],
+      "awayTerms": [
+        "Wake Forest Demon Deacons",
+        "Wake Forest",
+        "Demon Deacons"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/25.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/154.png",
+      "homeScore": "7",
+      "awayScore": "41",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401858269/wake-forest-california",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856833",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-18T02:15Z",
+      "home": "Colorado Buffaloes",
+      "away": "Utah Utes",
+      "homeTerms": [
+        "Colorado Buffaloes",
+        "Colorado",
+        "Buffaloes"
+      ],
+      "awayTerms": [
+        "Utah Utes",
+        "Utah",
+        "Utes"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/38.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/254.png",
+      "homeScore": "24",
+      "awayScore": "27",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856833/utah-colorado",
+      "uniquePairing": true
+    },
+    {
       "id": "mex.1-401876941",
       "sport": "Soccer",
       "league": "Liga MX",
@@ -2759,6 +1365,101 @@
       "uniquePairing": true
     },
     {
+      "id": "college-football-401856809",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T23:30Z",
+      "home": "BYU Cougars",
+      "away": "Notre Dame Fighting Irish",
+      "homeTerms": [
+        "BYU Cougars",
+        "Cougars"
+      ],
+      "awayTerms": [
+        "Notre Dame Fighting Irish",
+        "Notre Dame",
+        "Fighting Irish"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/252.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/87.png",
+      "homeScore": "28",
+      "awayScore": "24",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856809/notre-dame-byu",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401858494",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T23:30Z",
+      "home": "UCLA Bruins",
+      "away": "Wisconsin Badgers",
+      "homeTerms": [
+        "UCLA Bruins",
+        "UCLA",
+        "Bruins"
+      ],
+      "awayTerms": [
+        "Wisconsin Badgers",
+        "Wisconsin",
+        "Badgers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/26.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/275.png",
+      "homeScore": "17",
+      "awayScore": "7",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401858494/wisconsin-ucla",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856722",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T23:30Z",
+      "home": "Oklahoma Sooners",
+      "away": "Kentucky Wildcats",
+      "homeTerms": [
+        "Oklahoma Sooners",
+        "Oklahoma",
+        "Sooners"
+      ],
+      "awayTerms": [
+        "Kentucky Wildcats",
+        "Kentucky",
+        "Wildcats"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/201.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/96.png",
+      "homeScore": "13",
+      "awayScore": "21",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856722/kentucky-oklahoma",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856831",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T23:30Z",
+      "home": "Houston Cougars",
+      "away": "Oklahoma State Cowboys",
+      "homeTerms": [
+        "Houston Cougars",
+        "Houston",
+        "Cougars"
+      ],
+      "awayTerms": [
+        "Oklahoma State Cowboys",
+        "Oklahoma St",
+        "Cowboys"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/248.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/197.png",
+      "homeScore": "35",
+      "awayScore": "32",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856831/oklahoma-st-houston",
+      "uniquePairing": true
+    },
+    {
       "id": "mex.1-401876943",
       "sport": "Soccer",
       "league": "Liga MX",
@@ -2807,6 +1508,30 @@
       "uniquePairing": true
     },
     {
+      "id": "college-football-401858263",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T23:00Z",
+      "home": "Miami Hurricanes",
+      "away": "Florida State Seminoles",
+      "homeTerms": [
+        "Miami Hurricanes",
+        "Miami",
+        "Hurricanes"
+      ],
+      "awayTerms": [
+        "Florida State Seminoles",
+        "Florida St",
+        "Seminoles"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2390.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/52.png",
+      "homeScore": "43",
+      "awayScore": "35",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401858263/florida-st-miami",
+      "uniquePairing": true
+    },
+    {
       "id": "usa.1-761876",
       "sport": "Soccer",
       "league": "MLS",
@@ -2852,6 +1577,102 @@
       "homeScore": "68",
       "awayScore": "64",
       "sourceUrl": "https://www.espn.com/wnba/game/_/gameId/401918305/dream-valkyries",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856719",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T19:30Z",
+      "home": "Georgia Bulldogs",
+      "away": "Auburn Tigers",
+      "homeTerms": [
+        "Georgia Bulldogs",
+        "Georgia",
+        "Bulldogs"
+      ],
+      "awayTerms": [
+        "Auburn Tigers",
+        "Auburn",
+        "Tigers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/61.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2.png",
+      "homeScore": "24",
+      "awayScore": "27",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856719/auburn-georgia",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856723",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T19:30Z",
+      "home": "Tennessee Volunteers",
+      "away": "Alabama Crimson Tide",
+      "homeTerms": [
+        "Tennessee Volunteers",
+        "Tennessee",
+        "Volunteers"
+      ],
+      "awayTerms": [
+        "Alabama Crimson Tide",
+        "Alabama",
+        "Crimson Tide"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2633.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/333.png",
+      "homeScore": "26",
+      "awayScore": "10",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856723/alabama-tennessee",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856721",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T19:30Z",
+      "home": "Ole Miss Rebels",
+      "away": "Missouri Tigers",
+      "homeTerms": [
+        "Ole Miss Rebels",
+        "Ole Miss",
+        "Rebels"
+      ],
+      "awayTerms": [
+        "Missouri Tigers",
+        "Missouri",
+        "Tigers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/145.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/142.png",
+      "homeScore": "31",
+      "awayScore": "3",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856721/missouri-ole-miss",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856828",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T19:30Z",
+      "home": "Texas Tech Red Raiders",
+      "away": "Arizona State Sun Devils",
+      "homeTerms": [
+        "Texas Tech Red Raiders",
+        "Texas Tech",
+        "Red Raiders"
+      ],
+      "awayTerms": [
+        "Arizona State Sun Devils",
+        "Arizona St",
+        "Sun Devils"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2641.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/9.png",
+      "homeScore": "53",
+      "awayScore": "25",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856828/arizona-st-texas-tech",
       "uniquePairing": true
     },
     {
@@ -2975,27 +1796,27 @@
       "uniquePairing": true
     },
     {
-      "id": "esp.1-401882846",
-      "sport": "Soccer",
-      "league": "La Liga",
-      "date": "2026-10-17T16:30Z",
-      "home": "Real Betis",
-      "away": "Barcelona",
+      "id": "college-football-401856725",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T17:00Z",
+      "home": "Texas A&M Aggies",
+      "away": "The Citadel Bulldogs",
       "homeTerms": [
-        "Real Betis",
-        "Betis",
-        "Real Betis"
+        "Texas A&M Aggies",
+        "Texas A&M",
+        "Aggies"
       ],
       "awayTerms": [
-        "Barcelona",
-        "Barcelona",
-        "Barcelona"
+        "The Citadel Bulldogs",
+        "The Citadel",
+        "Bulldogs"
       ],
-      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/244.png",
-      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/83.png",
-      "homeScore": "2",
-      "awayScore": "5",
-      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882846/barcelona-real-betis",
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/245.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2643.png",
+      "homeScore": "41",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856725/the-citadel-texas-am",
       "uniquePairing": true
     },
     {
@@ -3023,6 +1844,30 @@
       "uniquePairing": true
     },
     {
+      "id": "esp.1-401882846",
+      "sport": "Soccer",
+      "league": "La Liga",
+      "date": "2026-10-17T16:30Z",
+      "home": "Real Betis",
+      "away": "Barcelona",
+      "homeTerms": [
+        "Real Betis",
+        "Betis",
+        "Real Betis"
+      ],
+      "awayTerms": [
+        "Barcelona",
+        "Barcelona",
+        "Barcelona"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/244.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/83.png",
+      "homeScore": "2",
+      "awayScore": "5",
+      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882846/barcelona-real-betis",
+      "uniquePairing": true
+    },
+    {
       "id": "ger.1-401884772",
       "sport": "Soccer",
       "league": "Bundesliga",
@@ -3047,6 +1892,30 @@
       "uniquePairing": true
     },
     {
+      "id": "college-football-401858489",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:30Z",
+      "home": "Maryland Terrapins",
+      "away": "Rutgers Scarlet Knights",
+      "homeTerms": [
+        "Maryland Terrapins",
+        "Maryland",
+        "Terrapins"
+      ],
+      "awayTerms": [
+        "Rutgers Scarlet Knights",
+        "Rutgers",
+        "Scarlet Knights"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/120.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/164.png",
+      "homeScore": "30",
+      "awayScore": "37",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401858489/rutgers-maryland",
+      "uniquePairing": true
+    },
+    {
       "id": "ita.1-401874953",
       "sport": "Soccer",
       "league": "Serie A",
@@ -3068,6 +1937,291 @@
       "homeScore": "1",
       "awayScore": "3",
       "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874953/internazionale-bologna",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401858488",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "Indiana Hoosiers",
+      "away": "Ohio State Buckeyes",
+      "homeTerms": [
+        "Indiana Hoosiers",
+        "Indiana",
+        "Hoosiers"
+      ],
+      "awayTerms": [
+        "Ohio State Buckeyes",
+        "Ohio State",
+        "Buckeyes"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/84.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/194.png",
+      "homeScore": "15",
+      "awayScore": "19",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401858488/ohio-state-indiana",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856724",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "Texas Longhorns",
+      "away": "Florida Gators",
+      "homeTerms": [
+        "Texas Longhorns",
+        "Texas",
+        "Longhorns"
+      ],
+      "awayTerms": [
+        "Florida Gators",
+        "Florida",
+        "Gators"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/251.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/57.png",
+      "homeScore": "24",
+      "awayScore": "27",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856724/florida-texas",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856720",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "LSU Tigers",
+      "away": "Mississippi State Bulldogs",
+      "homeTerms": [
+        "LSU Tigers",
+        "Tigers"
+      ],
+      "awayTerms": [
+        "Mississippi State Bulldogs",
+        "Mississippi St",
+        "Bulldogs"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/99.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/344.png",
+      "homeScore": "31",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856720/mississippi-st-lsu",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401858268",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "SMU Mustangs",
+      "away": "Virginia Cavaliers",
+      "homeTerms": [
+        "SMU Mustangs",
+        "Mustangs"
+      ],
+      "awayTerms": [
+        "Virginia Cavaliers",
+        "Virginia",
+        "Cavaliers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2567.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/258.png",
+      "homeScore": "23",
+      "awayScore": "13",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401858268/virginia-smu",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401858491",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "Michigan State Spartans",
+      "away": "Northwestern Wildcats",
+      "homeTerms": [
+        "Michigan State Spartans",
+        "Michigan St",
+        "Spartans"
+      ],
+      "awayTerms": [
+        "Northwestern Wildcats",
+        "Northwestern",
+        "Wildcats"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/127.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/77.png",
+      "homeScore": "21",
+      "awayScore": "24",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401858491/northwestern-michigan-st",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856829",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "West Virginia Mountaineers",
+      "away": "Cincinnati Bearcats",
+      "homeTerms": [
+        "West Virginia Mountaineers",
+        "West Virginia",
+        "Mountaineers"
+      ],
+      "awayTerms": [
+        "Cincinnati Bearcats",
+        "Cincinnati",
+        "Bearcats"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/277.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2132.png",
+      "homeScore": "45",
+      "awayScore": "42",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856829/cincinnati-west-virginia",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401856830",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "Kansas State Wildcats",
+      "away": "Kansas Jayhawks",
+      "homeTerms": [
+        "Kansas State Wildcats",
+        "Kansas St",
+        "Wildcats"
+      ],
+      "awayTerms": [
+        "Kansas Jayhawks",
+        "Kansas",
+        "Jayhawks"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2306.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2305.png",
+      "homeScore": "35",
+      "awayScore": "24",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401856830/kansas-kansas-st",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401858261",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "Clemson Tigers",
+      "away": "Charleston Southern Buccaneers",
+      "homeTerms": [
+        "Clemson Tigers",
+        "Clemson",
+        "Tigers"
+      ],
+      "awayTerms": [
+        "Charleston Southern Buccaneers",
+        "Charleston So",
+        "Buccaneers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/228.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2127.png",
+      "homeScore": "37",
+      "awayScore": "0",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401858261/charleston-so-clemson",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401858267",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "Boston College Eagles",
+      "away": "Pittsburgh Panthers",
+      "homeTerms": [
+        "Boston College Eagles",
+        "Boston College",
+        "Eagles"
+      ],
+      "awayTerms": [
+        "Pittsburgh Panthers",
+        "Pitt",
+        "Panthers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/103.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/221.png",
+      "homeScore": "27",
+      "awayScore": "21",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401858267/pitt-boston-college",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401862802",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "Army Black Knights",
+      "away": "Florida Atlantic Owls",
+      "homeTerms": [
+        "Army Black Knights",
+        "Army",
+        "Black Knights"
+      ],
+      "awayTerms": [
+        "Florida Atlantic Owls",
+        "Owls"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/349.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2226.png",
+      "homeScore": "56",
+      "awayScore": "24",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401862802/fau-army",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401866441",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "Bowling Green Falcons",
+      "away": "Ball State Cardinals",
+      "homeTerms": [
+        "Bowling Green Falcons",
+        "Bowling Green",
+        "Falcons"
+      ],
+      "awayTerms": [
+        "Ball State Cardinals",
+        "Ball State",
+        "Cardinals"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/189.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2050.png",
+      "homeScore": "31",
+      "awayScore": "32",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401866441/ball-state-bowling-green",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401869957",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T16:00Z",
+      "home": "James Madison Dukes",
+      "away": "Georgia State Panthers",
+      "homeTerms": [
+        "James Madison Dukes",
+        "James Madison",
+        "Dukes"
+      ],
+      "awayTerms": [
+        "Georgia State Panthers",
+        "Georgia St",
+        "Panthers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/256.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2247.png",
+      "homeScore": "49",
+      "awayScore": "22",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401869957/georgia-st-james-madison",
       "uniquePairing": true
     },
     {
@@ -3646,6 +2800,78 @@
       "uniquePairing": true
     },
     {
+      "id": "college-football-401858493",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T00:00Z",
+      "home": "Purdue Boilermakers",
+      "away": "Washington Huskies",
+      "homeTerms": [
+        "Purdue Boilermakers",
+        "Purdue",
+        "Boilermakers"
+      ],
+      "awayTerms": [
+        "Washington Huskies",
+        "Washington",
+        "Huskies"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2509.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/264.png",
+      "homeScore": "26",
+      "awayScore": "38",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401858493/washington-purdue",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401869844",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-17T00:00Z",
+      "home": "Coastal Carolina Chanticleers",
+      "away": "App State Mountaineers",
+      "homeTerms": [
+        "Coastal Carolina Chanticleers",
+        "Coastal",
+        "Chanticleers"
+      ],
+      "awayTerms": [
+        "App State Mountaineers",
+        "App State",
+        "Mountaineers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/324.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2026.png",
+      "homeScore": "32",
+      "awayScore": "35",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401869844/app-state-coastal",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401862801",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-16T23:30Z",
+      "home": "Tulane Green Wave",
+      "away": "Memphis Tigers",
+      "homeTerms": [
+        "Tulane Green Wave",
+        "Tulane",
+        "Green Wave"
+      ],
+      "awayTerms": [
+        "Memphis Tigers",
+        "Memphis",
+        "Tigers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2655.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/235.png",
+      "homeScore": "31",
+      "awayScore": "17",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401862801/memphis-tulane",
+      "uniquePairing": true
+    },
+    {
       "id": "nba-401898406",
       "sport": "Basketball",
       "league": "NBA",
@@ -3910,6 +3136,30 @@
       "uniquePairing": false
     },
     {
+      "id": "college-football-401860923",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-16T00:00Z",
+      "home": "Texas State Bobcats",
+      "away": "Colorado State Rams",
+      "homeTerms": [
+        "Texas State Bobcats",
+        "Texas St",
+        "Bobcats"
+      ],
+      "awayTerms": [
+        "Colorado State Rams",
+        "Colorado St",
+        "Rams"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/326.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/36.png",
+      "homeScore": "66",
+      "awayScore": "27",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401860923/colorado-st-texas-st",
+      "uniquePairing": true
+    },
+    {
       "id": "nba-401908945",
       "sport": "Basketball",
       "league": "NBA",
@@ -3932,6 +3182,53 @@
       "awayScore": "120",
       "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401908945/raptors-knicks",
       "uniquePairing": false
+    },
+    {
+      "id": "college-football-401862800",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-15T23:30Z",
+      "home": "UAB Blazers",
+      "away": "East Carolina Pirates",
+      "homeTerms": [
+        "UAB Blazers",
+        "Blazers"
+      ],
+      "awayTerms": [
+        "East Carolina Pirates",
+        "East Carolina",
+        "Pirates"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/5.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/151.png",
+      "homeScore": "30",
+      "awayScore": "17",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401862800/east-carolina-uab",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401869950",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-15T23:30Z",
+      "home": "Old Dominion Monarchs",
+      "away": "Georgia Southern Eagles",
+      "homeTerms": [
+        "Old Dominion Monarchs",
+        "Old Dominion",
+        "Monarchs"
+      ],
+      "awayTerms": [
+        "Georgia Southern Eagles",
+        "GA Southern",
+        "Eagles"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/295.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/290.png",
+      "homeScore": "15",
+      "awayScore": "23",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401869950/ga-southern-old-dominion",
+      "uniquePairing": true
     },
     {
       "id": "mlb-401908025",
@@ -4318,6 +3615,30 @@
       "uniquePairing": false
     },
     {
+      "id": "college-football-401871068",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-15T00:00Z",
+      "home": "Sam Houston Bearkats",
+      "away": "Western Kentucky Hilltoppers",
+      "homeTerms": [
+        "Sam Houston Bearkats",
+        "Sam Houston",
+        "Bearkats"
+      ],
+      "awayTerms": [
+        "Western Kentucky Hilltoppers",
+        "Western KY",
+        "Hilltoppers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2534.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/98.png",
+      "homeScore": "3",
+      "awayScore": "16",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401871068/western-ky-sam-houston",
+      "uniquePairing": true
+    },
+    {
       "id": "nba-401898404",
       "sport": "Basketball",
       "league": "NBA",
@@ -4507,6 +3828,30 @@
       "homeScore": "3",
       "awayScore": "3",
       "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/761860/orlando-city-sc-toronto-fc",
+      "uniquePairing": true
+    },
+    {
+      "id": "college-football-401871054",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-14T23:30Z",
+      "home": "Missouri State Bears",
+      "away": "Kennesaw State Owls",
+      "homeTerms": [
+        "Missouri State Bears",
+        "Missouri St",
+        "Bears"
+      ],
+      "awayTerms": [
+        "Kennesaw State Owls",
+        "Kennesaw St",
+        "Owls"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2623.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/338.png",
+      "homeScore": "24",
+      "awayScore": "21",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401871054/kennesaw-st-missouri-st",
       "uniquePairing": true
     },
     {
@@ -4821,6 +4166,29 @@
       "uniquePairing": false
     },
     {
+      "id": "college-football-401871053",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-14T00:00Z",
+      "home": "Jacksonville State Gamecocks",
+      "away": "Florida International Panthers",
+      "homeTerms": [
+        "Jacksonville State Gamecocks",
+        "Jax State",
+        "Gamecocks"
+      ],
+      "awayTerms": [
+        "Florida International Panthers",
+        "Panthers"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/55.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2229.png",
+      "homeScore": "27",
+      "awayScore": "24",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401871053/fiu-jax-state",
+      "uniquePairing": true
+    },
+    {
       "id": "nba-401898403",
       "sport": "Basketball",
       "league": "NBA",
@@ -4867,6 +4235,30 @@
       "awayScore": "98",
       "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401908944/knicks-raptors",
       "uniquePairing": false
+    },
+    {
+      "id": "college-football-401871067",
+      "sport": "Football",
+      "league": "College Football",
+      "date": "2026-10-13T23:00Z",
+      "home": "Middle Tennessee Blue Raiders",
+      "away": "Delaware Blue Hens",
+      "homeTerms": [
+        "Middle Tennessee Blue Raiders",
+        "MTSU",
+        "Blue Raiders"
+      ],
+      "awayTerms": [
+        "Delaware Blue Hens",
+        "Delaware",
+        "Blue Hens"
+      ],
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2393.png",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/ncaa/500/48.png",
+      "homeScore": "33",
+      "awayScore": "30",
+      "sourceUrl": "https://www.espn.com/college-football/game/_/gameId/401871067/delaware-mtsu",
+      "uniquePairing": true
     },
     {
       "id": "uefa.champions-401915417",
@@ -5226,150 +4618,1616 @@
       "awayScore": "131",
       "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401901824/nets-wizards",
       "uniquePairing": true
+    }
+  ],
+  "entries": [
+    {
+      "gameId": "college-football-401856724",
+      "gameDate": "2026-10-17T16:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "-Tkv98kMK9o",
+        "title": "Florida Gators vs. Texas Longhorns | Full Match Highlights | ESPN Volleyball",
+        "channel": "ESPN",
+        "thumbnail": "https://i.ytimg.com/vi/-Tkv98kMK9o/hqdefault.jpg",
+        "publishedAt": "2026-10-19T03:21:34Z"
+      }
     },
     {
-      "id": "mlb-401908031",
-      "sport": "Baseball",
-      "league": "MLB",
-      "date": "2026-10-12T21:00Z",
-      "home": "Milwaukee Brewers",
-      "away": "Los Angeles Dodgers",
-      "homeTerms": [
-        "Milwaukee Brewers",
-        "Brewers",
-        "Brewers"
-      ],
-      "awayTerms": [
-        "Los Angeles Dodgers",
-        "Dodgers",
-        "Dodgers"
-      ],
-      "homeLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/mil.png",
-      "awayLogo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/lad.png",
-      "homeScore": "7",
-      "awayScore": "4",
-      "sourceUrl": "https://www.espn.com/mlb/game/_/gameId/401908031/dodgers-brewers",
-      "uniquePairing": false
+      "gameId": "college-football-401856828",
+      "gameDate": "2026-10-17T19:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "gTELJQsHxjw",
+        "title": "Arizona State Sun Devils vs No. 10 Texas Tech Red Raiders Highlights 🏈 FOX College Football",
+        "channel": "CFB ON FOX",
+        "thumbnail": "https://i.ytimg.com/vi/gTELJQsHxjw/hqdefault.jpg",
+        "publishedAt": "2026-10-17T23:44:48Z"
+      }
     },
     {
-      "id": "nba-401914130",
-      "sport": "Basketball",
-      "league": "NBA",
-      "date": "2026-10-12T20:00Z",
-      "home": "Portland Trail Blazers",
-      "away": "London Lions",
-      "homeTerms": [
-        "Portland Trail Blazers",
-        "Trail Blazers",
-        "Trail Blazers"
-      ],
-      "awayTerms": [
-        "London Lions",
-        "Lions",
-        "Lions"
-      ],
-      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/por.png",
-      "awayLogo": "",
-      "homeScore": "119",
-      "awayScore": "66",
-      "sourceUrl": "https://www.espn.com/nba/game/_/gameId/401914130/lions-trail-blazers",
-      "uniquePairing": true
+      "gameId": "college-football-401856830",
+      "gameDate": "2026-10-17T16:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "XHljKsIcWW4",
+        "title": "Kansas Jayhawks vs Kansas State Wildcats Highlights 🏈 FOX College Football",
+        "channel": "CFB ON FOX",
+        "thumbnail": "https://i.ytimg.com/vi/XHljKsIcWW4/hqdefault.jpg",
+        "publishedAt": "2026-10-17T20:13:45Z"
+      }
     },
     {
-      "id": "eng.1-401879267",
-      "sport": "Soccer",
-      "league": "Premier League",
-      "date": "2026-10-12T19:00Z",
-      "home": "Coventry City",
-      "away": "Newcastle United",
-      "homeTerms": [
-        "Coventry City",
-        "Coventry",
-        "Coventry City"
-      ],
-      "awayTerms": [
-        "Newcastle United",
-        "Newcastle",
-        "Newcastle United"
-      ],
-      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/388.png",
-      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/361.png",
-      "homeScore": "4",
-      "awayScore": "1",
-      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401879267/newcastle-united-coventry-city",
-      "uniquePairing": true
+      "gameId": "college-football-401856831",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "-CXr0_AXrto",
+        "title": "No. 18 Oklahoma State Cowboys vs No. 20 Houston Cougars Highlights 🏈 FOX College Football",
+        "channel": "CFB ON FOX",
+        "thumbnail": "https://i.ytimg.com/vi/-CXr0_AXrto/hqdefault.jpg",
+        "publishedAt": "2026-10-18T03:45:12Z"
+      }
     },
     {
-      "id": "esp.1-401882852",
-      "sport": "Soccer",
-      "league": "La Liga",
-      "date": "2026-10-12T19:00Z",
-      "home": "Levante",
-      "away": "Sevilla",
-      "homeTerms": [
-        "Levante",
-        "Levante",
-        "Levante"
-      ],
-      "awayTerms": [
-        "Sevilla",
-        "Sevilla",
-        "Sevilla"
-      ],
-      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/1538.png",
-      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/243.png",
-      "homeScore": "3",
-      "awayScore": "3",
-      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401882852/sevilla-levante",
-      "uniquePairing": true
+      "gameId": "college-football-401858267",
+      "gameDate": "2026-10-17T16:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "y60LUXkkNt4",
+        "title": "Panthers vs. Eagles Week 6 Recap | NFL Daily",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/y60LUXkkNt4/hqdefault.jpg",
+        "publishedAt": "2026-10-19T05:07:54Z"
+      }
     },
     {
-      "id": "ita.1-401874763",
-      "sport": "Soccer",
-      "league": "Serie A",
-      "date": "2026-10-12T18:45Z",
-      "home": "Torino",
-      "away": "Udinese",
-      "homeTerms": [
-        "Torino",
-        "Torino",
-        "Torino"
-      ],
-      "awayTerms": [
-        "Udinese",
-        "Udinese",
-        "Udinese"
-      ],
-      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/239.png",
-      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/118.png",
-      "homeScore": "2",
-      "awayScore": "1",
-      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401874763/udinese-torino",
-      "uniquePairing": true
+      "gameId": "college-football-401858489",
+      "gameDate": "2026-10-17T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "QXtwHB-WpY4",
+        "title": "Rutgers Scarlet Knights vs Maryland Terrapins Highlights 🏈  FOX College Football",
+        "channel": "CFB ON FOX",
+        "thumbnail": "https://i.ytimg.com/vi/QXtwHB-WpY4/hqdefault.jpg",
+        "publishedAt": "2026-10-17T21:26:14Z"
+      }
     },
     {
-      "id": "ita.1-401875005",
-      "sport": "Soccer",
-      "league": "Serie A",
-      "date": "2026-10-12T16:30Z",
-      "home": "Atalanta",
-      "away": "Venezia",
-      "homeTerms": [
-        "Atalanta",
-        "Atalanta",
-        "Atalanta"
-      ],
-      "awayTerms": [
-        "Venezia",
-        "Venezia",
-        "Venezia"
-      ],
-      "homeLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/105.png",
-      "awayLogo": "https://a.espncdn.com/i/teamlogos/soccer/500/17530.png",
-      "homeScore": "3",
-      "awayScore": "1",
-      "sourceUrl": "https://www.espn.com/soccer/match/_/gameId/401875005/venezia-atalanta",
-      "uniquePairing": true
+      "gameId": "college-football-401858493",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "wuh0K97FBaQ",
+        "title": "Washington Huskies vs Purdue Boilermakers Highlights 🏈 FOX College Football",
+        "channel": "CFB ON FOX",
+        "thumbnail": "https://i.ytimg.com/vi/wuh0K97FBaQ/hqdefault.jpg",
+        "publishedAt": "2026-10-17T04:14:03Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401878769",
+      "gameDate": "2026-10-18T15:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "tOg0zFIes84",
+        "title": "Nottingham Forest v. Arsenal | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/tOg0zFIes84/hqdefault.jpg",
+        "publishedAt": "2026-10-18T18:07:22Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401878770",
+      "gameDate": "2026-10-17T14:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "Wv2e6iihj0o",
+        "title": "Fulham v. Hull City | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/Wv2e6iihj0o/hqdefault.jpg",
+        "publishedAt": "2026-10-17T17:29:46Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401878771",
+      "gameDate": "2026-10-17T11:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "eXsWnTusr2o",
+        "title": "Everton v. Chelsea | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/eXsWnTusr2o/hqdefault.jpg",
+        "publishedAt": "2026-10-17T14:08:33Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879257",
+      "gameDate": "2026-10-19T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "HbOg1KUX7ew",
+        "title": "Tottenham Hotspur v. Coventry City | PREMIER LEAGUE HIGHLIGHTS | 10/19/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/HbOg1KUX7ew/hqdefault.jpg",
+        "publishedAt": "2026-10-19T21:51:54Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879258",
+      "gameDate": "2026-10-17T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "WKz2XqemdLI",
+        "title": "Newcastle United v. Aston Villa | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/WKz2XqemdLI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T18:59:55Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879259",
+      "gameDate": "2026-10-17T14:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "czf2arTi4u4",
+        "title": "Manchester City v. Ipswich Town | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/czf2arTi4u4/hqdefault.jpg",
+        "publishedAt": "2026-10-17T17:03:26Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879260",
+      "gameDate": "2026-10-18T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "TksUXmxf2AU",
+        "title": "Leeds United v. Manchester United | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/TksUXmxf2AU/hqdefault.jpg",
+        "publishedAt": "2026-10-18T15:48:40Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879261",
+      "gameDate": "2026-10-18T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "7xiDxjNX7Cw",
+        "title": "Brighton v. Crystal Palace | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/7xiDxjNX7Cw/hqdefault.jpg",
+        "publishedAt": "2026-10-18T15:43:27Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879262",
+      "gameDate": "2026-10-17T14:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "yivzQLxZgPI",
+        "title": "Brentford v. Liverpool | PREMIER LEAGUE HIGHLIGHTS | 10/17/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/yivzQLxZgPI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T18:04:17Z"
+      }
+    },
+    {
+      "gameId": "eng.1-401879263",
+      "gameDate": "2026-10-18T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "2vn7-LwP2yc",
+        "title": "Bournemouth v. Sunderland | PREMIER LEAGUE HIGHLIGHTS | 10/18/2026",
+        "channel": "NBC Sports",
+        "thumbnail": "https://i.ytimg.com/vi/2vn7-LwP2yc/hqdefault.jpg",
+        "publishedAt": "2026-10-18T16:33:10Z"
+      }
+    },
+    {
+      "gameId": "esp.1-401882838",
+      "gameDate": "2026-10-17T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "gf1WArKmQc4",
+        "title": "Valencia vs. Athletic Club | LALIGA Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/gf1WArKmQc4/hqdefault.jpg",
+        "publishedAt": "2026-10-17T21:39:33Z"
+      }
+    },
+    {
+      "gameId": "esp.1-401882839",
+      "gameDate": "2026-10-18T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "wOPfaS4mjSk",
+        "title": "Real Madrid vs. Sevilla | LALIGA Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/wOPfaS4mjSk/hqdefault.jpg",
+        "publishedAt": "2026-10-18T21:21:00Z"
+      }
+    },
+    {
+      "gameId": "esp.1-401882841",
+      "gameDate": "2026-10-18T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "ZWJo0GQfhx8",
+        "title": "Malaga vs. Real Sociedad | LALIGA Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/ZWJo0GQfhx8/hqdefault.jpg",
+        "publishedAt": "2026-10-18T18:44:30Z"
+      }
+    },
+    {
+      "gameId": "esp.1-401882843",
+      "gameDate": "2026-10-17T12:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "lMojazr0PPI",
+        "title": "Espanyol vs. Atletico Madrid | LALIGA Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/lMojazr0PPI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T14:26:32Z"
+      }
+    },
+    {
+      "gameId": "esp.1-401882846",
+      "gameDate": "2026-10-17T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "b9T_zHMAnKo",
+        "title": "Real Betis vs. Barcelona | LALIGA Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/b9T_zHMAnKo/hqdefault.jpg",
+        "publishedAt": "2026-10-17T20:31:38Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876431",
+      "gameDate": "2026-10-17T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "cBvHuyXjd7M",
+        "title": "Troyes vs Lens | HIGHLIGHTS Ligue 1 | 10/17/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/cBvHuyXjd7M/hqdefault.jpg",
+        "publishedAt": "2026-10-17T21:13:48Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876432",
+      "gameDate": "2026-10-17T15:15Z",
+      "kind": "recaps",
+      "video": {
+        "id": "3YtHtnWkfcY",
+        "title": "RC Strasbourg vs Paris Saint-Germain | EXTENDED HIGHLIGHTS Ligue 1 | 10/17/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/3YtHtnWkfcY/hqdefault.jpg",
+        "publishedAt": "2026-10-17T17:52:25Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876433",
+      "gameDate": "2026-10-18T15:15Z",
+      "kind": "recaps",
+      "video": {
+        "id": "P1CotwGrD0w",
+        "title": "Paris FC vs Stade Rennes | HIGHLIGHTS Ligue 1 | 10/18/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/P1CotwGrD0w/hqdefault.jpg",
+        "publishedAt": "2026-10-18T19:17:10Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876434",
+      "gameDate": "2026-10-18T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "o0CHjL5VlxM",
+        "title": "Lyon vs Nice | EXTENDED HIGHLIGHTS Ligue 1 | 10/18/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/o0CHjL5VlxM/hqdefault.jpg",
+        "publishedAt": "2026-10-18T21:51:44Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876435",
+      "gameDate": "2026-10-18T15:15Z",
+      "kind": "recaps",
+      "video": {
+        "id": "JcNN13P3I4Y",
+        "title": "Lorient vs AS Monaco | HIGHLIGHTS Ligue 1 | 10/18/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/JcNN13P3I4Y/hqdefault.jpg",
+        "publishedAt": "2026-10-18T18:34:43Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876436",
+      "gameDate": "2026-10-17T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "SlCbDukwNRw",
+        "title": "Lille vs Stade Brest | HIGHLIGHTS Ligue 1 | 10/17/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/SlCbDukwNRw/hqdefault.jpg",
+        "publishedAt": "2026-10-17T21:41:23Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876437",
+      "gameDate": "2026-10-16T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "i3GPYvIk3GQ",
+        "title": "Le Mans vs Toulouse | HIGHLIGHTS Ligue 1 | 10/16/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/i3GPYvIk3GQ/hqdefault.jpg",
+        "publishedAt": "2026-10-16T21:14:03Z"
+      }
+    },
+    {
+      "gameId": "fra.1-401876439",
+      "gameDate": "2026-10-18T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "N4aIiVsOXxI",
+        "title": "Angers vs Marseille | HIGHLIGHTS Ligue 1 | 10/18/2026 | beIN SPORTS USA",
+        "channel": "beIN SPORTS USA",
+        "thumbnail": "https://i.ytimg.com/vi/N4aIiVsOXxI/hqdefault.jpg",
+        "publishedAt": "2026-10-18T16:48:59Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884764",
+      "gameDate": "2026-10-17T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "ZLodZlpthrg",
+        "title": "FOUR Penalties In One Game! | SV ELVERSBERG - FC AUGSBURG | Highlights | Matchday 6 – Bundesliga",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/ZLodZlpthrg/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:33Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884765",
+      "gameDate": "2026-10-17T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "b-N55HGj9Uk",
+        "title": "Another Away Win For Mainz! | SCHALKE 04 - MAINZ 05 | Highlights | Matchday 6 – Bundesliga 2026/27",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/b-N55HGj9Uk/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:00Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884766",
+      "gameDate": "2026-10-17T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "h82jd-71LEU",
+        "title": "Füllkrug Brace Saves Point! | WERDER BREMEN - SC PADERBORN | Highlights | Matchday 6 – Bundesliga",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/h82jd-71LEU/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:28Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884768",
+      "gameDate": "2026-10-18T15:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "VZWkQH7EmgA",
+        "title": "Hoffenheim Edge Past Gladbach! | BORUSSIA M'GLADBACH - HOFFENHEIM | Highlights | MD 6 – Bundesliga",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/VZWkQH7EmgA/hqdefault.jpg",
+        "publishedAt": "2026-10-18T17:34:35Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884769",
+      "gameDate": "2026-10-17T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "GdZlemofc6w",
+        "title": "Hard-fought Point At Home! | UNION BERLIN - BORUSSIA DORTMUND | Highlights | Matchday 6 – Bundesliga",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/GdZlemofc6w/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:36Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884771",
+      "gameDate": "2026-10-18T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "h0rpQpv_J6U",
+        "title": "SCHICK Making HISTORY! | BAYER 04 LEVERKUSEN - SC FREIBURG | Highlights | MD 6 – Bundesliga 2026/27",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/h0rpQpv_J6U/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:01Z"
+      }
+    },
+    {
+      "gameId": "ger.1-401884772",
+      "gameDate": "2026-10-17T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "KRp3Z2Dd9ZA",
+        "title": "Luis Díaz With A Hattrick! | FC BAYERN - RB LEIPZIG | Highlights | Matchday 6 – Bundesliga 2026/27",
+        "channel": "Bundesliga",
+        "thumbnail": "https://i.ytimg.com/vi/KRp3Z2Dd9ZA/hqdefault.jpg",
+        "publishedAt": "2026-10-18T22:00:25Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874760",
+      "gameDate": "2026-10-17T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "LWSzoGXNaaU",
+        "title": "Venezia vs. Napoli: Extended Highlights | Serie A | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/LWSzoGXNaaU/hqdefault.jpg",
+        "publishedAt": "2026-10-17T15:15:05Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874762",
+      "gameDate": "2026-10-19T16:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "z-GFK406oJI",
+        "title": "Monza vs. Cagliari: Extended Highlights | Serie A | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/z-GFK406oJI/hqdefault.jpg",
+        "publishedAt": "2026-10-19T18:39:52Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874765",
+      "gameDate": "2026-10-18T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "6_schlVz89I",
+        "title": "Juventus vs. Lazio: Extended Highlights | Serie A | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/6_schlVz89I/hqdefault.jpg",
+        "publishedAt": "2026-10-18T20:56:10Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874771",
+      "gameDate": "2026-10-18T10:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "8EOS6PrGdz4",
+        "title": "Udinese vs. Lecce: Extended Highlights | Serie A | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/8EOS6PrGdz4/hqdefault.jpg",
+        "publishedAt": "2026-10-18T13:21:01Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874774",
+      "gameDate": "2026-10-18T13:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "5GNhpSUUE6c",
+        "title": "Fiorentina vs. Como: Extended Highlights | Serie A | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/5GNhpSUUE6c/hqdefault.jpg",
+        "publishedAt": "2026-10-18T15:27:19Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874784",
+      "gameDate": "2026-10-19T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "_IBOsRfOrlw",
+        "title": "Parma vs. Torino: Extended Highlights | Serie A | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/_IBOsRfOrlw/hqdefault.jpg",
+        "publishedAt": "2026-10-19T20:55:45Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874959",
+      "gameDate": "2026-10-16T18:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "fsmFN983ff4",
+        "title": "Frosinone vs. Sassuolo: Extended Highlights | Serie A | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/fsmFN983ff4/hqdefault.jpg",
+        "publishedAt": "2026-10-16T21:05:30Z"
+      }
+    },
+    {
+      "gameId": "ita.1-401874978",
+      "gameDate": "2026-10-18T16:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "wCbIOncUh3k",
+        "title": "Milan vs. Atalanta: Extended Highlights | Serie A | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/wCbIOncUh3k/hqdefault.jpg",
+        "publishedAt": "2026-10-18T18:38:42Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908023",
+      "gameDate": "2026-10-13T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "XQSGs9VWueA",
+        "title": "GUARDIANS vs. RAYS: ALCS Full Game 2 Highlights (October 13) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/XQSGs9VWueA/hqdefault.jpg",
+        "publishedAt": "2026-10-14T03:21:39Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908024",
+      "gameDate": "2026-10-14T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "XQSGs9VWueA",
+        "title": "GUARDIANS vs. RAYS: ALCS Full Game 2 Highlights (October 13) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/XQSGs9VWueA/hqdefault.jpg",
+        "publishedAt": "2026-10-14T03:21:39Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908025",
+      "gameDate": "2026-10-15T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "FI5hnCF0CBY",
+        "title": "RAYS vs. GUARDIANS: ALCS Full Game 3 Highlights (October 15) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/FI5hnCF0CBY/hqdefault.jpg",
+        "publishedAt": "2026-10-15T20:07:51Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908027",
+      "gameDate": "2026-10-18T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "A3x9CAYUapM",
+        "title": "RAYS vs. GUARDIANS: ALCS Full Game 5 Highlights (October 18) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/A3x9CAYUapM/hqdefault.jpg",
+        "publishedAt": "2026-10-19T00:41:59Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908032",
+      "gameDate": "2026-10-15T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "ZVjnWhgxzjM",
+        "title": "BREWERS vs. DODGERS: NLCS Full Game 4 Highlights (October 15) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/ZVjnWhgxzjM/hqdefault.jpg",
+        "publishedAt": "2026-10-16T03:39:06Z"
+      }
+    },
+    {
+      "gameId": "mlb-401908033",
+      "gameDate": "2026-10-16T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "uG1mRyXzyg8",
+        "title": "THE FINAL OUT! All calls of the Brewers' 2026 NLCS sweep vs. the Dodgers! | MLB Highlights",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/uG1mRyXzyg8/hqdefault.jpg",
+        "publishedAt": "2026-10-17T00:30:04Z"
+      }
+    },
+    {
+      "gameId": "mlb-401930515",
+      "gameDate": "2026-10-18T21:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "A3x9CAYUapM",
+        "title": "RAYS vs. GUARDIANS: ALCS Full Game 5 Highlights (October 18) | 2026 MLB Postseason",
+        "channel": "MLB",
+        "thumbnail": "https://i.ytimg.com/vi/A3x9CAYUapM/hqdefault.jpg",
+        "publishedAt": "2026-10-19T00:41:59Z"
+      }
+    },
+    {
+      "gameId": "nba-401898402",
+      "gameDate": "2026-10-12T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "iNBVspsJJQc",
+        "title": "THUNDER at HAWKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/iNBVspsJJQc/hqdefault.jpg",
+        "publishedAt": "2026-10-13T01:48:03Z"
+      }
+    },
+    {
+      "gameId": "nba-401898403",
+      "gameDate": "2026-10-13T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "c9qZ9Dc6ZvM",
+        "title": "CAVALIERS at MAGIC | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/c9qZ9Dc6ZvM/hqdefault.jpg",
+        "publishedAt": "2026-10-14T01:38:23Z"
+      }
+    },
+    {
+      "gameId": "nba-401898404",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "4Mtdux5j_5U",
+        "title": "NETS at HEAT | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/4Mtdux5j_5U/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:22:53Z"
+      }
+    },
+    {
+      "gameId": "nba-401898405",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "KRTK_zDU5l0",
+        "title": "HORNETS at CELTICS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/KRTK_zDU5l0/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:19:39Z"
+      }
+    },
+    {
+      "gameId": "nba-401898406",
+      "gameDate": "2026-10-16T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "vILUjksgw2Q",
+        "title": "HEAT at MAGIC | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/vILUjksgw2Q/hqdefault.jpg",
+        "publishedAt": "2026-10-17T01:50:06Z"
+      }
+    },
+    {
+      "gameId": "nba-401898407",
+      "gameDate": "2026-10-16T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "h0LDSDljJMw",
+        "title": "CELTICS at 76ERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/h0LDSDljJMw/hqdefault.jpg",
+        "publishedAt": "2026-10-17T01:53:24Z"
+      }
+    },
+    {
+      "gameId": "nba-401898408",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "pFRSoI2InLU",
+        "title": "HAWKS at MAVERICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/pFRSoI2InLU/hqdefault.jpg",
+        "publishedAt": "2026-10-17T03:10:28Z"
+      }
+    },
+    {
+      "gameId": "nba-401898409",
+      "gameDate": "2026-10-17T02:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "xDunS4-w5Hg",
+        "title": "TRAIL BLAZERS at WARRIORS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/xDunS4-w5Hg/hqdefault.jpg",
+        "publishedAt": "2026-10-17T05:03:24Z"
+      }
+    },
+    {
+      "gameId": "nba-401898718",
+      "gameDate": "2026-10-14T02:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "x6ajbvY0OjQ",
+        "title": "WARRIORS at LAKERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/x6ajbvY0OjQ/hqdefault.jpg",
+        "publishedAt": "2026-10-14T04:47:17Z"
+      }
+    },
+    {
+      "gameId": "nba-401898719",
+      "gameDate": "2026-10-17T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "qhU2hqJ9rhc",
+        "title": "NUGGETS at LAKERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/qhU2hqJ9rhc/hqdefault.jpg",
+        "publishedAt": "2026-10-17T05:40:04Z"
+      }
+    },
+    {
+      "gameId": "nba-401898721",
+      "gameDate": "2026-10-13T01:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "6pSjgLvoVYQ",
+        "title": "SPURS at JAZZ | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/6pSjgLvoVYQ/hqdefault.jpg",
+        "publishedAt": "2026-10-13T03:54:28Z"
+      }
+    },
+    {
+      "gameId": "nba-401898722",
+      "gameDate": "2026-10-15T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "j-rTz31Pems",
+        "title": "SUNS at SPURS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/j-rTz31Pems/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:46:12Z"
+      }
+    },
+    {
+      "gameId": "nba-401898843",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "1VjaB6MynyU",
+        "title": "KINGS at SPURS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/1VjaB6MynyU/hqdefault.jpg",
+        "publishedAt": "2026-10-17T02:48:46Z"
+      }
+    },
+    {
+      "gameId": "nba-401901822",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "4Vk445ZPOCE",
+        "title": "HORNETS at GRIZZLIES | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/4Vk445ZPOCE/hqdefault.jpg",
+        "publishedAt": "2026-10-17T02:47:18Z"
+      }
+    },
+    {
+      "gameId": "nba-401901824",
+      "gameDate": "2026-10-12T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "EwhoARz1yB4",
+        "title": "NETS at WIZARDS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/EwhoARz1yB4/hqdefault.jpg",
+        "publishedAt": "2026-10-13T01:51:26Z"
+      }
+    },
+    {
+      "gameId": "nba-401901825",
+      "gameDate": "2026-10-15T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "PMhkej9WpJA",
+        "title": "PELICANS at MAVERICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/PMhkej9WpJA/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:15:37Z"
+      }
+    },
+    {
+      "gameId": "nba-401901826",
+      "gameDate": "2026-10-14T02:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "p9iE4bGvMP8",
+        "title": "TRAIL BLAZERS at KINGS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/p9iE4bGvMP8/hqdefault.jpg",
+        "publishedAt": "2026-10-14T04:50:50Z"
+      }
+    },
+    {
+      "gameId": "nba-401906509",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "qz8Usmdv0QM",
+        "title": "WIZARDS at PELICANS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/qz8Usmdv0QM/hqdefault.jpg",
+        "publishedAt": "2026-10-17T03:06:15Z"
+      }
+    },
+    {
+      "gameId": "nba-401908621",
+      "gameDate": "2026-10-14T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "xsl01r9uQLQ",
+        "title": "PACERS at THUNDER | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/xsl01r9uQLQ/hqdefault.jpg",
+        "publishedAt": "2026-10-14T03:06:04Z"
+      }
+    },
+    {
+      "gameId": "nba-401908622",
+      "gameDate": "2026-10-16T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "bmrciQpiHFI",
+        "title": "THUNDER at ROCKETS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 15, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/bmrciQpiHFI/hqdefault.jpg",
+        "publishedAt": "2026-10-16T03:12:09Z"
+      }
+    },
+    {
+      "gameId": "nba-401908942",
+      "gameDate": "2026-10-15T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "bmqwoekTXg8",
+        "title": "BULLS at BUCKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/bmqwoekTXg8/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:36:49Z"
+      }
+    },
+    {
+      "gameId": "nba-401908943",
+      "gameDate": "2026-10-17T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "XmFFZxa6tM4",
+        "title": "TIMBERWOLVES at BULLS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/XmFFZxa6tM4/hqdefault.jpg",
+        "publishedAt": "2026-10-17T02:51:01Z"
+      }
+    },
+    {
+      "gameId": "nba-401908944",
+      "gameDate": "2026-10-13T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "EyQytP1xKiY",
+        "title": "KNICKS at RAPTORS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 13, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/EyQytP1xKiY/hqdefault.jpg",
+        "publishedAt": "2026-10-14T01:47:25Z"
+      }
+    },
+    {
+      "gameId": "nba-401908945",
+      "gameDate": "2026-10-15T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "KcLfEwwzAw4",
+        "title": "RAPTORS at KNICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 15, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/KcLfEwwzAw4/hqdefault.jpg",
+        "publishedAt": "2026-10-16T02:38:21Z"
+      }
+    },
+    {
+      "gameId": "nba-401908946",
+      "gameDate": "2026-10-16T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "Zwp1XDQlhl8",
+        "title": "RAPTORS at PISTONS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/Zwp1XDQlhl8/hqdefault.jpg",
+        "publishedAt": "2026-10-17T02:22:50Z"
+      }
+    },
+    {
+      "gameId": "nba-401908948",
+      "gameDate": "2026-10-17T02:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "fT671wr14Ys",
+        "title": "JAZZ at SUNS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/fT671wr14Ys/hqdefault.jpg",
+        "publishedAt": "2026-10-17T05:12:00Z"
+      }
+    },
+    {
+      "gameId": "nba-401914124",
+      "gameDate": "2026-10-12T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "CqagxE5kpXU",
+        "title": "TIMBERWOLVES at KNICKS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 12, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/CqagxE5kpXU/hqdefault.jpg",
+        "publishedAt": "2026-10-13T02:22:09Z"
+      }
+    },
+    {
+      "gameId": "nba-401914125",
+      "gameDate": "2026-10-15T00:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "BMlNel_dUyk",
+        "title": "PISTONS at TIMBERWOLVES | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/BMlNel_dUyk/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:12:30Z"
+      }
+    },
+    {
+      "gameId": "nba-401914126",
+      "gameDate": "2026-10-16T23:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "1UcL1Xxx7sI",
+        "title": "BUCKS at PACERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 16, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/1UcL1Xxx7sI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T01:52:07Z"
+      }
+    },
+    {
+      "gameId": "nba-401918011",
+      "gameDate": "2026-10-15T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "ou4fHN6d3Ww",
+        "title": "NUGGETS at CLIPPERS | NBA PRESEASON FULL GAME HIGHLIGHTS | October 14, 2026",
+        "channel": "NBA",
+        "thumbnail": "https://i.ytimg.com/vi/ou4fHN6d3Ww/hqdefault.jpg",
+        "publishedAt": "2026-10-15T05:17:30Z"
+      }
+    },
+    {
+      "gameId": "nfl-401872996",
+      "gameDate": "2026-10-18T13:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "JIO56Ib7zSA",
+        "title": "Texans vs. Jaguars Week 6 Recap | NFL Daily",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/JIO56Ib7zSA/hqdefault.jpg",
+        "publishedAt": "2026-10-19T05:16:35Z"
+      }
+    },
+    {
+      "gameId": "nfl-401872997",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "agBZnbbPCq0",
+        "title": "Baltimore Ravens vs. Cleveland Browns Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/agBZnbbPCq0/hqdefault.jpg",
+        "publishedAt": "2026-10-18T20:09:05Z"
+      }
+    },
+    {
+      "gameId": "nfl-401872998",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "y60LUXkkNt4",
+        "title": "Panthers vs. Eagles Week 6 Recap | NFL Daily",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/y60LUXkkNt4/hqdefault.jpg",
+        "publishedAt": "2026-10-19T05:07:54Z"
+      }
+    },
+    {
+      "gameId": "nfl-401872999",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "mM3TtQBh3WU",
+        "title": "Bears vs. Falcons Week 6 Recap | NFL Daily",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/mM3TtQBh3WU/hqdefault.jpg",
+        "publishedAt": "2026-10-19T04:56:40Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873000",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "a1M5YngTbus",
+        "title": "New Orleans Saints vs. New York Giants Game Highlights | NFL 2026 Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/a1M5YngTbus/hqdefault.jpg",
+        "publishedAt": "2026-10-18T21:01:48Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873001",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "CDcGaEkMy6s",
+        "title": "New York Jets vs New England Patriots Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/CDcGaEkMy6s/hqdefault.jpg",
+        "publishedAt": "2026-10-18T20:32:47Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873002",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "vf4ksuXiQ1M",
+        "title": "Pittsburgh Steelers vs. Tampa Bay Buccaneers Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/vf4ksuXiQ1M/hqdefault.jpg",
+        "publishedAt": "2026-10-18T21:00:06Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873003",
+      "gameDate": "2026-10-18T17:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "MJZhpnKoY7E",
+        "title": "Tennessee Titans vs Indianapolis Colts Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/MJZhpnKoY7E/hqdefault.jpg",
+        "publishedAt": "2026-10-18T20:37:34Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873004",
+      "gameDate": "2026-10-18T20:05Z",
+      "kind": "recaps",
+      "video": {
+        "id": "kXX4xq2el10",
+        "title": "Arizona Cardinals vs. Los Angeles Rams Game Highlights | NFL 2026 Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/kXX4xq2el10/hqdefault.jpg",
+        "publishedAt": "2026-10-18T23:11:28Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873005",
+      "gameDate": "2026-10-18T20:25Z",
+      "kind": "recaps",
+      "video": {
+        "id": "JCwv4Mrkdd8",
+        "title": "Buffalo Bills vs. Las Vegas Raiders Game Highlights | NFL 2026 Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/JCwv4Mrkdd8/hqdefault.jpg",
+        "publishedAt": "2026-10-18T23:57:16Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873006",
+      "gameDate": "2026-10-18T20:25Z",
+      "kind": "recaps",
+      "video": {
+        "id": "B5OVcasfeTU",
+        "title": "Los Angeles Chargers vs Kansas City Chiefs Game Highlights | 2026 NFL Season Week 6",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/B5OVcasfeTU/hqdefault.jpg",
+        "publishedAt": "2026-10-18T23:48:28Z"
+      }
+    },
+    {
+      "gameId": "nfl-401873007",
+      "gameDate": "2026-10-19T00:20Z",
+      "kind": "recaps",
+      "video": {
+        "id": "VWwu1SS2reE",
+        "title": "Cowboys vs. Packers Week 6 SNF Recap | NFL Daily",
+        "channel": "NFL",
+        "thumbnail": "https://i.ytimg.com/vi/VWwu1SS2reE/hqdefault.jpg",
+        "publishedAt": "2026-10-19T05:31:22Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915405",
+      "gameDate": "2026-10-14T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "3bv07599jg8",
+        "title": "Slovan Bratislava vs. Stuttgart: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/3bv07599jg8/hqdefault.jpg",
+        "publishedAt": "2026-10-14T21:38:36Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915406",
+      "gameDate": "2026-10-14T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "RSJmQVbmC7g",
+        "title": "Shakhtar Donetsk vs. AEK Athens: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/RSJmQVbmC7g/hqdefault.jpg",
+        "publishedAt": "2026-10-14T21:47:52Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915408",
+      "gameDate": "2026-10-14T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "PzIp2qFER8c",
+        "title": "Real Betis vs. Porto: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/PzIp2qFER8c/hqdefault.jpg",
+        "publishedAt": "2026-10-14T21:28:58Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915409",
+      "gameDate": "2026-10-14T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "0sM6Q35Uz6Q",
+        "title": "Aston Villa vs. Fenerbahçe: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/0sM6Q35Uz6Q/hqdefault.jpg",
+        "publishedAt": "2026-10-14T21:18:00Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915410",
+      "gameDate": "2026-10-13T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "rv_KVk0TUEc",
+        "title": "Villarreal vs. Napoli: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/rv_KVk0TUEc/hqdefault.jpg",
+        "publishedAt": "2026-10-13T21:12:00Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915416",
+      "gameDate": "2026-10-14T16:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "kbThokCccLE",
+        "title": "Feyenoord vs. Como: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/kbThokCccLE/hqdefault.jpg",
+        "publishedAt": "2026-10-14T18:58:51Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915417",
+      "gameDate": "2026-10-13T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "XUOlW5FdU9U",
+        "title": "Arsenal vs. Lille: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/XUOlW5FdU9U/hqdefault.jpg",
+        "publishedAt": "2026-10-13T21:07:56Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915418",
+      "gameDate": "2026-10-13T16:45Z",
+      "kind": "recaps",
+      "video": {
+        "id": "O0dFStaNdKc",
+        "title": "Lens vs. Sporting CP: Extended Highlights | UCL League Phase MD 2 | CBS Sports Golazo",
+        "channel": "CBS Sports Golazo",
+        "thumbnail": "https://i.ytimg.com/vi/O0dFStaNdKc/hqdefault.jpg",
+        "publishedAt": "2026-10-13T19:02:53Z"
+      }
+    },
+    {
+      "gameId": "uefa.champions-401915435",
+      "gameDate": "2026-10-13T19:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "t1eAl5hqxdQ",
+        "title": "HIGHLIGHTS | GALATASARAY 1 vs 4 FC BARCELONA | UEFA CHAMPIONS LEAGUE 26/27 🔵🔴",
+        "channel": "FC Barcelona",
+        "thumbnail": "https://i.ytimg.com/vi/t1eAl5hqxdQ/hqdefault.jpg",
+        "publishedAt": "2026-10-14T21:00:01Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761860",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "R0-AAHFtkC0",
+        "title": "Toronto FC vs. Orlando City SC | MLS Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/R0-AAHFtkC0/hqdefault.jpg",
+        "publishedAt": "2026-10-15T01:53:18Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761861",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "GoDS5z5rrNQ",
+        "title": "Inter Miami vs. NYCFC | MLS Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/GoDS5z5rrNQ/hqdefault.jpg",
+        "publishedAt": "2026-10-15T01:47:28Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761862",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "gfhm_dlLr3g",
+        "title": "FC Cincinnati vs. New England Revolution | Full Match Highlights | Dor Turgeman Two-Goal Boost!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/gfhm_dlLr3g/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:14:42Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761863",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "W8d18-0yc2M",
+        "title": "D.C. United vs. Red Bull New York | Full Match Highlights | TIGHT 10-MAN FINISH!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/W8d18-0yc2M/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:27:36Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761864",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "WFjKwLQzLUg",
+        "title": "CF Montréal vs. Atlanta United | Full Match Highlights",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/WFjKwLQzLUg/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:35:21Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761865",
+      "gameDate": "2026-10-14T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "44izXrax-LM",
+        "title": "Columbus Crew vs. Charlotte FC | Full Match Highlights | 2 GOALS IN 2 MINUTES TO TURN IT AROUND!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/44izXrax-LM/hqdefault.jpg",
+        "publishedAt": "2026-10-15T02:14:29Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761866",
+      "gameDate": "2026-10-15T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "OSomDuioFcI",
+        "title": "Nashville SC vs. Sporting Kansas City | Full Match Highlights | STEP TOWARD SUPPORTERS' SHIELD!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/OSomDuioFcI/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:20:40Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761867",
+      "gameDate": "2026-10-15T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "ai5wjB_NI5E",
+        "title": "FC Dallas vs. Seattle Sounders | Full Match Highlights | Kaick Banger!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/ai5wjB_NI5E/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:16:28Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761868",
+      "gameDate": "2026-10-15T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "DNR9eEQ661k",
+        "title": "St. Louis CITY SC vs. Vancouver Whitecaps FC | Full Match Highlights | Streak Stalled!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/DNR9eEQ661k/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:13:32Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761869",
+      "gameDate": "2026-10-15T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "hK3YQ6Ilqws",
+        "title": "Chicago Fire FC vs. Philadelphia Union | Full Match Highlights | Damiani BRACE!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/hK3YQ6Ilqws/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:05:54Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761870",
+      "gameDate": "2026-10-15T01:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "jnaFjKP7kMQ",
+        "title": "Real Salt Lake vs. San Jose Earthquakes | Full Match Highlights",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/jnaFjKP7kMQ/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:55:48Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761871",
+      "gameDate": "2026-10-15T01:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "65GM8SOfv6U",
+        "title": "Colorado Rapids vs. Minnesota United | Full Match Highlights | RED CARD DRAMA!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/65GM8SOfv6U/hqdefault.jpg",
+        "publishedAt": "2026-10-15T03:59:41Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761872",
+      "gameDate": "2026-10-15T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "3PSwfgiktrM",
+        "title": "San Diego FC vs. Houston Dynamo FC | Full Match Highlights | WILD 5-GOAL FIRST HALF!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/3PSwfgiktrM/hqdefault.jpg",
+        "publishedAt": "2026-10-15T05:00:17Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761873",
+      "gameDate": "2026-10-15T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "Y5bnjRuMEo0",
+        "title": "LAFC vs. Austin FC | Full Match Highlights | the Son & Bouanga Show BACK IN ACTION!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/Y5bnjRuMEo0/hqdefault.jpg",
+        "publishedAt": "2026-10-15T05:04:03Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761874",
+      "gameDate": "2026-10-15T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "PszrO5TDv24",
+        "title": "LA Galaxy vs. Portland Timbers | Full Match Highlights | Marco Reus GOAL AND ASSIST!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/PszrO5TDv24/hqdefault.jpg",
+        "publishedAt": "2026-10-15T05:02:48Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761875",
+      "gameDate": "2026-10-17T18:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "LW8XBALYV8E",
+        "title": "Philadelphia Union vs. Charlotte FC | Full Match Highlights | 4-Goal Battle!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/LW8XBALYV8E/hqdefault.jpg",
+        "publishedAt": "2026-10-17T21:48:36Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761876",
+      "gameDate": "2026-10-17T20:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "dd-9C99o9WI",
+        "title": "Minnesota United vs. St. Louis CITY SC | Full Match Highlights | 3-Goal Comeback Win!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/dd-9C99o9WI/hqdefault.jpg",
+        "publishedAt": "2026-10-17T22:53:50Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761877",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "7Ba4yoVuoWQ",
+        "title": "PLAYOFFS ON THE LINE 😱 NYCFC vs. LAFC | MLS Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/7Ba4yoVuoWQ/hqdefault.jpg",
+        "publishedAt": "2026-10-18T01:53:34Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761878",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "17OUYQiyvrc",
+        "title": "Red Bull New York vs. Toronto FC | Full Match Highlights",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/17OUYQiyvrc/hqdefault.jpg",
+        "publishedAt": "2026-10-18T01:59:38Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761879",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "LnarHa5Y7mA",
+        "title": "Chicago Fire FC vs. New England Revolution | MLS Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/LnarHa5Y7mA/hqdefault.jpg",
+        "publishedAt": "2026-10-18T01:52:27Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761880",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "b-KN6NyzpG0",
+        "title": "LIONEL MESSI BRACE ⚽️⚽️ Atlanta United vs. Inter Miami | MLS Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/b-KN6NyzpG0/hqdefault.jpg",
+        "publishedAt": "2026-10-18T02:00:48Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761881",
+      "gameDate": "2026-10-17T23:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "8iQn0KsqwHc",
+        "title": "GRIEZMANN BRACE 🔥 Orlando City vs. D.C. United | MLS Highlights | ESPN FC",
+        "channel": "ESPN FC",
+        "thumbnail": "https://i.ytimg.com/vi/8iQn0KsqwHc/hqdefault.jpg",
+        "publishedAt": "2026-10-18T01:51:19Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761882",
+      "gameDate": "2026-10-18T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "4f_KWJOS3O4",
+        "title": "Austin FC vs. Vancouver Whitecaps FC | Full Match Highlights | Diaby GOLAZO!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/4f_KWJOS3O4/hqdefault.jpg",
+        "publishedAt": "2026-10-18T02:56:09Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761883",
+      "gameDate": "2026-10-18T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "dtQX86q9cOk",
+        "title": "Houston Dynamo FC vs. FC Dallas | Full Match Highlights | Texas Derby Drama!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/dtQX86q9cOk/hqdefault.jpg",
+        "publishedAt": "2026-10-18T03:19:12Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761884",
+      "gameDate": "2026-10-18T00:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "DCEisH-pPSM",
+        "title": "Sporting Kansas City vs. Real Salt Lake | Full Match Highlights | Josuha Guilavogui Brace!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/DCEisH-pPSM/hqdefault.jpg",
+        "publishedAt": "2026-10-18T02:50:58Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761885",
+      "gameDate": "2026-10-18T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "xBiJyVWHffI",
+        "title": "Seattle Sounders FC vs. CF Montréal | Full Match Highlights",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/xBiJyVWHffI/hqdefault.jpg",
+        "publishedAt": "2026-10-18T04:56:09Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761886",
+      "gameDate": "2026-10-18T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "U9C9CRTQUvM",
+        "title": "San Jose Earthquakes vs. Nashville SC | Full Match Highlights | SUPPORTERS' SHIELD UP FOR GRABS!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/U9C9CRTQUvM/hqdefault.jpg",
+        "publishedAt": "2026-10-18T04:54:19Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761887",
+      "gameDate": "2026-10-18T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "wIQ9JtRBApE",
+        "title": "LA Galaxy vs. San Diego FC | Full Match Highlights | WILD 4-GOAL FIRST-HALF in SOCAL RIVALRY!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/wIQ9JtRBApE/hqdefault.jpg",
+        "publishedAt": "2026-10-18T05:01:26Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761888",
+      "gameDate": "2026-10-18T02:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "b4Z7iVqu-3o",
+        "title": "Portland Timbers vs. Colorado Rapids | Full Match Highlights | PENALTY VAR DRAMA!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/b4Z7iVqu-3o/hqdefault.jpg",
+        "publishedAt": "2026-10-18T04:57:25Z"
+      }
+    },
+    {
+      "gameId": "usa.1-761889",
+      "gameDate": "2026-10-18T21:00Z",
+      "kind": "recaps",
+      "video": {
+        "id": "3wNdo48AByg",
+        "title": "FC Cincinnati vs. Columbus Crew | Full Match Highlights | Hell is Real DESPERATION DERBY!",
+        "channel": "Major League Soccer",
+        "thumbnail": "https://i.ytimg.com/vi/3wNdo48AByg/hqdefault.jpg",
+        "publishedAt": "2026-10-18T23:26:45Z"
+      }
+    },
+    {
+      "gameId": "wnba-401918305",
+      "gameDate": "2026-10-17T19:30Z",
+      "kind": "recaps",
+      "video": {
+        "id": "CTJGJH9hPVU",
+        "title": "Atlanta Dream vs. Golden State Valkyries | FULL GAME HIGHLIGHTS | October 17, 2026",
+        "channel": "WNBA",
+        "thumbnail": "https://i.ytimg.com/vi/CTJGJH9hPVU/hqdefault.jpg",
+        "publishedAt": "2026-10-18T00:29:05Z"
+      }
     }
   ]
 }

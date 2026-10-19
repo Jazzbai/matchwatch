@@ -30,7 +30,9 @@ test('video matching accepts actual local game date and rejects other dates or t
 test('daily scoreboard responses are deduplicated without introducing demo fixtures', async () => {
   const mock = (async () => new Response(JSON.stringify({ events: [{ id: '123', date: '2026-10-18T12:00Z', status: { type: { completed: true } }, competitions: [{ competitors: [{ homeAway: 'home', score: '2', team: { displayName: 'Team Home' } }, { homeAway: 'away', score: '1', team: { displayName: 'Team Away' } }] }] }] }))) as typeof fetch;
   const data = await recentGames('Football', Date.parse('2026-10-19T12:00Z'), mock);
-  assert.equal(data.games.length, 1);
+  // Event IDs are deduplicated within each league, while NFL and college games remain distinct.
+  assert.equal(data.games.length, 2);
+  assert.deepEqual(new Set(data.games.map((g) => g.league)), new Set(['NFL', 'College Football']));
   assert.equal(data.games[0].home, 'Team Home');
   assert.equal(data.failedRequests, 0);
 });

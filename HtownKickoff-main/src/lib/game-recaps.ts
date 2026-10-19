@@ -37,7 +37,7 @@ export function matchesGame(game: RecentGame, title: string, description: string
 }
 const cache = new Map<string, { until: number; result: RecapResult }>();
 const pending = new Map<string, Promise<RecapResult>>();
-const publisherHandles = ['NBA', 'WNBA', 'MLB', 'NFL', 'MLS', 'premierleague', 'LaLiga', 'bundesliga', 'seriea', 'Ligue1', 'UEFA', 'realmadrid', 'FCBarcelona', 'NBCSports', 'CBSSportsGolazo', 'SkySportsFootball', 'ESPNFC', 'LigaBBVAMX', 'TUDNUSA', 'beINSPORTSUSA'];
+const publisherHandles = ['NBA', 'WNBA', 'MLB', 'NFL', 'MLS', 'premierleague', 'LaLiga', 'bundesliga', 'seriea', 'Ligue1', 'UEFA', 'realmadrid', 'FCBarcelona', 'NBCSports', 'CBSSportsGolazo', 'SkySportsFootball', 'ESPNFC', 'LigaBBVAMX', 'TUDNUSA', 'beINSPORTSUSA', 'ESPN', 'CFBonFOX'];
 let publisherIds: { until: number; ids: Set<string> } | undefined;
 let uploadPlaylists: string[] = [];
 let publisherTask: Promise<Set<string>> | undefined;
