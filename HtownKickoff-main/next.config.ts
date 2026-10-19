@@ -15,12 +15,28 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   async rewrites() {
-    return [
+    return { beforeFiles: [
+      {
+        source: "/",
+        has: [{ type: "host", value: "stream.matchwatch.us" }],
+        destination: "/stream",
+      },
+      {
+        source: "/watch/:id",
+        has: [{ type: "host", value: "stream.matchwatch.us" }],
+        destination: "/stream/watch/:id",
+      },
+      {
+        source: "/studio",
+        has: [{ type: "host", value: "stream.matchwatch.us" }],
+        destination: "/stream/studio",
+      },
+    ], afterFiles: [
       {
         source: "/api/v1/:path*",
         destination: `${apiProxyTarget}/api/v1/:path*`,
       },
-    ];
+    ], fallback: [] };
   },
   async redirects() {
     return [
