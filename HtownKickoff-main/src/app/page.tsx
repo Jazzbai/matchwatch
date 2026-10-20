@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { FloatingNav } from "../components/AppShell";
 import SportsCarousel from "../components/SportsCarousel";
+import MatchWatchStory from "../components/MatchWatchStory";
 import { useAuth } from "../lib/auth-context";
 import { type League, type Match, type Sport, type Team, type Venue, type VenueEvent } from "../lib/data";
 import { useData } from "../lib/data-provider";
@@ -431,6 +432,8 @@ export default function HomePage() {
             <div className="hp-empty">{isLoading ? "Loading venues..." : "No venues are available right now."}</div>
           )}
         </section>
+
+        <MatchWatchStory />
 
         <section className="hp-sec">
           <div className="hp-st" style={{ marginBottom: 22 }}>How it works</div>
