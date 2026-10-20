@@ -38,6 +38,7 @@ import socialPostTemplatesRoutes from './routes/socialPostTemplates';
 import predictionCampaignsRoutes from './routes/predictionCampaigns';
 import contactRoutes from './routes/contact';
 import matchPointRoutes from './routes/matchPoint';
+import streamRoutes from './routes/streams';
 import { logger } from './lib/logger';
 import { normalizeEntitySlugs } from './lib/entitySlugs';
 import { runMatchSyncOnce, scheduleMatchSync, startMatchSyncWorker } from './workers/matchSync';
@@ -59,7 +60,9 @@ app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOStri
 // API v1 Routes
 const v1 = new Hono();
 
-v1.use('*', publicRateLimit);
+// HLS authorization comes from MediaMTX for each media request, not from the viewer.
+// Sharing the browser's 100/min quota would interrupt multiple simultaneous viewers.
+v1.use('*', (c, next) => c.req.path === '/api/v1/streams/media-auth' ? next() : publicRateLimit(c, next));
 v1.route('/auth', authRoutes);
 v1.route('/matches', matchRoutes);
 v1.route('/leagues', leagueRoutes);
@@ -85,6 +88,7 @@ v1.route('/checkins', checkinsRoutes);
 v1.route('/sponsor-inquiry', sponsorInquiryRoutes);
 v1.route('/contact', contactRoutes);
 v1.route('/match-point', matchPointRoutes);
+v1.route('/streams', streamRoutes);
 v1.route('/campaign-templates', campaignTemplatesRoutes);
 v1.route('/social-post-templates', socialPostTemplatesRoutes);
 v1.route('/prediction-campaigns', predictionCampaignsRoutes);

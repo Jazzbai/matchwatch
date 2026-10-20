@@ -1,0 +1,38 @@
+# Add as a separate Coolify Docker Compose service on storage-6.
+# Preserve the existing live-recordings volume by editing the current MediaMTX service.
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:1.21.2
+    restart: unless-stopped
+    ports:
+      - "1935:1935"
+      - "10.0.1.6:9997:9997"
+      - "10.0.1.6:9996:9996"
+    expose:
+      - "8888"
+    environment:
+      MTX_RTSP: "no"
+      MTX_WEBRTC: "no"
+      MTX_SRT: "no"
+      MTX_MOQ: "no"
+      MTX_RTMP: "yes"
+      MTX_HLS: "yes"
+      MTX_HLSVARIANT: "mpegts"
+      MTX_HLSALLOWORIGINS: '["https://stream.matchwatch.us","https://matchwatch.us"]'
+      MTX_API: "yes"
+      MTX_APIADDRESS: ":9997"
+      MTX_PLAYBACK: "yes"
+      MTX_PLAYBACKADDRESS: ":9996"
+      MTX_AUTHMETHOD: "http"
+      MTX_AUTHHTTPADDRESS: "${MEDIAMTX_AUTH_URL:?Set MEDIAMTX_AUTH_URL to your MatchWatch API auth callback}"
+      MTX_AUTHHTTPEXCLUDE: '[]'
+      MTX_PATHDEFAULTS_RECORD: "yes"
+      MTX_PATHDEFAULTS_RECORDPATH: "/recordings/%path/%Y-%m-%d_%H-%M-%S-%f"
+      MTX_PATHDEFAULTS_RECORDSEGMENTDURATION: "1m"
+      MTX_PATHDEFAULTS_RECORDDELETEAFTER: "168h"
+      MTX_PATHDEFAULTS_OVERRIDEPUBLISHER: "no"
+    volumes:
+      - live-recordings:/recordings
+
+volumes:
+  live-recordings:

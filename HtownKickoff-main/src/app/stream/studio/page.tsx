@@ -1,2 +1,2 @@
-import StreamApp from '../../../components/stream/StreamApp';
-export default function Page() { return <StreamApp mode="studio" />; }
+import PersonalStudio from '../../../components/stream/PersonalStudio';
+export default function Page() { return <PersonalStudio />; }
