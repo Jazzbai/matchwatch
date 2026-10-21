@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const apiProxyTarget = process.env.API_PROXY_TARGET || "http://localhost:4000";
 
 const nextConfig: NextConfig = {
+  basePath: process.env.NEXT_PUBLIC_APP_BASE_PATH || '',
+  serverExternalPackages: ['ffmpeg-static'],
   output: "standalone",
   turbopack: {
     root: process.cwd(),
@@ -16,6 +18,7 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return { beforeFiles: [
+      ...(process.env.HIGHLIGHTS_STANDALONE === 'true' ? [{ source: '/', destination: '/stream' }] : []),
       {
         source: "/",
         has: [{ type: "host", value: "stream.matchwatch.us" }],

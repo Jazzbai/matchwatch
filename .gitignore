@@ -36,6 +36,7 @@ coverage/
 
 # Docker
 .dockerignore
+!HtownKickoff-main/.dockerignore
 
 # Misc
 *.tsbuildinfo

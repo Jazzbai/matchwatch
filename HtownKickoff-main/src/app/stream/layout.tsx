@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 export const metadata: Metadata = {
-  title: 'MatchWatch Stream | Live games & recaps',
-  description: 'Watch live games, discover independent streamers, and catch up on past broadcasts.',
+  title: 'MatchWatch | Highlight Studio',
+  description: 'Find key match events, rank the best moments, and assemble a sports highlight video.',
 };
 export default function StreamLayout({ children }: { children: React.ReactNode }) { return children; }

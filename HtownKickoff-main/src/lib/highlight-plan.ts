@@ -1,0 +1,31 @@
+export type HighlightEvent = {
+  id: string; label: string; start: number; end: number;
+  confidence: number; importance: number; context: number;
+  audio: number; reaction: number; preference: number;
+};
+export type HighlightClip = HighlightEvent & { score: number; clipStart: number; clipEnd: number };
+export function eventScore(event: HighlightEvent) {
+  return 0.4 * event.importance + 0.2 * event.context + 0.15 * event.audio + 0.15 * event.reaction + 0.1 * event.preference;
+}
+export function planHighlights(events: HighlightEvent[], duration: number, target: number, before = 5, after = 10): HighlightClip[] {
+  if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(target) || target <= 0) return [];
+  const ranked = events.filter(e => Number.isFinite(e.start) && Number.isFinite(e.end) && e.start >= 0 && e.end > e.start && e.end <= duration)
+    .map(e => ({ ...e, score: eventScore(e), clipStart: Math.max(0, e.start - before), clipEnd: Math.min(duration, e.end + after) }))
+    .sort((a, b) => b.score - a.score || b.confidence - a.confidence || a.start - b.start);
+  const selected: HighlightClip[] = [];
+  let remaining = Math.min(target, duration);
+  const labels = new Set<string>();
+  // First pass includes the best of each event type; the second fills remaining time.
+  for (const diversity of [true, false]) {
+    for (const event of ranked) {
+      if (remaining < 1 || selected.some(e => e.id === event.id) || (diversity && labels.has(event.label))) continue;
+      if (selected.some(e => event.clipStart < e.clipEnd && event.clipEnd > e.clipStart)) continue;
+      const length = Math.min(event.clipEnd - event.clipStart, remaining);
+      if (length < event.end - event.start) continue;
+      const clipStart = Math.max(event.clipStart, Math.min(event.start, event.end - length));
+      selected.push({ ...event, clipStart, clipEnd: Math.min(duration, clipStart + length) });
+      labels.add(event.label); remaining -= length;
+    }
+  }
+  return selected.sort((a, b) => a.clipStart - b.clipStart);
+}

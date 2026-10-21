@@ -1,2 +1,2 @@
-import GamesDashboard from '../../components/stream/GamesDashboard';
-export default function Page() { return <GamesDashboard />; }
+import HighlightStudio from '../../components/stream/HighlightStudio';
+export default function Page() { return <HighlightStudio />; }
