@@ -2,6 +2,14 @@
 
 Deploy `hacketong` as a new Coolify application named `matchwatch-hackathon`, alongside the existing `matchwatch-ui` application on `main`. This is an independent frontend container. Do not change the branch or domain of the existing application and do not run the root Compose stack for this release. No database migration or MediaMTX change is needed.
 
+## Configuration on the current server
+
+The new Coolify resource is `clth0thdgia4748x6zgneepw` on `ui-13` (`10.0.1.13`). Its application URL is `http://10.0.1.12:8000/project/iwsq31w4372u3w89mcirjuil/environment/ns3gzafi38recs7xhb0swxun/application/clth0thdgia4748x6zgneepw`. It tracks `hacketong` through the existing repository deploy-key reference, with fresh environment configuration. Port mapping is `127.0.0.1:3007:3000`, API proxy target is `http://10.0.1.10:4002`, and runtime limits are one CPU and 2 GB memory. The health-check path is `/app/api/stream/highlights`.
+
+This server uses **Custom (None)** in Coolify and runs its own Caddy system service. Coolify's domain labels do not activate public routing here. Add the `/app` matcher to `/etc/caddy/sites/matchwatch.caddy`, validate the full `/etc/caddy/Caddyfile`, and gracefully reload Caddy. Keep the existing `/api/v1/*` backend at `10.0.1.10:4002` and homepage frontend at `localhost:3003`. Port 3004 is already used by other applications; do not use it for this service. Keep the new port bound to localhost.
+
+TwelveLabs credentials and the signing secret are runtime-only variables. The base path, standalone flag, public API path, and API proxy target are build variables. The general instructions below also cover installations using Coolify's managed proxy.
+
 ## Coolify application
 
 | Setting | Value |
