@@ -23,7 +23,19 @@ References: [Models search quickstart](https://docs.twelvelabs.io/v1.3/docs/get-
 
 Provider confidence categories are displayed as returned. The scoring inputs for importance, context, audio, reaction, and preference are review values, not automatically extracted measurements. Ranking uses the weighted flowchart factors; selection favors different event labels, excludes overlapping windows, preserves complete events, and orders clips chronologically. The result can be shorter than the target when whole events will not fit.
 
-## Scope
+## Jev decision review
+
+Jev is our editorial agent powered by TwelveLabs Pegasus 1.6, using the existing API key; no separate Jev account or key is needed. After detection, check 1–20 candidates and click **Review checked moments with Jev**. The server reuses the signed uploaded asset and creates an asynchronous `/analyze/tasks` request with a JSON response schema. It analyzes the continuous span from ten seconds before the earliest candidate to fifteen seconds after the latest, including gaps (maximum two hours, source maximum four hours). This adds provider analysis usage, independently of indexing/search. It does not yet use disjoint windows to reduce that usage.
+
+Jev evaluates the actual video and available audio, returning evidence-based reasons, nullable importance/excitement/watchability estimates, unknown or observed match context, duplicate references, include recommendations, uncertainty flags, and suggested absolute clip boundaries. These remain model judgments, not measured audio signals or calibrated probabilities. Server and browser validate the structure; the browser additionally checks complete candidate coverage, duplicate references, and bounded clip suggestions before applying any review. Invalid or truncated results leave the current candidates unchanged.
+
+Reviewed utility uses provisional weights of 50% importance, 30% excitement, and 20% watchability, renormalized over known fields. All-unknown evidence requires human review. The existing greedy planner enforces the target, chronology and non-overlap; it is not a globally optimal solver. It excludes uncertain, duplicate, or rejected moments and never truncates a reviewed cut to fill the remaining budget. Manual candidates and unchecked candidates retain their existing review inputs. The UI shows the recommendation separately from actual selection. Editing timing/scoring or checking **Override Jev** restores manual planning for that moment while retaining the original agent judgment. Overrides are session-only; there is no persistent feedback dataset or trained classifier yet.
+
+Production review creation is limited to three tasks per account/hour/instance and uses owner-bound signed task tickets. Cancellation stops browser waiting, not the provider task. Reloading loses the local video/review session. No paid provider analysis is performed by automated tests; a real sports-video review is still needed to verify account access and editorial quality before deployment.
+
+References: [async analysis](https://docs.twelvelabs.io/v1.3/api-reference/analyze-videos/create-async-analysis-task), [structured responses](https://docs.twelvelabs.io/v1.3/docs/guides/analyze-videos-and-images/structured-responses).
+
+## Runtime scope
 
 Local development remains available without login. Production is opt-in, uses existing MatchWatch accounts, signs video references per user, limits processing per instance, and requires explicit runtime configuration. See [the separate hackathon deployment guide](../deploy/highlights/README.md) for serving branch `hacketong` at `matchwatch.us/app` without redeploying the existing main site. This prototype does not implement persistent jobs, durable distributed quotas, live ingestion, URL ingestion, automatic key-frame analysis, overlays, music, transitions, slow motion, or replay effects. Output is 720p H.264 MP4 with the source audio where present. Detection needs real credentials; manual marking and export do not.
 

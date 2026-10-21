@@ -21,11 +21,17 @@ test('video references reject another user, resource type, tampering, and expiry
   assert.equal(resourceId(ticket, 'owner', 'asset', now), id);
   assert.throws(() => resourceId(ticket, 'other-user', 'asset', now), HighlightAccessError);
   assert.throws(() => resourceId(ticket, 'owner', 'indexed', now), HighlightAccessError);
+  assert.throws(() => resourceId(ticket, 'owner', 'review', now), HighlightAccessError);
+  const review = resourceTicket(id, 'owner', 'review', now);
+  assert.equal(resourceId(review, 'owner', 'review', now), id);
+  assert.throws(() => resourceId(review, 'other-user', 'review', now), HighlightAccessError);
   assert.throws(() => resourceId(ticket.replace(id, '222222222222222222222222'), 'owner', 'asset', now), HighlightAccessError);
   assert.throws(() => resourceId(ticket, 'owner', 'asset', now + 86400001), HighlightAccessError);
 }));
 test('upload quotas and export concurrency are bounded and leases release once', async () => production(() => {
   for (let i = 0; i < 3; i++) reserveOperation('quota-test-owner', 'upload')();
+  for (let i = 0; i < 3; i++) reserveOperation('review-test-owner', 'review')();
+  assert.throws(() => reserveOperation('review-test-owner', 'review'), HighlightAccessError);
   assert.throws(() => reserveOperation('quota-test-owner', 'upload'), (e: unknown) => e instanceof HighlightAccessError && e.status === 429);
   const first = reserveOperation('export-test-owner', 'export'), second = reserveOperation('export-test-owner', 'export');
   assert.throws(() => reserveOperation('export-test-owner', 'export'), HighlightAccessError);

@@ -28,11 +28,11 @@ function signature(id: string, owner: string, kind: string, expires: number) {
   if (!secret) throw new HighlightAccessError('Highlight studio signing is unavailable.', 503);
   return createHmac('sha256', secret).update(`highlights|${kind}|${owner}|${id}|${expires}`).digest('hex');
 }
-export function resourceTicket(id: string, owner: string, kind: 'asset' | 'indexed', now = Date.now()) {
+export function resourceTicket(id: string, owner: string, kind: 'asset' | 'indexed' | 'review', now = Date.now()) {
   const expires = now + 24 * 60 * 60 * 1000;
   return `${id}.${expires}.${signature(id, owner, kind, expires)}`;
 }
-export function resourceId(ticket: string, owner: string, kind: 'asset' | 'indexed', now = Date.now()) {
+export function resourceId(ticket: string, owner: string, kind: 'asset' | 'indexed' | 'review', now = Date.now()) {
   const [id, expiry, mac, extra] = ticket.split('.');
   const expires = Number(expiry);
   if (extra || !/^[a-f0-9]{24}$/.test(id || '') || !/^[a-f0-9]{64}$/.test(mac || '') || !Number.isSafeInteger(expires) || expires < now || expires > now + 24 * 60 * 60 * 1000) throw new HighlightAccessError('This video session expired or is invalid. Upload the video again.', 403);
@@ -45,7 +45,7 @@ export function reserveOperation(owner: string, action: string) {
   if (process.env.NODE_ENV === 'development') return () => {};
   const now = Date.now();
   for (const [key, value] of usage) if (value.expires <= now) usage.delete(key);
-  const key = `${owner}:${action}`, limit = action === 'request' ? 60 : action === 'upload' ? 3 : action === 'search' ? 30 : 10;
+  const key = `${owner}:${action}`, limit = action === 'request' ? 60 : action === 'upload' || action === 'review' ? 3 : action === 'search' ? 30 : 10;
   const value = usage.get(key) || { count: 0, expires: now + 3600000 };
   if (value.count >= limit || usage.size >= 10000) throw new HighlightAccessError('Hourly highlight limit reached. Please try again later.', 429);
   if (action === 'export' && activeExports >= 2) throw new HighlightAccessError('The video processors are busy. Please try again shortly.', 429);

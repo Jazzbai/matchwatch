@@ -36,6 +36,30 @@ test('indexing waits for ready assets, including small uploads', async () => {
   await assert.rejects(() => client.indexAsset(asset), (e: unknown) => e instanceof TwelveLabsError && e.status === 409);
   assert.equal(requests, 1);
 });
+
+test('Jev reuses the uploaded asset in an asynchronous Pegasus structured review', async () => {
+  const client = new TwelveLabsClient('key', index, async (url, init) => {
+    if (String(url).endsWith('/analyze/tasks')) {
+      const body = JSON.parse(String(init?.body));
+      assert.deepEqual(body.video, { type: 'asset_id', asset_id: asset });
+      assert.equal(body.model_name, 'pegasus1.6'); assert.equal(body.response_format.type, 'json_schema');
+      assert.equal(body.start_time, 10); assert.equal(body.end_time, 40);
+      return Response.json({ task_id: indexed });
+    }
+    return Response.json({ status: 'ready', result: { finish_reason: 'length', data: '{' } });
+  });
+  assert.equal(await client.review(asset, [{ id: 'goal', label: 'Goal', start: 20, end: 25 }], 100), indexed);
+  await assert.rejects(() => client.reviewStatus(indexed), (e: unknown) => e instanceof TwelveLabsError && e.status === 502);
+});
+
+test('Jev returns validated evidence only when its analysis task is complete', async () => {
+  const reviews = [{ candidate_id: 'goal', event: 'goal', importance_estimate: 0.9, excitement_estimate: null, watchability_estimate: 0.8, match_context: null, duplicate_of: null, suggested_start: 15, suggested_end: 30, recommend_include: true, reason: 'Clear goal.', needs_review: false }];
+  let status = 'processing';
+  const client = new TwelveLabsClient('key', index, async () => Response.json({ status, result: { finish_reason: 'stop', data: JSON.stringify({ reviews }) } }));
+  assert.deepEqual(await client.reviewStatus(indexed), { status: 'processing', error: undefined });
+  status = 'ready';
+  assert.deepEqual(await client.reviewStatus(indexed), { status: 'ready', reviews });
+});
 test('provider status, error code, and retry timing survive rate limits', async () => {
   const client = new TwelveLabsClient('key', index, async () => Response.json({ code: 'rate_limit', message: 'Please wait.' }, { status: 429, headers: { 'Retry-After': '30' } }));
   await assert.rejects(() => client.asset(asset), (e: unknown) => e instanceof TwelveLabsError && e.status === 429 && e.code === 'rate_limit' && e.retryAfter === '30' && e.message === 'Please wait.');

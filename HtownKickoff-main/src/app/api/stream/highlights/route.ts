@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import ffmpegPath from 'ffmpeg-static';
 import { TwelveLabsClient, TwelveLabsError, validVideoId } from '../../../../lib/twelvelabs';
 import { HighlightAccessError, highlightOwner, studioEnabled, resourceTicket, resourceId, reserveOperation } from '../../../../lib/highlight-access';
+import { reviewInput } from '../../../../lib/jev';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -32,7 +33,14 @@ function run(args: string[]) {
 export async function GET(request: NextRequest) {
   const assetId = request.nextUrl.searchParams.get('assetId');
   const indexedAssetId = request.nextUrl.searchParams.get('indexedAssetId');
+  const reviewId = request.nextUrl.searchParams.get('reviewId');
   try {
+    if (reviewId !== null) {
+      const owner = await highlightOwner(request);
+      if (assetId !== null || indexedAssetId !== null) throw new Error('Choose one video resource.');
+      const id = resourceId(reviewId, owner, 'review');
+      return NextResponse.json(await client().reviewStatus(id), { headers: { 'Cache-Control': 'no-store' } });
+    }
     if (assetId !== null || indexedAssetId !== null) {
       const owner = await highlightOwner(request);
       if (assetId !== null && indexedAssetId !== null) return NextResponse.json({ error: 'Invalid video resource.' }, { status: 400 });
@@ -56,8 +64,14 @@ export async function POST(request: NextRequest) {
     release = reserveOperation(owner, 'request');
     const form = await request.formData();
     const action = form.get('action');
-    if (!['upload', 'index', 'search', 'export'].includes(String(action))) throw new Error('Unknown highlight action.');
+    if (!['upload', 'index', 'search', 'review', 'export'].includes(String(action))) throw new Error('Unknown highlight action.');
     release(); release = reserveOperation(owner, String(action));
+    if (action === 'review') {
+      const id = resourceId(String(form.get('assetId') || ''), owner, 'asset');
+      const duration = Number(form.get('duration'));
+      const candidates = reviewInput(JSON.parse(String(form.get('candidates') || 'null')), duration);
+      return NextResponse.json({ reviewId: resourceTicket(await client().review(id, candidates, duration), owner, 'review') });
+    }
     if (action === 'upload' || action === 'index' || action === 'search') {
       const labs = client();
       if (action === 'upload') {

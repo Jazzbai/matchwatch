@@ -1,3 +1,4 @@
+import { jevPrompt, jevSchema, parseJevReviews, reviewWindow, type JevCandidate } from './jev';
 const base = 'https://api.twelvelabs.io/v1.3';
 export class TwelveLabsError extends Error {
   constructor(message: string, public status: number, public code?: string, public retryAfter?: string) { super(message); }
@@ -35,6 +36,24 @@ export class TwelveLabsClient {
     return indexed._id;
   }
   indexedAsset(id: string) { return this.request<Resource>(`/indexes/${this.index}/indexed-assets/${id}`); }
+  async review(id: string, candidates: JevCandidate[], duration: number) {
+    const window = reviewWindow(candidates, duration);
+    const data = await this.request<{ task_id?: string }>('/analyze/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      model_name: 'pegasus1.6', video: { type: 'asset_id', asset_id: id },
+      prompt: jevPrompt(candidates), temperature: 0.1, max_tokens: 16384,
+      start_time: window.start, end_time: window.end,
+      response_format: { type: 'json_schema', json_schema: jevSchema },
+    }) });
+    if (!data.task_id || !validVideoId(data.task_id)) throw new TwelveLabsError('TwelveLabs did not return a valid Jev task ID.', 502);
+    return data.task_id;
+  }
+  async reviewStatus(id: string) {
+    const task = await this.request<{ status?: string; error?: { message?: string }; result?: { data?: string; finish_reason?: string } }>(`/analyze/tasks/${id}`);
+    if (task.status !== 'ready') return { status: task.status, error: task.error?.message };
+    if (task.error || task.result?.finish_reason === 'length' || typeof task.result?.data !== 'string') throw new TwelveLabsError('Jev returned an incomplete analysis. Your candidates are unchanged.', 502);
+    try { return { status: task.status, reviews: parseJevReviews(JSON.parse(task.result.data)) }; }
+    catch { throw new TwelveLabsError('Jev returned invalid review data. Your candidates are unchanged.', 502); }
+  }
   async search(id: string, query: string) {
     const body = new FormData(); body.set('index_id', this.index); body.set('query_text', query); body.append('search_options', 'visual'); body.set('group_by', 'clip'); body.set('page_limit', '10'); body.set('filter', JSON.stringify({ id: [id] }));
     const data = await this.request<{ data?: SearchMatch[] }>('/search', { method: 'POST', body });
