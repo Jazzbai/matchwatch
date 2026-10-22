@@ -1,0 +1,34 @@
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import { highlightFetch } from '../../lib/highlight-session';
+import { highlightResponse } from '../../lib/highlight-request';
+import styles from './HighlightStudio.module.css';
+const endpoint = `${process.env.NEXT_PUBLIC_APP_BASE_PATH || ''}/api/stream/scoreplay`;
+type Media = { id: string; name: string; duration?: number };
+export default function ScorePlaySource({ disabled, onChoose }: { disabled: boolean; onChoose: (file: File) => void }) {
+  const [query, setQuery] = useState(''), [media, setMedia] = useState<Media[]>([]), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => () => controller.current?.abort(), []);
+  async function run(id?: string) {
+    const abort = new AbortController(); controller.current = abort; setBusy(true); setError('');
+    try {
+      const response = await highlightResponse(await highlightFetch(id ? `${endpoint}?mediaId=${encodeURIComponent(id)}` : `${endpoint}?q=${encodeURIComponent(query)}`, { method: id ? 'POST' : 'GET', signal: abort.signal }));
+      if (id) {
+        const blob = await response.blob();
+        const filename = response.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] || `scoreplay-${id}.mp4`;
+        onChoose(new File([blob], filename, { type: 'video/mp4' }));
+      } else { const data = await response.json(); setMedia(data.media); if (!data.media.length) setError('No matching ScorePlay videos. Try another filename.'); }
+    } catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+  return <details style={{ marginBottom: 20 }}><summary>Choose a video from ScorePlay</summary>
+    <p className={styles.hint}>Find a recorded video in your connected ScorePlay library. Importing downloads a ready MP4 up to 200 MB, then starts the same highlight workflow as a local file.</p>
+    <form onSubmit={e => { e.preventDefault(); void run(); }} className={styles.row}>
+      <label>Video filename<input value={query} maxLength={120} disabled={disabled || busy} onChange={e => setQuery(e.target.value)} placeholder="Search or leave blank for recent videos" /></label>
+      <button className={styles.secondary} disabled={disabled || busy}>Browse ScorePlay</button>
+    </form>
+    {busy && <p role="status">{media.length ? 'Loading ScorePlay video…' : 'Connecting to ScorePlay…'} <button type="button" onClick={() => controller.current?.abort()}>Cancel</button></p>}
+    {error && <p className={styles.error} role="alert">{error}</p>}
+    {media.map(item => <div key={item.id} style={{ marginTop: 12 }}><button type="button" className={styles.secondary} disabled={disabled || busy} onClick={() => void run(item.id)}>Use {item.name}</button>{Number.isFinite(item.duration) && <span> · {Math.round(item.duration!)} seconds</span>}</div>)}
+  </details>;
+}

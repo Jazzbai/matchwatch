@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Check, Film, Scissors, Sparkles, Upload, Download, Trash2 } from 'lucide-react';
 import { eventScore, type HighlightEvent } from '../../lib/highlight-plan';
 import styles from './HighlightStudio.module.css';
+import ScorePlaySource from './ScorePlaySource';
 import { highlightAuthorization, highlightFetch } from '../../lib/highlight-session';
 import { useAuth } from '../../lib/auth-context';
 import { reviewInput, reviewWindow, validateJevReviews } from '../../lib/jev';
@@ -194,6 +195,7 @@ export default function HighlightStudio() {
       {busy && <div className={styles.notice} role="status">{busy} <button onClick={() => { controller.current?.abort(); setBusy(''); setMessage('Operation canceled.'); }}>Cancel</button></div>}
       <div className={styles.columns}>
         <section className={styles.card}><div className={styles.heading}><span>01</span><h2>Your source footage</h2><Film size={20} /></div>
+          <ScorePlaySource disabled={!!busy || (!!config?.requiresLogin && !isAuthenticated)} onChoose={choose} />
           <label className={styles.upload}><Upload size={28} /><strong>{file ? file.name : 'Choose your match video'}</strong><span>MP4 / video file · up to 200 MB</span><input type="file" accept="video/*,.mp4" onChange={e => choose(e.target.files?.[0])} disabled={!!busy} /></label>
           {url && <video ref={player} src={url} controls preload="metadata" onLoadedMetadata={e => { const d = e.currentTarget.duration; if (Number.isFinite(d)) setDuration(d); else setError('Use a finite video recording for this prototype.'); }} onError={() => setError('This browser cannot play the selected video. Try an MP4 encoded with H.264.')} />}
           <div className={styles.row}><label>Sport<select value={sport} disabled={!!busy} onChange={e => { const value = e.target.value as typeof sport; setSport(value); setQueries(defaults[value]); setLabel(value === 'Soccer' ? 'Goal' : 'Dunk'); }}><option>Soccer</option><option>Basketball</option></select></label><label>Target length<select value={target} disabled={!!busy} onChange={e => { setTarget(Number(e.target.value)); resetOutput(); }}>{[30, 60, 90, 120, 180, 300].map(v => <option key={v} value={v}>{v} seconds</option>)}</select></label></div>

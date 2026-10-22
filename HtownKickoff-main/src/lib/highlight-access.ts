@@ -57,7 +57,7 @@ export function reserveOperation(owner: string, action: string) {
   const key = `${owner}:${action}`, limit = action === 'request' ? 60 : action === 'upload' || action === 'review' ? 3 : action === 'search' ? 30 : 10;
   const value = usage.get(key) || { count: 0, expires: now + 3600000 };
   if (value.count >= limit || usage.size >= 10000) throw new HighlightAccessError('Hourly highlight limit reached. Please try again later.', 429);
-  const processing = action === 'export' || action === 'compress';
+  const processing = action === 'export' || action === 'compress' || action === 'scoreplay-import';
   if (processing && activeExports >= 2) throw new HighlightAccessError('The video processors are busy. Please try again shortly.', 429);
   value.count++; usage.set(key, value);
   if (!processing) return () => {};
