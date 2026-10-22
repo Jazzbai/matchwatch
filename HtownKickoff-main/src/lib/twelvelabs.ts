@@ -4,7 +4,7 @@ export class TwelveLabsError extends Error {
   constructor(message: string, public status: number, public code?: string, public retryAfter?: string) { super(message); }
 }
 export function validVideoId(id: string) { return /^[a-f0-9]{24}$/.test(id); }
-type Resource = { _id?: string; status?: string; error?: { message?: string } };
+type Resource = { _id?: string; status?: string; error?: { message?: string }; system_metadata?: { duration?: number } };
 type SearchMatch = { video_id?: string; start?: number; end?: number; confidence?: string; rank?: number };
 export class TwelveLabsClient {
   constructor(private key: string, private index: string, private transport: typeof fetch = fetch) {}

@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       if (assetId !== null && indexedAssetId !== null) return NextResponse.json({ error: 'Invalid video resource.' }, { status: 400 });
       const id = resourceId(assetId ?? indexedAssetId ?? '', owner, assetId !== null ? 'asset' : 'indexed');
       const labs = client(); const data = assetId !== null ? await labs.asset(id) : await labs.indexedAsset(id);
-      return NextResponse.json({ status: data.status, error: data.status === 'failed' ? data.error?.message || 'Video processing failed. Check the video format and index configuration.' : undefined }, { headers: { 'Cache-Control': 'no-store' } });
+      return NextResponse.json({ status: data.status, duration: Number.isFinite(data.system_metadata?.duration) ? data.system_metadata?.duration : undefined, error: data.status === 'failed' ? data.error?.message || 'Video processing failed. Check the video format and index configuration.' : undefined }, { headers: { 'Cache-Control': 'no-store' } });
     }
     let exportReady = true; try { await run(['-version']); } catch { exportReady = false; }
     const enabled = studioEnabled() && (process.env.NODE_ENV === 'development' || (process.env.HIGHLIGHTS_SIGNING_SECRET || '').length >= 32);

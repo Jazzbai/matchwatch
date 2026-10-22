@@ -55,7 +55,7 @@ export default function HighlightStudio() {
   const [autoStart, setAutoStart] = useState(true), [autoExport, setAutoExport] = useState(true);
   const [autoCompare, setAutoCompare] = useState(true), [compress, setCompress] = useState(false);
   const pendingUpload = useRef(false);
-  const sourceResource = useRef({ asset: '', indexed: '', indexedReady: false });
+  const sourceResource = useRef({ asset: '', indexed: '', indexedReady: false, analysisDuration: 0 });
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState(''), [output, setOutput] = useState('');
   const [config, setConfig] = useState<{ detectionReady: boolean; exportReady: boolean; requiresLogin?: boolean } | null>(null);
   const player = useRef<HTMLVideoElement>(null), controller = useRef<AbortController | null>(null);
@@ -68,7 +68,7 @@ export default function HighlightStudio() {
   function choose(video: File | undefined) {
     if (!video) return;
     if (video.size > 200 * 1024 * 1024) { setError('Choose a video smaller than 200 MB.'); return; }
-    sourceResource.current = { asset: '', indexed: '', indexedReady: false };
+    sourceResource.current = { asset: '', indexed: '', indexedReady: false, analysisDuration: 0 };
     controller.current?.abort(); pendingUpload.current = true; setBusy(''); setFile(video); setDuration(0); setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); setMessage('Video selected. Reading video details before processing…'); resetOutput();
   }
   const detect = useCallback(async () => {
@@ -94,7 +94,7 @@ export default function HighlightStudio() {
         for (let i = 0; i < 180; i++) {
           const response = await highlightResponse(await fetch(`${endpoint}?${parameter}=${encodeURIComponent(id)}`, { signal: abort.signal, cache: 'no-store', headers: authorization() })); const resource = await response.json();
           if (!response.ok || resource.error) throw new Error(resource.error || `${stage} failed.`);
-          if (resource.status === 'ready') return;
+          if (resource.status === 'ready') return resource;
           if (['failed', 'canceled'].includes(resource.status)) throw new Error(`${stage} failed. Try an H.264 MP4 with a clear video track.`);
           setBusy(`${stage} · ${resource.status || 'processing'}…`);
           await new Promise<void>((resolve, reject) => { const cancel = () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); }; const timer = setTimeout(() => { abort.signal.removeEventListener('abort', cancel); resolve(); }, 5000); abort.signal.addEventListener('abort', cancel, { once: true }); });
@@ -112,18 +112,22 @@ export default function HighlightStudio() {
       }
       if (!videoId) throw new Error('TwelveLabs did not return an indexed asset.');
       if (!sourceResource.current.indexedReady) {
-        await waitUntilReady('indexedAssetId', videoId, 'Indexing video');
+        const indexed = await waitUntilReady('indexedAssetId', videoId, 'Indexing video');
+        if (Number.isFinite(indexed.duration) && indexed.duration > 0) sourceResource.current.analysisDuration = Math.min(duration, indexed.duration);
         sourceResource.current.indexedReady = true;
       }
       setBusy('Finding candidate events…');
       const search = new FormData(); search.set('action', 'search'); search.set('videoId', videoId); search.set('queries', queries);
-      const data = await (await request(search, abort.signal)).json(); setEvents(data.events); setExcluded([]);
+      const data = await (await request(search, abort.signal)).json();
+      const analysisDuration = sourceResource.current.analysisDuration || duration;
+      data.events = data.events.map((event: Event) => ({ ...event, end: Math.min(event.end, analysisDuration) })).filter((event: Event) => event.end > event.start);
+      setEvents(data.events); setExcluded([]);
       if (!data.events.length) { setMessage('No matching moments were found. Change the search descriptions or mark a play manually below. No reel was generated.'); return; }
       let compared: Event[] = data.events;
       if (autoCompare) {
-        const shortlist = reviewShortlist(data.events, duration);
+        const shortlist = reviewShortlist(data.events, analysisDuration);
         if (!shortlist.length) throw new Error('No valid candidate fits this source video. Mark a moment manually.');
-        compared = await compareWithJev(assetId, shortlist, duration, abort.signal, setBusy);
+        compared = await compareWithJev(assetId, shortlist, analysisDuration, abort.signal, setBusy);
         setEvents(data.events.map((event: Event) => compared.find(item => item.id === event.id) || event));
         setExcluded(data.events.filter((event: Event) => !compared.some(item => item.id === event.id)).map((event: Event) => event.id));
       }
@@ -149,10 +153,11 @@ export default function HighlightStudio() {
     const abort = new AbortController(); controller.current = abort;
     setError(''); resetOutput();
     try {
-      const candidates = reviewInput(events.filter(e => !excluded.includes(e.id)), duration);
-      reviewWindow(candidates, duration);
+      const analysisDuration = sourceResource.current.analysisDuration || duration;
+      const candidates = reviewInput(events.filter(e => !excluded.includes(e.id)), analysisDuration);
+      reviewWindow(candidates, analysisDuration);
       setBusy('Jev is reviewing the match evidence…');
-      const form = new FormData(); form.set('action', 'review'); form.set('assetId', assetTicket); form.set('duration', String(duration)); form.set('candidates', JSON.stringify(candidates));
+      const form = new FormData(); form.set('action', 'review'); form.set('assetId', assetTicket); form.set('duration', String(analysisDuration)); form.set('candidates', JSON.stringify(candidates));
       const { reviewId } = await (await request(form, abort.signal)).json();
       if (!reviewId) throw new Error('Jev did not return a review task.');
       for (let i = 0; i < 180; i++) {
@@ -160,7 +165,7 @@ export default function HighlightStudio() {
         const data = await response.json();
         if (!response.ok || data.error || ['failed', 'canceled'].includes(data.status)) throw new Error(data.error || 'Jev review failed. Existing candidates are unchanged.');
         if (data.status === 'ready') {
-          const reviews = validateJevReviews(data.reviews, candidates, duration);
+          const reviews = validateJevReviews(data.reviews, candidates, analysisDuration);
           setEvents(current => current.map(event => { const jev = reviews.find(r => r.candidate_id === event.id); return jev ? { ...event, jev, reviewOverride: false } : event; }));
           setMessage(`Jev reviewed ${reviews.length} moments. Review its reasons and any uncertain events before export.`);
           return;
