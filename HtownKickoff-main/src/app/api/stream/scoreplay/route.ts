@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { highlightOwner, HighlightAccessError, reserveOperation, resourceTicket } from '../../../../lib/highlight-access';
-import { ScorePlayClient, ScorePlayError, scorePlayAllowed } from '../../../../lib/scoreplay';
+import { ScorePlayClient, ScorePlayError, scorePlayAllowed, requireScorePlayExternalProcessing } from '../../../../lib/scoreplay';
 
 export const runtime = 'nodejs';
 export const maxDuration = 240;
@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
   let release: (() => void) | undefined;
   try {
     const { owner, client } = await access(request); release = reserveOperation(owner, 'scoreplay-import');
+    requireScorePlayExternalProcessing();
     const id = request.nextUrl.searchParams.get('mediaId') || '';
     if (request.nextUrl.searchParams.get('mode') === 'source') {
       const source = await client.source(id);

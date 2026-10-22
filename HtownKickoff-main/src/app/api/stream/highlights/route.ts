@@ -8,7 +8,7 @@ import { TwelveLabsClient, TwelveLabsError, validVideoId } from '../../../../lib
 import { HighlightAccessError, highlightOwner, studioEnabled, resourceTicket, resourceId, reserveOperation } from '../../../../lib/highlight-access';
 import { reviewInput } from '../../../../lib/jev';
 import { analysisProxyArgs } from '../../../../lib/analysis-proxy';
-import { ScorePlayClient, ScorePlayError, scorePlayAllowed } from '../../../../lib/scoreplay';
+import { ScorePlayClient, ScorePlayError, scorePlayAllowed, requireScorePlayExternalProcessing } from '../../../../lib/scoreplay';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     if (!['upload', 'scoreplay-upload', 'index', 'search', 'review', 'export'].includes(String(action))) throw new Error('Unknown highlight action.');
     release(); release = reserveOperation(owner, action === 'scoreplay-upload' ? 'upload' : String(action));
     async function scorePlaySource() {
+      requireScorePlayExternalProcessing();
       if (!scorePlayAllowed(owner)) throw new HighlightAccessError('ScorePlay access has not been enabled for your account.', 403);
       if (!process.env.SCOREPLAY_API_KEY) throw new ScorePlayError('ScorePlay is not connected on this server yet.', 503);
       const id = BigInt(`0x${resourceId(String(form.get('scoreplayTicket') || ''), owner, 'scoreplay')}`).toString();

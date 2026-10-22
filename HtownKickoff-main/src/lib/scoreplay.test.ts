@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ScorePlayClient, scorePlayAllowed, scorePlayDownloadUrl, selectScorePlayFormat } from './scoreplay';
+import { ScorePlayClient, scorePlayAllowed, scorePlayDownloadUrl, selectScorePlayFormat, requireScorePlayExternalProcessing } from './scoreplay';
+
+test('hackathon content cannot be reimported or exported externally by default', () => {
+  const previous = process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING;
+  try {
+    delete process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING;
+    assert.throws(requireScorePlayExternalProcessing, /must stay on ScorePlay/);
+  } finally { if (previous === undefined) delete process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING; else process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING = previous; }
+});
 
 test('ScorePlay uses documented filename search and never returns signed media links', async () => {
   const client = new ScorePlayClient('private-key', async (url, init) => {

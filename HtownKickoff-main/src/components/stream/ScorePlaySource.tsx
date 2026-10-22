@@ -21,7 +21,7 @@ export default function ScorePlaySource({ disabled, onChoose }: { disabled: bool
     finally { setBusy(false); }
   }
   return <details style={{ marginBottom: 20 }}><summary>Choose a video from ScorePlay</summary>
-    <p className={styles.hint}>Choose a recording up to four hours and 4 GB. TwelveLabs imports it directly from ScorePlay without downloading and uploading the whole game through your browser. Export reads the selected moments from ScorePlay.</p>
+    <p className={styles.hint}>Browse your ScorePlay recordings. Hackathon processing requires the existing TwelveLabs mapping from the organizers. External import and export are disabled by default so challenge content stays on the platform.</p>
     <form onSubmit={e => { e.preventDefault(); void run(); }} className={styles.row}>
       <label>Video filename<input value={query} maxLength={120} disabled={disabled || busy} onChange={e => setQuery(e.target.value)} placeholder="Search or leave blank for recent videos" /></label>
       <button className={styles.secondary} disabled={disabled || busy}>Browse ScorePlay</button>

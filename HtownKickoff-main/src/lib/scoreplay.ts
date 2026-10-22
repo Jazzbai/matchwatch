@@ -2,6 +2,9 @@ export class ScorePlayError extends Error {
   constructor(message: string, public status = 502) { super(message); }
 }
 export const scorePlayLimit = 200 * 1024 * 1024;
+export function requireScorePlayExternalProcessing() {
+  if (process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING !== 'true') throw new ScorePlayError('Hackathon content must stay on ScorePlay. Connect the organizer-provided TwelveLabs mapping before processing; external import and export are disabled.', 403);
+}
 export function scorePlayAllowed(owner: string) {
   return process.env.NODE_ENV === 'development' && owner === 'local' ||
     (process.env.SCOREPLAY_ALLOWED_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean).includes(owner);
