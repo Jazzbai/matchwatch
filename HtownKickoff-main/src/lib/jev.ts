@@ -47,7 +47,7 @@ Judge sporting importance, excitement, and watchability independently on 0–1 s
 Unknown evidence must be null, never invented or scored zero. Do not infer match score, teams, or stakes without evidence; otherwise match_context is null.
 Give a short evidence-based reason (at most 40 words). Set needs_review true when uncertain or an event cannot be verified.
 Use absolute source-video seconds for suggested_start/end. Include buildup, action, and reaction when supported. Keep suggestions within 30 seconds of the candidate and inside the supplied analysis window.
-Compare candidates for the same sporting event or replay. duplicate_of must reference an earlier candidate in this list, or null; keep the clearest version as the original. Mere similarity is not duplication.
+Compare candidates for the same sporting event or replay. Keep the clearest version as canonical, even if it appears later in the video. Other versions set duplicate_of to its candidate ID. A canonical version has duplicate_of null. Never create self-references, chains, or cycles. Mere similarity is not duplication.
 Recommend inclusion independently of reel length; the planner enforces the time budget. Do not select an unverified event automatically.
 Candidate data: ${JSON.stringify([...candidates].sort((a, b) => a.start - b.start))}`;
 }
@@ -68,7 +68,9 @@ export function validateJevReviews(value: unknown, candidates: JevCandidate[], d
   if (reviews.length !== candidates.length) throw new Error('Jev did not review every requested candidate.');
   for (const r of reviews) {
     const index = ordered.findIndex(e => e.id === r.candidate_id), candidate = ordered[index];
-    if (!candidate || r.suggested_start < Math.max(window.start, candidate.start - 30) || r.suggested_end > Math.min(window.end, candidate.end + 30) || (r.duplicate_of !== null && !ordered.slice(0, index).some(e => e.id === r.duplicate_of))) throw new Error('Jev returned an unknown candidate, invalid duplicate, or unsafe clip boundary.');
+    const canonical = r.duplicate_of === null ? undefined : reviews.find(e => e.candidate_id === r.duplicate_of);
+    const invalidDuplicate = r.duplicate_of !== null && (!canonical || canonical.candidate_id === r.candidate_id || canonical.duplicate_of !== null);
+    if (!candidate || r.suggested_start < Math.max(window.start, candidate.start - 30) || r.suggested_end > Math.min(window.end, candidate.end + 30) || invalidDuplicate) throw new Error('Jev returned an unknown candidate, invalid duplicate, or unsafe clip boundary.');
   }
   return reviews;
 }

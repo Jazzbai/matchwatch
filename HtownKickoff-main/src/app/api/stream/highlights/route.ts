@@ -7,6 +7,7 @@ import ffmpegPath from 'ffmpeg-static';
 import { TwelveLabsClient, TwelveLabsError, validVideoId } from '../../../../lib/twelvelabs';
 import { HighlightAccessError, highlightOwner, studioEnabled, resourceTicket, resourceId, reserveOperation } from '../../../../lib/highlight-access';
 import { reviewInput } from '../../../../lib/jev';
+import { analysisProxyArgs } from '../../../../lib/analysis-proxy';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -22,10 +23,10 @@ function failure(error: unknown) {
   if (error instanceof TwelveLabsError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status, headers: error.retryAfter ? { 'Retry-After': error.retryAfter } : undefined });
   return NextResponse.json({ error: error instanceof Error ? error.message : 'Highlight request failed.' }, { status: 400 });
 }
-function run(args: string[]) {
+function run(args: string[], timeout = 240000) {
   return new Promise<void>((resolve, reject) => {
     const child = spawn(ffmpeg, args, { windowsHide: true, stdio: 'ignore' });
-    const timer = setTimeout(() => { child.kill(); reject(new Error('Video export timed out. Try fewer or shorter clips.')); }, 240000);
+    const timer = setTimeout(() => { child.kill(); reject(new Error('Video processing timed out. Try shorter footage or disable analysis compression.')); }, timeout);
     child.on('error', () => { clearTimeout(timer); reject(new Error('FFmpeg is unavailable. Install FFmpeg or set FFMPEG_PATH, then restart the server.')); });
     child.on('close', code => { clearTimeout(timer); if (code === 0) resolve(); else reject(new Error('FFmpeg could not process this video. Use a valid MP4 with a video track.')); });
   });
@@ -77,7 +78,21 @@ export async function POST(request: NextRequest) {
       if (action === 'upload') {
         const file = form.get('video');
         if (!(file instanceof File) || file.size === 0 || file.size > 200 * 1024 * 1024) throw new Error('Choose a video between 1 byte and 200 MB.');
-        return NextResponse.json({ assetId: resourceTicket(await labs.upload(file), owner, 'asset') });
+        let analysisFile = file, warning: string | undefined;
+        if (form.get('compress') === 'true' && file.size >= 8 * 1024 * 1024) {
+          const releaseProcessor = reserveOperation(owner, 'compress');
+          try {
+            directory = await mkdtemp(join(tmpdir(), 'matchwatch-analysis-'));
+            const source = join(directory, 'source.mp4'), proxy = join(directory, 'analysis.mp4');
+            await writeFile(source, Buffer.from(await file.arrayBuffer()));
+            await run(analysisProxyArgs(source, proxy), 90000);
+            const bytes = await readFile(proxy);
+            if (bytes.length < file.size * 0.9) analysisFile = new File([new Uint8Array(bytes)], 'analysis.mp4', { type: 'video/mp4' });
+            else warning = 'Compression did not save at least 10%; the original was used for analysis.';
+          } catch { warning = 'Analysis compression was unavailable; the original was used for analysis.'; }
+          finally { releaseProcessor(); }
+        }
+        return NextResponse.json({ assetId: resourceTicket(await labs.upload(analysisFile), owner, 'asset'), compression: { applied: analysisFile !== file, originalBytes: file.size, analysisBytes: analysisFile.size }, warning });
       }
       if (action === 'index') {
         const id = resourceId(String(form.get('assetId') || ''), owner, 'asset');

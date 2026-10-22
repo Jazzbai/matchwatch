@@ -3,17 +3,41 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, Film, Scissors, Sparkles, Upload, Download, Trash2 } from 'lucide-react';
-import { eventScore, planHighlights, type HighlightEvent } from '../../lib/highlight-plan';
+import { eventScore, type HighlightEvent } from '../../lib/highlight-plan';
 import styles from './HighlightStudio.module.css';
 import { getAccessToken } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import { reviewInput, reviewWindow, validateJevReviews } from '../../lib/jev';
 import { highlightResponse, uploadHighlight } from '../../lib/highlight-request';
+import { optimizeHighlights, reviewShortlist } from '../../lib/highlight-optimizer';
 
 const endpoint = `${process.env.NEXT_PUBLIC_APP_BASE_PATH || ''}/api/stream/highlights`;
 function authorization(): HeadersInit { const token = getAccessToken(); return token ? { Authorization: `Bearer ${token}` } : {}; }
 async function request(form: FormData, signal?: AbortSignal) {
   return highlightResponse(await fetch(endpoint, { method: 'POST', body: form, signal, headers: authorization() }));
+}
+async function compareWithJev(asset: string, events: Event[], duration: number, signal: AbortSignal, status: (text: string) => void): Promise<Event[]> {
+  const candidates = reviewInput(events, duration);
+  reviewWindow(candidates, duration);
+  status(`Jev is comparing ${candidates.length} moments against the video evidence…`);
+  const form = new FormData(); form.set('action', 'review'); form.set('assetId', asset); form.set('duration', String(duration)); form.set('candidates', JSON.stringify(candidates));
+  const { reviewId } = await (await request(form, signal)).json();
+  if (!reviewId) throw new Error('Jev did not return a review task.');
+  for (let i = 0; i < 180; i++) {
+    const response = await highlightResponse(await fetch(`${endpoint}?reviewId=${encodeURIComponent(reviewId)}`, { signal, cache: 'no-store', headers: authorization() }));
+    const data = await response.json();
+    if (data.error || ['failed', 'canceled'].includes(data.status)) throw new Error(data.error || 'AI comparison failed. No automatic reel was created; inspect the candidates or turn AI comparison off.');
+    if (data.status === 'ready') {
+      const reviews = validateJevReviews(data.reviews, candidates, duration);
+      return events.map(event => ({ ...event, jev: reviews.find(r => r.candidate_id === event.id), reviewOverride: false }));
+    }
+    await new Promise<void>((resolve, reject) => {
+      const cancel = () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); };
+      const timer = setTimeout(() => { signal.removeEventListener('abort', cancel); resolve(); }, 5000);
+      signal.addEventListener('abort', cancel, { once: true });
+    });
+  }
+  throw new Error('AI comparison exceeded 15 minutes. Inspect the candidates or try a shorter recording.');
 }
 
 type Event = HighlightEvent & { providerConfidence?: string };
@@ -29,6 +53,7 @@ export default function HighlightStudio() {
   const [target, setTarget] = useState(60), [before, setBefore] = useState(5), [after, setAfter] = useState(10);
   const [label, setLabel] = useState('Dunk'), [start, setStart] = useState(0), [end, setEnd] = useState(10);
   const [autoStart, setAutoStart] = useState(true), [autoExport, setAutoExport] = useState(true);
+  const [autoCompare, setAutoCompare] = useState(true), [compress, setCompress] = useState(false);
   const pendingUpload = useRef(false);
   const sourceResource = useRef({ asset: '', indexed: '', indexedReady: false });
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState(''), [output, setOutput] = useState('');
@@ -37,7 +62,7 @@ export default function HighlightStudio() {
   useEffect(() => { fetch(endpoint).then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error); setConfig(data); }).catch(e => setError(e.message)); return () => controller.current?.abort(); }, []);
   useEffect(() => { if (!file) return; const source = URL.createObjectURL(file); setUrl(source); return () => URL.revokeObjectURL(source); }, [file]);
   useEffect(() => () => { if (output) URL.revokeObjectURL(output); }, [output]);
-  const plan = planHighlights(events.filter(e => !excluded.includes(e.id)), duration, target, before, after).slice(0, 20);
+  const plan = optimizeHighlights(events.filter(e => !excluded.includes(e.id)), duration, target, before, after);
   const total = plan.reduce((sum, clip) => sum + clip.clipEnd - clip.clipStart, 0);
   function resetOutput() { setOutput(''); }
   function choose(video: File | undefined) {
@@ -53,12 +78,14 @@ export default function HighlightStudio() {
     try {
       let assetId = sourceResource.current.asset;
       if (!assetId) {
-        const upload = new FormData(); upload.set('action', 'upload'); upload.set('video', file);
+        const upload = new FormData(); upload.set('action', 'upload'); upload.set('video', file); upload.set('compress', String(compress));
         const uploaded = await uploadHighlight(endpoint, upload, authorization(), abort.signal, (sent, size) => {
           const percent = Math.min(100, Math.floor(sent / size * 100));
-          setBusy(percent === 100 ? 'Video sent to MatchWatch. Waiting for TwelveLabs to accept it…' : `Uploading video to MatchWatch · ${percent}% · ${(sent / 1048576).toFixed(1)} / ${(size / 1048576).toFixed(1)} MB`);
+          setBusy(percent === 100 ? (compress ? 'Video sent. Preparing a smaller analysis copy and sending it to TwelveLabs…' : 'Video sent to MatchWatch. Waiting for TwelveLabs to accept it…') : `Uploading video to MatchWatch · ${percent}% · ${(sent / 1048576).toFixed(1)} / ${(size / 1048576).toFixed(1)} MB`);
         });
-        ({ assetId } = await uploaded.json());
+        const uploadResult = await uploaded.json(); assetId = uploadResult.assetId;
+        if (uploadResult.compression?.applied) setMessage(`Analysis copy: ${(uploadResult.compression.originalBytes / 1048576).toFixed(1)} MB → ${(uploadResult.compression.analysisBytes / 1048576).toFixed(1)} MB. The final reel uses your original video.`);
+        else if (uploadResult.warning) setMessage(uploadResult.warning);
         sourceResource.current.asset = assetId;
       } else setBusy('Reusing your uploaded video…');
       if (!assetId) throw new Error('TwelveLabs did not return an uploaded asset.');
@@ -92,19 +119,27 @@ export default function HighlightStudio() {
       const search = new FormData(); search.set('action', 'search'); search.set('videoId', videoId); search.set('queries', queries);
       const data = await (await request(search, abort.signal)).json(); setEvents(data.events); setExcluded([]);
       if (!data.events.length) { setMessage('No matching moments were found. Change the search descriptions or mark a play manually below. No reel was generated.'); return; }
-      const selected = planHighlights(data.events, duration, target, before, after).slice(0, 20);
-      setMessage(`${data.events.length} candidate events found. Review the selected clips; Jev review is optional.`);
+      let compared: Event[] = data.events;
+      if (autoCompare) {
+        const shortlist = reviewShortlist(data.events, duration);
+        if (!shortlist.length) throw new Error('No valid candidate fits this source video. Mark a moment manually.');
+        compared = await compareWithJev(assetId, shortlist, duration, abort.signal, setBusy);
+        setEvents(data.events.map((event: Event) => compared.find(item => item.id === event.id) || event));
+        setExcluded(data.events.filter((event: Event) => !compared.some(item => item.id === event.id)).map((event: Event) => event.id));
+      }
+      const selected = optimizeHighlights(compared, duration, target, before, after);
+      setMessage(autoCompare ? `Jev compared ${compared.length} distinct moments. The selector keeps the highest combined editorial score within ${target} seconds; weaker choices can be replaced.` : `${data.events.length} candidates found. Selection uses editable scores; AI comparison was not run.`);
       if (autoExport && config?.exportReady && selected.length) {
         setBusy('Creating your highlight MP4…');
         const form = new FormData(); form.set('action', 'export'); form.set('video', file);
         form.set('clips', JSON.stringify(selected.map(c => ({ start: c.clipStart, end: c.clipEnd }))));
         const response = await request(form, abort.signal);
         setOutput(URL.createObjectURL(await response.blob()));
-        setMessage(`Your highlight MP4 is ready from ${selected.length} selected clips. Preview and download it below. Jev review has not been run.`);
-      } else if (!selected.length) setMessage('Moments were found, but no complete clip fits the target length. Increase the target or shorten the clip padding.');
+        setMessage(`Your highlight MP4 is ready from ${selected.length} selected clips. ${autoCompare ? 'Jev compared the evidence before selection.' : 'AI comparison was not run.'} Preview and download it below.`);
+      } else if (!selected.length) setMessage('No verified complete clip fits the target. Inspect uncertain AI reviews, adjust the time budget, or override a reviewed event manually.');
     } catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { if (!abort.signal.aborted) setBusy(''); }
-  }, [file, queries, duration, target, before, after, autoExport, config?.exportReady]);
+  }, [file, queries, duration, target, before, after, autoExport, autoCompare, compress, config?.exportReady]);
   useEffect(() => {
     if (!pendingUpload.current || !autoStart || !file || !duration || !config?.detectionReady || (config.requiresLogin && !isAuthenticated)) return;
     pendingUpload.current = false;
@@ -160,7 +195,10 @@ export default function HighlightStudio() {
           <div className={styles.row}><label>Sport<select value={sport} disabled={!!busy} onChange={e => { const value = e.target.value as typeof sport; setSport(value); setQueries(defaults[value]); setLabel(value === 'Soccer' ? 'Goal' : 'Dunk'); }}><option>Soccer</option><option>Basketball</option></select></label><label>Target length<select value={target} disabled={!!busy} onChange={e => { setTarget(Number(e.target.value)); resetOutput(); }}>{[30, 60, 90, 120, 180, 300].map(v => <option key={v} value={v}>{v} seconds</option>)}</select></label></div>
           <label>Moments to find <small>One query per line · up to eight</small><textarea rows={4} value={queries} disabled={!!busy} onChange={e => setQueries(e.target.value)} /></label>
           <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoStart} disabled={!!busy} onChange={e => setAutoStart(e.target.checked)} />Start processing when I choose a video</span></label>
-          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoExport} disabled={!!busy} onChange={e => setAutoExport(e.target.checked)} />Generate the MP4 after detection (skip optional Jev review)</span></label>
+          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoCompare} disabled={!!busy} onChange={e => { setAutoCompare(e.target.checked); resetOutput(); }} />AI compare moments before selection (adds analysis time)</span></label>
+          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={compress} disabled={!!busy} onChange={e => setCompress(e.target.checked)} />Compress a copy for AI analysis (adds encoding time)</span></label>
+          <p className={styles.hint}>Compression runs on the server after your initial upload. It preserves playback time and uses a smaller copy only if it saves at least 10%. The final 720p reel uses the original. Compression can reduce visual detail; leave it off when small-ball motion or scoreboard text is important. To apply a changed compression setting to an already uploaded file, choose the file again.</p>
+          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoExport} disabled={!!busy} onChange={e => setAutoExport(e.target.checked)} />Generate the MP4 after selection</span></label>
           <p className={styles.hint}>Long recordings need time to upload and index before highlights can be found. For a quick first demo, use a 1–3 minute excerpt. Upload percentage covers transfer to MatchWatch; TwelveLabs processing follows.</p>
           {config?.requiresLogin && !isAuthenticated && <div className={styles.notice} role="status">
             {authLoading ? <p>Checking your sign-in…</p> : <div><strong>Sign in to start video processing.</strong><p>Your video can be previewed here, but uploading to TwelveLabs and creating highlights require a MatchWatch account.</p><a className={styles.primary} href="/login?next=%2Fapp">Sign in & return to the studio</a><p>After signing in, choose your video again to start processing.</p></div>}
@@ -171,7 +209,7 @@ export default function HighlightStudio() {
         <section className={styles.card}><div className={styles.heading}><span>02</span><h2>Build your highlight</h2><Scissors size={20} /></div>
           <div className={styles.stats}><div><strong>{events.length}</strong><span>CANDIDATES</span></div><div><strong>{plan.length}</strong><span>SELECTED CLIPS</span></div><div><strong>{clock(total)}</strong><span>OF {clock(target)} TARGET</span></div></div>
           <h3>Refine the cut</h3><div className={styles.row}><label>Before event (sec)<input type="number" min="0" max="30" value={before} disabled={!!busy} onChange={e => { setBefore(Math.max(0, Math.min(30, Number(e.target.value)))); resetOutput(); }} /></label><label>After event (sec)<input type="number" min="0" max="30" value={after} disabled={!!busy} onChange={e => { setAfter(Math.max(0, Math.min(30, Number(e.target.value)))); resetOutput(); }} /></label></div>
-          <p className={styles.hint}>Best scores first, with different event types and no overlapping clips. Jev recommendations are separate from selection: reviewed cuts must fit whole inside the target. The final sequence follows match time.</p>
+          <p className={styles.hint}>Compare combinations and replace weaker choices to maximize the combined editorial score within the target. Whole clips only, no overlap, and at most 20 clips. Selection uses a conservative half-second time budget and considers up to 80 candidates. Jev inclusion recommendations remain separate from final selection. The reel follows match time.</p>
           <div className={styles.timeline}>{plan.length ? plan.map(c => <button key={c.id} style={{ flex: c.clipEnd - c.clipStart }} title={`${c.label}: ${clock(c.clipStart)}–${clock(c.clipEnd)}`} onClick={() => { if (player.current) { player.current.currentTime = c.clipStart; void player.current.play(); } }}>{c.label}</button>) : <span>Your selected moments will appear here</span>}</div>
           <ol className={styles.sequence}>{plan.map(c => <li key={c.id}><Check size={14} /><strong>{c.label}</strong><span>{clock(c.clipStart)}–{clock(c.clipEnd)}</span></li>)}</ol>
           <button className={styles.primary} disabled={!plan.length || !!busy || !config?.exportReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={exportVideo}><Film size={16} /> Generate highlight MP4</button>

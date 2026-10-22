@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { jevUtility, reviewInput, validateJevReviews, type JevReview } from './jev';
 import { planHighlights, type HighlightEvent } from './highlight-plan';
+import { optimizeHighlights } from './highlight-optimizer';
 const candidates = [{ id: 'goal', label: 'Goal', start: 20, end: 25 }, { id: 'replay', label: 'Replay', start: 60, end: 65 }];
 function review(id = 'goal', changes: Partial<JevReview> = {}): JevReview {
   return { candidate_id: id, event: 'goal', importance_estimate: 0.9, excitement_estimate: null, watchability_estimate: 0.8, match_context: null, duplicate_of: null, suggested_start: 15, suggested_end: 30, recommend_include: true, reason: 'Visible shot enters the goal.', needs_review: false, ...changes };
@@ -23,6 +24,14 @@ test('candidate validation bounds paid analysis input', () => {
   assert.throws(() => reviewInput(Array(21).fill(candidates[0]), 100));
   assert.throws(() => reviewInput(candidates, 20));
   assert.throws(() => reviewInput([candidates[0], candidates[0]], 100));
+});
+
+test('a clearer later replay may replace the original, but duplicate cycles and self-links are rejected', () => {
+  const reviews = [review('goal', { duplicate_of: 'replay', watchability_estimate: 0.3 }), review('replay', { suggested_start: 55, suggested_end: 70, watchability_estimate: 0.95 })];
+  const checked = validateJevReviews(reviews, candidates, 100);
+  assert.deepEqual(optimizeHighlights(checked.map(r => event(r.candidate_id, r)), 100, 60).map(c => c.id), ['replay']);
+  assert.throws(() => validateJevReviews([review('goal', { duplicate_of: 'goal' }), reviews[1]], candidates, 100));
+  assert.throws(() => validateJevReviews([reviews[0], { ...reviews[1], duplicate_of: 'goal' }], candidates, 100));
 });
 test('planner separates recommendation from selection and preserves reviewed boundaries', () => {
   const goal = event('goal', review());
