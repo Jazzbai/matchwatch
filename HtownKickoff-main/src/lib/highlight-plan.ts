@@ -1,13 +1,16 @@
 import { jevUtility, type JevReview } from './jev';
+import { fusedScore, type FusedAssessment } from './event-fusion';
 export type HighlightEvent = {
   id: string; label: string; start: number; end: number;
   confidence: number; importance: number; context: number;
   audio: number; reaction: number; preference: number;
   jev?: JevReview;
   reviewOverride?: boolean;
+  viral?: FusedAssessment;
 };
 export type HighlightClip = HighlightEvent & { score: number; clipStart: number; clipEnd: number };
 export function eventScore(event: HighlightEvent) {
+  if (event.viral && !event.reviewOverride) return fusedScore(event.viral).score ?? 0;
   if (event.jev && !event.reviewOverride) return jevUtility(event.jev);
   return 0.4 * event.importance + 0.2 * event.context + 0.15 * event.audio + 0.15 * event.reaction + 0.1 * event.preference;
 }

@@ -7,6 +7,7 @@ import { eventScore, type HighlightEvent } from '../../lib/highlight-plan';
 import styles from './HighlightStudio.module.css';
 import ScorePlaySource, { type ScorePlayVideo } from './ScorePlaySource';
 import RollingScoreboard from './RollingScoreboard';
+import EventFusionStudio from './EventFusionStudio';
 import { applyReviewedChunk, candidateChunks, emptyRollingState } from '../../lib/rolling-highlights';
 import { highlightAuthorization, highlightFetch } from '../../lib/highlight-session';
 import { useAuth } from '../../lib/auth-context';
@@ -36,7 +37,7 @@ async function compareWithJev(asset: string, events: Event[], duration: number, 
     if (data.error || ['failed', 'canceled'].includes(data.status)) throw new Error(data.error || 'AI comparison failed. No automatic reel was created; inspect the candidates or turn AI comparison off.');
     if (data.status === 'ready') {
       const reviews = validateJevReviews(data.reviews, candidates, duration);
-      return events.map(event => ({ ...event, jev: reviews.find(r => r.candidate_id === event.id), reviewOverride: false }));
+      return events.map(event => ({ ...event, viral: undefined, jev: reviews.find(r => r.candidate_id === event.id), reviewOverride: false }));
     }
     await new Promise<void>((resolve, reject) => {
       const cancel = () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); };
@@ -50,18 +51,19 @@ async function compareWithJev(asset: string, events: Event[], duration: number, 
 type Event = HighlightEvent & { providerConfidence?: string };
 const clock = (value: number) => `${Math.floor(value / 60).toString().padStart(2, '0')}:${Math.floor(value % 60).toString().padStart(2, '0')}`;
 const defaults = { Soccer: 'Goal scored\nShot on target\nFoul or penalty\nCrowd celebration', Basketball: 'Dunk\nThree-point shot\nAssist or block\nCrowd celebration' };
-const steps = ['Input video', 'Detect events', 'Jev review', 'Score & rank', 'Refine clips', 'Select highlights', 'Assemble', 'Export MP4'];
+const steps = ['Video source', 'Match & social inputs', 'TwelveLabs review', 'Event fusion', 'Score & rank', 'Producer approval', 'Assemble', 'Export MP4'];
 export default function HighlightStudio() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [file, setFile] = useState<File | null>(null), [url, setUrl] = useState(''), [duration, setDuration] = useState(0);
   const [scorePlay, setScorePlay] = useState<ScorePlayVideo | null>(null);
   const [rolling, setRolling] = useState(emptyRollingState);
+  const [sourceRevision, setSourceRevision] = useState(0);
   const [sport, setSport] = useState<'Soccer' | 'Basketball'>('Basketball'), [queries, setQueries] = useState(defaults.Basketball);
   const [events, setEvents] = useState<Event[]>([]), [excluded, setExcluded] = useState<string[]>([]);
   const [assetTicket, setAssetTicket] = useState('');
   const [target, setTarget] = useState(60), [before, setBefore] = useState(5), [after, setAfter] = useState(10);
   const [label, setLabel] = useState('Dunk'), [start, setStart] = useState(0), [end, setEnd] = useState(10);
-  const [autoStart, setAutoStart] = useState(true), [autoExport, setAutoExport] = useState(true);
+  const [autoStart, setAutoStart] = useState(true), [autoExport, setAutoExport] = useState(false);
   const [autoCompare, setAutoCompare] = useState(true), [compress, setCompress] = useState(false);
   const pendingUpload = useRef(false);
   const sourceResource = useRef({ asset: '', indexed: '', indexedReady: false, analysisDuration: 0 });
@@ -78,11 +80,13 @@ export default function HighlightStudio() {
     if (!video) return;
     if (video.size > 200 * 1024 * 1024) { setError('Choose a video smaller than 200 MB.'); return; }
     setScorePlay(null);
+    setSourceRevision(current => current + 1);
     setRolling(emptyRollingState());
     sourceResource.current = { asset: '', indexed: '', indexedReady: false, analysisDuration: 0 };
     controller.current?.abort(); pendingUpload.current = true; setBusy(''); setFile(video); setDuration(0); setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); setMessage('Video selected. Reading video details before processing…'); resetOutput();
   }
   function chooseScorePlay(source: ScorePlayVideo) {
+    setSourceRevision(current => current + 1);
     setRolling(emptyRollingState());
     controller.current?.abort(); sourceResource.current = { asset: '', indexed: '', indexedReady: false, analysisDuration: 0 };
     pendingUpload.current = true; setBusy(''); setFile(null); setScorePlay(source); setUrl(source.url); setDuration(source.duration);
@@ -221,7 +225,7 @@ export default function HighlightStudio() {
     catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { if (!abort.signal.aborted) setBusy(''); }
   }
-  function update(id: string, changes: Partial<Event>) { setEvents(current => current.map(e => e.id === id ? { ...e, ...changes, reviewOverride: e.jev ? true : e.reviewOverride } : e)); resetOutput(); }
+  function update(id: string, changes: Partial<Event>) { setEvents(current => current.map(e => e.id === id ? { ...e, ...changes, viral: undefined, reviewOverride: e.jev ? true : e.reviewOverride } : e)); resetOutput(); }
   return <main className={styles.app}>
     <header className={styles.nav}><Link href="/stream" className={styles.brand}>MATCHWATCH <span>HIGHLIGHTS</span></Link><nav><a href="/">MatchWatch home</a><a href="/matches">Match schedule</a></nav><span className={styles.local}>HIGHLIGHT STUDIO</span></header>
     <div className={styles.shell}>
@@ -260,6 +264,7 @@ export default function HighlightStudio() {
           {output && <div className={styles.output}><video controls src={output} /><a href={output} download="matchwatch-highlights.mp4" className={styles.primary}><Download size={16} /> Download highlight</a></div>}
         </section>
       </div>
+      <EventFusionStudio key={sourceRevision} events={events} excluded={excluded} duration={duration} target={target} before={before} after={after} disabled={!!busy} onApply={updated => { setEvents(updated); resetOutput(); setMessage('Combined scores approved. The highlight proposal has been updated; review it before generating the video.'); }} />
       <RollingScoreboard state={rolling} />
       <section className={styles.card}><div className={styles.heading}><span>03</span><h2>Candidate events</h2><span className={styles.count}>{events.length}</span></div><p className={styles.hint}>Review time ranges and set the scoring signals from 0 to 1. Score = 40% importance + 20% context + 15% audio + 15% reaction + 10% team preference. These are editable review inputs; audio and reactions are not automatically measured.</p>
         <button className={styles.secondary} disabled={!assetTicket || !events.some(e => !excluded.includes(e.id)) || !!busy || (!!config?.requiresLogin && !isAuthenticated)} onClick={reviewWithJev}><Sparkles size={16} /> Review checked moments with Jev</button>
