@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- These links leave the isolated /app service for the existing main site. */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, Film, Scissors, Sparkles, Upload, Download, Trash2 } from 'lucide-react';
+import { ArrowRight, Check, Film, Scissors, Sparkles, Upload, Download, Trash2, Play, ChevronDown, LoaderCircle, Settings2, Library, CircleCheck } from 'lucide-react';
 import { eventScore, type HighlightEvent } from '../../lib/highlight-plan';
 import styles from './HighlightStudio.module.css';
 import ScorePlaySource, { type ScorePlayVideo } from './ScorePlaySource';
@@ -52,7 +52,7 @@ async function compareWithJev(asset: string, events: Event[], duration: number, 
 type Event = HighlightEvent & { providerConfidence?: string };
 const clock = (value: number) => `${Math.floor(value / 60).toString().padStart(2, '0')}:${Math.floor(value % 60).toString().padStart(2, '0')}`;
 const defaults = { Soccer: 'Goal scored\nShot on target\nFoul or penalty\nCrowd celebration', Basketball: 'Dunk\nThree-point shot\nAssist or block\nCrowd celebration' };
-const steps = ['Video source', 'Match & social inputs', 'TwelveLabs review', 'Event fusion', 'Score & rank', 'Automatic selection', 'Assemble', 'Export MP4'];
+const steps = ['Choose a video', 'Create your highlight', 'Preview & download'];
 export default function HighlightStudio() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [file, setFile] = useState<File | null>(null), [url, setUrl] = useState(''), [duration, setDuration] = useState(0);
@@ -64,9 +64,12 @@ export default function HighlightStudio() {
   const [assetTicket, setAssetTicket] = useState('');
   const [target, setTarget] = useState(60), [before, setBefore] = useState(5), [after, setAfter] = useState(10);
   const [label, setLabel] = useState('Dunk'), [start, setStart] = useState(0), [end, setEnd] = useState(10);
-  const [autoStart, setAutoStart] = useState(true), [autoExport, setAutoExport] = useState(true);
+  const [autoStart, setAutoStart] = useState(false), [autoExport, setAutoExport] = useState(true);
   const fusionContext = useRef<FusionInputs>({ matchId: 'video-only', stats: [], posts: [], anchors: [], videoUtc: '', reactionDelay: 15, tolerance: 10 });
   const [autoCompare, setAutoCompare] = useState(true), [compress, setCompress] = useState(false);
+  const [sourceMode, setSourceMode] = useState<'library' | 'upload'>('library');
+  const [dragging, setDragging] = useState(false);
+  const resultRef = useRef<HTMLElement>(null);
   const pendingUpload = useRef(false);
   const sourceResource = useRef({ asset: '', indexed: '', indexedReady: false, analysisDuration: 0 });
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState(''), [output, setOutput] = useState('');
@@ -81,19 +84,21 @@ export default function HighlightStudio() {
   function choose(video: File | undefined) {
     if (!video) return;
     if (video.size > 200 * 1024 * 1024) { setError('Choose a video smaller than 200 MB.'); return; }
+    setSourceMode('upload');
     setScorePlay(null);
     setSourceRevision(current => current + 1);
     setRolling(emptyRollingState());
     sourceResource.current = { asset: '', indexed: '', indexedReady: false, analysisDuration: 0 };
-    controller.current?.abort(); pendingUpload.current = true; setBusy(''); setFile(video); setDuration(0); setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); setMessage('Video selected. Reading video details before processing…'); resetOutput();
+    controller.current?.abort(); pendingUpload.current = true; setBusy(''); setFile(video); setDuration(0); setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); setMessage('Your video is selected. Choose your preferences, then create your highlight.'); resetOutput();
   }
   function chooseScorePlay(source: ScorePlayVideo) {
+    setSourceMode('library');
     setSourceRevision(current => current + 1);
     setRolling(emptyRollingState());
     controller.current?.abort(); sourceResource.current = { asset: '', indexed: '', indexedReady: false, analysisDuration: 0 };
     pendingUpload.current = true; setBusy(''); setFile(null); setScorePlay(source); setUrl(source.url); setDuration(source.duration);
     setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); resetOutput();
-    setMessage('ScorePlay recording selected. Ready for direct AI import.');
+    setMessage('Your ScorePlay video is selected. Choose your preferences, then create your highlight.');
   }
   const detect = useCallback(async () => {
     if (!file && !scorePlay) return;
@@ -229,54 +234,69 @@ export default function HighlightStudio() {
     catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { if (!abort.signal.aborted) setBusy(''); }
   }
+  useEffect(() => { if (output) resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [output]);
+  const hasSource = !!file || !!scorePlay;
+  const activeStep = output ? 2 : hasSource || busy ? 1 : 0;
+  const processingLabel = /MP4/i.test(busy) ? 'Putting your highlight together' : /Jev|compar|review|candidate|Finding/i.test(busy) ? 'Finding your strongest moments' : 'Getting your video ready';
   function update(id: string, changes: Partial<Event>) { setEvents(current => current.map(e => e.id === id ? { ...e, ...changes, viral: undefined, reviewOverride: e.jev ? true : e.reviewOverride } : e)); resetOutput(); }
   return <main className={styles.app}>
-    <header className={styles.nav}><Link href="/stream" className={styles.brand}>MATCHWATCH <span>HIGHLIGHTS</span></Link><nav><a href="/">MatchWatch home</a><a href="/matches">Match schedule</a></nav><span className={styles.local}>HIGHLIGHT STUDIO</span></header>
+    <header className={styles.nav}><Link href="/stream" className={styles.brand}><span className={styles.brandMark}><Play size={17} fill="currentColor" /></span>MATCHWATCH <span className={styles.brandProduct}>Studio</span></Link><nav><a href="/">Back to MatchWatch <ArrowRight size={14} /></a></nav><span className={styles.local}><span /> Highlight studio</span></header>
     <div className={styles.shell}>
-      <div className={styles.hero}><div><p className={styles.eyebrow}><Sparkles size={14} /> THE MOMENTS THAT MAKE THE MATCH.</p><h1>Full game.<br /><em>Just the highlights.</em></h1><p>Find the big plays, shape the story, and turn your match into a shareable highlight reel.</p></div><div className={styles.heroIcon}><Scissors size={64} /><span>FROM KICKOFF TO THE FINAL CUT</span></div></div>
-      <ol className={styles.steps}>{steps.map((step, i) => <li key={step}><span>{i + 1}</span>{step}</li>)}</ol>
-      {error && <p className={styles.error} role="alert">{error}</p>}{message && <p className={styles.notice} role="status">{message}</p>}
-      {config?.requiresLogin && !isAuthenticated && <p className={styles.notice}><a href="/login?next=%2Fapp">Sign in to MatchWatch</a> to detect events and export your highlights. You can preview footage and mark moments first.</p>}
-      {busy && <div className={styles.notice} role="status">{busy} <button onClick={() => { controller.current?.abort(); setBusy(''); setMessage('Operation canceled.'); }}>Cancel</button></div>}
+      <div className={styles.hero}><div><p className={styles.eyebrow}>YOUR GAME. THE BEST PARTS.</p><h1>Big moments.<br /><em>Made easy.</em></h1><p>Turn a full match into a highlight worth watching.<br />Choose a video. We’ll find the plays that matter.</p></div><div className={styles.heroNote}><Sparkles size={22} /><div><strong>A full game. A few great moments.</strong><p>AI finds, compares and brings the best plays together.</p></div></div></div>
+      <ol className={styles.steps} aria-label="Your highlight progress">{steps.map((step, i) => <li key={step} className={i === activeStep ? styles.stepActive : i < activeStep ? styles.stepDone : ''} aria-current={i === activeStep ? 'step' : undefined}><span>{i < activeStep ? <Check size={16} /> : i + 1}</span><strong>{step}</strong>{i < 2 && <ChevronDown size={14} />}</li>)}</ol>
+      {error && <div className={styles.error} role="alert"><strong>We couldn’t complete that step</strong><p>{error}</p><button type="button" className={styles.textButton} onClick={() => setError('')}>Dismiss</button></div>}
+      {config?.requiresLogin && !isAuthenticated && <div className={styles.signIn}><div><strong>{authLoading ? 'Checking your account…' : 'Sign in to create your highlight'}</strong><p>Browse your options, then sign in when you’re ready to start.</p></div><a className={styles.secondary} href="/login?next=%2Fapp">Sign in <ArrowRight size={16} /></a></div>}
+      {busy && <div className={styles.processing} role="status"><LoaderCircle size={24} className={styles.spinner} /><div><strong>{processingLabel}</strong><p>{busy}</p><span>Longer recordings take more time. Leave this tab open while we work.</span></div><button type="button" className={styles.textButton} onClick={() => { controller.current?.abort(); setBusy(''); setMessage('Processing stopped. Your video is still selected, so you can try again.'); }}>Stop</button></div>}
+      {message && !busy && !output && <p className={styles.notice} role="status">{message}</p>}
       <div className={styles.columns}>
-        <section className={styles.card}><div className={styles.heading}><span>01</span><h2>Your source footage</h2><Film size={20} /></div>
-          <ScorePlaySource disabled={!!busy || (!!config?.requiresLogin && !isAuthenticated)} onChoose={chooseScorePlay} />
-          <label className={styles.upload}><Upload size={28} /><strong>{scorePlay ? `ScorePlay: ${scorePlay.name}` : file ? file.name : 'Choose your match video'}</strong><span>{scorePlay ? 'Connected recording · direct cloud import' : 'Local video · up to 200 MB'}</span><input type="file" accept="video/*,.mp4" onChange={e => choose(e.target.files?.[0])} disabled={!!busy} /></label>
-          {url && <video ref={player} src={url} controls preload="metadata" onLoadedMetadata={e => { const d = e.currentTarget.duration; if (Number.isFinite(d)) setDuration(d); else setError('Use a finite video recording for this prototype.'); }} onError={() => setError('This browser cannot play the selected video. Try an MP4 encoded with H.264.')} />}
-          <div className={styles.row}><label>Sport<select value={sport} disabled={!!busy} onChange={e => { const value = e.target.value as typeof sport; setSport(value); setQueries(defaults[value]); setLabel(value === 'Soccer' ? 'Goal' : 'Dunk'); }}><option>Soccer</option><option>Basketball</option></select></label><label>Target length<select value={target} disabled={!!busy} onChange={e => { setTarget(Number(e.target.value)); resetOutput(); }}>{[30, 60, 90, 120, 180, 300].map(v => <option key={v} value={v}>{v} seconds</option>)}</select></label></div>
-          <label>Moments to find <small>One query per line · up to eight</small><textarea rows={4} value={queries} disabled={!!busy} onChange={e => setQueries(e.target.value)} /></label>
-          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoStart} disabled={!!busy} onChange={e => setAutoStart(e.target.checked)} />Start processing when I choose a video</span></label>
-          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoCompare} disabled={!!busy} onChange={e => { setAutoCompare(e.target.checked); resetOutput(); }} />AI compare moments before selection (adds analysis time)</span></label>
-          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={compress} disabled={!!busy || !!scorePlay} onChange={e => setCompress(e.target.checked)} />Compress a local upload for AI analysis (adds encoding time)</span></label>
-          <p className={styles.hint}>Compression runs on the server after your initial upload. It preserves playback time and uses a smaller copy only if it saves at least 10%. The final 720p reel uses the original. Compression can reduce visual detail; leave it off when small-ball motion or scoreboard text is important. To apply a changed compression setting to an already uploaded file, choose the file again.</p>
-          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoExport} disabled={!!busy} onChange={e => setAutoExport(e.target.checked)} />Generate the MP4 after selection</span></label>
-          <p className={styles.hint}>Long recordings need time to upload and index before highlights can be found. For a quick first demo, use a 1–3 minute excerpt. Upload percentage covers transfer to MatchWatch; TwelveLabs processing follows.</p>
-          {config?.requiresLogin && !isAuthenticated && <div className={styles.notice} role="status">
-            {authLoading ? <p>Checking your sign-in…</p> : <div><strong>Sign in to start video processing.</strong><p>Your video can be previewed here, but uploading to TwelveLabs and creating highlights require a MatchWatch account.</p><a className={styles.primary} href="/login?next=%2Fapp">Sign in & return to the studio</a><p>After signing in, choose your video again to start processing.</p></div>}
-          </div>}
-          <button className={styles.primary} disabled={(!file && !scorePlay) || !duration || !!busy || !config?.detectionReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={() => void detect()}><Sparkles size={16} /> {autoExport ? 'Find moments & create highlight' : 'Detect events with TwelveLabs'} <ArrowRight size={16} /></button>
-          <p className={styles.hint}>{busy ? busy : !config ? 'Checking detection availability…' : config.requiresLogin && !isAuthenticated ? 'Processing is paused until you sign in.' : !config.detectionReady ? 'AI detection is not configured on this server yet. You can add events manually below.' : !file ? 'Choose a video to begin. It will be sent to TwelveLabs for indexing and visual search.' : !duration ? 'Waiting for the video duration. If it does not load, try an H.264 MP4.' : 'Detection sends this video to TwelveLabs for indexing and visual search.'}</p>
-        </section>
-        <section className={styles.card}><div className={styles.heading}><span>02</span><h2>Build your highlight</h2><Scissors size={20} /></div>
-          <div className={styles.stats}><div><strong>{events.length}</strong><span>CANDIDATES</span></div><div><strong>{plan.length}</strong><span>SELECTED CLIPS</span></div><div><strong>{clock(total)}</strong><span>OF {clock(target)} TARGET</span></div></div>
-          <h3>Refine the cut</h3><div className={styles.row}><label>Before event (sec)<input type="number" min="0" max="30" value={before} disabled={!!busy} onChange={e => { setBefore(Math.max(0, Math.min(30, Number(e.target.value)))); resetOutput(); }} /></label><label>After event (sec)<input type="number" min="0" max="30" value={after} disabled={!!busy} onChange={e => { setAfter(Math.max(0, Math.min(30, Number(e.target.value)))); resetOutput(); }} /></label></div>
-          <p className={styles.hint}>Compare combinations and replace weaker choices to maximize the combined editorial score within the target. Whole clips only, no overlap, and at most 5 clips. Selection uses a conservative half-second time budget and considers up to 80 candidates. Jev inclusion recommendations remain separate from final selection. The reel follows match time.</p>
-          <div className={styles.timeline}>{plan.length ? plan.map(c => <button key={c.id} style={{ flex: c.clipEnd - c.clipStart }} title={`${c.label}: ${clock(c.clipStart)}–${clock(c.clipEnd)}`} onClick={() => { if (player.current) { player.current.currentTime = c.clipStart; void player.current.play(); } }}>{c.label}</button>) : <span>Your selected moments will appear here</span>}</div>
-          <ol className={styles.sequence}>{plan.map(c => <li key={c.id}><Check size={14} /><strong>{c.label}</strong><span>{clock(c.clipStart)}–{clock(c.clipEnd)}</span></li>)}</ol>
-          <button className={styles.primary} disabled={!plan.length || !!busy || !config?.exportReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={exportVideo}><Film size={16} /> Generate highlight MP4</button>
-          <p className={styles.hint}>{!config ? 'Checking export availability…' : config.exportReady ? '720p MP4 · original audio · chronological cuts' : 'Video export is not configured on this server yet.'}</p>
-          {output && <div className={styles.output}><video controls src={output} /><a href={output} download="matchwatch-highlights.mp4" className={styles.primary}><Download size={16} /> Download highlight</a></div>}
-        </section>
+        <div className={styles.setup}>
+          <section className={styles.card} id="source"><div className={styles.heading}><span>01</span><div><h2>Choose your video</h2><p>A game from your library or a file from your device.</p></div></div>
+            <div className={styles.sourceTabs} role="tablist" aria-label="Video source" onKeyDown={e => { if (busy || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return; e.preventDefault(); const next = e.key === 'Home' ? 'library' : e.key === 'End' ? 'upload' : sourceMode === 'library' ? 'upload' : 'library'; setSourceMode(next); document.getElementById(next + '-tab')?.focus(); }}><button type="button" id="library-tab" role="tab" tabIndex={sourceMode === 'library' ? 0 : -1} aria-selected={sourceMode === 'library'} aria-controls="library-panel" disabled={!!busy} onClick={() => setSourceMode('library')}><Library size={17} /> ScorePlay library</button><button type="button" id="upload-tab" role="tab" tabIndex={sourceMode === 'upload' ? 0 : -1} aria-selected={sourceMode === 'upload'} aria-controls="upload-panel" disabled={!!busy} onClick={() => setSourceMode('upload')}><Upload size={17} /> Upload a video</button></div>
+            <div id="library-panel" role="tabpanel" aria-labelledby="library-tab" hidden={sourceMode !== 'library'}><ScorePlaySource disabled={!!busy || (!!config?.requiresLogin && !isAuthenticated)} onChoose={chooseScorePlay} /></div>
+            <div id="upload-panel" role="tabpanel" aria-labelledby="upload-tab" hidden={sourceMode !== 'upload'}><label className={styles.upload + ' ' + (dragging ? styles.dragging : '')} onDragOver={e => { e.preventDefault(); if (!busy) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={e => { e.preventDefault(); setDragging(false); if (!busy) choose(e.dataTransfer.files[0]); }}><span className={styles.uploadIcon}><Upload size={25} /></span><strong>Drop your match video here</strong><span>or click to choose a file</span><small>MP4 and other video files · Up to 200 MB</small><input type="file" accept="video/*,.mp4" aria-label="Choose a video file" onChange={e => choose(e.target.files?.[0])} disabled={!!busy} /></label></div>
+            {hasSource && <div className={styles.sourceSelected}><CircleCheck size={19} /><div><strong>{scorePlay?.name || file?.name}</strong><span>{scorePlay ? 'ScorePlay library' : 'Video from your device'}{duration ? ' · ' + clock(duration) : ' · Reading video details…'}</span></div></div>}
+            {url && <video ref={player} src={url} controls preload="metadata" onLoadedMetadata={e => { const d = e.currentTarget.duration; if (Number.isFinite(d)) setDuration(d); else setError('Choose a recorded video with a fixed length.'); }} onError={() => setError('We couldn’t preview this file. Try an MP4 video with H.264 encoding.')} />}
+          </section>
+          <section className={styles.card} id="preferences"><div className={styles.heading}><span>02</span><div><h2>Make it yours</h2><p>Set the sport and length. We’ll take care of the cut.</p></div></div>
+            <fieldset className={styles.choiceGroup} disabled={!!busy}><legend>Which sport?</legend><div className={styles.choices}>{(['Basketball', 'Soccer'] as const).map(value => <button type="button" key={value} aria-pressed={sport === value} onClick={() => { setSport(value); setQueries(defaults[value]); setLabel(value === 'Soccer' ? 'Goal' : 'Dunk'); }}>{value}</button>)}</div></fieldset>
+            <fieldset className={styles.choiceGroup} disabled={!!busy}><legend>How long should it be?</legend><div className={styles.choices}>{[30, 60, 90].map(value => <button type="button" key={value} aria-pressed={target === value} onClick={() => { setTarget(value); resetOutput(); }}>{value} sec{value === 60 && <small>Popular</small>}</button>)}</div></fieldset>
+            <p className={styles.hint}>Up to five standout moments, with original audio and a natural flow.</p>
+            <details className={styles.advanced}><summary><Settings2 size={15} /> Customize moments & processing <ChevronDown size={15} /></summary><div className={styles.detailsBody}>
+              <label>Look for these moments<small>One description per line, up to eight.</small><textarea rows={4} value={queries} disabled={!!busy} onChange={e => setQueries(e.target.value)} /></label>
+              <label>Highlight length<select value={target} disabled={!!busy} onChange={e => { setTarget(Number(e.target.value)); resetOutput(); }}>{[30,60,90,120,180,300].map(v => <option key={v} value={v}>{v} seconds</option>)}</select></label>
+              <label className={styles.checkLabel}><input type="checkbox" checked={autoStart} disabled={!!busy} onChange={e => setAutoStart(e.target.checked)} /> Start automatically when a video is selected</label>
+              <label className={styles.checkLabel}><input type="checkbox" checked={autoCompare} disabled={!!busy} onChange={e => { setAutoCompare(e.target.checked); resetOutput(); }} /> Compare moments with AI before choosing clips</label>
+              <label className={styles.checkLabel}><input type="checkbox" checked={autoExport} disabled={!!busy} onChange={e => setAutoExport(e.target.checked)} /> Create the video when selection is complete</label>
+              <label className={styles.checkLabel}><input type="checkbox" checked={compress} disabled={!!busy || !!scorePlay} onChange={e => setCompress(e.target.checked)} /> Use a smaller analysis copy for local uploads</label><p className={styles.hint}>A smaller copy can speed up analysis, but takes extra time to prepare. Your final video uses the original footage.</p>
+            </div></details>
+            <button className={styles.primary} disabled={!hasSource || !duration || !!busy || !config?.detectionReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={() => void detect()}>{busy ? <LoaderCircle size={18} className={styles.spinner} /> : <Sparkles size={18} />}{busy ? 'Creating your highlight…' : output ? 'Create another cut' : 'Create my highlight'}{!busy && <ArrowRight size={18} />}</button>
+            <p className={styles.actionHint}>{!config ? 'Checking availability…' : config.requiresLogin && !isAuthenticated ? 'Sign in above to start creating.' : !config.detectionReady ? 'Video analysis is temporarily unavailable.' : !hasSource ? 'Choose a video above to get started.' : !duration ? 'Reading your video details…' : 'We’ll find the best moments and create your video.'}</p>
+          </section>
+        </div>
+        <aside className={styles.resultColumn} hidden={!hasSource && !events.length && !busy}>
+          <section className={styles.card} id="result" ref={resultRef}><div className={styles.heading}><span>03</span><div><h2>Your highlight</h2><p>{output ? 'Ready for its next audience.' : 'The best of your match, all in one place.'}</p></div>{output && <span className={styles.readyBadge}>Ready</span>}</div>
+            {output ? <div className={styles.output}><video controls src={output} /><a href={output} download="matchwatch-highlights.mp4" className={styles.primary}><Download size={18} /> Download highlight</a><p className={styles.actionHint}>720p MP4 · Original audio</p></div> : <div className={styles.resultEmpty}>{busy ? <LoaderCircle size={38} className={styles.spinner} /> : <Play size={34} />}<h3>{busy ? 'Your highlight is on its way' : 'Your next great highlight starts here'}</h3><p>{busy ? 'We’re finding the plays, comparing the moments and building your reel.' : 'Choose a video and hit create. Your finished highlight will appear here.'}</p><div className={styles.reelPreview}><span /><span /><span /><span /><span /></div></div>}
+            {!!events.length && <><div className={styles.stats}><div><strong>{events.length}</strong><span>Moments found</span></div><div><strong>{plan.length}</strong><span>Clips selected</span></div><div><strong>{clock(total)}</strong><span>Highlight length</span></div></div><ol className={styles.sequence}>{plan.map(c => <li key={c.id}><button type="button" className={styles.momentButton} onClick={() => { if (player.current) { player.current.currentTime = c.clipStart; void player.current.play().catch(() => {}); player.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }}><span className={styles.momentPlay}><Play size={12} /></span><span><strong>{c.label}</strong><small>{clock(c.clipStart)}–{clock(c.clipEnd)}</small></span><Check size={15} /></button></li>)}</ol></>}
+            {!output && !!plan.length && !busy && <><button className={styles.primary} disabled={!config?.exportReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={exportVideo}><Film size={18} /> Create highlight video</button><p className={styles.actionHint}>720p MP4 · Original audio</p></>}
+            {!output && !events.length && <div className={styles.reelSpecs}><span><Check size={14} /> Up to {target} seconds</span><span><Check size={14} /> Best moments selected</span><span><Check size={14} /> Ready to download</span></div>}
+            <details className={styles.advanced}><summary><Scissors size={15} /> Adjust clip timing <ChevronDown size={15} /></summary><div className={styles.detailsBody}><p className={styles.hint}>These settings apply to manually marked moments. AI-reviewed moments use their recommended cuts.</p><div className={styles.row}><label>Build-up (seconds)<input type="number" min="0" max="30" value={before} disabled={!!busy} onChange={e => { setBefore(Math.max(0, Math.min(30, Number(e.target.value)))); resetOutput(); }} /></label><label>Reaction (seconds)<input type="number" min="0" max="30" value={after} disabled={!!busy} onChange={e => { setAfter(Math.max(0, Math.min(30, Number(e.target.value)))); resetOutput(); }} /></label></div></div></details>
+          </section>
+          <p className={styles.sidebarNote}><Sparkles size={15} /> Great plays first. Replays and overlapping moments stay out.</p>
+        </aside>
       </div>
-      <EventFusionStudio key={sourceRevision} events={events} excluded={excluded} duration={duration} target={target} before={before} after={after} disabled={!!busy} onContext={input => { fusionContext.current = input; }} onApply={updated => { setEvents(updated); resetOutput(); setMessage('Viral scores and the highlight selection were updated automatically from available evidence.'); }} />
+      <details className={styles.optionalPanel}><summary><span className={styles.optionalIcon}><Sparkles size={20} /></span><span><strong>Add match insights</strong><small>Optional · Include fan reactions, match data and audience preferences.</small></span><ChevronDown size={18} /></summary><div className={styles.optionalBody}>
+
+      <EventFusionStudio key={sourceRevision} events={events} excluded={excluded} duration={duration} target={target} before={before} after={after} disabled={!!busy} onContext={input => { fusionContext.current = input; }} onApply={updated => { setEvents(updated); resetOutput(); setMessage('Your selection has been updated with the latest match insights.'); }} />
+      </div></details>
+      <details className={styles.optionalPanel}><summary><span className={styles.optionalIcon}><Settings2 size={20} /></span><span><strong>Review & fine-tune</strong><small>Optional: see why moments were picked or adjust the selection.</small></span><ChevronDown size={18} /></summary><div className={styles.optionalBody}>
       <RollingScoreboard state={rolling} />
-      <section className={styles.card}><div className={styles.heading}><span>03</span><h2>Candidate events</h2><span className={styles.count}>{events.length}</span></div><p className={styles.hint}>Review time ranges and set the scoring signals from 0 to 1. Score = 40% importance + 20% context + 15% audio + 15% reaction + 10% team preference. These are editable review inputs; audio and reactions are not automatically measured.</p>
-        <button className={styles.secondary} disabled={!assetTicket || !events.some(e => !excluded.includes(e.id)) || !!busy || (!!config?.requiresLogin && !isAuthenticated)} onClick={reviewWithJev}><Sparkles size={16} /> Review checked moments with Jev</button>
-        <p className={styles.hint}>Jev uses TwelveLabs Pegasus 1.6 to review the uploaded video. Check up to 20 candidates. Analysis covers the span between them, including gaps, and adds TwelveLabs usage. Estimates use 50% importance, 30% excitement, and 20% watchability, renormalized over known signals. Uncertain moments and duplicates need your override. Cancel stops waiting; the provider task may continue.</p>
+      <section className={styles.card}><div className={styles.heading}><span>03</span><h2>All detected moments</h2><span className={styles.count}>{events.length}</span></div><p className={styles.hint}>Your AI selection is ready to use. Adjust these moments only if you want a more personal cut.</p>
+        <button className={styles.secondary} disabled={!assetTicket || !events.some(e => !excluded.includes(e.id)) || !!busy || (!!config?.requiresLogin && !isAuthenticated)} onClick={reviewWithJev}><Sparkles size={16} /> Recheck selected moments with AI</button>
+        <p className={styles.hint}>An extra AI review checks the selected moments against your video again. This takes additional analysis time. Uncertain or repeated moments stay out unless you choose to include them.</p>
         <form className={styles.manual} onSubmit={e => { e.preventDefault(); if (!label.trim() || start < 0 || end <= start || end > duration) { setError('Enter a label and a valid start/end range within the video.'); return; } setEvents(current => [...current, { id: crypto.randomUUID(), label: label.trim(), start, end, confidence: 0, importance: 0.8, context: 0.5, audio: 0, reaction: 0, preference: 0.5 }]); setError(''); resetOutput(); }}>
           <label>Event label<input value={label} maxLength={200} required disabled={!!busy} onChange={e => setLabel(e.target.value)} /></label><label>Start (seconds)<input type="number" min="0" max={duration} step="0.1" value={start} required disabled={!!busy} onChange={e => setStart(Number(e.target.value))} /></label><label>End (seconds)<input type="number" min="0" max={duration} step="0.1" value={end} required disabled={!!busy} onChange={e => setEnd(Number(e.target.value))} /></label><button type="button" className={styles.secondary} disabled={!duration || !!busy} onClick={() => { const time = player.current?.currentTime || 0; setStart(Math.floor(time)); setEnd(Math.min(duration, Math.floor(time) + 5)); }}>Use playhead</button><button className={styles.secondary} disabled={!duration || !!busy}>Add event</button>
         </form>
-        {!events.length ? <div className={styles.empty}><Film size={30} /><h3>Every great reel starts with a moment.</h3><p>Upload a video, then detect events or mark your first play.</p></div> : <div className={styles.eventList}>{[...events].sort((a, b) => eventScore(b) - eventScore(a)).map(event => <article key={event.id} className={styles.event}>
+        {!events.length ? <div className={styles.empty}><Film size={30} /><h3>Your moments will appear after analysis.</h3><p>Choose a video and create your highlight, or add a moment manually.</p></div> : <div className={styles.eventList}>{[...events].sort((a, b) => eventScore(b) - eventScore(a)).map(event => <article key={event.id} className={styles.event}>
           <div className={styles.eventTitle}><label><input type="checkbox" checked={!excluded.includes(event.id)} disabled={!!busy} onChange={e => { setExcluded(current => e.target.checked ? current.filter(id => id !== event.id) : [...current, event.id]); resetOutput(); }} /><strong>{event.label}</strong></label><span>{event.providerConfidence ? `Provider confidence: ${event.providerConfidence}` : 'Manually marked'}</span><b>Score {Math.round(eventScore(event) * 100)}</b><button aria-label={`Delete ${event.label}`} disabled={!!busy} onClick={() => { setEvents(current => current.filter(item => item.id !== event.id)); resetOutput(); }}><Trash2 size={16} /></button></div>
           {event.jev && <div className={styles.notice}>
             <strong>Jev: {event.jev.needs_review ? 'Needs review' : event.jev.duplicate_of ? 'Duplicate' : event.jev.recommend_include ? 'Recommend include' : 'Recommend skip'} · {plan.some(c => c.id === event.id) ? 'Selected in reel' : 'Not selected in reel'}</strong>
@@ -288,7 +308,7 @@ export default function HighlightStudio() {
           <div className={styles.signals}><label>Start (s)<input type="number" min="0" max={duration} step="0.1" value={event.start} disabled={!!busy} onChange={e => update(event.id, { start: Number(e.target.value) })} /></label><label>End (s)<input type="number" min="0" max={duration} step="0.1" value={event.end} disabled={!!busy} onChange={e => update(event.id, { end: Number(e.target.value) })} /></label>{(['importance', 'context', 'audio', 'reaction', 'preference'] as const).map(key => <label key={key}>{key}<input type="number" min="0" max="1" step="0.1" value={event[key]} disabled={!!busy} onChange={e => update(event.id, { [key]: Math.min(1, Math.max(0, Number(e.target.value))) })} /></label>)}</div>
           {(event.end <= event.start || event.end > duration) && <p className={styles.error}>Adjust this range to fit the video. It is excluded from the plan.</p>}
         </article>)}</div>}
-      </section><footer className={styles.footer}>MATCHWATCH HIGHLIGHT STUDIO <span>Recorded video input · optional effects and live ingestion are not included</span></footer>
+      </section></div></details><footer className={styles.footer}>MATCHWATCH HIGHLIGHT STUDIO <span>From the full game to your favourite moments.</span></footer>
     </div>
   </main>;
 }
