@@ -284,7 +284,7 @@ export default function HighlightStudio() {
           <p className={styles.sidebarNote}><Sparkles size={15} /> Great plays first. Replays and overlapping moments stay out.</p>
         </aside>
       </div>
-      <details className={styles.optionalPanel}><summary><span className={styles.optionalIcon}><Sparkles size={20} /></span><span><strong>Add match insights</strong><small>Optional · Include fan reactions, match data and audience preferences.</small></span><ChevronDown size={18} /></summary><div className={styles.optionalBody}>
+      <details className={styles.optionalPanel}><summary><span className={styles.optionalIcon}><Sparkles size={20} /></span><span><strong>Fan reactions & insights</strong><small>Optional: add fan reactions and see why moments were selected.</small></span><ChevronDown size={18} /></summary><div className={styles.optionalBody}>
 
       <EventFusionStudio key={sourceRevision} events={events} excluded={excluded} duration={duration} target={target} before={before} after={after} disabled={!!busy} onContext={input => { fusionContext.current = input; }} onApply={updated => { setEvents(updated); resetOutput(); setMessage('Your selection has been updated with the latest match insights.'); }} />
       </div></details>
