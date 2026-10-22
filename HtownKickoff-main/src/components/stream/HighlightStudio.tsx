@@ -8,7 +8,7 @@ import styles from './HighlightStudio.module.css';
 import { getAccessToken } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import { reviewInput, reviewWindow, validateJevReviews } from '../../lib/jev';
-import { highlightResponse } from '../../lib/highlight-request';
+import { highlightResponse, uploadHighlight } from '../../lib/highlight-request';
 
 const endpoint = `${process.env.NEXT_PUBLIC_APP_BASE_PATH || ''}/api/stream/highlights`;
 function authorization(): HeadersInit { const token = getAccessToken(); return token ? { Authorization: `Bearer ${token}` } : {}; }
@@ -30,6 +30,7 @@ export default function HighlightStudio() {
   const [label, setLabel] = useState('Dunk'), [start, setStart] = useState(0), [end, setEnd] = useState(10);
   const [autoStart, setAutoStart] = useState(true), [autoExport, setAutoExport] = useState(true);
   const pendingUpload = useRef(false);
+  const sourceResource = useRef({ asset: '', indexed: '', indexedReady: false });
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState(''), [output, setOutput] = useState('');
   const [config, setConfig] = useState<{ detectionReady: boolean; exportReady: boolean; requiresLogin?: boolean } | null>(null);
   const player = useRef<HTMLVideoElement>(null), controller = useRef<AbortController | null>(null);
@@ -42,15 +43,24 @@ export default function HighlightStudio() {
   function choose(video: File | undefined) {
     if (!video) return;
     if (video.size > 200 * 1024 * 1024) { setError('Choose a video smaller than 200 MB.'); return; }
+    sourceResource.current = { asset: '', indexed: '', indexedReady: false };
     controller.current?.abort(); pendingUpload.current = true; setBusy(''); setFile(video); setDuration(0); setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); setMessage('Video selected. Reading video details before processing…'); resetOutput();
   }
   const detect = useCallback(async () => {
     if (!file) return;
     pendingUpload.current = false;
-    const abort = new AbortController(); controller.current = abort; setBusy('Uploading video to TwelveLabs…'); setError(''); resetOutput();
+    const abort = new AbortController(); controller.current = abort; setBusy('Uploading video to MatchWatch · 0%'); setError(''); setMessage(''); resetOutput();
     try {
-      const upload = new FormData(); upload.set('action', 'upload'); upload.set('video', file);
-      const { assetId } = await (await request(upload, abort.signal)).json();
+      let assetId = sourceResource.current.asset;
+      if (!assetId) {
+        const upload = new FormData(); upload.set('action', 'upload'); upload.set('video', file);
+        const uploaded = await uploadHighlight(endpoint, upload, authorization(), abort.signal, (sent, size) => {
+          const percent = Math.min(100, Math.floor(sent / size * 100));
+          setBusy(percent === 100 ? 'Video sent to MatchWatch. Waiting for TwelveLabs to accept it…' : `Uploading video to MatchWatch · ${percent}% · ${(sent / 1048576).toFixed(1)} / ${(size / 1048576).toFixed(1)} MB`);
+        });
+        ({ assetId } = await uploaded.json());
+        sourceResource.current.asset = assetId;
+      } else setBusy('Reusing your uploaded video…');
       if (!assetId) throw new Error('TwelveLabs did not return an uploaded asset.');
       setAssetTicket('');
       async function waitUntilReady(parameter: string, id: string, stage: string) {
@@ -67,10 +77,17 @@ export default function HighlightStudio() {
       await waitUntilReady('assetId', assetId, 'Processing uploaded video');
       setAssetTicket(assetId);
       setBusy('Adding video to your search index…');
-      const index = new FormData(); index.set('action', 'index'); index.set('assetId', assetId);
-      const { indexedAssetId: videoId } = await (await request(index, abort.signal)).json();
+      let videoId = sourceResource.current.indexed;
+      if (!videoId) {
+        const index = new FormData(); index.set('action', 'index'); index.set('assetId', assetId);
+        ({ indexedAssetId: videoId } = await (await request(index, abort.signal)).json());
+        sourceResource.current.indexed = videoId;
+      }
       if (!videoId) throw new Error('TwelveLabs did not return an indexed asset.');
-      await waitUntilReady('indexedAssetId', videoId, 'Indexing video');
+      if (!sourceResource.current.indexedReady) {
+        await waitUntilReady('indexedAssetId', videoId, 'Indexing video');
+        sourceResource.current.indexedReady = true;
+      }
       setBusy('Finding candidate events…');
       const search = new FormData(); search.set('action', 'search'); search.set('videoId', videoId); search.set('queries', queries);
       const data = await (await request(search, abort.signal)).json(); setEvents(data.events); setExcluded([]);
@@ -144,6 +161,7 @@ export default function HighlightStudio() {
           <label>Moments to find <small>One query per line · up to eight</small><textarea rows={4} value={queries} disabled={!!busy} onChange={e => setQueries(e.target.value)} /></label>
           <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoStart} disabled={!!busy} onChange={e => setAutoStart(e.target.checked)} />Start processing when I choose a video</span></label>
           <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoExport} disabled={!!busy} onChange={e => setAutoExport(e.target.checked)} />Generate the MP4 after detection (skip optional Jev review)</span></label>
+          <p className={styles.hint}>Long recordings need time to upload and index before highlights can be found. For a quick first demo, use a 1–3 minute excerpt. Upload percentage covers transfer to MatchWatch; TwelveLabs processing follows.</p>
           {config?.requiresLogin && !isAuthenticated && <div className={styles.notice} role="status">
             {authLoading ? <p>Checking your sign-in…</p> : <div><strong>Sign in to start video processing.</strong><p>Your video can be previewed here, but uploading to TwelveLabs and creating highlights require a MatchWatch account.</p><a className={styles.primary} href="/login?next=%2Fapp">Sign in & return to the studio</a><p>After signing in, choose your video again to start processing.</p></div>}
           </div>}

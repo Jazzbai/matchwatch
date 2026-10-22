@@ -8,10 +8,10 @@ type Resource = { _id?: string; status?: string; error?: { message?: string } };
 type SearchMatch = { video_id?: string; start?: number; end?: number; confidence?: string; rank?: number };
 export class TwelveLabsClient {
   constructor(private key: string, private index: string, private transport: typeof fetch = fetch) {}
-  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+  private async request<T>(path: string, init?: RequestInit, timeoutMs = 120000): Promise<T> {
     const headers = new Headers(init?.headers); headers.set('x-api-key', this.key);
     let response: Response;
-    try { response = await this.transport(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(120000), cache: 'no-store' }); }
+    try { response = await this.transport(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(timeoutMs), cache: 'no-store' }); }
     catch { throw new TwelveLabsError('TwelveLabs could not be reached. Check your connection and try again.', 502); }
     const data = await response.json().catch(() => null);
     if (!response.ok) {
@@ -23,7 +23,7 @@ export class TwelveLabsClient {
   }
   async upload(file: File) {
     const body = new FormData(); body.set('method', 'direct'); body.set('file', file); body.set('enable_hls', 'false');
-    const asset = await this.request<Resource>('/assets', { method: 'POST', body });
+    const asset = await this.request<Resource>('/assets', { method: 'POST', body }, 240000);
     if (!asset._id || !validVideoId(asset._id)) throw new TwelveLabsError('TwelveLabs did not return a valid asset ID.', 502);
     return asset._id;
   }

@@ -87,8 +87,10 @@ export async function POST(request: NextRequest) {
       const queries = String(form.get('queries') || '').split('\n').map(q => q.trim()).filter(Boolean);
       if (!queries.length || queries.length > 8 || queries.some(q => q.length > 200)) throw new Error('Enter up to eight queries, each under 200 characters.');
       const events = [];
-      for (const query of queries) {
-        for (const item of await labs.search(video, query)) {
+      // Bound concurrency so independent searches overlap without an eight-request burst.
+      for (let offset = 0; offset < queries.length; offset += 2) {
+        const batch = await Promise.all(queries.slice(offset, offset + 2).map(async query => ({ query, matches: await labs.search(video, query) })));
+        for (const { query, matches } of batch) for (const item of matches) {
           // Provider confidence is categorical; expose the category rather than inventing a probability.
           events.push({ id: crypto.randomUUID(), label: query, start: item.start, end: item.end, confidence: 0, providerConfidence: item.confidence || 'unreported', importance: 0.8, context: 0.5, audio: 0, reaction: 0, preference: 0.5 });
         }
