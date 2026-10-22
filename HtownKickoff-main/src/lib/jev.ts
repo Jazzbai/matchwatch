@@ -28,7 +28,6 @@ export const jevSchema = { type: 'object', properties: { reviews: { type: 'array
 export function jevSchemaFor(candidates: JevCandidate[]) {
   const ids = candidates.map(c => c.id);
   return { ...jevSchema, properties: { reviews: { ...jevSchema.properties.reviews,
-    minItems: ids.length, maxItems: ids.length,
     items: { ...jevSchema.properties.reviews.items, properties: { ...properties,
       candidate_id: { type: 'string', enum: ids },
       duplicate_of: { anyOf: [{ type: 'string', enum: ids }, { type: 'null' }] },

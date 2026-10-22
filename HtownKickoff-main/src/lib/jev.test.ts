@@ -26,10 +26,10 @@ test('candidate validation bounds paid analysis input', () => {
   assert.throws(() => reviewInput([candidates[0], candidates[0]], 100));
 });
 
-test('structured output restricts IDs to the exact candidates and requires the requested count', () => {
+test('structured output restricts IDs without unsupported array constraints', () => {
   const schema = jevSchemaFor(candidates).properties.reviews;
   assert.deepEqual(schema.items.properties.candidate_id.enum, ['goal', 'replay']);
-  assert.equal(schema.minItems, 2); assert.equal(schema.maxItems, 2);
+  assert.equal('minItems' in schema, false); assert.equal('maxItems' in schema, false);
 });
 test('one mistyped candidate ID preserves valid results without guessing its identity', () => {
   const recovered = recoverJevReviews([review(), review('repla', { suggested_start: 55, suggested_end: 70 })], candidates, 100);
