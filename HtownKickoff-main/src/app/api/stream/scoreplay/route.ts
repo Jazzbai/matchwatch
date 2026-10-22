@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { highlightOwner, HighlightAccessError, reserveOperation, resourceTicket } from '../../../../lib/highlight-access';
 import { ScorePlayClient, ScorePlayError, scorePlayAllowed, requireScorePlayExternalProcessing } from '../../../../lib/scoreplay';
+import { ScorePlayFilterError, type ScorePlayFilters } from '../../../../lib/scoreplay-filters';
 
 export const runtime = 'nodejs';
 export const maxDuration = 240;
 function failure(error: unknown) {
+  if (error instanceof ScorePlayFilterError) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ error: error instanceof ScorePlayError || error instanceof HighlightAccessError ? error.message : 'ScorePlay request failed. Try again shortly.' }, { status: error instanceof ScorePlayError || error instanceof HighlightAccessError ? error.status : 502, headers: { 'Cache-Control': 'no-store' } });
 }
 async function access(request: NextRequest) {
@@ -17,7 +19,10 @@ async function access(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { owner, client } = await access(request); reserveOperation(owner, 'search');
-    return NextResponse.json({ media: await client.search(request.nextUrl.searchParams.get('q') || '') }, { headers: { 'Cache-Control': 'no-store' } });
+    const params = request.nextUrl.searchParams;
+    if (params.get('action') === 'filters') return NextResponse.json(await client.filterOptions(params.get('leagueId') || undefined), { headers: { 'Cache-Control': 'no-store' } });
+    const filters: ScorePlayFilters = Object.fromEntries(['leagueId', 'seasonId', 'matchId', 'year', 'from', 'to', 'order'].map(key => [key, params.get(key) || undefined]));
+    return NextResponse.json(await client.searchPage(params.get('q') || '', filters, Number(params.get('page') || 1)), { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return failure(error); }
 }
 export async function POST(request: NextRequest) {
