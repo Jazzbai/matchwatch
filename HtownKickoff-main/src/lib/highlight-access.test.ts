@@ -43,7 +43,7 @@ test('video references reject another user, resource type, tampering, and expiry
 }));
 test('upload quotas and export concurrency are bounded and leases release once', async () => production(() => {
   for (let i = 0; i < 3; i++) reserveOperation('quota-test-owner', 'upload')();
-  for (let i = 0; i < 3; i++) reserveOperation('review-test-owner', 'review')();
+  for (let i = 0; i < 9; i++) reserveOperation('review-test-owner', 'review')();
   assert.throws(() => reserveOperation('review-test-owner', 'review'), HighlightAccessError);
   assert.throws(() => reserveOperation('quota-test-owner', 'upload'), (e: unknown) => e instanceof HighlightAccessError && e.status === 429);
   const first = reserveOperation('export-test-owner', 'export'), second = reserveOperation('export-test-owner', 'export');

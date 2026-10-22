@@ -6,6 +6,8 @@ import { ArrowRight, Check, Film, Scissors, Sparkles, Upload, Download, Trash2 }
 import { eventScore, type HighlightEvent } from '../../lib/highlight-plan';
 import styles from './HighlightStudio.module.css';
 import ScorePlaySource, { type ScorePlayVideo } from './ScorePlaySource';
+import RollingScoreboard from './RollingScoreboard';
+import { applyReviewedChunk, candidateChunks, emptyRollingState } from '../../lib/rolling-highlights';
 import { highlightAuthorization, highlightFetch } from '../../lib/highlight-session';
 import { useAuth } from '../../lib/auth-context';
 import { reviewInput, reviewWindow, validateJevReviews } from '../../lib/jev';
@@ -53,6 +55,7 @@ export default function HighlightStudio() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [file, setFile] = useState<File | null>(null), [url, setUrl] = useState(''), [duration, setDuration] = useState(0);
   const [scorePlay, setScorePlay] = useState<ScorePlayVideo | null>(null);
+  const [rolling, setRolling] = useState(emptyRollingState);
   const [sport, setSport] = useState<'Soccer' | 'Basketball'>('Basketball'), [queries, setQueries] = useState(defaults.Basketball);
   const [events, setEvents] = useState<Event[]>([]), [excluded, setExcluded] = useState<string[]>([]);
   const [assetTicket, setAssetTicket] = useState('');
@@ -75,10 +78,12 @@ export default function HighlightStudio() {
     if (!video) return;
     if (video.size > 200 * 1024 * 1024) { setError('Choose a video smaller than 200 MB.'); return; }
     setScorePlay(null);
+    setRolling(emptyRollingState());
     sourceResource.current = { asset: '', indexed: '', indexedReady: false, analysisDuration: 0 };
     controller.current?.abort(); pendingUpload.current = true; setBusy(''); setFile(video); setDuration(0); setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); setMessage('Video selected. Reading video details before processing…'); resetOutput();
   }
   function chooseScorePlay(source: ScorePlayVideo) {
+    setRolling(emptyRollingState());
     controller.current?.abort(); sourceResource.current = { asset: '', indexed: '', indexedReady: false, analysisDuration: 0 };
     pendingUpload.current = true; setBusy(''); setFile(null); setScorePlay(source); setUrl(source.url); setDuration(source.duration);
     setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); resetOutput();
@@ -87,6 +92,7 @@ export default function HighlightStudio() {
   const detect = useCallback(async () => {
     if (!file && !scorePlay) return;
     pendingUpload.current = false;
+    setRolling(emptyRollingState());
     const abort = new AbortController(); controller.current = abort; setBusy('Uploading video to MatchWatch · 0%'); setError(''); setMessage(''); resetOutput();
     try {
       let assetId = sourceResource.current.asset;
@@ -147,7 +153,18 @@ export default function HighlightStudio() {
       if (autoCompare) {
         const shortlist = reviewShortlist(data.events, analysisDuration);
         if (!shortlist.length) throw new Error('No valid candidate fits this source video. Mark a moment manually.');
-        compared = await compareWithJev(assetId, shortlist, analysisDuration, abort.signal, setBusy);
+        compared = [];
+        let rollingState = emptyRollingState();
+        const chunks = candidateChunks(shortlist, analysisDuration);
+        for (let index = 0; index < chunks.length; index++) {
+          const chunk = chunks[index];
+          const reviewed = await compareWithJev(assetId, chunk.events, analysisDuration, abort.signal, text => setBusy(`Window ${index + 1}/${chunks.length} · ${text}`));
+          compared.push(...reviewed);
+          rollingState = applyReviewedChunk(rollingState, { ...chunk, events: reviewed }, { duration, target, before, after });
+          setRolling(rollingState);
+          setEvents([...compared]); setExcluded([]);
+          setMessage(`Reviewed window ${index + 1}/${chunks.length}. The proposal now contains ${rollingState.selected.length} clips; ${rollingState.history.at(-1)!.removed.length} previous choices were replaced. Final production waits for all windows.`);
+        }
         setEvents(data.events.map((event: Event) => compared.find(item => item.id === event.id) || event));
         setExcluded(data.events.filter((event: Event) => !compared.some(item => item.id === event.id)).map((event: Event) => event.id));
       }
@@ -243,6 +260,7 @@ export default function HighlightStudio() {
           {output && <div className={styles.output}><video controls src={output} /><a href={output} download="matchwatch-highlights.mp4" className={styles.primary}><Download size={16} /> Download highlight</a></div>}
         </section>
       </div>
+      <RollingScoreboard state={rolling} />
       <section className={styles.card}><div className={styles.heading}><span>03</span><h2>Candidate events</h2><span className={styles.count}>{events.length}</span></div><p className={styles.hint}>Review time ranges and set the scoring signals from 0 to 1. Score = 40% importance + 20% context + 15% audio + 15% reaction + 10% team preference. These are editable review inputs; audio and reactions are not automatically measured.</p>
         <button className={styles.secondary} disabled={!assetTicket || !events.some(e => !excluded.includes(e.id)) || !!busy || (!!config?.requiresLogin && !isAuthenticated)} onClick={reviewWithJev}><Sparkles size={16} /> Review checked moments with Jev</button>
         <p className={styles.hint}>Jev uses TwelveLabs Pegasus 1.6 to review the uploaded video. Check up to 20 candidates. Analysis covers the span between them, including gaps, and adds TwelveLabs usage. Estimates use 50% importance, 30% excitement, and 20% watchability, renormalized over known signals. Uncertain moments and duplicates need your override. Cancel stops waiting; the provider task may continue.</p>

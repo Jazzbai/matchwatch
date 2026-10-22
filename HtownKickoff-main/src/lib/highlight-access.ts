@@ -54,7 +54,8 @@ export function reserveOperation(owner: string, action: string) {
   if (process.env.NODE_ENV === 'development') return () => {};
   const now = Date.now();
   for (const [key, value] of usage) if (value.expires <= now) usage.delete(key);
-  const key = `${owner}:${action}`, limit = action === 'request' ? 60 : action === 'upload' || action === 'review' ? 3 : action === 'search' ? 30 : 10;
+  // Three uploads per hour, with up to three review windows for each recording.
+  const key = `${owner}:${action}`, limit = action === 'request' ? 60 : action === 'upload' ? 3 : action === 'review' ? 9 : action === 'search' ? 30 : 10;
   const value = usage.get(key) || { count: 0, expires: now + 3600000 };
   if (value.count >= limit || usage.size >= 10000) throw new HighlightAccessError('Hourly highlight limit reached. Please try again later.', 429);
   const processing = action === 'export' || action === 'compress' || action === 'scoreplay-import';
