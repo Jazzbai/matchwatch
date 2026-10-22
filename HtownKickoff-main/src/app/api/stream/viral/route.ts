@@ -3,6 +3,7 @@ import { highlightOwner, HighlightAccessError, reserveOperation } from '../../..
 import { parseAnchors, parseAudience, parsePosts, parseStats } from '../../../../lib/event-fusion';
 import { reviewInput, validateJevReviews } from '../../../../lib/jev';
 import { rankViralMoments } from '../../../../lib/viral-ranking';
+import { priorityWeights } from '../../../../lib/highlight-preferences';
 
 export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     const candidates = reviewInput(input.events, input.duration);
     const reviews = validateJevReviews(input.events.map((event: { jev: unknown }) => event.jev), candidates, input.duration);
     const events = candidates.map(event => ({ ...event, confidence: 0, importance: 0, context: 0, audio: 0, reaction: 0, preference: 0, jev: reviews.find(review => review.candidate_id === event.id)! }));
-    const data = rankViralMoments(events, { matchId: input.matchId, stats: parseStats(input.stats ?? []), posts: parsePosts(input.posts ?? []), anchors: parseAnchors(input.anchors ?? []), videoUtc: input.videoUtc ?? '', reactionDelay: input.reactionDelay ?? 15, tolerance: input.tolerance ?? 10, audience: input.audience === undefined ? undefined : parseAudience(input.audience) }, input.duration);
+    const data = rankViralMoments(events, { matchId: input.matchId, stats: parseStats(input.stats ?? []), posts: parsePosts(input.posts ?? []), anchors: parseAnchors(input.anchors ?? []), videoUtc: input.videoUtc ?? '', reactionDelay: input.reactionDelay ?? 15, tolerance: input.tolerance ?? 10, audience: input.audience === undefined ? undefined : parseAudience(input.audience) }, input.duration, 60, priorityWeights(input.scoringPriority));
     console.info('viral_ranking', { candidates: events.length, selected: data.moments.length });
     return reply(data);
   } catch (error) {

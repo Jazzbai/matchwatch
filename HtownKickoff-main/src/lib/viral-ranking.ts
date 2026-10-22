@@ -1,10 +1,10 @@
-import { defaultSignalWeights, fuseEvents, fusedScore, type FusionInputs } from './event-fusion';
+import { defaultSignalWeights, fuseEvents, fusedScore, type FusionInputs, type SignalWeights } from './event-fusion';
 import { type HighlightEvent } from './highlight-plan';
 import { optimizeHighlights } from './highlight-optimizer';
 
-/** Fixed maximum-cardinality five-moment selection, sorted by score and deterministic ties. */
-export function rankViralMoments(events: HighlightEvent[], input: FusionInputs, duration: number, budget = 60) {
-  const fused = fuseEvents(events, input, defaultSignalWeights);
+/** Select up to five whole non-overlapping moments, sorted by score with deterministic ties. */
+export function rankViralMoments(events: HighlightEvent[], input: FusionInputs, duration: number, budget = 60, weights: SignalWeights = defaultSignalWeights) {
+  const fused = fuseEvents(events, input, weights);
   const distinct = [...new Map(fused.map(event => [event.id, event])).values()];
   const chosen = optimizeHighlights(distinct.filter(event => event.jev && !event.reviewOverride), duration, Math.min(budget, 60), 0, 0)
     .sort((a, b) => b.score - a.score || a.clipStart - b.clipStart || a.id.localeCompare(b.id));
@@ -16,5 +16,5 @@ export function rankViralMoments(events: HighlightEvent[], input: FusionInputs, 
       confidence: { evidence_coverage: result.coverage, calibrated_probability: null },
       explanation: `${event.jev!.reason} ${event.viral!.reasons.join(' ')}`,
       evidence: { statistics_ids: event.viral!.statsIds, post_ids: event.viral!.postIds } };
-  }), weights: defaultSignalWeights, estimated: true, total_seconds: seconds };
+  }), weights, estimated: true, total_seconds: seconds };
 }

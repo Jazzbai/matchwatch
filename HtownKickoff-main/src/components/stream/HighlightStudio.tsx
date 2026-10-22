@@ -1,6 +1,6 @@
 'use client';
 /* eslint-disable @next/next/no-html-link-for-pages -- These links leave the isolated /app service for the existing main site. */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, Film, Scissors, Sparkles, Upload, Download, Trash2, Play, ChevronDown, LoaderCircle, Settings2, Library, CircleCheck } from 'lucide-react';
 import { eventScore, type HighlightEvent } from '../../lib/highlight-plan';
@@ -8,7 +8,8 @@ import styles from './HighlightStudio.module.css';
 import ScorePlaySource, { type ScorePlayVideo } from './ScorePlaySource';
 import RollingScoreboard from './RollingScoreboard';
 import EventFusionStudio from './EventFusionStudio';
-import { defaultSignalWeights, fuseEvents, type FusionInputs } from '../../lib/event-fusion';
+import { highlightPriorities, priorityWeights, type HighlightPriority } from '../../lib/highlight-preferences';
+import { fuseEvents, type FusionInputs } from '../../lib/event-fusion';
 import { applyReviewedChunk, candidateChunks, emptyRollingState } from '../../lib/rolling-highlights';
 import { highlightAuthorization, highlightFetch } from '../../lib/highlight-session';
 import { useAuth } from '../../lib/auth-context';
@@ -60,6 +61,10 @@ export default function HighlightStudio() {
   const [rolling, setRolling] = useState(emptyRollingState);
   const [sourceRevision, setSourceRevision] = useState(0);
   const [sport, setSport] = useState<'Soccer' | 'Basketball'>('Basketball'), [queries, setQueries] = useState(defaults.Basketball);
+  const [scoringPriority, setScoringPriority] = useState<HighlightPriority>('balanced');
+  const scoringWeights = useMemo(() => priorityWeights(scoringPriority), [scoringPriority]);
+  const momentQueries = queries.split(/\r?\n/).map(query => query.trim()).filter(Boolean);
+  const validMoments = momentQueries.length > 0 && momentQueries.length <= 8;
   const [events, setEvents] = useState<Event[]>([]), [excluded, setExcluded] = useState<string[]>([]);
   const [assetTicket, setAssetTicket] = useState('');
   const [target, setTarget] = useState(60), [before, setBefore] = useState(5), [after, setAfter] = useState(10);
@@ -103,6 +108,7 @@ export default function HighlightStudio() {
   }
   const detect = useCallback(async () => {
     if (!file && !scorePlay) return;
+    if (!validMoments) { setError('Choose between one and eight moment descriptions.'); return; }
     pendingUpload.current = false;
     setRolling(emptyRollingState());
     const abort = new AbortController(); controller.current = abort; setBusy('Uploading video to MatchWatch · 0%'); setError(''); setMessage(''); resetOutput();
@@ -170,7 +176,7 @@ export default function HighlightStudio() {
         const chunks = candidateChunks(shortlist, analysisDuration);
         for (let index = 0; index < chunks.length; index++) {
           const chunk = chunks[index];
-          const reviewed = fuseEvents(await compareWithJev(assetId, chunk.events, analysisDuration, abort.signal, text => setBusy(`Window ${index + 1}/${chunks.length} · ${text}`)), fusionContext.current, defaultSignalWeights);
+          const reviewed = fuseEvents(await compareWithJev(assetId, chunk.events, analysisDuration, abort.signal, text => setBusy(`Window ${index + 1}/${chunks.length} · ${text}`)), fusionContext.current, scoringWeights);
           compared.push(...reviewed);
           rollingState = applyReviewedChunk(rollingState, { ...chunk, events: reviewed }, { duration, target, before, after });
           setRolling(rollingState);
@@ -180,8 +186,8 @@ export default function HighlightStudio() {
         setEvents(data.events.map((event: Event) => compared.find(item => item.id === event.id) || event));
         setExcluded(data.events.filter((event: Event) => !compared.some(item => item.id === event.id)).map((event: Event) => event.id));
       }
-      compared = fuseEvents(compared, fusionContext.current, defaultSignalWeights);
-      setEvents(fuseEvents(data.events.map((event: Event) => compared.find(item => item.id === event.id) || event), fusionContext.current, defaultSignalWeights));
+      compared = fuseEvents(compared, fusionContext.current, scoringWeights);
+      setEvents(fuseEvents(data.events.map((event: Event) => compared.find(item => item.id === event.id) || event), fusionContext.current, scoringWeights));
       const selected = optimizeHighlights(compared, duration, target, before, after);
       setMessage(autoCompare ? `Jev compared ${compared.length} distinct moments. The selector keeps the highest combined editorial score within ${target} seconds; weaker choices can be replaced.` : `${data.events.length} candidates found. Selection uses editable scores; AI comparison was not run.`);
       if (autoExport && config?.exportReady && selected.length) {
@@ -194,12 +200,12 @@ export default function HighlightStudio() {
       } else if (!selected.length) setMessage('No verified complete clip fits the target. Inspect uncertain AI reviews, adjust the time budget, or override a reviewed event manually.');
     } catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { if (!abort.signal.aborted) setBusy(''); }
-  }, [file, scorePlay, queries, duration, target, before, after, autoExport, autoCompare, compress, config?.exportReady]);
+  }, [file, scorePlay, queries, duration, target, before, after, autoExport, autoCompare, compress, config?.exportReady, scoringWeights, validMoments]);
   useEffect(() => {
-    if (!pendingUpload.current || !autoStart || (!file && !scorePlay) || !duration || !config?.detectionReady || (config.requiresLogin && !isAuthenticated)) return;
+    if (!pendingUpload.current || !autoStart || !validMoments || (!file && !scorePlay) || !duration || !config?.detectionReady || (config.requiresLogin && !isAuthenticated)) return;
     pendingUpload.current = false;
     void detect();
-  }, [autoStart, file, scorePlay, duration, config, isAuthenticated, detect]);
+  }, [autoStart, file, scorePlay, duration, config, isAuthenticated, detect, validMoments]);
   async function reviewWithJev() {
     const abort = new AbortController(); controller.current = abort;
     setError(''); resetOutput();
@@ -258,20 +264,25 @@ export default function HighlightStudio() {
             {hasSource && <div className={styles.sourceSelected}><CircleCheck size={19} /><div><strong>{scorePlay?.name || file?.name}</strong><span>{scorePlay ? 'ScorePlay library' : 'Video from your device'}{duration ? ' · ' + clock(duration) : ' · Reading video details…'}</span></div></div>}
             {url && <video ref={player} src={url} controls preload="metadata" onLoadedMetadata={e => { const d = e.currentTarget.duration; if (Number.isFinite(d)) setDuration(d); else setError('Choose a recorded video with a fixed length.'); }} onError={() => setError('We couldn’t preview this file. Try an MP4 video with H.264 encoding.')} />}
           </section>
-          <section className={styles.card} id="preferences"><div className={styles.heading}><span>02</span><div><h2>Make it yours</h2><p>Set the sport and length. We’ll take care of the cut.</p></div></div>
+          <section className={styles.card} id="preferences"><div className={styles.heading}><span>02</span><div><h2>Customize your highlight</h2><p>Set the sport and length. We’ll take care of the cut.</p></div></div>
             <fieldset className={styles.choiceGroup} disabled={!!busy}><legend>Which sport?</legend><div className={styles.choices}>{(['Basketball', 'Soccer'] as const).map(value => <button type="button" key={value} aria-pressed={sport === value} onClick={() => { setSport(value); setQueries(defaults[value]); setLabel(value === 'Soccer' ? 'Goal' : 'Dunk'); }}>{value}</button>)}</div></fieldset>
             <fieldset className={styles.choiceGroup} disabled={!!busy}><legend>How long should it be?</legend><div className={styles.choices}>{[30, 60, 90].map(value => <button type="button" key={value} aria-pressed={target === value} onClick={() => { setTarget(value); resetOutput(); }}>{value} sec{value === 60 && <small>Popular</small>}</button>)}</div></fieldset>
             <p className={styles.hint}>Up to five standout moments, with original audio and a natural flow.</p>
-            <details className={styles.advanced}><summary><Settings2 size={15} /> Customize moments & processing <ChevronDown size={15} /></summary><div className={styles.detailsBody}>
-              <label>Look for these moments<small>One description per line, up to eight.</small><textarea rows={4} value={queries} disabled={!!busy} onChange={e => setQueries(e.target.value)} /></label>
-              <label>Highlight length<select value={target} disabled={!!busy} onChange={e => { setTarget(Number(e.target.value)); resetOutput(); }}>{[30,60,90,120,180,300].map(v => <option key={v} value={v}>{v} seconds</option>)}</select></label>
-              <label className={styles.checkLabel}><input type="checkbox" checked={autoStart} disabled={!!busy} onChange={e => setAutoStart(e.target.checked)} /> Start automatically when a video is selected</label>
-              <label className={styles.checkLabel}><input type="checkbox" checked={autoCompare} disabled={!!busy} onChange={e => { setAutoCompare(e.target.checked); resetOutput(); }} /> Compare moments with AI before choosing clips</label>
-              <label className={styles.checkLabel}><input type="checkbox" checked={autoExport} disabled={!!busy} onChange={e => setAutoExport(e.target.checked)} /> Create the video when selection is complete</label>
-              <label className={styles.checkLabel}><input type="checkbox" checked={compress} disabled={!!busy || !!scorePlay} onChange={e => setCompress(e.target.checked)} /> Use a smaller analysis copy for local uploads</label><p className={styles.hint}>A smaller copy can speed up analysis, but takes extra time to prepare. Your final video uses the original footage.</p>
+            <details className={styles.advanced} id="customization"><summary><Settings2 size={15} /><span>More customization<small>{momentQueries.length} moment types · {highlightPriorities.find(item => item.id === scoringPriority)!.name} scoring</small></span><ChevronDown size={15} /></summary><div className={styles.detailsBody}>
+              <fieldset className={styles.customGroup} disabled={!!busy}><legend>Moments to include</legend><p className={styles.hint}>Choose the kinds of moments you want us to find.</p><div className={styles.momentChoices}>{defaults[sport].split('\n').map(moment => <label key={moment}><input type="checkbox" checked={momentQueries.includes(moment)} disabled={!!busy || (!momentQueries.includes(moment) && momentQueries.length >= 8)} onChange={e => { setQueries(current => { const list = current.split(/\r?\n/).map(query => query.trim()).filter(Boolean); return (e.target.checked ? [...list, moment] : list.filter(query => query !== moment)).join('\n'); }); resetOutput(); }} /><span>{moment}</span></label>)}</div><details><summary>Edit moment descriptions</summary><label>What should we look for?<small>Use your own words. One description per line, up to eight.</small><textarea rows={4} value={queries} disabled={!!busy} onChange={e => { setQueries(e.target.value); resetOutput(); }} /></label></details></fieldset>
+              <fieldset className={styles.customGroup} disabled={!!busy}><legend>What should stand out?</legend><p className={styles.hint}>Choose what matters most when the AI ranks verified moments.</p><div className={styles.priorityChoices}>{highlightPriorities.map(priority => <button type="button" key={priority.id} aria-pressed={scoringPriority === priority.id} onClick={() => { setScoringPriority(priority.id); resetOutput(); }}><strong>{priority.name}</strong><small>{priority.description}</small></button>)}</div><p className={styles.hint}>Missing data is never filled in. Fan response only counts when X reactions have been loaded and matched. These priorities apply to AI-reviewed moments.</p></fieldset>
+              <details className={styles.customGroup}><summary>Creation preferences <ChevronDown size={14} /></summary><div className={styles.detailsBody}>
+                <label>Longer highlight<select value={target} disabled={!!busy} onChange={e => { setTarget(Number(e.target.value)); resetOutput(); }}>{[30,60,90,120,180,300].map(v => <option key={v} value={v}>{v} seconds</option>)}</select></label>
+                <label className={styles.checkLabel}><input type="checkbox" checked={autoStart} disabled={!!busy} onChange={e => setAutoStart(e.target.checked)} /> Start as soon as I choose a video</label>
+                <label className={styles.checkLabel}><input type="checkbox" checked={autoCompare} disabled={!!busy} onChange={e => { setAutoCompare(e.target.checked); resetOutput(); }} /> Compare moments with AI before choosing clips</label>
+                <label className={styles.checkLabel}><input type="checkbox" checked={autoExport} disabled={!!busy} onChange={e => setAutoExport(e.target.checked)} /> Create the video automatically after selection</label>
+                <label className={styles.checkLabel}><input type="checkbox" checked={compress} disabled={!!busy || !!scorePlay} onChange={e => setCompress(e.target.checked)} /> Use a smaller copy for analysis</label><p className={styles.hint}>Preparing a smaller copy takes extra time. The final cut uses your original footage.</p>
+              </div></details>
+              <button type="button" className={styles.textButton} disabled={!!busy || socialBusy} onClick={() => { setQueries(defaults[sport]); setScoringPriority('balanced'); setTarget(60); setBefore(5); setAfter(10); setAutoStart(false); setAutoCompare(true); setAutoExport(true); setCompress(false); setSourceRevision(current => current + 1); resetOutput(); }}>Reset customization to defaults</button>
             </div></details>
-            <button className={styles.primary} disabled={!hasSource || !duration || !!busy || socialBusy || !config?.detectionReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={() => void detect()}>{busy ? <LoaderCircle size={18} className={styles.spinner} /> : <Sparkles size={18} />}{busy ? 'Creating your highlight…' : output ? 'Create another cut' : 'Create my highlight'}{!busy && <ArrowRight size={18} />}</button>
-            <p className={styles.actionHint}>{socialBusy ? 'Loading optional fan reactions. You can create your highlight when this finishes.' : !config ? 'Checking availability…' : config.requiresLogin && !isAuthenticated ? 'Sign in above to start creating.' : !config.detectionReady ? 'Video analysis is temporarily unavailable.' : !hasSource ? 'Choose a video above to get started.' : !duration ? 'Reading your video details…' : 'We’ll find the best moments and create your video.'}</p>
+
+            <button className={styles.primary} disabled={!hasSource || !duration || !validMoments || !!busy || socialBusy || !config?.detectionReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={() => void detect()}>{busy ? <LoaderCircle size={18} className={styles.spinner} /> : <Sparkles size={18} />}{busy ? 'Creating your highlight…' : output ? 'Create another cut' : 'Create my highlight'}{!busy && <ArrowRight size={18} />}</button>
+            <p className={styles.actionHint}>{!validMoments ? 'Choose between one and eight moment descriptions in customization.' : socialBusy ? 'Loading optional fan reactions. You can create your highlight when this finishes.' : !config ? 'Checking availability…' : config.requiresLogin && !isAuthenticated ? 'Sign in above to start creating.' : !config.detectionReady ? 'Video analysis is temporarily unavailable.' : !hasSource ? 'Choose a video above to get started.' : !duration ? 'Reading your video details…' : 'We’ll find the best moments and create your video.'}</p>
           </section>
         </div>
         <aside className={styles.resultColumn} hidden={!events.length && !busy && !output}>
@@ -285,7 +296,7 @@ export default function HighlightStudio() {
           <p className={styles.sidebarNote}><Sparkles size={15} /> Great plays first. Replays and overlapping moments stay out.</p>
         </aside>
       </div>
-      <EventFusionStudio key={sourceRevision} sourceReady={hasSource && duration > 0} onSocialBusy={setSocialBusy} events={events} excluded={excluded} duration={duration} target={target} before={before} after={after} disabled={!!busy} onContext={input => { fusionContext.current = input; }} onApply={updated => { setEvents(updated); resetOutput(); setMessage('Your selection has been updated with the latest match insights.'); }} />
+      <EventFusionStudio key={sourceRevision} sourceReady={hasSource && duration > 0} weights={scoringWeights} priorityName={highlightPriorities.find(item => item.id === scoringPriority)!.name} onSocialBusy={setSocialBusy} events={events} excluded={excluded} duration={duration} target={target} before={before} after={after} disabled={!!busy} onContext={input => { fusionContext.current = input; }} onApply={updated => { setEvents(updated); resetOutput(); setMessage('Your selection has been updated with the latest match insights.'); }} />
       <details className={styles.optionalPanel} hidden={!hasSource && !events.length}><summary><span className={styles.optionalIcon}><Settings2 size={20} /></span><span><strong>Review & fine-tune</strong><small>Optional: see why moments were picked or adjust the selection.</small></span><ChevronDown size={18} /></summary><div className={styles.optionalBody}>
       <RollingScoreboard state={rolling} />
       <section className={styles.card}><div className={styles.heading}><span>03</span><h2>All detected moments</h2><span className={styles.count}>{events.length}</span></div><p className={styles.hint}>Your AI selection is ready to use. Adjust these moments only if you want a more personal cut.</p>

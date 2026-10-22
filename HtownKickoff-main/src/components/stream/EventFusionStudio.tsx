@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, MessageCircle, Sparkles, Check, LoaderCircle } from 'lucide-react';
-import { defaultSignalWeights, fuseEvents, fusedScore, parsePosts, signalKeys, type SignalKey, type SocialPost, type FusionInputs } from '../../lib/event-fusion';
+import { fuseEvents, fusedScore, parsePosts, signalKeys, type SignalKey, type SocialPost, type FusionInputs, type SignalWeights } from '../../lib/event-fusion';
 import { eventScore, type HighlightEvent } from '../../lib/highlight-plan';
 import { optimizeHighlights } from '../../lib/highlight-optimizer';
 import { highlightFetch } from '../../lib/highlight-session';
@@ -13,8 +13,8 @@ const utcTime = (value: string) => value && Number.isFinite(new Date(value).getT
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 const emptyPosts: SocialPost[] = [];
 const emptyEvidence: Pick<FusionInputs, 'stats' | 'anchors' | 'audience'> = { stats: [], anchors: [] };
-type Props = { sourceReady: boolean; onSocialBusy?: (busy: boolean) => void; evidence?: Pick<FusionInputs, 'stats' | 'anchors' | 'audience'>; events: HighlightEvent[]; excluded: string[]; duration: number; target: number; before: number; after: number; disabled: boolean; onApply: (events: HighlightEvent[]) => void; onContext: (input: FusionInputs) => void };
-export default function EventFusionStudio({ sourceReady, onSocialBusy, events, excluded, duration, target, before, after, disabled, onApply, onContext, evidence = emptyEvidence }: Props) {
+type Props = { weights: SignalWeights; priorityName: string; sourceReady: boolean; onSocialBusy?: (busy: boolean) => void; evidence?: Pick<FusionInputs, 'stats' | 'anchors' | 'audience'>; events: HighlightEvent[]; excluded: string[]; duration: number; target: number; before: number; after: number; disabled: boolean; onApply: (events: HighlightEvent[]) => void; onContext: (input: FusionInputs) => void };
+export default function EventFusionStudio({ weights, priorityName, sourceReady, onSocialBusy, events, excluded, duration, target, before, after, disabled, onApply, onContext, evidence = emptyEvidence }: Props) {
   const [xEnabled, setXEnabled] = useState(false);
   const xController = useRef<AbortController | null>(null);
   const [loadedScope, setLoadedScope] = useState('');
@@ -48,7 +48,6 @@ export default function EventFusionStudio({ sourceReady, onSocialBusy, events, e
     } catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { if (xController.current === abort) setXBusy(false); }
   }
-  const weights = defaultSignalWeights;
   const { stats, anchors, audience } = evidence;
   const context = useMemo(() => ({ matchId: matchId.trim() || 'video-only', stats, posts: activePosts, anchors, videoUtc, reactionDelay: delay, tolerance, audience }), [matchId, stats, activePosts, anchors, videoUtc, delay, tolerance, audience]);
   useEffect(() => onContext(context), [context, onContext]);
@@ -83,7 +82,7 @@ export default function EventFusionStudio({ sourceReady, onSocialBusy, events, e
     </div>
     {preview.error && <p role="alert" className={styles.error}>{preview.error}</p>}
     {events.some(event => event.jev) && <section className={styles.scoringPanel} aria-label="Highlight scoring">
-      <div className={styles.scoringHeader}><div><p className={styles.eyebrow}>THE MOMENTS THAT MADE THE CUT</p><h2>Why these plays stand out</h2><p>Ranked by their estimated impact, using the evidence available.</p></div><span className={styles.evidenceBadge}>{activePosts.length && matchedPosts ? 'Video + X reactions' : 'Video-based scoring'}</span></div>
+      <div className={styles.scoringHeader}><div><p className={styles.eyebrow}>THE MOMENTS THAT MADE THE CUT</p><h2>Why these plays stand out</h2><p>{priorityName} priority, using the evidence available.</p></div><span className={styles.evidenceBadge}>{activePosts.length && matchedPosts ? 'Video + X reactions' : 'Video-based scoring'}</span></div>
       {!selected.length && <div className={styles.empty}><Sparkles size={25} /><h3>No verified moments selected yet</h3><p>Uncertain and repeated moments stay out of the automatic cut.</p></div>}
       <div className={styles.insightCards}>{[...selected].sort((a,b) => eventScore(b)-eventScore(a) || a.start-b.start).map((event,index) => {
         const result=fusedScore(event.viral!),known=signalKeys.filter(key=>event.viral!.values[key]!==null).length;
