@@ -8,7 +8,16 @@ export async function highlightOwner(request: Request, transport: typeof fetch =
   const url = new URL(request.url), origin = request.headers.get('origin');
   const development = process.env.NODE_ENV === 'development';
   const expected = development ? url.origin : (process.env.HIGHLIGHTS_PUBLIC_ORIGIN || 'https://matchwatch.us');
-  if (origin && origin !== expected) throw new HighlightAccessError('This request must come from the MatchWatch studio.', 403);
+  let sameOrigin = origin === expected;
+  // Next's development server may normalize 127.0.0.1 to localhost internally.
+  // Accept loopback aliases only on the same port; production still requires the exact origin.
+  if (development && origin) {
+    try {
+      const source = new URL(origin), loopback = ['localhost', '127.0.0.1', '[::1]'];
+      sameOrigin ||= loopback.includes(url.hostname) && loopback.includes(source.hostname) && source.port === url.port && source.protocol === url.protocol;
+    } catch { /* Invalid origins remain rejected. */ }
+  }
+  if (origin && !sameOrigin) throw new HighlightAccessError('This request must come from the MatchWatch studio.', 403);
   if (development && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return 'local';
   if (!studioEnabled()) throw new HighlightAccessError('The highlight studio is not enabled on this server yet.', 503);
   if (!process.env.HIGHLIGHTS_SIGNING_SECRET || process.env.HIGHLIGHTS_SIGNING_SECRET.length < 32) throw new HighlightAccessError('Highlight studio server configuration is incomplete.', 503);

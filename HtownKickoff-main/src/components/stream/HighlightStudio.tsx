@@ -1,6 +1,6 @@
 'use client';
 /* eslint-disable @next/next/no-html-link-for-pages -- These links leave the isolated /app service for the existing main site. */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, Film, Scissors, Sparkles, Upload, Download, Trash2 } from 'lucide-react';
 import { eventScore, planHighlights, type HighlightEvent } from '../../lib/highlight-plan';
@@ -8,9 +8,13 @@ import styles from './HighlightStudio.module.css';
 import { getAccessToken } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import { reviewInput, reviewWindow, validateJevReviews } from '../../lib/jev';
+import { highlightResponse } from '../../lib/highlight-request';
 
 const endpoint = `${process.env.NEXT_PUBLIC_APP_BASE_PATH || ''}/api/stream/highlights`;
 function authorization(): HeadersInit { const token = getAccessToken(); return token ? { Authorization: `Bearer ${token}` } : {}; }
+async function request(form: FormData, signal?: AbortSignal) {
+  return highlightResponse(await fetch(endpoint, { method: 'POST', body: form, signal, headers: authorization() }));
+}
 
 type Event = HighlightEvent & { providerConfidence?: string };
 const clock = (value: number) => `${Math.floor(value / 60).toString().padStart(2, '0')}:${Math.floor(value % 60).toString().padStart(2, '0')}`;
@@ -19,31 +23,30 @@ const steps = ['Input video', 'Detect events', 'Jev review', 'Score & rank', 'Re
 export default function HighlightStudio() {
   const { isAuthenticated } = useAuth();
   const [file, setFile] = useState<File | null>(null), [url, setUrl] = useState(''), [duration, setDuration] = useState(0);
-  const [sport, setSport] = useState<'Soccer' | 'Basketball'>('Soccer'), [queries, setQueries] = useState(defaults.Soccer);
+  const [sport, setSport] = useState<'Soccer' | 'Basketball'>('Basketball'), [queries, setQueries] = useState(defaults.Basketball);
   const [events, setEvents] = useState<Event[]>([]), [excluded, setExcluded] = useState<string[]>([]);
   const [assetTicket, setAssetTicket] = useState('');
   const [target, setTarget] = useState(60), [before, setBefore] = useState(5), [after, setAfter] = useState(10);
-  const [label, setLabel] = useState('Goal'), [start, setStart] = useState(0), [end, setEnd] = useState(10);
+  const [label, setLabel] = useState('Dunk'), [start, setStart] = useState(0), [end, setEnd] = useState(10);
+  const [autoStart, setAutoStart] = useState(true), [autoExport, setAutoExport] = useState(true);
+  const pendingUpload = useRef(false);
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState(''), [output, setOutput] = useState('');
   const [config, setConfig] = useState<{ detectionReady: boolean; exportReady: boolean; requiresLogin?: boolean } | null>(null);
   const player = useRef<HTMLVideoElement>(null), controller = useRef<AbortController | null>(null);
   useEffect(() => { fetch(endpoint).then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error); setConfig(data); }).catch(e => setError(e.message)); return () => controller.current?.abort(); }, []);
   useEffect(() => { if (!file) return; const source = URL.createObjectURL(file); setUrl(source); return () => URL.revokeObjectURL(source); }, [file]);
   useEffect(() => () => { if (output) URL.revokeObjectURL(output); }, [output]);
-  const plan = planHighlights(events.filter(e => !excluded.includes(e.id)), duration, target, before, after);
+  const plan = planHighlights(events.filter(e => !excluded.includes(e.id)), duration, target, before, after).slice(0, 20);
   const total = plan.reduce((sum, clip) => sum + clip.clipEnd - clip.clipStart, 0);
   function resetOutput() { setOutput(''); }
   function choose(video: File | undefined) {
     if (!video) return;
     if (video.size > 200 * 1024 * 1024) { setError('Choose a video smaller than 200 MB.'); return; }
-    controller.current?.abort(); setBusy(''); setFile(video); setDuration(0); setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); setMessage(''); resetOutput();
+    controller.current?.abort(); pendingUpload.current = true; setBusy(''); setFile(video); setDuration(0); setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); setMessage('Video selected. Reading video details before processing…'); resetOutput();
   }
-  async function request(form: FormData, signal?: AbortSignal) {
-    const response = await fetch(endpoint, { method: 'POST', body: form, signal, headers: authorization() });
-    if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Request failed.'); } return response;
-  }
-  async function detect() {
+  const detect = useCallback(async () => {
     if (!file) return;
+    pendingUpload.current = false;
     const abort = new AbortController(); controller.current = abort; setBusy('Uploading video to TwelveLabs…'); setError(''); resetOutput();
     try {
       const upload = new FormData(); upload.set('action', 'upload'); upload.set('video', file);
@@ -52,10 +55,10 @@ export default function HighlightStudio() {
       setAssetTicket('');
       async function waitUntilReady(parameter: string, id: string, stage: string) {
         for (let i = 0; i < 180; i++) {
-          const response = await fetch(`${endpoint}?${parameter}=${encodeURIComponent(id)}`, { signal: abort.signal, cache: 'no-store', headers: authorization() }); const resource = await response.json();
+          const response = await highlightResponse(await fetch(`${endpoint}?${parameter}=${encodeURIComponent(id)}`, { signal: abort.signal, cache: 'no-store', headers: authorization() })); const resource = await response.json();
           if (!response.ok || resource.error) throw new Error(resource.error || `${stage} failed.`);
           if (resource.status === 'ready') return;
-          if (resource.status === 'failed') throw new Error(`${stage} failed.`);
+          if (['failed', 'canceled'].includes(resource.status)) throw new Error(`${stage} failed. Try an H.264 MP4 with a clear video track.`);
           setBusy(`${stage} · ${resource.status || 'processing'}…`);
           await new Promise<void>((resolve, reject) => { const cancel = () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); }; const timer = setTimeout(() => { abort.signal.removeEventListener('abort', cancel); resolve(); }, 5000); abort.signal.addEventListener('abort', cancel, { once: true }); });
         }
@@ -71,10 +74,25 @@ export default function HighlightStudio() {
       setBusy('Finding candidate events…');
       const search = new FormData(); search.set('action', 'search'); search.set('videoId', videoId); search.set('queries', queries);
       const data = await (await request(search, abort.signal)).json(); setEvents(data.events); setExcluded([]);
-      setMessage(`${data.events.length} candidate events found. Check up to 20 moments for Jev review, or edit them manually before export.`);
+      if (!data.events.length) { setMessage('No matching moments were found. Change the search descriptions or mark a play manually below. No reel was generated.'); return; }
+      const selected = planHighlights(data.events, duration, target, before, after).slice(0, 20);
+      setMessage(`${data.events.length} candidate events found. Review the selected clips; Jev review is optional.`);
+      if (autoExport && config?.exportReady && selected.length) {
+        setBusy('Creating your highlight MP4…');
+        const form = new FormData(); form.set('action', 'export'); form.set('video', file);
+        form.set('clips', JSON.stringify(selected.map(c => ({ start: c.clipStart, end: c.clipEnd }))));
+        const response = await request(form, abort.signal);
+        setOutput(URL.createObjectURL(await response.blob()));
+        setMessage(`Your highlight MP4 is ready from ${selected.length} selected clips. Preview and download it below. Jev review has not been run.`);
+      } else if (!selected.length) setMessage('Moments were found, but no complete clip fits the target length. Increase the target or shorten the clip padding.');
     } catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { if (!abort.signal.aborted) setBusy(''); }
-  }
+  }, [file, queries, duration, target, before, after, autoExport, config?.exportReady]);
+  useEffect(() => {
+    if (!pendingUpload.current || !autoStart || !file || !duration || !config?.detectionReady || (config.requiresLogin && !isAuthenticated)) return;
+    pendingUpload.current = false;
+    void detect();
+  }, [autoStart, file, duration, config, isAuthenticated, detect]);
   async function reviewWithJev() {
     const abort = new AbortController(); controller.current = abort;
     setError(''); resetOutput();
@@ -124,7 +142,9 @@ export default function HighlightStudio() {
           {url && <video ref={player} src={url} controls preload="metadata" onLoadedMetadata={e => { const d = e.currentTarget.duration; if (Number.isFinite(d)) setDuration(d); else setError('Use a finite video recording for this prototype.'); }} onError={() => setError('This browser cannot play the selected video. Try an MP4 encoded with H.264.')} />}
           <div className={styles.row}><label>Sport<select value={sport} disabled={!!busy} onChange={e => { const value = e.target.value as typeof sport; setSport(value); setQueries(defaults[value]); setLabel(value === 'Soccer' ? 'Goal' : 'Dunk'); }}><option>Soccer</option><option>Basketball</option></select></label><label>Target length<select value={target} disabled={!!busy} onChange={e => { setTarget(Number(e.target.value)); resetOutput(); }}>{[30, 60, 90, 120, 180, 300].map(v => <option key={v} value={v}>{v} seconds</option>)}</select></label></div>
           <label>Moments to find <small>One query per line · up to eight</small><textarea rows={4} value={queries} disabled={!!busy} onChange={e => setQueries(e.target.value)} /></label>
-          <button className={styles.primary} disabled={!file || !duration || !!busy || !config?.detectionReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={detect}><Sparkles size={16} /> Detect events with TwelveLabs <ArrowRight size={16} /></button>
+          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoStart} disabled={!!busy} onChange={e => setAutoStart(e.target.checked)} />Start processing when I choose a video</span></label>
+          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoExport} disabled={!!busy} onChange={e => setAutoExport(e.target.checked)} />Generate the MP4 after detection (skip optional Jev review)</span></label>
+          <button className={styles.primary} disabled={!file || !duration || !!busy || !config?.detectionReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={() => void detect()}><Sparkles size={16} /> {autoExport ? 'Find moments & create highlight' : 'Detect events with TwelveLabs'} <ArrowRight size={16} /></button>
           <p className={styles.hint}>{!config ? 'Checking detection availability…' : config.detectionReady ? 'Detection sends this video to TwelveLabs for indexing and visual search.' : 'AI detection is not configured on this server yet. You can add events manually below.'}</p>
         </section>
         <section className={styles.card}><div className={styles.heading}><span>02</span><h2>Build your highlight</h2><Scissors size={20} /></div>

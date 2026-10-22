@@ -2,6 +2,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { highlightOwner, HighlightAccessError, resourceTicket, resourceId, reserveOperation } from './highlight-access';
 const id = '111111111111111111111111';
+test('local browser uploads accept same-port loopback aliases but reject other origins', async () => {
+  const previous = process.env.NODE_ENV;
+  Object.assign(process.env, { NODE_ENV: 'development' });
+  try {
+    assert.equal(await highlightOwner(new Request('http://localhost:3001/api/stream/highlights', { headers: { Origin: 'http://127.0.0.1:3001' } })), 'local');
+    for (const origin of ['http://127.0.0.1:9999', 'https://unrelated.example']) {
+      await assert.rejects(() => highlightOwner(new Request('http://localhost:3001/api/stream/highlights', { headers: { Origin: origin } })), HighlightAccessError);
+    }
+  } finally {
+    if (previous === undefined) Reflect.deleteProperty(process.env, 'NODE_ENV');
+    else Object.assign(process.env, { NODE_ENV: previous });
+  }
+});
 async function production(work: () => Promise<void> | void) {
   const previous = { NODE_ENV: process.env.NODE_ENV, HIGHLIGHTS_ENABLED: process.env.HIGHLIGHTS_ENABLED, HIGHLIGHTS_SIGNING_SECRET: process.env.HIGHLIGHTS_SIGNING_SECRET, HIGHLIGHTS_PUBLIC_ORIGIN: process.env.HIGHLIGHTS_PUBLIC_ORIGIN, API_PROXY_TARGET: process.env.API_PROXY_TARGET };
   Object.assign(process.env, { NODE_ENV: 'production', HIGHLIGHTS_ENABLED: 'true', HIGHLIGHTS_SIGNING_SECRET: 'test-only-secret-with-more-than-32-characters', HIGHLIGHTS_PUBLIC_ORIGIN: 'https://matchwatch.us', API_PROXY_TARGET: 'http://private-api:4000' });
