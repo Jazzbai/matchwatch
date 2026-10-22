@@ -10,7 +10,7 @@ export type HighlightEvent = {
 };
 export type HighlightClip = HighlightEvent & { score: number; clipStart: number; clipEnd: number };
 export function eventScore(event: HighlightEvent) {
-  if (event.viral && !event.reviewOverride) return fusedScore(event.viral).score ?? 0;
+  if (event.viral && event.jev && !event.reviewOverride) return fusedScore(event.viral).score ?? 0;
   if (event.jev && !event.reviewOverride) return jevUtility(event.jev);
   return 0.4 * event.importance + 0.2 * event.context + 0.15 * event.audio + 0.15 * event.reaction + 0.1 * event.preference;
 }

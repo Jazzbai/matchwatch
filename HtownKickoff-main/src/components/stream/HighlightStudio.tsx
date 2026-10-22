@@ -8,6 +8,7 @@ import styles from './HighlightStudio.module.css';
 import ScorePlaySource, { type ScorePlayVideo } from './ScorePlaySource';
 import RollingScoreboard from './RollingScoreboard';
 import EventFusionStudio from './EventFusionStudio';
+import { defaultSignalWeights, fuseEvents, type FusionInputs } from '../../lib/event-fusion';
 import { applyReviewedChunk, candidateChunks, emptyRollingState } from '../../lib/rolling-highlights';
 import { highlightAuthorization, highlightFetch } from '../../lib/highlight-session';
 import { useAuth } from '../../lib/auth-context';
@@ -51,7 +52,7 @@ async function compareWithJev(asset: string, events: Event[], duration: number, 
 type Event = HighlightEvent & { providerConfidence?: string };
 const clock = (value: number) => `${Math.floor(value / 60).toString().padStart(2, '0')}:${Math.floor(value % 60).toString().padStart(2, '0')}`;
 const defaults = { Soccer: 'Goal scored\nShot on target\nFoul or penalty\nCrowd celebration', Basketball: 'Dunk\nThree-point shot\nAssist or block\nCrowd celebration' };
-const steps = ['Video source', 'Match & social inputs', 'TwelveLabs review', 'Event fusion', 'Score & rank', 'Producer approval', 'Assemble', 'Export MP4'];
+const steps = ['Video source', 'Match & social inputs', 'TwelveLabs review', 'Event fusion', 'Score & rank', 'Automatic selection', 'Assemble', 'Export MP4'];
 export default function HighlightStudio() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [file, setFile] = useState<File | null>(null), [url, setUrl] = useState(''), [duration, setDuration] = useState(0);
@@ -63,7 +64,8 @@ export default function HighlightStudio() {
   const [assetTicket, setAssetTicket] = useState('');
   const [target, setTarget] = useState(60), [before, setBefore] = useState(5), [after, setAfter] = useState(10);
   const [label, setLabel] = useState('Dunk'), [start, setStart] = useState(0), [end, setEnd] = useState(10);
-  const [autoStart, setAutoStart] = useState(true), [autoExport, setAutoExport] = useState(false);
+  const [autoStart, setAutoStart] = useState(true), [autoExport, setAutoExport] = useState(true);
+  const fusionContext = useRef<FusionInputs>({ matchId: 'video-only', stats: [], posts: [], anchors: [], videoUtc: '', reactionDelay: 15, tolerance: 10 });
   const [autoCompare, setAutoCompare] = useState(true), [compress, setCompress] = useState(false);
   const pendingUpload = useRef(false);
   const sourceResource = useRef({ asset: '', indexed: '', indexedReady: false, analysisDuration: 0 });
@@ -162,7 +164,7 @@ export default function HighlightStudio() {
         const chunks = candidateChunks(shortlist, analysisDuration);
         for (let index = 0; index < chunks.length; index++) {
           const chunk = chunks[index];
-          const reviewed = await compareWithJev(assetId, chunk.events, analysisDuration, abort.signal, text => setBusy(`Window ${index + 1}/${chunks.length} · ${text}`));
+          const reviewed = fuseEvents(await compareWithJev(assetId, chunk.events, analysisDuration, abort.signal, text => setBusy(`Window ${index + 1}/${chunks.length} · ${text}`)), fusionContext.current, defaultSignalWeights);
           compared.push(...reviewed);
           rollingState = applyReviewedChunk(rollingState, { ...chunk, events: reviewed }, { duration, target, before, after });
           setRolling(rollingState);
@@ -172,6 +174,8 @@ export default function HighlightStudio() {
         setEvents(data.events.map((event: Event) => compared.find(item => item.id === event.id) || event));
         setExcluded(data.events.filter((event: Event) => !compared.some(item => item.id === event.id)).map((event: Event) => event.id));
       }
+      compared = fuseEvents(compared, fusionContext.current, defaultSignalWeights);
+      setEvents(fuseEvents(data.events.map((event: Event) => compared.find(item => item.id === event.id) || event), fusionContext.current, defaultSignalWeights));
       const selected = optimizeHighlights(compared, duration, target, before, after);
       setMessage(autoCompare ? `Jev compared ${compared.length} distinct moments. The selector keeps the highest combined editorial score within ${target} seconds; weaker choices can be replaced.` : `${data.events.length} candidates found. Selection uses editable scores; AI comparison was not run.`);
       if (autoExport && config?.exportReady && selected.length) {
@@ -256,7 +260,7 @@ export default function HighlightStudio() {
         <section className={styles.card}><div className={styles.heading}><span>02</span><h2>Build your highlight</h2><Scissors size={20} /></div>
           <div className={styles.stats}><div><strong>{events.length}</strong><span>CANDIDATES</span></div><div><strong>{plan.length}</strong><span>SELECTED CLIPS</span></div><div><strong>{clock(total)}</strong><span>OF {clock(target)} TARGET</span></div></div>
           <h3>Refine the cut</h3><div className={styles.row}><label>Before event (sec)<input type="number" min="0" max="30" value={before} disabled={!!busy} onChange={e => { setBefore(Math.max(0, Math.min(30, Number(e.target.value)))); resetOutput(); }} /></label><label>After event (sec)<input type="number" min="0" max="30" value={after} disabled={!!busy} onChange={e => { setAfter(Math.max(0, Math.min(30, Number(e.target.value)))); resetOutput(); }} /></label></div>
-          <p className={styles.hint}>Compare combinations and replace weaker choices to maximize the combined editorial score within the target. Whole clips only, no overlap, and at most 20 clips. Selection uses a conservative half-second time budget and considers up to 80 candidates. Jev inclusion recommendations remain separate from final selection. The reel follows match time.</p>
+          <p className={styles.hint}>Compare combinations and replace weaker choices to maximize the combined editorial score within the target. Whole clips only, no overlap, and at most 5 clips. Selection uses a conservative half-second time budget and considers up to 80 candidates. Jev inclusion recommendations remain separate from final selection. The reel follows match time.</p>
           <div className={styles.timeline}>{plan.length ? plan.map(c => <button key={c.id} style={{ flex: c.clipEnd - c.clipStart }} title={`${c.label}: ${clock(c.clipStart)}–${clock(c.clipEnd)}`} onClick={() => { if (player.current) { player.current.currentTime = c.clipStart; void player.current.play(); } }}>{c.label}</button>) : <span>Your selected moments will appear here</span>}</div>
           <ol className={styles.sequence}>{plan.map(c => <li key={c.id}><Check size={14} /><strong>{c.label}</strong><span>{clock(c.clipStart)}–{clock(c.clipEnd)}</span></li>)}</ol>
           <button className={styles.primary} disabled={!plan.length || !!busy || !config?.exportReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={exportVideo}><Film size={16} /> Generate highlight MP4</button>
@@ -264,7 +268,7 @@ export default function HighlightStudio() {
           {output && <div className={styles.output}><video controls src={output} /><a href={output} download="matchwatch-highlights.mp4" className={styles.primary}><Download size={16} /> Download highlight</a></div>}
         </section>
       </div>
-      <EventFusionStudio key={sourceRevision} events={events} excluded={excluded} duration={duration} target={target} before={before} after={after} disabled={!!busy} onApply={updated => { setEvents(updated); resetOutput(); setMessage('Combined scores approved. The highlight proposal has been updated; review it before generating the video.'); }} />
+      <EventFusionStudio key={sourceRevision} events={events} excluded={excluded} duration={duration} target={target} before={before} after={after} disabled={!!busy} onContext={input => { fusionContext.current = input; }} onApply={updated => { setEvents(updated); resetOutput(); setMessage('Viral scores and the highlight selection were updated automatically from available evidence.'); }} />
       <RollingScoreboard state={rolling} />
       <section className={styles.card}><div className={styles.heading}><span>03</span><h2>Candidate events</h2><span className={styles.count}>{events.length}</span></div><p className={styles.hint}>Review time ranges and set the scoring signals from 0 to 1. Score = 40% importance + 20% context + 15% audio + 15% reaction + 10% team preference. These are editable review inputs; audio and reactions are not automatically measured.</p>
         <button className={styles.secondary} disabled={!assetTicket || !events.some(e => !excluded.includes(e.id)) || !!busy || (!!config?.requiresLogin && !isAuthenticated)} onClick={reviewWithJev}><Sparkles size={16} /> Review checked moments with Jev</button>

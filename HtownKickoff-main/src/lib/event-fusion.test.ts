@@ -5,7 +5,7 @@ import { optimizeHighlights } from './highlight-optimizer';
 import type { HighlightEvent } from './highlight-plan';
 function event(id: string, start: number, score = 0.8): HighlightEvent {
   return { id, label: 'Dunk', start, end: start + 10, confidence: 0, importance: 0.8, context: 0, audio: 0, reaction: 0, preference: 0,
-    jev: { candidate_id: id, event: 'Dunk', importance_estimate: score, excitement_estimate: score, watchability_estimate: score, match_context: null, duplicate_of: null, suggested_start: start, suggested_end: start + 10, recommend_include: true, reason: 'Visible verified dunk.', needs_review: false } };
+    jev: { candidate_id: id, event: 'Dunk', importance_estimate: score, excitement_estimate: score, emotional_intensity: { score, evidence: 'Visible celebration at candidate time.' }, watchability_estimate: score, match_context: null, duplicate_of: null, suggested_start: start, suggested_end: start + 10, recommend_include: true, reason: 'Visible verified dunk.', needs_review: false } };
 }
 const inputs: FusionInputs = { matchId: 'game', stats: [], posts: [], anchors: [], videoUtc: '', reactionDelay: 15, tolerance: 3 };
 
@@ -38,7 +38,7 @@ test('posts need a UTC anchor, exact match ID and reaction-delay correction', ()
 test('approved social weighting can change the best combination but cannot bypass uncertain-video checks', () => {
   const events = [event('early', 0, 0.8), event('later', 40, 0.6)];
   const posts = parsePosts([{ id: 'reaction', matchId: 'game', postedAt: '2026-10-22T18:00:55Z', likes: 50, replies: 10, reposts: 5 }]);
-  const fused = fuseEvents(events, { ...inputs, posts, videoUtc: '2026-10-22T18:00:00Z' }, { sports: 0.1, social: 0.6, emotion: 0.2, quality: 0.1, controversy: 0, audience: 0 });
+  const fused = fuseEvents(events, { ...inputs, posts, videoUtc: '2026-10-22T18:00:00Z' }, { sports: 0.1, social: 0.6, emotion: 0.2, controversy: 0, audience: 0 });
   assert.deepEqual(optimizeHighlights(events, 100, 10, 0, 0).map(c => c.id), ['early']);
   assert.deepEqual(optimizeHighlights(fused, 100, 10, 0, 0).map(c => c.id), ['later']);
   fused[1].jev!.needs_review = true;

@@ -8,7 +8,7 @@ export function optimizeHighlights(events: HighlightEvent[], duration: number, t
     .filter(clip => clip.score > 0)
     .sort((a, b) => b.score - a.score || a.start - b.start || a.id.localeCompare(b.id))
     .slice(0, 80).sort((a, b) => a.clipEnd - b.clipEnd || a.clipStart - b.clipStart || a.id.localeCompare(b.id));
-  const n = clips.length, maxClips = Math.min(20, n), width = budget + 1, layer = (maxClips + 1) * width;
+  const n = clips.length, maxClips = Math.min(5, n), width = budget + 1, layer = (maxClips + 1) * width;
   const values = new Float64Array((n + 1) * layer);
   const costs = clips.map(c => Math.ceil((c.clipEnd - c.clipStart) * 2 - 1e-8));
   const previous = clips.map((clip, index) => {
