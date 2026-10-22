@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { highlightOwner, HighlightAccessError, reserveOperation } from '../../../../lib/highlight-access';
+import { highlightOwner, HighlightAccessError, reserveOperation, resourceTicket } from '../../../../lib/highlight-access';
 import { ScorePlayClient, ScorePlayError, scorePlayAllowed } from '../../../../lib/scoreplay';
 
 export const runtime = 'nodejs';
@@ -25,6 +25,10 @@ export async function POST(request: NextRequest) {
   try {
     const { owner, client } = await access(request); release = reserveOperation(owner, 'scoreplay-import');
     const id = request.nextUrl.searchParams.get('mediaId') || '';
+    if (request.nextUrl.searchParams.get('mode') === 'source') {
+      const source = await client.source(id);
+      return NextResponse.json({ ...source, ticket: resourceTicket(BigInt(id).toString(16).padStart(24, '0'), owner, 'scoreplay') }, { headers: { 'Cache-Control': 'no-store' } });
+    }
     const file = await client.download(id, request.signal);
     return new Response(file.bytes, { headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(file.bytes.byteLength), 'Content-Disposition': `attachment; filename="${file.name}"`, 'Cache-Control': 'no-store' } });
   } catch (error) { return failure(error); }

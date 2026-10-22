@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Check, Film, Scissors, Sparkles, Upload, Download, Trash2 } from 'lucide-react';
 import { eventScore, type HighlightEvent } from '../../lib/highlight-plan';
 import styles from './HighlightStudio.module.css';
-import ScorePlaySource from './ScorePlaySource';
+import ScorePlaySource, { type ScorePlayVideo } from './ScorePlaySource';
 import { highlightAuthorization, highlightFetch } from '../../lib/highlight-session';
 import { useAuth } from '../../lib/auth-context';
 import { reviewInput, reviewWindow, validateJevReviews } from '../../lib/jev';
@@ -18,6 +18,11 @@ async function request(form: FormData, signal?: AbortSignal) {
 }
 async function compareWithJev(asset: string, events: Event[], duration: number, signal: AbortSignal, status: (text: string) => void): Promise<Event[]> {
   const candidates = reviewInput(events, duration);
+  if (candidates.length > 1 && Math.max(...candidates.map(c => c.end)) - Math.min(...candidates.map(c => c.start)) > 7100) {
+    const ordered = [...events].sort((a, b) => a.start - b.start);
+    const middle = ordered.findIndex((event, index) => index > 0 && event.end - ordered[0].start > 7100);
+    return [...await compareWithJev(asset, ordered.slice(0, middle), duration, signal, status), ...await compareWithJev(asset, ordered.slice(middle), duration, signal, status)];
+  }
   reviewWindow(candidates, duration);
   status(`Jev is comparing ${candidates.length} moments against the video evidence…`);
   const form = new FormData(); form.set('action', 'review'); form.set('assetId', asset); form.set('duration', String(duration)); form.set('candidates', JSON.stringify(candidates));
@@ -47,6 +52,7 @@ const steps = ['Input video', 'Detect events', 'Jev review', 'Score & rank', 'Re
 export default function HighlightStudio() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [file, setFile] = useState<File | null>(null), [url, setUrl] = useState(''), [duration, setDuration] = useState(0);
+  const [scorePlay, setScorePlay] = useState<ScorePlayVideo | null>(null);
   const [sport, setSport] = useState<'Soccer' | 'Basketball'>('Basketball'), [queries, setQueries] = useState(defaults.Basketball);
   const [events, setEvents] = useState<Event[]>([]), [excluded, setExcluded] = useState<string[]>([]);
   const [assetTicket, setAssetTicket] = useState('');
@@ -68,16 +74,29 @@ export default function HighlightStudio() {
   function choose(video: File | undefined) {
     if (!video) return;
     if (video.size > 200 * 1024 * 1024) { setError('Choose a video smaller than 200 MB.'); return; }
+    setScorePlay(null);
     sourceResource.current = { asset: '', indexed: '', indexedReady: false, analysisDuration: 0 };
     controller.current?.abort(); pendingUpload.current = true; setBusy(''); setFile(video); setDuration(0); setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); setMessage('Video selected. Reading video details before processing…'); resetOutput();
   }
+  function chooseScorePlay(source: ScorePlayVideo) {
+    controller.current?.abort(); sourceResource.current = { asset: '', indexed: '', indexedReady: false, analysisDuration: 0 };
+    pendingUpload.current = true; setBusy(''); setFile(null); setScorePlay(source); setUrl(source.url); setDuration(source.duration);
+    setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); resetOutput();
+    setMessage('ScorePlay recording selected. Ready for direct AI import.');
+  }
   const detect = useCallback(async () => {
-    if (!file) return;
+    if (!file && !scorePlay) return;
     pendingUpload.current = false;
     const abort = new AbortController(); controller.current = abort; setBusy('Uploading video to MatchWatch · 0%'); setError(''); setMessage(''); resetOutput();
     try {
       let assetId = sourceResource.current.asset;
       if (!assetId) {
+        if (scorePlay) {
+          setBusy('TwelveLabs is importing your recording directly from ScorePlay…');
+          const form = new FormData(); form.set('action', 'scoreplay-upload'); form.set('scoreplayTicket', scorePlay.ticket);
+          ({ assetId } = await (await request(form, abort.signal)).json());
+          sourceResource.current.asset = assetId;
+        } else if (file) {
         const upload = new FormData(); upload.set('action', 'upload'); upload.set('video', file); upload.set('compress', String(compress));
         const uploaded = await uploadHighlight(endpoint, upload, await highlightAuthorization(), abort.signal, (sent, size) => {
           const percent = Math.min(100, Math.floor(sent / size * 100));
@@ -87,6 +106,7 @@ export default function HighlightStudio() {
         if (uploadResult.compression?.applied) setMessage(`Analysis copy: ${(uploadResult.compression.originalBytes / 1048576).toFixed(1)} MB → ${(uploadResult.compression.analysisBytes / 1048576).toFixed(1)} MB. The final reel uses your original video.`);
         else if (uploadResult.warning) setMessage(uploadResult.warning);
         sourceResource.current.asset = assetId;
+        }
       } else setBusy('Reusing your uploaded video…');
       if (!assetId) throw new Error('TwelveLabs did not return an uploaded asset.');
       setAssetTicket('');
@@ -135,7 +155,7 @@ export default function HighlightStudio() {
       setMessage(autoCompare ? `Jev compared ${compared.length} distinct moments. The selector keeps the highest combined editorial score within ${target} seconds; weaker choices can be replaced.` : `${data.events.length} candidates found. Selection uses editable scores; AI comparison was not run.`);
       if (autoExport && config?.exportReady && selected.length) {
         setBusy('Creating your highlight MP4…');
-        const form = new FormData(); form.set('action', 'export'); form.set('video', file);
+        const form = new FormData(); form.set('action', 'export'); if (scorePlay) form.set('scoreplayTicket', scorePlay.ticket); else if (file) form.set('video', file);
         form.set('clips', JSON.stringify(selected.map(c => ({ start: c.clipStart, end: c.clipEnd }))));
         const response = await request(form, abort.signal);
         setOutput(URL.createObjectURL(await response.blob()));
@@ -143,12 +163,12 @@ export default function HighlightStudio() {
       } else if (!selected.length) setMessage('No verified complete clip fits the target. Inspect uncertain AI reviews, adjust the time budget, or override a reviewed event manually.');
     } catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { if (!abort.signal.aborted) setBusy(''); }
-  }, [file, queries, duration, target, before, after, autoExport, autoCompare, compress, config?.exportReady]);
+  }, [file, scorePlay, queries, duration, target, before, after, autoExport, autoCompare, compress, config?.exportReady]);
   useEffect(() => {
-    if (!pendingUpload.current || !autoStart || !file || !duration || !config?.detectionReady || (config.requiresLogin && !isAuthenticated)) return;
+    if (!pendingUpload.current || !autoStart || (!file && !scorePlay) || !duration || !config?.detectionReady || (config.requiresLogin && !isAuthenticated)) return;
     pendingUpload.current = false;
     void detect();
-  }, [autoStart, file, duration, config, isAuthenticated, detect]);
+  }, [autoStart, file, scorePlay, duration, config, isAuthenticated, detect]);
   async function reviewWithJev() {
     const abort = new AbortController(); controller.current = abort;
     setError(''); resetOutput();
@@ -177,10 +197,10 @@ export default function HighlightStudio() {
     finally { if (!abort.signal.aborted) setBusy(''); }
   }
   async function exportVideo() {
-    if (!file || !plan.length) return;
+    if ((!file && !scorePlay) || !plan.length) return;
     setBusy('Extracting clips and assembling your MP4…'); setError('');
     const abort = new AbortController(); controller.current = abort;
-    try { const form = new FormData(); form.set('action', 'export'); form.set('video', file); form.set('clips', JSON.stringify(plan.map(c => ({ start: c.clipStart, end: c.clipEnd })))); const response = await request(form, abort.signal); setOutput(URL.createObjectURL(await response.blob())); setMessage('Your highlight video is ready.'); }
+    try { const form = new FormData(); form.set('action', 'export'); if (scorePlay) form.set('scoreplayTicket', scorePlay.ticket); else if (file) form.set('video', file); form.set('clips', JSON.stringify(plan.map(c => ({ start: c.clipStart, end: c.clipEnd })))); const response = await request(form, abort.signal); setOutput(URL.createObjectURL(await response.blob())); setMessage('Your highlight video is ready.'); }
     catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { if (!abort.signal.aborted) setBusy(''); }
   }
@@ -195,21 +215,21 @@ export default function HighlightStudio() {
       {busy && <div className={styles.notice} role="status">{busy} <button onClick={() => { controller.current?.abort(); setBusy(''); setMessage('Operation canceled.'); }}>Cancel</button></div>}
       <div className={styles.columns}>
         <section className={styles.card}><div className={styles.heading}><span>01</span><h2>Your source footage</h2><Film size={20} /></div>
-          <ScorePlaySource disabled={!!busy || (!!config?.requiresLogin && !isAuthenticated)} onChoose={choose} />
-          <label className={styles.upload}><Upload size={28} /><strong>{file ? file.name : 'Choose your match video'}</strong><span>MP4 / video file · up to 200 MB</span><input type="file" accept="video/*,.mp4" onChange={e => choose(e.target.files?.[0])} disabled={!!busy} /></label>
+          <ScorePlaySource disabled={!!busy || (!!config?.requiresLogin && !isAuthenticated)} onChoose={chooseScorePlay} />
+          <label className={styles.upload}><Upload size={28} /><strong>{scorePlay ? `ScorePlay: ${scorePlay.name}` : file ? file.name : 'Choose your match video'}</strong><span>{scorePlay ? 'Connected recording · direct cloud import' : 'Local video · up to 200 MB'}</span><input type="file" accept="video/*,.mp4" onChange={e => choose(e.target.files?.[0])} disabled={!!busy} /></label>
           {url && <video ref={player} src={url} controls preload="metadata" onLoadedMetadata={e => { const d = e.currentTarget.duration; if (Number.isFinite(d)) setDuration(d); else setError('Use a finite video recording for this prototype.'); }} onError={() => setError('This browser cannot play the selected video. Try an MP4 encoded with H.264.')} />}
           <div className={styles.row}><label>Sport<select value={sport} disabled={!!busy} onChange={e => { const value = e.target.value as typeof sport; setSport(value); setQueries(defaults[value]); setLabel(value === 'Soccer' ? 'Goal' : 'Dunk'); }}><option>Soccer</option><option>Basketball</option></select></label><label>Target length<select value={target} disabled={!!busy} onChange={e => { setTarget(Number(e.target.value)); resetOutput(); }}>{[30, 60, 90, 120, 180, 300].map(v => <option key={v} value={v}>{v} seconds</option>)}</select></label></div>
           <label>Moments to find <small>One query per line · up to eight</small><textarea rows={4} value={queries} disabled={!!busy} onChange={e => setQueries(e.target.value)} /></label>
           <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoStart} disabled={!!busy} onChange={e => setAutoStart(e.target.checked)} />Start processing when I choose a video</span></label>
           <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoCompare} disabled={!!busy} onChange={e => { setAutoCompare(e.target.checked); resetOutput(); }} />AI compare moments before selection (adds analysis time)</span></label>
-          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={compress} disabled={!!busy} onChange={e => setCompress(e.target.checked)} />Compress a copy for AI analysis (adds encoding time)</span></label>
+          <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={compress} disabled={!!busy || !!scorePlay} onChange={e => setCompress(e.target.checked)} />Compress a local upload for AI analysis (adds encoding time)</span></label>
           <p className={styles.hint}>Compression runs on the server after your initial upload. It preserves playback time and uses a smaller copy only if it saves at least 10%. The final 720p reel uses the original. Compression can reduce visual detail; leave it off when small-ball motion or scoreboard text is important. To apply a changed compression setting to an already uploaded file, choose the file again.</p>
           <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoExport} disabled={!!busy} onChange={e => setAutoExport(e.target.checked)} />Generate the MP4 after selection</span></label>
           <p className={styles.hint}>Long recordings need time to upload and index before highlights can be found. For a quick first demo, use a 1–3 minute excerpt. Upload percentage covers transfer to MatchWatch; TwelveLabs processing follows.</p>
           {config?.requiresLogin && !isAuthenticated && <div className={styles.notice} role="status">
             {authLoading ? <p>Checking your sign-in…</p> : <div><strong>Sign in to start video processing.</strong><p>Your video can be previewed here, but uploading to TwelveLabs and creating highlights require a MatchWatch account.</p><a className={styles.primary} href="/login?next=%2Fapp">Sign in & return to the studio</a><p>After signing in, choose your video again to start processing.</p></div>}
           </div>}
-          <button className={styles.primary} disabled={!file || !duration || !!busy || !config?.detectionReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={() => void detect()}><Sparkles size={16} /> {autoExport ? 'Find moments & create highlight' : 'Detect events with TwelveLabs'} <ArrowRight size={16} /></button>
+          <button className={styles.primary} disabled={(!file && !scorePlay) || !duration || !!busy || !config?.detectionReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={() => void detect()}><Sparkles size={16} /> {autoExport ? 'Find moments & create highlight' : 'Detect events with TwelveLabs'} <ArrowRight size={16} /></button>
           <p className={styles.hint}>{busy ? busy : !config ? 'Checking detection availability…' : config.requiresLogin && !isAuthenticated ? 'Processing is paused until you sign in.' : !config.detectionReady ? 'AI detection is not configured on this server yet. You can add events manually below.' : !file ? 'Choose a video to begin. It will be sent to TwelveLabs for indexing and visual search.' : !duration ? 'Waiting for the video duration. If it does not load, try an H.264 MP4.' : 'Detection sends this video to TwelveLabs for indexing and visual search.'}</p>
         </section>
         <section className={styles.card}><div className={styles.heading}><span>02</span><h2>Build your highlight</h2><Scissors size={20} /></div>

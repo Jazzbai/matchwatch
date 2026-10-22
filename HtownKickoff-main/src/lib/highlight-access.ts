@@ -37,11 +37,11 @@ function signature(id: string, owner: string, kind: string, expires: number) {
   if (!secret) throw new HighlightAccessError('Highlight studio signing is unavailable.', 503);
   return createHmac('sha256', secret).update(`highlights|${kind}|${owner}|${id}|${expires}`).digest('hex');
 }
-export function resourceTicket(id: string, owner: string, kind: 'asset' | 'indexed' | 'review', now = Date.now()) {
+export function resourceTicket(id: string, owner: string, kind: 'asset' | 'indexed' | 'review' | 'scoreplay', now = Date.now()) {
   const expires = now + 24 * 60 * 60 * 1000;
   return `${id}.${expires}.${signature(id, owner, kind, expires)}`;
 }
-export function resourceId(ticket: string, owner: string, kind: 'asset' | 'indexed' | 'review', now = Date.now()) {
+export function resourceId(ticket: string, owner: string, kind: 'asset' | 'indexed' | 'review' | 'scoreplay', now = Date.now()) {
   const [id, expiry, mac, extra] = ticket.split('.');
   const expires = Number(expiry);
   if (extra || !/^[a-f0-9]{24}$/.test(id || '') || !/^[a-f0-9]{64}$/.test(mac || '') || !Number.isSafeInteger(expires) || expires < now || expires > now + 24 * 60 * 60 * 1000) throw new HighlightAccessError('This video session expired or is invalid. Upload the video again.', 403);

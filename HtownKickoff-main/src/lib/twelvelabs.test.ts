@@ -3,6 +3,17 @@ import assert from 'node:assert/strict';
 import { TwelveLabsClient, TwelveLabsError } from './twelvelabs';
 import { jevPrompt } from './jev';
 const asset = '111111111111111111111111', indexed = '222222222222222222222222', index = '333333333333333333333333';
+
+test('cloud imports send only a source URL instead of buffering the game', async () => {
+  const client = new TwelveLabsClient('test-key', index, async (url, init) => {
+    assert.equal(String(url), 'https://api.twelvelabs.io/v1.3/assets');
+    assert.ok(init?.body instanceof FormData);
+    assert.equal(init.body.get('method'), 'url'); assert.equal(init.body.get('url'), 'https://cdn.scoreplay.io/game.mp4');
+    assert.equal(init.body.has('file'), false);
+    return Response.json({ _id: asset });
+  });
+  assert.equal(await client.importUrl('https://cdn.scoreplay.io/game.mp4'), asset);
+});
 test('direct upload, ready asset indexing, indexed status, and search use separate resource IDs', async () => {
   const calls: string[] = [];
   const mock: typeof fetch = async (input, init) => {

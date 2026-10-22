@@ -5,24 +5,23 @@ import { highlightResponse } from '../../lib/highlight-request';
 import styles from './HighlightStudio.module.css';
 const endpoint = `${process.env.NEXT_PUBLIC_APP_BASE_PATH || ''}/api/stream/scoreplay`;
 type Media = { id: string; name: string; duration?: number };
-export default function ScorePlaySource({ disabled, onChoose }: { disabled: boolean; onChoose: (file: File) => void }) {
+export type ScorePlayVideo = { ticket: string; name: string; url: string; duration: number; bytes: number };
+export default function ScorePlaySource({ disabled, onChoose }: { disabled: boolean; onChoose: (source: ScorePlayVideo) => void }) {
   const [query, setQuery] = useState(''), [media, setMedia] = useState<Media[]>([]), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   async function run(id?: string) {
     const abort = new AbortController(); controller.current = abort; setBusy(true); setError('');
     try {
-      const response = await highlightResponse(await highlightFetch(id ? `${endpoint}?mediaId=${encodeURIComponent(id)}` : `${endpoint}?q=${encodeURIComponent(query)}`, { method: id ? 'POST' : 'GET', signal: abort.signal }));
+      const response = await highlightResponse(await highlightFetch(id ? `${endpoint}?mode=source&mediaId=${encodeURIComponent(id)}` : `${endpoint}?q=${encodeURIComponent(query)}`, { method: id ? 'POST' : 'GET', signal: abort.signal }));
       if (id) {
-        const blob = await response.blob();
-        const filename = response.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] || `scoreplay-${id}.mp4`;
-        onChoose(new File([blob], filename, { type: 'video/mp4' }));
+        onChoose(await response.json());
       } else { const data = await response.json(); setMedia(data.media); if (!data.media.length) setError('No matching ScorePlay videos. Try another filename.'); }
     } catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { setBusy(false); }
   }
   return <details style={{ marginBottom: 20 }}><summary>Choose a video from ScorePlay</summary>
-    <p className={styles.hint}>Find a recorded video in your connected ScorePlay library. Importing downloads a ready MP4 up to 200 MB, then starts the same highlight workflow as a local file.</p>
+    <p className={styles.hint}>Choose a recording up to four hours and 4 GB. TwelveLabs imports it directly from ScorePlay without downloading and uploading the whole game through your browser. Export reads the selected moments from ScorePlay.</p>
     <form onSubmit={e => { e.preventDefault(); void run(); }} className={styles.row}>
       <label>Video filename<input value={query} maxLength={120} disabled={disabled || busy} onChange={e => setQuery(e.target.value)} placeholder="Search or leave blank for recent videos" /></label>
       <button className={styles.secondary} disabled={disabled || busy}>Browse ScorePlay</button>

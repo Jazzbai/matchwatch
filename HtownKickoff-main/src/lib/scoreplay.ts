@@ -18,12 +18,12 @@ export function scorePlayDownloadUrl(value: string) {
   }
   return url.href;
 }
-export function selectScorePlayFormat(data: { items?: Record<string, Format[]> }) {
+export function selectScorePlayFormat(data: { items?: Record<string, Format[]> }, limit = scorePlayLimit) {
   const formats = Object.values(data.items || {}).flat().filter(f => f && f.is_scoreplay === true &&
-    f.size > 0 && f.size <= scorePlayLimit && f.mime_type === 'video/mp4' && f.file_url && (!f.status || ['ready', 'active'].includes(f.status)));
+    f.size > 0 && f.size <= limit && f.mime_type === 'video/mp4' && f.file_url && (!f.status || ['ready', 'active'].includes(f.status)));
   // Keep the best available MP4 within the existing prototype upload limit.
   formats.sort((a, b) => b.size - a.size);
-  if (!formats.length) throw new ScorePlayError('No ready downloadable MP4 under 200 MB. Create a shorter MP4 in ScorePlay or upload a local excerpt.', 400);
+  if (!formats.length) throw new ScorePlayError(`No ready downloadable MP4 under ${Math.round(limit / 1048576)} MB. Choose another ScorePlay video or create a smaller MP4 version.`, 400);
   return { ...formats[0], file_url: scorePlayDownloadUrl(formats[0].file_url!) };
 }
 export class ScorePlayClient {
@@ -40,6 +40,14 @@ export class ScorePlayClient {
     const data = await this.request('/media/search?page=1&per_page=12', { method: 'POST', body: JSON.stringify({ media_type: 'video', ...(query.trim() ? { name: query.trim() } : {}) }) });
     if (!Array.isArray(data.media)) throw new ScorePlayError('ScorePlay returned an unexpected media list.');
     return data.media.filter((m: Media) => Number.isSafeInteger(m.ID) && m.ID > 0 && m.type === 'video' && typeof m.name === 'string').map((m: Media) => ({ id: String(m.ID), name: m.name, duration: m.duration }));
+  }
+  async source(id: string) {
+    if (!/^[1-9][0-9]{0,15}$/.test(id)) throw new ScorePlayError('Choose a valid ScorePlay media ID.', 400);
+    const media = await this.request(`/media/${id}`);
+    if (media.type !== 'video') throw new ScorePlayError('Choose a video from ScorePlay.', 400);
+    if (Number(media.duration) > 14400) throw new ScorePlayError('Choose a recording up to four hours long.', 400);
+    const format = selectScorePlayFormat(await this.request(`/media/${id}/formats/download?hide_non_favorites=true`), 4 * 1024 ** 3);
+    return { url: format.file_url, name: media.name as string, duration: Number(media.duration) || 0, bytes: format.size };
   }
   async download(id: string, signal: AbortSignal) {
     if (!/^[1-9][0-9]{0,15}$/.test(id)) throw new ScorePlayError('Choose a valid ScorePlay media ID.', 400);

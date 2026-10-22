@@ -28,6 +28,12 @@ export class TwelveLabsClient {
     return asset._id;
   }
   asset(id: string) { return this.request<Resource>(`/assets/${id}`); }
+  async importUrl(url: string) {
+    const body = new FormData(); body.set('method', 'url'); body.set('url', url); body.set('enable_hls', 'false');
+    const asset = await this.request<Resource>('/assets', { method: 'POST', body });
+    if (!asset._id || !validVideoId(asset._id)) throw new TwelveLabsError('TwelveLabs did not return a valid imported asset ID.', 502);
+    return asset._id;
+  }
   async indexAsset(id: string) {
     const asset = await this.asset(id);
     if (asset.status !== 'ready') throw new TwelveLabsError(asset.status === 'failed' ? asset.error?.message || 'Video processing failed.' : 'Wait for video processing to finish before indexing.', 409);

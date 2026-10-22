@@ -56,3 +56,11 @@ test('a truncated storage response cannot become an imported video', async () =>
   });
   await assert.rejects(() => client.download('123', new AbortController().signal), /incomplete/);
 });
+
+test('direct ScorePlay source resolution supports recordings beyond the browser upload limit', async () => {
+  const client = new ScorePlayClient('private-key', async url => String(url).endsWith('/media/123')
+    ? Response.json({ type: 'video', name: 'full-game.mp4', duration: 10800 })
+    : Response.json({ items: { a: [{ id: 'a', file_name: 'full-game.mp4', size: 2 * 1024 ** 3, mime_type: 'video/mp4', file_url: 'https://cdn.scoreplay.io/full-game.mp4', is_scoreplay: true, status: 'active' }] } }));
+  const source = await client.source('123');
+  assert.equal(source.bytes, 2 * 1024 ** 3); assert.equal(source.duration, 10800);
+});

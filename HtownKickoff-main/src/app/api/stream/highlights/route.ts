@@ -8,6 +8,7 @@ import { TwelveLabsClient, TwelveLabsError, validVideoId } from '../../../../lib
 import { HighlightAccessError, highlightOwner, studioEnabled, resourceTicket, resourceId, reserveOperation } from '../../../../lib/highlight-access';
 import { reviewInput } from '../../../../lib/jev';
 import { analysisProxyArgs } from '../../../../lib/analysis-proxy';
+import { ScorePlayClient, ScorePlayError, scorePlayAllowed } from '../../../../lib/scoreplay';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -19,6 +20,7 @@ function client() {
   return new TwelveLabsClient(key, index);
 }
 function failure(error: unknown) {
+  if (error instanceof ScorePlayError) return NextResponse.json({ error: error.message }, { status: error.status });
   if (error instanceof HighlightAccessError) return NextResponse.json({ error: error.message }, { status: error.status });
   if (error instanceof TwelveLabsError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status, headers: error.retryAfter ? { 'Retry-After': error.retryAfter } : undefined });
   return NextResponse.json({ error: error instanceof Error ? error.message : 'Highlight request failed.' }, { status: 400 });
@@ -65,8 +67,18 @@ export async function POST(request: NextRequest) {
     release = reserveOperation(owner, 'request');
     const form = await request.formData();
     const action = form.get('action');
-    if (!['upload', 'index', 'search', 'review', 'export'].includes(String(action))) throw new Error('Unknown highlight action.');
-    release(); release = reserveOperation(owner, String(action));
+    if (!['upload', 'scoreplay-upload', 'index', 'search', 'review', 'export'].includes(String(action))) throw new Error('Unknown highlight action.');
+    release(); release = reserveOperation(owner, action === 'scoreplay-upload' ? 'upload' : String(action));
+    async function scorePlaySource() {
+      if (!scorePlayAllowed(owner)) throw new HighlightAccessError('ScorePlay access has not been enabled for your account.', 403);
+      if (!process.env.SCOREPLAY_API_KEY) throw new ScorePlayError('ScorePlay is not connected on this server yet.', 503);
+      const id = BigInt(`0x${resourceId(String(form.get('scoreplayTicket') || ''), owner, 'scoreplay')}`).toString();
+      return new ScorePlayClient(process.env.SCOREPLAY_API_KEY).source(id);
+    }
+    if (action === 'scoreplay-upload') {
+      const source = await scorePlaySource();
+      return NextResponse.json({ assetId: resourceTicket(await client().importUrl(source.url), owner, 'asset') });
+    }
     if (action === 'review') {
       const id = resourceId(String(form.get('assetId') || ''), owner, 'asset');
       const duration = Number(form.get('duration'));
@@ -114,16 +126,18 @@ export async function POST(request: NextRequest) {
     }
     if (action !== 'export') throw new Error('Unknown highlight action.');
     const video = form.get('video');
-    if (!(video instanceof File) || video.size === 0 || video.size > 200 * 1024 * 1024) throw new Error('Choose a video smaller than 200 MB.');
+    const remote = form.get('scoreplayTicket') ? await scorePlaySource() : null;
+    if (!remote && (!(video instanceof File) || video.size === 0 || video.size > 200 * 1024 * 1024)) throw new Error('Choose a video smaller than 200 MB.');
     const clips: { start: number; end: number }[] = JSON.parse(String(form.get('clips') || '[]'));
     if (!Array.isArray(clips) || !clips.length || clips.length > 20 || clips.some(c => !Number.isFinite(c.start) || !Number.isFinite(c.end) || c.start < 0 || c.end <= c.start || c.end > 86400) || clips.reduce((sum, c) => sum + c.end - c.start, 0) > 300.01) throw new Error('Select 1–20 valid clips totaling at most five minutes.');
     directory = await mkdtemp(join(tmpdir(), 'matchwatch-highlights-'));
-    const source = join(directory, 'source.mp4'); await writeFile(source, Buffer.from(await video.arrayBuffer()));
+    const source = remote?.url || join(directory, 'source.mp4');
+    if (!remote && video instanceof File) await writeFile(source, Buffer.from(await video.arrayBuffer()));
     const list = [];
     for (let i = 0; i < clips.length; i++) {
       const clip = clips[i];
       // Disable network protocols and normalize every clip for reliable concatenation.
-      await run(['-nostdin', '-y', '-protocol_whitelist', 'file,pipe', '-ss', String(clip.start), '-i', source, '-t', String(clip.end - clip.start), '-map', '0:v:0', '-map', '0:a:0?', '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1', '-r', '30', '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '48000', join(directory, `clip-${i}.mp4`)]);
+      await run(['-nostdin', '-y', '-protocol_whitelist', remote ? 'https,tls,tcp,crypto' : 'file,pipe', ...(remote ? ['-rw_timeout', '30000000', '-format_whitelist', 'mov,mp4,m4a,3gp,3g2,mj2'] : []), '-ss', String(clip.start), '-i', source, '-t', String(clip.end - clip.start), '-map', '0:v:0', '-map', '0:a:0?', '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1', '-r', '30', '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '48000', join(directory, `clip-${i}.mp4`)]);
       list.push(`file 'clip-${i}.mp4'`);
     }
     await writeFile(join(directory, 'clips.txt'), list.join('\n'));
