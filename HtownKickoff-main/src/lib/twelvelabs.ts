@@ -1,4 +1,4 @@
-import { jevPrompt, jevSchema, parseJevReviews, reviewWindow, type JevCandidate } from './jev';
+import { jevPrompt, jevSchemaFor, parseJevReviews, recoverJevReviews, reviewInput, reviewWindow, type JevCandidate } from './jev';
 const base = 'https://api.twelvelabs.io/v1.3';
 export class TwelveLabsError extends Error {
   constructor(message: string, public status: number, public code?: string, public retryAfter?: string) { super(message); }
@@ -42,16 +42,27 @@ export class TwelveLabsClient {
       model_name: 'pegasus1.6', video: { type: 'asset_id', asset_id: id },
       prompt: jevPrompt(candidates), temperature: 0.1, max_tokens: 16384,
       start_time: window.start, end_time: window.end,
-      response_format: { type: 'json_schema', json_schema: jevSchema },
+      response_format: { type: 'json_schema', json_schema: jevSchemaFor(candidates) },
     }) });
     if (!data.task_id || !validVideoId(data.task_id)) throw new TwelveLabsError('TwelveLabs did not return a valid Jev task ID.', 502);
     return data.task_id;
   }
   async reviewStatus(id: string) {
-    const task = await this.request<{ status?: string; error?: { message?: string }; result?: { data?: string; finish_reason?: string } }>(`/analyze/tasks/${id}`);
+    const task = await this.request<{ status?: string; error?: { message?: string }; result?: { data?: string; finish_reason?: string }; request_params?: { prompt?: string; start_time?: number; end_time?: number } }>(`/analyze/tasks/${id}`);
     if (task.status !== 'ready') return { status: task.status, error: task.error?.message };
     if (task.error || task.result?.finish_reason === 'length' || typeof task.result?.data !== 'string') throw new TwelveLabsError('Jev returned an incomplete analysis. Your candidates are unchanged.', 502);
-    try { return { status: task.status, reviews: parseJevReviews(JSON.parse(task.result.data)) }; }
+    try {
+      const parsed = parseJevReviews(JSON.parse(task.result.data)), params = task.request_params;
+      const marker = '\nCandidate data: ', position = params?.prompt?.lastIndexOf(marker) ?? -1;
+      if (position >= 0 && params?.prompt && typeof params.end_time === 'number' && typeof params.start_time === 'number') {
+        const candidates = reviewInput(JSON.parse(params.prompt.slice(position + marker.length)), params.end_time);
+        const window = reviewWindow(candidates, params.end_time);
+        if (Math.abs(window.start - params.start_time) > 1e-6 || Math.abs(window.end - params.end_time) > 1e-6) throw new Error('Analysis window does not match its candidates.');
+        const reviews = recoverJevReviews(parsed, candidates, params.end_time);
+        return { status: task.status, reviews };
+      }
+      return { status: task.status, reviews: parsed };
+    }
     catch { throw new TwelveLabsError('Jev returned invalid review data. Your candidates are unchanged.', 502); }
   }
   async search(id: string, query: string) {

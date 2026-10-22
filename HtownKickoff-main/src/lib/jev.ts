@@ -25,6 +25,16 @@ const properties = {
   recommend_include: { type: 'boolean' }, reason: { type: 'string' }, needs_review: { type: 'boolean' },
 };
 export const jevSchema = { type: 'object', properties: { reviews: { type: 'array', items: { type: 'object', properties, required: Object.keys(properties) } } }, required: ['reviews'] };
+export function jevSchemaFor(candidates: JevCandidate[]) {
+  const ids = candidates.map(c => c.id);
+  return { ...jevSchema, properties: { reviews: { ...jevSchema.properties.reviews,
+    minItems: ids.length, maxItems: ids.length,
+    items: { ...jevSchema.properties.reviews.items, properties: { ...properties,
+      candidate_id: { type: 'string', enum: ids },
+      duplicate_of: { anyOf: [{ type: 'string', enum: ids }, { type: 'null' }] },
+    } },
+  } } };
+}
 
 export function reviewInput(value: unknown, duration: number): JevCandidate[] {
   if (!Number.isFinite(duration) || duration < 1 || duration > 14400 || !Array.isArray(value) || !value.length || value.length > 20) throw new Error('Choose 1–20 candidates in a video up to four hours long for Jev review.');
@@ -73,6 +83,31 @@ export function validateJevReviews(value: unknown, candidates: JevCandidate[], d
     if (!candidate || r.suggested_start < Math.max(window.start, candidate.start - 30) || r.suggested_end > Math.min(window.end, candidate.end + 30) || invalidDuplicate) throw new Error('Jev returned an unknown candidate, invalid duplicate, or unsafe clip boundary.');
   }
   return reviews;
+}
+
+/** Preserve exact matches; never guess which candidate a malformed ID meant. */
+export function recoverJevReviews(value: unknown, candidates: JevCandidate[], duration: number): JevReview[] {
+  reviewInput(candidates, duration);
+  const reviews = parseJevReviews({ reviews: value }), window = reviewWindow(candidates, duration);
+  const recovered = candidates.map(candidate => {
+    const review = reviews.find(r => r.candidate_id === candidate.id);
+    if (!review) return {
+      candidate_id: candidate.id, event: candidate.label,
+      importance_estimate: null, excitement_estimate: null, watchability_estimate: null,
+      match_context: null, duplicate_of: null, suggested_start: candidate.start, suggested_end: candidate.end,
+      recommend_include: false, needs_review: true,
+      reason: 'No AI review matched this exact candidate ID. Check this moment manually; it was excluded from automatic selection.',
+    };
+    const canonical = reviews.find(r => r.candidate_id === review.duplicate_of);
+    const badDuplicate = review.duplicate_of !== null && (!canonical || canonical.candidate_id === candidate.id || canonical.duplicate_of !== null || !candidates.some(c => c.id === canonical.candidate_id));
+    const badBoundary = review.suggested_start < Math.max(window.start, candidate.start - 30) || review.suggested_end > Math.min(window.end, candidate.end + 30);
+    if (!badDuplicate && !badBoundary) return review;
+    return { ...review, duplicate_of: null, suggested_start: candidate.start, suggested_end: candidate.end,
+      recommend_include: false, needs_review: true,
+      reason: `${review.reason.slice(0, 750)} Validation: AI ${badBoundary ? 'clip boundaries' : 'duplicate reference'} could not be verified. Original candidate timing is retained for manual review; automatic selection is disabled.`,
+    };
+  });
+  return validateJevReviews(recovered, candidates, duration);
 }
 export function jevUtility(review: JevReview) {
   const factors = [[review.importance_estimate, 0.5], [review.excitement_estimate, 0.3], [review.watchability_estimate, 0.2]] as const;

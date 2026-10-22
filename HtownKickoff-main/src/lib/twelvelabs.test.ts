@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TwelveLabsClient, TwelveLabsError } from './twelvelabs';
+import { jevPrompt } from './jev';
 const asset = '111111111111111111111111', indexed = '222222222222222222222222', index = '333333333333333333333333';
 test('direct upload, ready asset indexing, indexed status, and search use separate resource IDs', async () => {
   const calls: string[] = [];
@@ -59,6 +60,18 @@ test('Jev returns validated evidence only when its analysis task is complete', a
   assert.deepEqual(await client.reviewStatus(indexed), { status: 'processing', error: undefined });
   status = 'ready';
   assert.deepEqual(await client.reviewStatus(indexed), { status: 'ready', reviews });
+});
+
+test('completed older tasks recover mistyped IDs using their original request manifest', async () => {
+  const candidates = [{ id: 'goal', label: 'Goal', start: 20, end: 25 }, { id: 'replay', label: 'Replay', start: 60, end: 65 }];
+  const base = { event: 'goal', importance_estimate: 0.9, excitement_estimate: 0.8, watchability_estimate: 0.8, match_context: null, duplicate_of: null, recommend_include: true, reason: 'Visible action.', needs_review: false };
+  const client = new TwelveLabsClient('key', index, async () => Response.json({ status: 'ready', request_params: { prompt: jevPrompt(candidates), start_time: 10, end_time: 80 }, result: { finish_reason: 'stop', data: JSON.stringify({ reviews: [ { ...base, candidate_id: 'goal', suggested_start: 15, suggested_end: 30 }, { ...base, candidate_id: 'repla', suggested_start: 55, suggested_end: 70 } ] }) } }));
+  const result = await client.reviewStatus(indexed);
+  assert.equal(result.reviews?.length, 2);
+  assert.equal(result.reviews?.[0].needs_review, false);
+  assert.equal(result.reviews?.[1].candidate_id, 'replay');
+  assert.equal(result.reviews?.[1].needs_review, true);
+  assert.equal(result.reviews?.[1].recommend_include, false);
 });
 test('provider status, error code, and retry timing survive rate limits', async () => {
   const client = new TwelveLabsClient('key', index, async () => Response.json({ code: 'rate_limit', message: 'Please wait.' }, { status: 429, headers: { 'Retry-After': '30' } }));

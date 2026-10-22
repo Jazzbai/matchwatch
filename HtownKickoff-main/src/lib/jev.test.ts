@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { jevUtility, reviewInput, validateJevReviews, type JevReview } from './jev';
+import { jevUtility, jevSchemaFor, recoverJevReviews, reviewInput, validateJevReviews, type JevReview } from './jev';
 import { planHighlights, type HighlightEvent } from './highlight-plan';
 import { optimizeHighlights } from './highlight-optimizer';
 const candidates = [{ id: 'goal', label: 'Goal', start: 20, end: 25 }, { id: 'replay', label: 'Replay', start: 60, end: 65 }];
@@ -24,6 +24,29 @@ test('candidate validation bounds paid analysis input', () => {
   assert.throws(() => reviewInput(Array(21).fill(candidates[0]), 100));
   assert.throws(() => reviewInput(candidates, 20));
   assert.throws(() => reviewInput([candidates[0], candidates[0]], 100));
+});
+
+test('structured output restricts IDs to the exact candidates and requires the requested count', () => {
+  const schema = jevSchemaFor(candidates).properties.reviews;
+  assert.deepEqual(schema.items.properties.candidate_id.enum, ['goal', 'replay']);
+  assert.equal(schema.minItems, 2); assert.equal(schema.maxItems, 2);
+});
+test('one mistyped candidate ID preserves valid results without guessing its identity', () => {
+  const recovered = recoverJevReviews([review(), review('repla', { suggested_start: 55, suggested_end: 70 })], candidates, 100);
+  assert.deepEqual(recovered[0], review());
+  assert.equal(recovered[1].candidate_id, 'replay');
+  assert.equal(recovered[1].needs_review, true);
+  assert.equal(recovered[1].recommend_include, false);
+  assert.equal(recovered[1].importance_estimate, null);
+  assert.deepEqual(optimizeHighlights(recovered.map(r => event(r.candidate_id, r)), 100, 60).map(c => c.id), ['goal']);
+});
+test('unsafe bounds and cyclic duplicate claims are held for manual review', () => {
+  const unsafe = recoverJevReviews([review('goal', { suggested_end: 99 }), review('replay', { suggested_start: 55, suggested_end: 70 })], candidates, 100);
+  assert.equal(unsafe[0].needs_review, true); assert.equal(unsafe[0].recommend_include, false);
+  assert.equal(unsafe[0].suggested_start, 20); assert.equal(unsafe[0].suggested_end, 25);
+  assert.equal(unsafe[1].needs_review, false);
+  const cycle = recoverJevReviews([review('goal', { duplicate_of: 'replay' }), review('replay', { suggested_start: 55, suggested_end: 70, duplicate_of: 'goal' })], candidates, 100);
+  assert.ok(cycle.every(r => r.needs_review && !r.recommend_include && r.duplicate_of === null));
 });
 
 test('a clearer later replay may replace the original, but duplicate cycles and self-links are rejected', () => {
