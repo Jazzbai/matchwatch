@@ -21,7 +21,7 @@ const clock = (value: number) => `${Math.floor(value / 60).toString().padStart(2
 const defaults = { Soccer: 'Goal scored\nShot on target\nFoul or penalty\nCrowd celebration', Basketball: 'Dunk\nThree-point shot\nAssist or block\nCrowd celebration' };
 const steps = ['Input video', 'Detect events', 'Jev review', 'Score & rank', 'Refine clips', 'Select highlights', 'Assemble', 'Export MP4'];
 export default function HighlightStudio() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [file, setFile] = useState<File | null>(null), [url, setUrl] = useState(''), [duration, setDuration] = useState(0);
   const [sport, setSport] = useState<'Soccer' | 'Basketball'>('Basketball'), [queries, setQueries] = useState(defaults.Basketball);
   const [events, setEvents] = useState<Event[]>([]), [excluded, setExcluded] = useState<string[]>([]);
@@ -144,8 +144,11 @@ export default function HighlightStudio() {
           <label>Moments to find <small>One query per line · up to eight</small><textarea rows={4} value={queries} disabled={!!busy} onChange={e => setQueries(e.target.value)} /></label>
           <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoStart} disabled={!!busy} onChange={e => setAutoStart(e.target.checked)} />Start processing when I choose a video</span></label>
           <label><span><input type="checkbox" style={{ width: 'auto', marginRight: 8 }} checked={autoExport} disabled={!!busy} onChange={e => setAutoExport(e.target.checked)} />Generate the MP4 after detection (skip optional Jev review)</span></label>
+          {config?.requiresLogin && !isAuthenticated && <div className={styles.notice} role="status">
+            {authLoading ? <p>Checking your sign-in…</p> : <div><strong>Sign in to start video processing.</strong><p>Your video can be previewed here, but uploading to TwelveLabs and creating highlights require a MatchWatch account.</p><a className={styles.primary} href="/login?next=%2Fapp">Sign in & return to the studio</a><p>After signing in, choose your video again to start processing.</p></div>}
+          </div>}
           <button className={styles.primary} disabled={!file || !duration || !!busy || !config?.detectionReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={() => void detect()}><Sparkles size={16} /> {autoExport ? 'Find moments & create highlight' : 'Detect events with TwelveLabs'} <ArrowRight size={16} /></button>
-          <p className={styles.hint}>{!config ? 'Checking detection availability…' : config.detectionReady ? 'Detection sends this video to TwelveLabs for indexing and visual search.' : 'AI detection is not configured on this server yet. You can add events manually below.'}</p>
+          <p className={styles.hint}>{busy ? busy : !config ? 'Checking detection availability…' : config.requiresLogin && !isAuthenticated ? 'Processing is paused until you sign in.' : !config.detectionReady ? 'AI detection is not configured on this server yet. You can add events manually below.' : !file ? 'Choose a video to begin. It will be sent to TwelveLabs for indexing and visual search.' : !duration ? 'Waiting for the video duration. If it does not load, try an H.264 MP4.' : 'Detection sends this video to TwelveLabs for indexing and visual search.'}</p>
         </section>
         <section className={styles.card}><div className={styles.heading}><span>02</span><h2>Build your highlight</h2><Scissors size={20} /></div>
           <div className={styles.stats}><div><strong>{events.length}</strong><span>CANDIDATES</span></div><div><strong>{plan.length}</strong><span>SELECTED CLIPS</span></div><div><strong>{clock(total)}</strong><span>OF {clock(target)} TARGET</span></div></div>
