@@ -5,16 +5,15 @@ import Link from 'next/link';
 import { ArrowRight, Check, Film, Scissors, Sparkles, Upload, Download, Trash2 } from 'lucide-react';
 import { eventScore, type HighlightEvent } from '../../lib/highlight-plan';
 import styles from './HighlightStudio.module.css';
-import { getAccessToken } from '../../lib/api';
+import { highlightAuthorization, highlightFetch } from '../../lib/highlight-session';
 import { useAuth } from '../../lib/auth-context';
 import { reviewInput, reviewWindow, validateJevReviews } from '../../lib/jev';
 import { highlightResponse, uploadHighlight } from '../../lib/highlight-request';
 import { optimizeHighlights, reviewShortlist } from '../../lib/highlight-optimizer';
 
 const endpoint = `${process.env.NEXT_PUBLIC_APP_BASE_PATH || ''}/api/stream/highlights`;
-function authorization(): HeadersInit { const token = getAccessToken(); return token ? { Authorization: `Bearer ${token}` } : {}; }
 async function request(form: FormData, signal?: AbortSignal) {
-  return highlightResponse(await fetch(endpoint, { method: 'POST', body: form, signal, headers: authorization() }));
+  return highlightResponse(await highlightFetch(endpoint, { method: 'POST', body: form, signal }));
 }
 async function compareWithJev(asset: string, events: Event[], duration: number, signal: AbortSignal, status: (text: string) => void): Promise<Event[]> {
   const candidates = reviewInput(events, duration);
@@ -24,7 +23,7 @@ async function compareWithJev(asset: string, events: Event[], duration: number, 
   const { reviewId } = await (await request(form, signal)).json();
   if (!reviewId) throw new Error('Jev did not return a review task.');
   for (let i = 0; i < 180; i++) {
-    const response = await highlightResponse(await fetch(`${endpoint}?reviewId=${encodeURIComponent(reviewId)}`, { signal, cache: 'no-store', headers: authorization() }));
+    const response = await highlightResponse(await highlightFetch(`${endpoint}?reviewId=${encodeURIComponent(reviewId)}`, { signal, cache: 'no-store' }));
     const data = await response.json();
     if (data.error || ['failed', 'canceled'].includes(data.status)) throw new Error(data.error || 'AI comparison failed. No automatic reel was created; inspect the candidates or turn AI comparison off.');
     if (data.status === 'ready') {
@@ -79,7 +78,7 @@ export default function HighlightStudio() {
       let assetId = sourceResource.current.asset;
       if (!assetId) {
         const upload = new FormData(); upload.set('action', 'upload'); upload.set('video', file); upload.set('compress', String(compress));
-        const uploaded = await uploadHighlight(endpoint, upload, authorization(), abort.signal, (sent, size) => {
+        const uploaded = await uploadHighlight(endpoint, upload, await highlightAuthorization(), abort.signal, (sent, size) => {
           const percent = Math.min(100, Math.floor(sent / size * 100));
           setBusy(percent === 100 ? (compress ? 'Video sent. Preparing a smaller analysis copy and sending it to TwelveLabs…' : 'Video sent to MatchWatch. Waiting for TwelveLabs to accept it…') : `Uploading video to MatchWatch · ${percent}% · ${(sent / 1048576).toFixed(1)} / ${(size / 1048576).toFixed(1)} MB`);
         });
@@ -92,7 +91,7 @@ export default function HighlightStudio() {
       setAssetTicket('');
       async function waitUntilReady(parameter: string, id: string, stage: string) {
         for (let i = 0; i < 180; i++) {
-          const response = await highlightResponse(await fetch(`${endpoint}?${parameter}=${encodeURIComponent(id)}`, { signal: abort.signal, cache: 'no-store', headers: authorization() })); const resource = await response.json();
+          const response = await highlightResponse(await highlightFetch(`${endpoint}?${parameter}=${encodeURIComponent(id)}`, { signal: abort.signal, cache: 'no-store' })); const resource = await response.json();
           if (!response.ok || resource.error) throw new Error(resource.error || `${stage} failed.`);
           if (resource.status === 'ready') return resource;
           if (['failed', 'canceled'].includes(resource.status)) throw new Error(`${stage} failed. Try an H.264 MP4 with a clear video track.`);
@@ -161,7 +160,7 @@ export default function HighlightStudio() {
       const { reviewId } = await (await request(form, abort.signal)).json();
       if (!reviewId) throw new Error('Jev did not return a review task.');
       for (let i = 0; i < 180; i++) {
-        const response = await fetch(`${endpoint}?reviewId=${encodeURIComponent(reviewId)}`, { signal: abort.signal, cache: 'no-store', headers: authorization() });
+        const response = await highlightFetch(`${endpoint}?reviewId=${encodeURIComponent(reviewId)}`, { signal: abort.signal, cache: 'no-store' });
         const data = await response.json();
         if (!response.ok || data.error || ['failed', 'canceled'].includes(data.status)) throw new Error(data.error || 'Jev review failed. Existing candidates are unchanged.');
         if (data.status === 'ready') {

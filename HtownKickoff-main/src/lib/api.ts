@@ -96,7 +96,7 @@ async function refreshToken(): Promise<string | null> {
 }
 
 // Single-flight refresh: prevent multiple concurrent refresh requests
-async function ensureToken(): Promise<string | null> {
+export async function ensureToken(): Promise<string | null> {
     if (!refreshPromise) {
         refreshPromise = refreshToken().finally(() => {
             refreshPromise = null;
