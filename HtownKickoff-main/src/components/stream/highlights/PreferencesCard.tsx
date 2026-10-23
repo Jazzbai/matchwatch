@@ -14,10 +14,14 @@ export type PreferenceForm = {
   starPlayers: string;
   maxMoments: number;
   minGapSeconds: number;
+  beforeSeconds: number;
+  afterSeconds: number;
+  queryText: Partial<Record<EventType, string>>;
 };
 export const defaultPreferenceForm = (sport: Sport = 'Soccer'): PreferenceForm => ({
   sport, targetSeconds: 60, preset: 'balanced', types: defaultQueries[sport].map(query => query.type),
   favoriteTeam: '', starPlayers: '', maxMoments: 5, minGapSeconds: 5,
+  beforeSeconds: 5, afterSeconds: 10, queryText: {},
 });
 
 export function toPreferences(form: PreferenceForm): HighlightPreferences {
@@ -26,8 +30,10 @@ export function toPreferences(form: PreferenceForm): HighlightPreferences {
     targetSeconds: form.targetSeconds,
     maxMoments: form.maxMoments,
     minGapSeconds: form.minGapSeconds,
+    beforeSeconds: form.beforeSeconds,
+    afterSeconds: form.afterSeconds,
     weights: presetWeights(form.preset),
-    queries: defaultQueries[form.sport].filter(query => form.types.includes(query.type)),
+    queries: defaultQueries[form.sport].filter(query => form.types.includes(query.type)).map(query => ({ ...query, text: form.queryText[query.type]?.trim() || query.text })),
     favoriteTeam: form.favoriteTeam.trim() || undefined,
     starPlayers: form.starPlayers.split(',').map(name => name.trim()).filter(Boolean).slice(0, 10),
   };
@@ -63,6 +69,7 @@ export default function PreferencesCard({ form, onChange, disabled, children }: 
             <input type="checkbox" checked={form.types.includes(query.type)} onChange={event => set({ types: event.target.checked ? [...form.types, query.type] : form.types.filter(type => type !== query.type) })} />
             <span>{query.text}</span>
           </label>)}</div>
+          <div className={styles.row}>{defaultQueries[form.sport].filter(query => form.types.includes(query.type)).map(query => <label key={query.type}>Search description: {query.text}<input value={form.queryText[query.type] ?? query.text} maxLength={200} onChange={event => set({ queryText: { ...form.queryText, [query.type]: event.target.value } })} /></label>)}</div>
         </fieldset>
         <fieldset className={styles.customGroup} disabled={disabled}>
           <legend>Audience</legend>
@@ -73,6 +80,11 @@ export default function PreferencesCard({ form, onChange, disabled, children }: 
         </fieldset>
         <fieldset className={styles.customGroup} disabled={disabled}>
           <legend>Selection rules</legend>
+          <div className={styles.row}>
+            <label>Before event: {form.beforeSeconds} seconds<input type="range" min="0" max="30" step="1" value={form.beforeSeconds} onChange={event => set({ beforeSeconds: Number(event.target.value) })} /></label>
+            <label>After event: {form.afterSeconds} seconds<input type="range" min="0" max="30" step="1" value={form.afterSeconds} onChange={event => set({ afterSeconds: Number(event.target.value) })} /></label>
+          </div>
+          <p className={styles.hint}>Padding applies when AI cannot verify the action boundaries.</p>
           <div className={styles.row}>
             <label>Top moments<select value={form.maxMoments} onChange={event => set({ maxMoments: Number(event.target.value) })}>{[3, 4, 5, 6, 8, 10].map(n => <option key={n} value={n}>Up to {n}</option>)}</select></label>
             <label>Minimum gap between clips<select value={form.minGapSeconds} onChange={event => set({ minGapSeconds: Number(event.target.value) })}>{[0, 5, 10, 20].map(n => <option key={n} value={n}>{n} seconds</option>)}</select></label>

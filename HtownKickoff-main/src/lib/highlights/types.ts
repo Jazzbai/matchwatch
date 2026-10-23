@@ -52,6 +52,8 @@ export type HighlightPreferences = {
   targetSeconds: number;
   maxMoments: number;
   minGapSeconds: number;
+  beforeSeconds?: number;
+  afterSeconds?: number;
   weights: Weights;
   queries: { type: EventType; text: string }[];
   favoriteTeam?: string;

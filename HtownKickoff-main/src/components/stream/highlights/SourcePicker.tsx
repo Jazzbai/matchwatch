@@ -4,6 +4,7 @@ import { CircleCheck, Library, LoaderCircle, Radio, RefreshCw, Upload } from 'lu
 import { fetchLibrary, type LibraryItem, type SourceChoice } from '../../../lib/highlights/client';
 import styles from '../HighlightStudio.module.css';
 import { clock } from './format';
+import ScorePlaySource from '../ScorePlaySource';
 
 type Tab = SourceChoice['kind'];
 type Props = { choice: SourceChoice | null; onChoose: (choice: SourceChoice) => void; disabled: boolean; canBrowse: boolean };
@@ -18,6 +19,7 @@ const tabs: { id: Tab; label: string; Icon: typeof Library }[] = [
 export default function SourcePicker({ choice, onChoose, disabled, canBrowse }: Props) {
   const [tab, setTab] = useState<Tab>('library');
   const [videos, setVideos] = useState<LibraryItem[] | null>(null);
+  const [indexedVisible, setIndexedVisible] = useState(false);
   const [filter, setFilter] = useState(''), [loading, setLoading] = useState(false), [error, setError] = useState('');
   const [dragging, setDragging] = useState(false);
   const [hlsUrl, setHlsUrl] = useState(''), [captureSeconds, setCaptureSeconds] = useState(60);
@@ -29,7 +31,7 @@ export default function SourcePicker({ choice, onChoose, disabled, canBrowse }: 
     catch (failure) { setError((failure as Error).message); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { if (canBrowse && tab === 'library' && !videos) void load(); }, [canBrowse, tab, videos, load]);
+  useEffect(() => { if (canBrowse && tab === 'library' && indexedVisible && !videos && !error) void load(); }, [canBrowse, tab, videos, indexedVisible, error, load]);
 
   function chooseFile(file: File | undefined) {
     if (!file) return;
@@ -47,6 +49,9 @@ export default function SourcePicker({ choice, onChoose, disabled, canBrowse }: 
     </div>
 
     {tab === 'library' && <div role="tabpanel" aria-label="ScorePlay library">
+      <ScorePlaySource disabled={disabled || !canBrowse} onChoose={source => onChoose({ kind: 'library', video: { ticket: source.ticket, name: source.name, duration: source.duration, playbackUrl: source.url || null, thumbnail: null, scoreplay: { mediaId: source.mediaId }, orientation: 'landscape' } })} />
+      <button type="button" className={styles.textButton} onClick={() => setIndexedVisible(value => !value)}>{indexedVisible ? 'Hide other indexed videos' : 'Other TwelveLabs indexed videos'}</button>
+      {indexedVisible && <>
       <div className={styles.libraryToolbar}>
         <input value={filter} onChange={event => setFilter(event.target.value)} placeholder="Search matches, players, clips…" aria-label="Search the library" disabled={!videos} />
         <button type="button" className={styles.secondary} disabled={loading || disabled || !canBrowse} onClick={() => void load(true)} aria-label="Refresh the library">
@@ -55,7 +60,7 @@ export default function SourcePicker({ choice, onChoose, disabled, canBrowse }: 
       </div>
       {!canBrowse && <p className={styles.libraryStatus}>Sign in to browse the match library.</p>}
       {loading && !videos && <p className={styles.libraryStatus}>Loading media already analyzed by TwelveLabs…</p>}
-      {videos && <p className={styles.libraryStatus}>{shown.length} of {videos.length} videos · already indexed, so analysis starts immediately.</p>}
+      {videos && <p className={styles.libraryStatus}>{shown.length} of {videos.length} videos in the connected TwelveLabs index.</p>}
       <div className={styles.libraryResults}>
         {shown.map(video => <button key={video.ticket} type="button" className={styles.libraryItem} aria-pressed={selectedTicket === video.ticket} disabled={disabled} onClick={() => onChoose({ kind: 'library', video })}>
           {/* eslint-disable-next-line @next/next/no-img-element -- Provider thumbnails are external, signed CDN URLs. */}
@@ -64,6 +69,7 @@ export default function SourcePicker({ choice, onChoose, disabled, canBrowse }: 
           {selectedTicket === video.ticket && <CircleCheck size={18} />}
         </button>)}
       </div>
+      </>}
     </div>}
 
     {tab === 'upload' && <div role="tabpanel" aria-label="Upload a video">
@@ -91,7 +97,7 @@ export default function SourcePicker({ choice, onChoose, disabled, canBrowse }: 
     {error && <p className={styles.error} role="alert">{error}</p>}
     {choice && <div className={styles.sourceSelected}><CircleCheck size={19} /><div>
       <strong>{choice.kind === 'library' ? choice.video.name : choice.kind === 'upload' ? choice.file.name : 'Live feed'}</strong>
-      <span>{choice.kind === 'library' ? `ScorePlay library · ${clock(choice.video.duration)} · already analyzed by TwelveLabs` : choice.kind === 'upload' ? `${(choice.file.size / 1048576).toFixed(1)} MB from your device` : `Last ${choice.seconds} seconds of the stream`}</span>
+      <span>{choice.kind === 'library' ? `${choice.video.scoreplay ? 'ScorePlay library' : 'TwelveLabs index'} · ${clock(choice.video.duration)} · ready for video understanding` : choice.kind === 'upload' ? `${(choice.file.size / 1048576).toFixed(1)} MB from your device` : `Last ${choice.seconds} seconds of the stream`}</span>
     </div></div>}
   </section>;
 }

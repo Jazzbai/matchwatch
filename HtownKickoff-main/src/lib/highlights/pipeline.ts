@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { openAsBlob } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fuseEvents } from './event-fusion';
@@ -22,11 +22,13 @@ import type {
 import { advanceUnderstanding, UnderstandingError, type UnderstandingState } from './video-understanding';
 import { analyzeEvent } from './viral-analysis';
 import { scoreEvent } from './viral-score';
+import { ScorePlayClient, ScorePlayError, scorePlayAllowed } from '../scoreplay';
+import { scorePlayMapping } from '../scoreplay-mapping';
 
 // Runs the ten diagram steps in order. Each request advances a job as far as it can
 // within a time budget; step 4 waits on TwelveLabs, so the browser polls until done.
 
-type StoredSource = { kind: 'library'; indexedAssetId: string } | Exclude<SourceRequest, { kind: 'library' }>;
+type StoredSource = { kind: 'library'; indexedAssetId: string } | { kind: 'scoreplay'; mediaId: string; indexedAssetId: string } | Exclude<SourceRequest, { kind: 'library' | 'scoreplay' }>;
 type StoredInput = { match: MatchInput; preferences: HighlightPreferences; source: StoredSource };
 type StepResult = { data: unknown; summary: string };
 export type Dependencies = {
@@ -53,7 +55,7 @@ export class HighlightPipeline {
 
   /** Creates a job. Uploads happen inside this request because the file is only available now. */
   async create(owner: string, input: JobInput, indexedAssetId: string | null, video?: File, signal?: AbortSignal): Promise<Job> {
-    const source: StoredSource = input.source.kind === 'library' ? { kind: 'library', indexedAssetId: indexedAssetId! } : input.source;
+    const source: StoredSource = input.source.kind === 'library' ? { kind: 'library', indexedAssetId: indexedAssetId! } : input.source.kind === 'scoreplay' ? { kind: 'scoreplay', mediaId: input.source.mediaId, indexedAssetId: indexedAssetId! } : input.source;
     const job = await this.store.create(owner, input.match.title, { match: input.match, preferences: input.preferences, source } satisfies StoredInput);
     if (source.kind === 'upload') {
       if (!video || video.size === 0 || video.size > MAX_UPLOAD_BYTES) throw new PipelineError('Choose a video file of up to 200 MB.');
@@ -89,18 +91,25 @@ export class HighlightPipeline {
       const input = await this.store.read<StoredInput>(owner, id, 'input.json');
       const next = parsePreferences(preferences as Record<string, unknown>);
       input.preferences = { ...next, sport: input.preferences.sport, queries: input.preferences.queries };
+      for (const status of job.steps.slice(4)) { status.state = 'pending'; status.message = 'Re-scoring saved evidence.'; }
+      await this.store.save(owner, job);
       await this.store.write(owner, id, 'input.json', input);
-      for (const status of job.steps.slice(4)) await this.runStep(owner, job, status.step, () => this.execute(owner, job, status.step));
+      for (const status of job.steps.slice(4)) if (!await this.runStep(owner, job, status.step, () => this.execute(owner, job, status.step))) break;
       return job;
     });
   }
 
-  output(owner: string, id: string) {
-    return this.store.read<KeyMomentsOutput>(owner, id, 'step-10.json');
+  async output(owner: string, id: string) {
+    return this.store.locked(owner, id, async () => {
+      const job = await this.store.job(owner, id);
+      if (job.steps.some(step => step.state !== 'ready')) throw new PipelineError('Finish all steps before opening this output.', 409);
+      return this.store.read<KeyMomentsOutput>(owner, id, 'step-10.json');
+    });
   }
 
   /** Renders the selected moments; held while rights are not confirmed. */
   async render(owner: string, id: string, signal?: AbortSignal) {
+    return this.store.locked(owner, id, async () => {
     const job = await this.store.job(owner, id);
     if (job.steps.some(step => step.state !== 'ready')) throw new PipelineError('Finish the analysis before creating the video.', 409);
     const [source, selection] = await Promise.all([
@@ -109,12 +118,13 @@ export class HighlightPipeline {
     ]);
     if (selection.rights.status !== 'permitted') throw new PipelineError(`Video creation is on hold: ${selection.rights.reason}`, 409);
     if (!selection.selected.length) throw new PipelineError('No moments were selected.', 409);
-    const folder = await mkdtemp(join(process.env.HIGHLIGHTS_TEMP_DIR || tmpdir(), 'matchwatch-render-'));
+    const folder = await processingFolder('render');
     try {
       return await renderHighlight(source.playbackUrl || '', selection.selected.map(event => event.clip), folder, signal);
     } finally {
       await rm(folder, { recursive: true, force: true });
     }
+    });
   }
 
   /** Marks a step working, runs it, and records ready/error. Returns false while waiting. */
@@ -132,7 +142,7 @@ export class HighlightPipeline {
       return true;
     } catch (error) {
       status.state = 'error';
-      status.message = error instanceof PipelineError || error instanceof TwelveLabsError || error instanceof UnderstandingError
+      status.message = error instanceof PipelineError || error instanceof TwelveLabsError || error instanceof UnderstandingError || error instanceof ScorePlayError
         ? error.message : 'This step failed. Resume to retry it.';
       // Never log keys, URLs or provider payloads.
       console.error(JSON.stringify({ component: 'highlight-pipeline', job: job.id, step, error: error instanceof Error ? error.name : 'unknown' }));
@@ -193,6 +203,14 @@ export class HighlightPipeline {
   /** Step 1: identify the asset and its metadata (or capture the live window). */
   private async resolveSource(owner: string, job: Job, input: StoredInput, signal?: AbortSignal): Promise<MatchSource> {
     const source = input.source;
+    if (source.kind === 'scoreplay') {
+      if (!scorePlayAllowed(owner) || !process.env.SCOREPLAY_API_KEY) throw new PipelineError('ScorePlay access is not enabled for this account.', 403);
+      const media = await new ScorePlayClient(process.env.SCOREPLAY_API_KEY).media(source.mediaId), mapping = await scorePlayMapping().resolve(media);
+      if (mapping.twelvelabsVideoId !== source.indexedAssetId) throw new PipelineError('The ScorePlay mapping changed. Choose this video again.', 409);
+      const video = toLibraryVideo(await this.deps.labs().indexedAsset(source.indexedAssetId));
+      if (!video) throw new PipelineError('The mapped TwelveLabs video is not ready.', 409);
+      return { kind: 'library', name: media.name, indexedAssetId: source.indexedAssetId, assetId: mapping.assetId, duration: mapping.duration, playbackUrl: media.proxy_medium || media.streaming_url || video.playbackUrl || undefined, scoreplay: { mediaId: source.mediaId } };
+    }
     if (source.kind === 'library') {
       const video = toLibraryVideo(await this.deps.labs().indexedAsset(source.indexedAssetId));
       if (!video) throw new PipelineError('This library video is not ready for analysis.', 409);
@@ -202,7 +220,7 @@ export class HighlightPipeline {
     if (source.kind === 'upload') throw new PipelineError('The upload did not finish. Start again with the video file.', 409);
     const url = source.hlsUrl || process.env.HIGHLIGHTS_HLS_URL;
     if (!url) throw new PipelineError('Enter the live HLS URL or set HIGHLIGHTS_HLS_URL on the server.');
-    const folder = await mkdtemp(join(process.env.HIGHLIGHTS_TEMP_DIR || tmpdir(), 'matchwatch-capture-'));
+    const folder = await processingFolder('capture');
     try {
       const deadline = AbortSignal.any([signal ?? new AbortController().signal, AbortSignal.timeout(240_000)]);
       const capture = await this.deps.capture(url, source.captureSeconds, folder, deadline);
@@ -266,5 +284,12 @@ export class HighlightPipeline {
       await this.store.write(owner, job.id, 'understanding.json', state);
     }
   }
+}
+
+/** All temporary media lives under one processing root and is deleted in finally. */
+async function processingFolder(kind: 'render' | 'capture') {
+  const root = process.env.HIGHLIGHTS_TEMP_DIR || join(tmpdir(), 'matchwatch-processing');
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  return mkdtemp(join(root, `${kind}-`));
 }
 

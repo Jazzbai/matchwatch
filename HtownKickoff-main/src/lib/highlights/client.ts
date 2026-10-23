@@ -46,7 +46,7 @@ export const fetchJob = (jobId: string, signal?: AbortSignal) =>
 
 export async function createJob(choice: SourceChoice, match: Omit<MatchInput, 'matchId'>, preferences: HighlightPreferences,
   signal: AbortSignal, onUpload: (percent: number) => void): Promise<Job> {
-  const source = choice.kind === 'library' ? { kind: 'library', ticket: choice.video.ticket }
+  const source = choice.kind === 'library' ? { kind: choice.video.scoreplay ? 'scoreplay' : 'library', ticket: choice.video.ticket, ...(choice.video.scoreplay ? { mediaId: choice.video.scoreplay.mediaId } : {}) }
     : choice.kind === 'upload' ? { kind: 'upload', name: choice.file.name }
     : { kind: 'hls', hlsUrl: choice.url || undefined, captureSeconds: choice.seconds };
   const form = new FormData();

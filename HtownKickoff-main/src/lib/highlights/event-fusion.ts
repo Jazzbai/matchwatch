@@ -18,7 +18,7 @@ export function fuseEvents(candidates: CandidateMoment[], input: MatchInput, pre
     const team = official?.team ?? review?.team ?? null;
     const clip = review?.boundariesVerified
       ? { start: review.suggestedStart, end: review.suggestedEnd, fromModel: true }
-      : { start: Math.max(0, candidate.start - PADDING.before), end: Math.min(duration, candidate.end + PADDING.after), fromModel: false };
+      : { start: Math.max(0, candidate.start - (preferences.beforeSeconds ?? PADDING.before)), end: Math.min(duration, candidate.end + (preferences.afterSeconds ?? PADDING.after)), fromModel: false };
     const entities = unique([team, ...players, input.homeTeam, input.awayTeam, preferences.favoriteTeam, ...preferences.starPlayers]);
     return {
       eventId: candidate.id,

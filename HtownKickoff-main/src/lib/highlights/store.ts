@@ -15,7 +15,7 @@ const isJobId = (id: string) => /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-
 const isFileName = (name: string) => /^(job|input|understanding|step-(10|[1-9]))\.json$/.test(name);
 
 export class JobStore {
-  constructor(private root = process.env.HIGHLIGHTS_DATA_DIR || join(process.cwd(), '.data', 'highlight-pipeline')) {}
+  constructor(private root = join(process.env.HIGHLIGHTS_DATA_DIR || join(process.cwd(), '.data', 'highlight-pipeline'), 'trend-aware-v1')) {}
 
   private ownerFolder(owner: string) {
     return join(resolve(this.root), createHash('sha256').update(owner).digest('hex'));
@@ -38,6 +38,7 @@ export class JobStore {
   }
 
   async read<T>(owner: string, id: string, name: string): Promise<T> {
+    if (!isFileName(name)) throw new PipelineError('Invalid output name.');
     try {
       return JSON.parse(await readFile(join(this.folder(owner, id), name), 'utf8')) as T;
     } catch (error) {
@@ -67,6 +68,7 @@ export class JobStore {
 
   async job(owner: string, id: string) {
     const job = await this.read<Job>(owner, id, 'job.json');
+    if (!Array.isArray(job.steps) || job.steps.length !== 10) throw new PipelineError('This saved job uses an older pipeline. Start a new analysis.', 409);
     // A closed tab or crashed process must never leave a step spinning forever.
     for (const step of job.steps) {
       if (step.state === 'working' && Date.now() - Date.parse(step.updatedAt) > STALE_MS) {

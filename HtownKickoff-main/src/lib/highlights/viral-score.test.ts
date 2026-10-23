@@ -21,7 +21,7 @@ test('renormalizes over the available signals when one is missing', () => {
   assert.ok(Math.abs(scored.effectiveWeights.sports - 0.6) < 1e-9);
   assert.equal(scored.effectiveWeights.social, 0);
   assert.deepEqual(scored.missingSignals, ['social', 'controversy', 'audience', 'quality']);
-  assert.ok(Math.abs(scored.confidence - 0.5 / 1.05) < 1e-9);
+  assert.equal(scored.confidence, 0.5);
 });
 
 test('a measured zero is kept, while no evidence at all gives no score', () => {

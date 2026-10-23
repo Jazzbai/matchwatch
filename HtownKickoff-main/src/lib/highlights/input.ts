@@ -6,6 +6,7 @@ import { validateWeights } from './viral-score';
 
 export type SourceRequest =
   | { kind: 'library'; ticket: string }
+  | { kind: 'scoreplay'; mediaId: string; ticket: string }
   | { kind: 'upload'; name: string }
   | { kind: 'hls'; hlsUrl?: string; captureSeconds: number };
 export type JobInput = { match: MatchInput; preferences: HighlightPreferences; source: SourceRequest };
@@ -35,6 +36,8 @@ export function parsePreferences(value: unknown): HighlightPreferences {
     throw new Error('Choose a length of 10–300 seconds, 1–10 moments and a gap of 0–60 seconds.');
   }
   const queries = Array.isArray(raw.queries) ? raw.queries.map(object) : [];
+  const beforeSeconds = raw.beforeSeconds ?? 5, afterSeconds = raw.afterSeconds ?? 10;
+  if (!number(beforeSeconds, 0, 30) || !number(afterSeconds, 0, 30)) throw new Error('Clip padding must be between 0 and 30 seconds.');
   if (!queries.length || queries.length > 8 || queries.some(query => !isEventType(query.type) || !text(query.text, 200))) throw new Error('Choose one to eight moment types to search for.');
   const stars = Array.isArray(raw.starPlayers) ? raw.starPlayers : [];
   if (stars.length > 10 || stars.some(player => !text(player, 80))) throw new Error('List at most ten star players.');
@@ -43,6 +46,8 @@ export function parsePreferences(value: unknown): HighlightPreferences {
     targetSeconds: raw.targetSeconds,
     maxMoments: raw.maxMoments,
     minGapSeconds: raw.minGapSeconds,
+    beforeSeconds,
+    afterSeconds,
     weights: validateWeights(raw.weights as Weights),
     queries: queries.map(query => ({ type: query.type as EventType, text: (query.text as string).trim() })),
     favoriteTeam: optional(raw.favoriteTeam, 80),
@@ -74,6 +79,7 @@ function parseMatch(raw: Raw): MatchInput {
 }
 
 function parseSource(raw: Raw): SourceRequest {
+  if (raw.kind === 'scoreplay' && typeof raw.mediaId === 'string' && /^[1-9][0-9]{0,15}$/.test(raw.mediaId) && text(raw.ticket, 200)) return { kind: 'scoreplay', mediaId: raw.mediaId, ticket: raw.ticket };
   if (raw.kind === 'library' && text(raw.ticket, 200)) return { kind: 'library', ticket: raw.ticket };
   if (raw.kind === 'upload' && text(raw.name, 200)) return { kind: 'upload', name: raw.name.trim() };
   if (raw.kind === 'hls' && number(raw.captureSeconds, 10, 120) && (raw.hlsUrl === undefined || text(raw.hlsUrl, 4096))) {

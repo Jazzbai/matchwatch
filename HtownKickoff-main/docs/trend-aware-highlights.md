@@ -28,7 +28,7 @@ Each step is one module in `src/lib/highlights/` and one saved output (`step-N.j
 | E · Emotional intensity | 0.20 | Observed reactions and excitement, excited commentary, emotionally charged posts |
 | C · Controversy & surprise | 0.15 | Observed disputes/surprise, official referee decisions, split reactions on X |
 | A · Audience relevance | 0.05 | Favourite team, star players, X mentions |
-| Q · Quality & diversity | 0.05 (max) | Footage clarity, verified clip boundaries, replay penalty; variety is enforced in selection |
+| Q · Quality & diversity | 0 by default (0.05 max) | Optional footage clarity, verified clip boundaries and replay penalty; variety is enforced in selection |
 
 ```text
 ViralScore = Σ(wᵢ · scoreᵢ for available i) / Σ(wᵢ for available i)
@@ -45,7 +45,10 @@ A missing or uncertain permission is never treated as approval. Uploads are perm
 
 - `GET /api/stream/highlights`: service status (health check).
 - `POST /api/stream/highlights { jobId }`: render the selected moments to MP4.
-- `GET /api/stream/highlights/library`: indexed ScorePlay media with signed selection tickets.
+- `GET /api/stream/scoreplay`: the real ScorePlay catalog, retaining league, season, match, date, search and pagination filters.
+- `GET /api/stream/scoreplay?action=mapping[&refresh=true]`: authenticated mapping diagnostics and refresh.
+- `POST /api/stream/scoreplay?mode=source&mediaId=…`: resolve an existing indexed copy and issue an account-bound selection ticket; never imports footage.
+- `GET /api/stream/highlights/library`: a separate optional TwelveLabs index browser with signed selection tickets.
 - `POST /api/stream/pipeline` (multipart `input`, optional `video`): create a job.
 - `POST /api/stream/pipeline { jobId }`: advance a job; poll while a step is working.
 - `POST /api/stream/pipeline { jobId, preferences }`: re-score saved analysis (steps 5–10) with no provider calls.
@@ -61,3 +64,9 @@ npx tsc --noEmit
 ```
 
 Configure `TWELVELABS_API_KEY` and `TWELVELABS_INDEX_ID` in `.env.local`; see `.env.example` for the optional X, rights and HLS settings. Run one replica: job storage, locks and rate limits are local to the process.
+
+ScorePlay additionally needs server-only `SCOREPLAY_API_KEY`, `SCOREPLAY_API_URL` and `SCOREPLAY_ALLOWED_USER_IDS`. The TwelveLabs key must have access to the organizer's shared index: a personal test index cannot provide matches for the hackathon catalog. Mapping inspects indexed and asset metadata, then normalized filenames and duration; ambiguous or missing matches remain explicit errors. Refreshing does not download, re-host or re-upload footage.
+
+Customization retains editable search descriptions, before/after padding (0–30 seconds), sport, target length up to 300 seconds and selection rules. Padding applies to candidates without verified model boundaries. Padding, weights and selection changes re-run saved steps 5–10 without paid provider calls; changing search descriptions starts new video understanding. Re-scoring invalidates downstream outputs before work starts; failures and concurrent mutations cannot expose stale exports.
+
+Jobs use `HIGHLIGHTS_DATA_DIR/trend-aware-v1` so older pipeline files are preserved without being interpreted as the new schema. Temporary media lives under `HIGHLIGHTS_TEMP_DIR` (default: the system temp directory's `matchwatch-processing` folder), with one child per operation, removed on success or failure. No temporary media is included in job JSON.

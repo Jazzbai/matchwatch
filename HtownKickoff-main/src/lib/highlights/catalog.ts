@@ -47,7 +47,7 @@ export const defaultQueries: Record<Sport, { type: EventType; text: string }[]> 
 };
 
 /** Diagram step 7 example weights; quality & diversity is tunable from 0 to 0.05. */
-export const defaultWeights: Weights = { sports: 0.3, social: 0.3, emotion: 0.2, controversy: 0.15, audience: 0.05, quality: 0.05 };
+export const defaultWeights: Weights = { sports: 0.3, social: 0.3, emotion: 0.2, controversy: 0.15, audience: 0.05, quality: 0 };
 
 export const scoringPresets = [
   { id: 'balanced', name: 'Balanced', description: 'The diagram’s default weights.', weights: defaultWeights },

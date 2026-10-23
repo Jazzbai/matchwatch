@@ -136,3 +136,25 @@ test('an upload is indexed, then gains its playback stream for rendering', () =>
 test('uploads without a file are rejected', () => withPipeline(fakeLabs({ upload: true }), false, async pipeline => {
   await assert.rejects(() => pipeline.create('owner', input({ kind: 'upload', name: 'match.mp4' }), null), PipelineError);
 }));
+
+test('a failed re-score invalidates old output and stops downstream steps', () => withPipeline(fakeLabs(), true, async pipeline => {
+  const job = await runToEnd(pipeline, await pipeline.create('owner', input({ kind: 'library', ticket: 'unused' }), INDEXED));
+  assert.ok((await pipeline.output('owner', job.id)).selected_moments.length);
+  const write = pipeline.store.write.bind(pipeline.store);
+  pipeline.store.write = async (owner, id, name, data) => {
+    if (name === 'step-6.json') throw new PipelineError('Synthetic analysis failure.');
+    await write(owner, id, name, data);
+  };
+  const updated = await pipeline.rescore('owner', job.id, input({ kind: 'library', ticket: 'unused' }).preferences);
+  assert.equal(updated.steps[5].state, 'error');
+  assert.ok(updated.steps.slice(6).every(step => step.state === 'pending'));
+  await assert.rejects(() => pipeline.output('owner', job.id), (error: unknown) => error instanceof PipelineError && error.status === 409);
+}));
+
+test('concurrent output and rendering cannot read a job being modified', () => withPipeline(fakeLabs(), true, async pipeline => {
+  const job = await runToEnd(pipeline, await pipeline.create('owner', input({ kind: 'library', ticket: 'unused' }), INDEXED));
+  await pipeline.store.locked('owner', job.id, async () => {
+    await assert.rejects(() => pipeline.output('owner', job.id), (error: unknown) => error instanceof PipelineError && error.status === 409);
+    await assert.rejects(() => pipeline.render('owner', job.id), (error: unknown) => error instanceof PipelineError && error.status === 409);
+  });
+}));

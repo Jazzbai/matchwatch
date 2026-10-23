@@ -26,8 +26,11 @@ export async function GET(request: NextRequest) {
     if (step) {
       const number = Number(step);
       if (!Number.isInteger(number) || number < 1 || number > 10) throw new PipelineError('Choose a step from 1 to 10.');
-      if (job.steps[number - 1].state !== 'ready') throw new PipelineError('This step has no output yet.', 409);
-      const data = await pipeline.store.read(owner, id, `step-${number}.json`);
+      const data = await pipeline.store.locked(owner, id, async () => {
+        const current = await pipeline.store.job(owner, id);
+        if (current.steps.slice(0, number).some(status => status.state !== 'ready')) throw new PipelineError('This step has no current output yet.', 409);
+        return pipeline.store.read(owner, id, `step-${number}.json`);
+      });
       return new Response(JSON.stringify(data, null, 2), {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Content-Disposition': `attachment; filename="matchwatch-${id}-step-${number}.json"` },
       });
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
       const form = await request.formData();
       const input = parseJobInput(JSON.parse(String(form.get('input') || 'null')));
       const video = form.get('video');
-      const indexedAssetId = input.source.kind === 'library' ? videoFromTicket(input.source.ticket, owner) : null;
+      const indexedAssetId = input.source.kind === 'library' || input.source.kind === 'scoreplay' ? videoFromTicket(input.source.ticket, owner) : null;
       return reply({ job: await pipeline.create(owner, input, indexedAssetId, video instanceof File ? video : undefined, request.signal) }, 201);
     }
     reserve(owner, 'request');

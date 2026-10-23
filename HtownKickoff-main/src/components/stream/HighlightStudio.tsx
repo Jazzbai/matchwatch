@@ -49,12 +49,12 @@ export default function HighlightStudio() {
 
   const signedOut = !!status?.requiresLogin && !isAuthenticated;
   const finished = !!job && job.steps.every(step => step.state === 'ready');
-  const currentKey = JSON.stringify([sourceKey(choice), matchForm, preferences.sport, preferences.types]);
+  const currentKey = JSON.stringify([sourceKey(choice), matchForm, preferences.sport, preferences.types, preferences.queryText]);
   const canRescore = finished && analysisKey === currentKey;
 
   useEffect(() => {
     const abort = new AbortController();
-    fetchStatus(abort.signal).then(setStatus).catch(() => { if (!abort.signal.aborted) setStatusError('Could not reach the highlight service. Refresh to retry.'); });
+    fetchStatus(AbortSignal.any([abort.signal, AbortSignal.timeout(12000)])).then(setStatus).catch(() => { if (!abort.signal.aborted) setStatusError('Could not reach the highlight service. Refresh to retry.'); });
     return () => { abort.abort(); controller.current?.abort(); };
   }, []);
   useEffect(() => () => { if (videoUrl) URL.revokeObjectURL(videoUrl); }, [videoUrl]);
@@ -107,9 +107,11 @@ export default function HighlightStudio() {
     if (!choice) return;
     setVideoUrl('');
     if (canRescore && job) {
+      setView(null);
       await execute(async () => {
         setProgress('Re-scoring the saved analysis with your new preferences…');
-        setJob(await rescoreJob(job.id, toPreferences(preferences)));
+        const updated = await rescoreJob(job.id, toPreferences(preferences)); setJob(updated);
+        const failed = updated.steps.find(step => step.state === 'error'); if (failed) throw new Error(`Step ${failed.step}: ${failed.message}`);
         setView(await fetchJob(job.id));
       });
       return;

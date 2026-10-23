@@ -10,13 +10,14 @@ export class TwelveLabsError extends Error {
 export const isProviderId = (id: unknown): id is string => typeof id === 'string' && /^[a-f0-9]{24}$/.test(id);
 
 type ProcessingStatus = 'pending' | 'processing' | 'ready' | 'failed' | 'canceled' | string;
-export type Asset = { _id: string; status?: ProcessingStatus; duration?: number; filename?: string; hls?: { manifest_url?: string; status?: string }; error?: { message?: string } };
+export type Asset = { _id: string; status?: ProcessingStatus; duration?: number; filename?: string; user_metadata?: Record<string, unknown>; hls?: { manifest_url?: string; status?: string }; error?: { message?: string } };
 export type IndexedAsset = {
   _id: string;
   asset_id?: string;
   status?: ProcessingStatus;
   system_metadata?: { duration?: number; filename?: string; width?: number; height?: number };
   user_metadata?: Record<string, unknown>;
+  asset_user_metadata?: Record<string, unknown>;
   hls?: { video_url?: string; thumbnail_urls?: string[] };
 };
 export type SearchMatch = { start: number; end: number; rank: number; transcription?: string };
@@ -74,14 +75,17 @@ export class TwelveLabsClient {
     return this.request<IndexedAsset>(`/indexes/${this.indexId}/indexed-assets/${id}`);
   }
 
+  indexInfo() { return this.request<{ _id: string; index_name: string; video_count?: number }>(`/indexes/${this.indexId}`, {}, 20000); }
+
   async listIndexedAssets() {
     const items: IndexedAsset[] = [];
-    for (let page = 1; page <= 40; page++) {
+    for (let page = 1; page <= 1000; page++) {
       const data = await this.request<{ data?: IndexedAsset[]; page_info?: { total_page?: number } }>(`/indexes/${this.indexId}/indexed-assets?page=${page}&page_limit=50`);
-      items.push(...(data.data || []).filter(item => isProviderId(item._id)));
-      if (page >= (data.page_info?.total_page ?? 1)) break;
+      if (!Array.isArray(data.data) || data.data.some(item => !isProviderId(item._id))) throw new TwelveLabsError('TwelveLabs returned an invalid index listing.', 502);
+      items.push(...data.data);
+      if (data.page_info?.total_page ? page >= data.page_info.total_page : data.data.length < 50) return items;
     }
-    return items;
+    throw new TwelveLabsError('The index is too large to load safely. No partial catalog was returned.', 503);
   }
 
   /** Marengo visual + audio search restricted to one indexed video. */
