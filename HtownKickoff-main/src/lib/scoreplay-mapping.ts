@@ -85,7 +85,7 @@ export class ScorePlayMappingService {
     const mapping = report.mappings[String(video.ID)];
     if (!mapping) {
       const reason = report.unmapped.find(item => item.mediaId === String(video.ID))?.reason || 'No indexed match.';
-      throw new ScorePlayError(`"${video.name}" isn't in the TwelveLabs index yet. Ask the organizers to index it, or pick another video. ${reason} Index: ${index.indexName} (${index.count} videos).`, 409);
+      throw new ScorePlayError(`"${video.name}" has no match in the connected TwelveLabs index "${index.indexName}" (${index.count} videos). ${reason} Connect the organizers' shared hackathon index with an authorized team key, then choose "Refresh AI mapping".`, 409);
     }
     return mapping;
   }

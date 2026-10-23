@@ -45,7 +45,13 @@ test('index pagination retrieves every page and caches full metadata on disk unt
     assert.equal(report.mappings['123'].matchedBy, 'filename'); assert.ok((await readdir(root)).some(name => name.endsWith('-mapping.json')));
     count = 3; service = new ScorePlayMappingService(labs, scoreplay, index, root); await service.diagnostics(); assert.equal(lists, 4);
     await service.diagnostics(true); assert.equal(lists, 6);
-    await assert.rejects(() => service.resolve({ ID: 999, name: 'missing.mp4', type: 'video' }), /missing.mp4.*isn't in the TwelveLabs index/);
+    await assert.rejects(() => service.resolve({ ID: 999, name: 'missing.mp4', type: 'video' }), (error: unknown) => {
+      assert.ok(error instanceof Error && 'status' in error && error.status === 409);
+      assert.match(error.message, /missing.mp4.*connected TwelveLabs index "Synthetic shared fixture"/);
+      assert.match(error.message, /authorized team key.*Refresh AI mapping/);
+      assert.doesNotMatch(error.message, /isn't in the TwelveLabs index yet|Ask the organizers to index it|synthetic-team-key|synthetic-scoreplay-key/);
+      return true;
+    });
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('ScorePlay catalog paging includes all 123 media without downloading a file', async () => {
