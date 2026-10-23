@@ -1,5 +1,6 @@
 import { filterId, scorePlayDateRange, type ScorePlayFilters } from './scoreplay-filters';
 import { connectionFailureCode, isTransientConnectionError } from './provider-network';
+import { publicStudioEnabled } from './highlights/access';
 export class ScorePlayError extends Error {
   constructor(message: string, public status = 502, public code?: string) { super(message); }
 }
@@ -9,6 +10,7 @@ export function requireScorePlayExternalProcessing() {
 }
 export function scorePlayAllowed(owner: string) {
   return process.env.NODE_ENV === 'development' && owner === 'local' ||
+    publicStudioEnabled() && /^public:[a-f0-9]{24}$/.test(owner) ||
     (process.env.SCOREPLAY_ALLOWED_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean).includes(owner);
 }
 export type ScorePlayMedia = { ID: number; name: string; type: string; duration?: number; date?: number; proxy_medium?: string; streaming_url?: string; video?: { duration?: number; proxy_medium?: string; stream?: string }; event?: { name?: string } };

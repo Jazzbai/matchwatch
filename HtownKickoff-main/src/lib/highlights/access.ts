@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 // Request authentication, signed resource tickets and per-account rate limits.
 // Local development on loopback needs no login; production verifies the
@@ -16,12 +16,32 @@ export function studioEnabled() {
   return isDevelopment() || (process.env.HIGHLIGHTS_ENABLED === 'true' && (process.env.HIGHLIGHTS_SIGNING_SECRET || '').length >= 32);
 }
 
+export const publicSessionName = 'matchwatch_studio_session';
+export const publicStudioEnabled = () => studioEnabled() && process.env.HIGHLIGHTS_PUBLIC_ACCESS === 'true';
+
+function publicOwner(request: Request, now = Date.now()) {
+  const value = (request.headers.get('cookie') || '').split(';').map(part => part.trim()).find(part => part.startsWith(publicSessionName + '='))?.slice(publicSessionName.length + 1);
+  if (!value) return null;
+  try { return `public:${videoFromTicket(value, 'public-session', now)}`; } catch { return null; }
+}
+
+/** The status endpoint creates a private, signed browser session without an account. */
+export function newPublicSession(request: Request, now = Date.now()) {
+  if (!publicStudioEnabled() || publicOwner(request, now)) return null;
+  return videoTicket(randomBytes(12).toString('hex'), 'public-session', now);
+}
+
 /** Returns the account that owns this request's jobs. */
 export async function requestOwner(request: Request, transport: typeof fetch = fetch): Promise<string> {
   const url = new URL(request.url), origin = request.headers.get('origin');
   if (origin && !sameOrigin(url, origin)) throw new AccessError('This request must come from the MatchWatch studio.', 403);
   if (isDevelopment() && LOOPBACK.includes(url.hostname)) return 'local';
   if (!studioEnabled()) throw new AccessError('The highlight studio is not enabled on this server.', 503);
+  if (publicStudioEnabled()) {
+    const owner = publicOwner(request);
+    if (!owner) throw new AccessError('Refresh Highlight Studio to start a new session.', 401);
+    return owner;
+  }
   const authorization = request.headers.get('authorization');
   if (!authorization?.startsWith('Bearer ')) throw new AccessError('Sign in to create highlights.', 401);
   let response: Response;
@@ -73,6 +93,7 @@ export function videoFromTicket(ticket: string, owner: string, now = Date.now())
 
 export type Operation = 'create' | 'request' | 'render';
 const hourlyLimits: Record<Operation, number> = { create: 10, request: 600, render: 10 };
+const publicHourlyLimits: Record<Operation, number> = { create: 30, request: 3000, render: 30 };
 const MAX_PARALLEL_RENDERS = 2;
 const usage = new Map<string, { count: number; expires: number }>();
 let activeRenders = 0;
@@ -86,6 +107,11 @@ export function reserve(owner: string, operation: Operation) {
   const entry = usage.get(key) || { count: 0, expires: now + 3600_000 };
   if (entry.count >= hourlyLimits[operation] || usage.size >= 10_000) throw new AccessError('Hourly highlight limit reached. Please try again later.', 429);
   if (operation === 'render' && activeRenders >= MAX_PARALLEL_RENDERS) throw new AccessError('The video renderers are busy. Please try again shortly.', 429);
+  if (owner.startsWith('public:')) {
+    const globalKey = `public-global:${operation}`, global = usage.get(globalKey) || { count: 0, expires: now + 3600_000 };
+    if (global.count >= publicHourlyLimits[operation]) throw new AccessError('The public studio has reached its hourly processing limit. Please try again later.', 429);
+    global.count++; usage.set(globalKey, global);
+  }
   entry.count++;
   usage.set(key, entry);
   if (operation !== 'render') return () => {};

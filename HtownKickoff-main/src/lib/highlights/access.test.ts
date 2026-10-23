@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { AccessError, requestOwner, reserve, videoFromTicket, videoTicket } from './access';
+import { AccessError, requestOwner, reserve, videoFromTicket, videoTicket, newPublicSession, publicSessionName } from './access';
 
 const id = '111111111111111111111111';
 
@@ -19,6 +19,7 @@ async function withEnv(values: Record<string, string>, work: () => Promise<void>
 const production = (work: () => Promise<void> | void) => withEnv({
   NODE_ENV: 'production', HIGHLIGHTS_ENABLED: 'true', HIGHLIGHTS_SIGNING_SECRET: 'test-only-secret-with-more-than-32-characters',
   HIGHLIGHTS_PUBLIC_ORIGIN: 'https://matchwatch.us', API_PROXY_TARGET: 'http://private-api:4000',
+  HIGHLIGHTS_PUBLIC_ACCESS: 'false',
 }, work);
 
 test('local development accepts loopback aliases on the same port only', () => withEnv({ NODE_ENV: 'development' }, async () => {
@@ -59,4 +60,25 @@ test('hourly limits and render concurrency are bounded, and leases release once'
   assert.throws(() => reserve('render-owner', 'render'), AccessError);
   second();
   third();
+}));
+
+test('public studio creates isolated signed sessions without calling account verification', () => production(() => withEnv({ HIGHLIGHTS_PUBLIC_ACCESS: 'true' }, async () => {
+  const url = 'https://matchwatch.us/app/api/stream/pipeline';
+  const first = newPublicSession(new Request(url))!, second = newPublicSession(new Request(url))!;
+  const request = (cookie: string, origin = 'https://matchwatch.us') => new Request(url, { headers: { Cookie: `${publicSessionName}=${cookie}`, Origin: origin } });
+  const forbiddenTransport: typeof fetch = async () => { throw Error('Public sessions must not call the login service'); };
+  const owner = await requestOwner(request(first), forbiddenTransport);
+  assert.match(owner, /^public:[a-f0-9]{24}$/);
+  assert.notEqual(owner, await requestOwner(request(second), forbiddenTransport));
+  assert.equal(newPublicSession(request(first)), null);
+  const ticket = videoTicket(id, owner);
+  assert.throws(() => videoFromTicket(ticket, `public:${'0'.repeat(24)}`), AccessError);
+  await assert.rejects(() => requestOwner(request(first + 'tampered'), forbiddenTransport), AccessError);
+  await assert.rejects(() => requestOwner(request(first, 'https://unrelated.example'), forbiddenTransport), AccessError);
+  await assert.rejects(() => requestOwner(new Request(url), forbiddenTransport), AccessError);
+})));
+
+test('public processing remains globally bounded when browsers create new sessions', () => production(() => {
+  for (let n = 0; n < 30; n++) reserve(`public:${n.toString(16).padStart(24, '0')}`, 'create')();
+  assert.throws(() => reserve(`public:${'f'.repeat(24)}`, 'create'), (error: unknown) => error instanceof AccessError && error.status === 429);
 }));

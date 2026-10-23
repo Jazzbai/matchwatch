@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { requestOwner, reserve, studioEnabled } from '../../../../lib/highlights/access';
+import { requestOwner, reserve, studioEnabled, publicStudioEnabled, newPublicSession, publicSessionName } from '../../../../lib/highlights/access';
 import { failure, reply } from '../../../../lib/highlights/http';
 import { runFfmpeg } from '../../../../lib/highlights/media';
 import { HighlightPipeline } from '../../../../lib/highlights/pipeline';
@@ -10,16 +10,19 @@ export const maxDuration = 300;
 const pipeline = new HighlightPipeline();
 
 /** Service status; also the deployment health check. */
-export async function GET() {
+export async function GET(request: NextRequest) {
   let renderReady = true;
   try { await runFfmpeg(['-version'], 10_000); } catch { renderReady = false; }
   const enabled = studioEnabled();
-  return reply({
+  const response = reply({
     analysisReady: enabled && !!process.env.TWELVELABS_API_KEY && isProviderId(process.env.TWELVELABS_INDEX_ID),
     renderReady: enabled && renderReady,
     socialReady: !!process.env.X_BEARER_TOKEN,
-    requiresLogin: process.env.NODE_ENV !== 'development',
+    requiresLogin: process.env.NODE_ENV !== 'development' && !publicStudioEnabled(),
   });
+  const session = newPublicSession(request);
+  if (session) response.cookies.set(publicSessionName, session, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: process.env.NEXT_PUBLIC_APP_BASE_PATH || '/', maxAge: 86400 });
+  return response;
 }
 
 /** Renders the selected moments of a finished job into one MP4. */
