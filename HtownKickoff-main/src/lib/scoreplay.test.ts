@@ -74,3 +74,43 @@ test('direct ScorePlay source resolution supports recordings beyond the browser 
   const source = await client.source('123');
   assert.equal(source.bytes, 2 * 1024 ** 3); assert.equal(source.duration, 10800);
 });
+
+test('a transient metadata connection retries once using the same deadline and private server credentials', async () => {
+  let calls = 0;
+  let deadline: AbortSignal | null | undefined;
+  const client = new ScorePlayClient('private-key', async (_url, init) => {
+    calls++;
+    assert.equal(new Headers(init?.headers).get('X-ScorePlay-Api-Key'), 'private-key');
+    if (calls === 1) {
+      deadline = init?.signal;
+      throw new TypeError('fetch failed', { cause: { code: 'UND_ERR_CONNECT_TIMEOUT' } });
+    }
+    assert.equal(init?.signal, deadline, 'a retry must not reset the total deadline');
+    return Response.json({ media: [{ ID: 123, name: 'game.mp4', type: 'video' }], count: 1 });
+  });
+  assert.equal((await client.search('')).length, 1);
+  assert.equal(calls, 2);
+});
+
+test('repeated network failures stop after two attempts and expose no credentials', async () => {
+  let calls = 0;
+  const client = new ScorePlayClient('private-key', async () => {
+    calls++;
+    throw new TypeError('fetch failed', { cause: { code: 'ECONNRESET' } });
+  });
+  await assert.rejects(() => client.search(''), error => error instanceof Error && /temporarily unreachable/.test(error.message) && !error.message.includes('private-key'));
+  assert.equal(calls, 2);
+});
+
+test('authentication errors and certificate failures are never retried', async () => {
+  for (const mode of ['authentication', 'certificate']) {
+    let calls = 0;
+    const client = new ScorePlayClient('private-key', async () => {
+      calls++;
+      if (mode === 'authentication') return Response.json({}, { status: 403 });
+      throw new TypeError('fetch failed', { cause: { code: 'CERT_HAS_EXPIRED' } });
+    });
+    await assert.rejects(() => client.search(''));
+    assert.equal(calls, 1);
+  }
+});

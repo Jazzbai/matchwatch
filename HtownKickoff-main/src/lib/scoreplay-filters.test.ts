@@ -54,3 +54,20 @@ test('collection options include later provider pages rather than silently dropp
   const options = await client.filterOptions();
   assert.equal(options.leagues.length, 101); assert.equal(options.leagues.at(-1)?.id, '999');
 });
+
+test('AI-ready filtering includes later provider pages and retains league and date filters', async () => {
+  const requested: number[] = [];
+  const client = new ScorePlayClient('private-key', async (url, init) => {
+    const path = String(url), body = JSON.parse(String(init?.body));
+    if (path.includes('/event/search')) return Response.json([]);
+    const page = Number(new URL(path).searchParams.get('page')); requested.push(page);
+    assert.equal(new URL(path).searchParams.get('per_page'), '100');
+    assert.deepEqual(body.event_ids, [10]);
+    assert.equal(body.start_date, Date.UTC(2026, 0, 1) / 1000);
+    return Response.json({ media: Array.from({ length: page === 1 ? 100 : 1 }, (_, n) => ({ ID: (page - 1) * 100 + n + 1, name: 'clip.mp4', type: 'video' })), total_pages: 2, count: 101 });
+  });
+  const result = await client.searchReadyPage('', { leagueId: '10', year: '2026' }, 1, ['2', '101']);
+  assert.deepEqual(requested, [1, 2]);
+  assert.deepEqual(result.media.map(item => item.id), ['2', '101']);
+  assert.equal(result.count, 2); assert.equal(result.totalPages, 1);
+});

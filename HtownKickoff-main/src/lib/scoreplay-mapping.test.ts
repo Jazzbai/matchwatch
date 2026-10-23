@@ -60,8 +60,9 @@ test('index pagination retrieves every page and caches full metadata on disk unt
     await service.diagnostics(true); assert.equal(lists, 6);
     await assert.rejects(() => service.resolve({ ID: 999, name: 'missing.mp4', type: 'video' }), (error: unknown) => {
       assert.ok(error instanceof Error && 'status' in error && error.status === 409);
-      assert.match(error.message, /missing.mp4.*connected TwelveLabs index "Synthetic shared fixture"/);
-      assert.match(error.message, /authorized team key.*Refresh AI mapping/);
+      assert.match(error.message, /missing.mp4.*not ready for AI.*Synthetic shared fixture/);
+      assert.match(error.message, /Ready for AI.*organizers/);
+      assert.equal((error as { code?: string }).code, 'SCOREPLAY_NOT_INDEXED');
       assert.doesNotMatch(error.message, /isn't in the TwelveLabs index yet|Ask the organizers to index it|synthetic-team-key|synthetic-scoreplay-key/);
       return true;
     });

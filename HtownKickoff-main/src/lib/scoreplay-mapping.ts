@@ -80,7 +80,9 @@ export class ScorePlayMappingService {
     try { return await this.pending; } finally { this.pending = undefined; }
   }
   async diagnostics(force = false): Promise<MappingReport> {
-    const index = await this.index(force), videos = await this.scoreplay.allVideos();
+    const index = await this.index(force);
+    if (!force && this.report && this.report.indexCount === index.count && Date.now() - Date.parse(this.report.checkedAt) < 60000) return this.report;
+    const videos = await this.scoreplay.allVideos();
     const { mappings, unmapped } = mapScorePlayVideos(videos, index.entries, index.metadataKey);
     if (!this.exampleLogged) {
       const example = Object.entries(mappings).find(([, mapping]) => mapping.matchedBy === 'metadata');
@@ -97,7 +99,7 @@ export class ScorePlayMappingService {
     const mapping = report.mappings[String(video.ID)];
     if (!mapping) {
       const reason = report.unmapped.find(item => item.mediaId === String(video.ID))?.reason || 'No indexed match.';
-      throw new ScorePlayError(`"${video.name}" has no match in the connected TwelveLabs index "${index.indexName}" (${index.count} videos). ${reason} Connect the organizers' shared hackathon index with an authorized team key, then choose "Refresh AI mapping".`, 409);
+      throw new ScorePlayError(`"${video.name}" is not ready for AI in "${index.indexName}" (${index.count} indexed videos). Choose a video marked "Ready for AI", or ask the organizers for this video's indexed copy. ${reason}`, 409, 'SCOREPLAY_NOT_INDEXED');
     }
     return mapping;
   }

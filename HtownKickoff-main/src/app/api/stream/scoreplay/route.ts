@@ -11,7 +11,7 @@ const reserveOperation = (owner: string) => reserve(owner, 'request');
 function failure(error: unknown) {
   if (error instanceof TwelveLabsError) return NextResponse.json({ error: error.message }, { status: error.status, headers: { 'Cache-Control': 'no-store' } });
   if (error instanceof ScorePlayFilterError) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ error: error instanceof ScorePlayError || error instanceof HighlightAccessError ? error.message : 'ScorePlay request failed. Try again shortly.' }, { status: error instanceof ScorePlayError || error instanceof HighlightAccessError ? error.status : 502, headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ error: error instanceof ScorePlayError || error instanceof HighlightAccessError ? error.message : 'ScorePlay request failed. Try again shortly.', ...(error instanceof ScorePlayError && error.code ? { code: error.code } : {}) }, { status: error instanceof ScorePlayError || error instanceof HighlightAccessError ? error.status : 502, headers: { 'Cache-Control': 'no-store' } });
 }
 async function access(request: NextRequest) {
   const owner = await highlightOwner(request);
@@ -31,6 +31,12 @@ export async function GET(request: NextRequest) {
     }
     if (params.get('action') === 'filters') return NextResponse.json(await client.filterOptions(params.get('leagueId') || undefined), { headers: { 'Cache-Control': 'no-store' } });
     const filters: ScorePlayFilters = Object.fromEntries(['leagueId', 'seasonId', 'matchId', 'year', 'from', 'to', 'order'].map(key => [key, params.get(key) || undefined]));
+    if (params.has('readyOnly')) {
+      const report = await scorePlayMapping().diagnostics();
+      const page = Number(params.get('page') || 1), query = params.get('q') || '';
+      const result = params.get('readyOnly') === 'true' ? await client.searchReadyPage(query, filters, page, Object.keys(report.mappings)) : await client.searchPage(query, filters, page);
+      return NextResponse.json({ ...result, media: result.media.map(item => ({ ...item, aiReady: !!report.mappings[item.id] })), availability: { indexName: report.indexName, mappedCount: report.mappedCount, libraryCount: report.scoreplayCount } }, { headers: { 'Cache-Control': 'no-store' } });
+    }
     return NextResponse.json(await client.searchPage(params.get('q') || '', filters, Number(params.get('page') || 1)), { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return failure(error); }
 }

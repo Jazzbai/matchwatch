@@ -1,5 +1,6 @@
 // Minimal TwelveLabs v1.3 client: assets, indexing, Marengo search and Pegasus analysis.
-// Requests are never retried automatically, so uploads and paid analyses are not duplicated.
+// Only read-only GET connections are retried; uploads and paid analyses are never replayed.
+import { connectionFailureCode, isTransientConnectionError } from '../provider-network';
 
 const API = 'https://api.twelvelabs.io/v1.3';
 
@@ -32,14 +33,24 @@ export class TwelveLabsClient {
     headers.set('x-api-key', this.key);
     const signal = init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs);
     let response: Response;
+    const request = { ...init, headers, signal, cache: 'no-store' as const };
     try {
-      response = await this.transport(`${API}${path}`, { ...init, headers, signal, cache: 'no-store' });
-    } catch {
+      try { response = await this.transport(`${API}${path}`, request); }
+      catch (error) {
+        if ((init.method || 'GET').toUpperCase() !== 'GET' || signal.aborted || !isTransientConnectionError(error)) throw error;
+        console.warn(JSON.stringify({ component: 'twelvelabs', event: 'retrying_read_connection', code: connectionFailureCode(error) }));
+        await new Promise(resolve => setTimeout(resolve, 250));
+        signal.throwIfAborted();
+        response = await this.transport(`${API}${path}`, request);
+      }
+    } catch (error) {
+      console.warn(JSON.stringify({ component: 'twelvelabs', event: 'connection_failed', code: connectionFailureCode(error, signal.aborted) }));
       throw new TwelveLabsError('TwelveLabs could not be reached. Check the connection and try again.', 502);
     }
     const data = await response.json().catch(() => null);
     if (!response.ok) {
       const fallback = response.status === 401 ? 'The TwelveLabs API key is invalid or expired.'
+        : response.status === 403 ? 'The TwelveLabs key cannot access this index or asset. Connect an authorized team key and the shared index.'
         : response.status === 429 ? 'TwelveLabs rate limit reached. Wait a moment and retry.'
         : `TwelveLabs request failed (${response.status}).`;
       throw new TwelveLabsError(typeof data?.message === 'string' ? data.message.slice(0, 300) : fallback, response.status, data?.code);
