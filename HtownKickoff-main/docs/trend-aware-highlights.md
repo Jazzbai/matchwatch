@@ -56,6 +56,8 @@ A missing or uncertain permission is never treated as approval. Uploads are perm
 
 ## Running and testing
 
+The match library presents ScorePlay footage, TwelveLabs understanding, and MatchWatch ranking as one workflow. Users can browse the connected catalog or paste a ScorePlay media-page URL or media ID into **Use this match**. The browser extracts only the ID; the server uses its existing fixed ScorePlay endpoint and resolves the existing TwelveLabs copy. Selection does not download or re-upload the original. Library requests have a one-minute browser deadline and can be cancelled. Uploads, live HLS, the additional indexed-video browser, and all customization controls remain available.
+
 ```bash
 npm install
 npm run dev                      # open /stream

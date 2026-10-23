@@ -31,6 +31,7 @@ const sourceKey = (choice: SourceChoice | null) => !choice ? '' : choice.kind ==
 const storage = {
   get: () => { try { return localStorage.getItem(LAST_JOB_KEY); } catch { return null; } },
   set: (id: string) => { try { localStorage.setItem(LAST_JOB_KEY, id); } catch { /* Private mode: nothing to restore later. */ } },
+  clear: () => { try { localStorage.removeItem(LAST_JOB_KEY); } catch { /* Private mode: no saved job. */ } },
 };
 
 export default function HighlightStudio() {
@@ -51,6 +52,13 @@ export default function HighlightStudio() {
   const finished = !!job && job.steps.every(step => step.state === 'ready');
   const currentKey = JSON.stringify([sourceKey(choice), matchForm, preferences.sport, preferences.types, preferences.queryText]);
   const canRescore = finished && analysisKey === currentKey;
+
+  function chooseSource(next: SourceChoice) {
+    if (sourceKey(next) !== sourceKey(choice)) {
+      setJob(null); setView(null); setAnalysisKey(''); setError(''); storage.clear();
+    }
+    setChoice(next); setVideoUrl('');
+  }
 
   useEffect(() => {
     const abort = new AbortController();
@@ -158,8 +166,8 @@ export default function HighlightStudio() {
     </header>
     <div className={styles.shell}>
       <div className={styles.hero}>
-        <div><p className={styles.eyebrow}>YOUR GAME. THE MOMENTS FANS TALK ABOUT.</p><h1>Big moments.<br /><em>Ranked by what fans feel.</em></h1><p>We combine the match video, official events and fan reactions on X<br />to find, rank and select the moments most likely to go viral.</p></div>
-        <div className={styles.heroNote}><Sparkles size={22} /><div><strong>No editor required.</strong><p>Every score shows its evidence. Viral potential is an estimate, not a guarantee of views.</p></div></div>
+        <div><p className={styles.eyebrow}>YOUR MATCH. ONE CONNECTED WORKFLOW.</p><h1>From the full match<br /><em>to your best moments.</em></h1><p>Choose footage from ScorePlay. TwelveLabs understands the action.<br />MatchWatch ranks the moments for your audience, ready to review.</p></div>
+        <div className={styles.heroNote}><Sparkles size={22} /><div><strong>Every choice, explained.</strong><p>See what was selected, what was skipped and why. Add official events and X reactions when available.</p></div></div>
       </div>
 
       <ol className={styles.steps} aria-label="Your highlight progress">{phases.map((phase, index) =>
@@ -174,7 +182,7 @@ export default function HighlightStudio() {
 
       <div className={styles.columns}>
         <div className={styles.setup}>
-          <SourcePicker choice={choice} onChoose={next => { setChoice(next); setVideoUrl(''); }} disabled={running} canBrowse={!!status?.analysisReady && !signedOut} />
+          <SourcePicker choice={choice} onChoose={chooseSource} disabled={running} canBrowse={!!status?.analysisReady && !signedOut} />
           <VideoPlayer ref={player} src={playbackUrl} onError={setError} />
           <MatchContext form={matchForm} onChange={setMatchForm} sport={preferences.sport} disabled={running} socialReady={!!status?.socialReady} isUpload={choice?.kind === 'upload'} />
           <PreferencesCard form={preferences} onChange={setPreferences} disabled={running}>
@@ -198,7 +206,7 @@ export default function HighlightStudio() {
         rendering={rendering} videoUrl={videoUrl} onSeek={seconds => player.current?.seek(seconds)} onRender={() => void createVideo()}
         onDownload={() => downloadJson(view.output, `matchwatch-${view.job.id}-key-moments.json`)} />}
 
-      <footer className={styles.footer}>MATCHWATCH HIGHLIGHT STUDIO <span>Video understanding by TwelveLabs · trend signals from X · your rules.</span></footer>
+      <footer className={styles.footer}>MATCHWATCH HIGHLIGHT STUDIO <span>ScorePlay footage · TwelveLabs understanding · MatchWatch decisions.</span></footer>
     </div>
   </main>;
 }

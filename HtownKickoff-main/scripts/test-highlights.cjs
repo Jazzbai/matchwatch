@@ -11,4 +11,4 @@ require.extensions['.ts'] = (module, filename) => {
 
 const lib = path.resolve(__dirname, '../src/lib');
 const engine = fs.readdirSync(path.join(lib, 'highlights')).filter(name => name.endsWith('.test.ts')).map(name => path.join(lib, 'highlights', name));
-for (const file of [...engine, ...['scoreplay-mapping', 'scoreplay-filters', 'scoreplay', 'highlight-request', 'highlight-session'].map(name => path.join(lib, `${name}.test.ts`))]) require(file);
+for (const file of [...engine, ...['scoreplay-mapping', 'scoreplay-filters', 'scoreplay-link', 'scoreplay', 'highlight-request', 'highlight-session'].map(name => path.join(lib, `${name}.test.ts`))]) require(file);
