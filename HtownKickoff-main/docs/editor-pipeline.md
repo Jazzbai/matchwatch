@@ -26,6 +26,16 @@ Balanced weights remain sports 30%, social 30%, emotion 20%, controversy/surpris
 
 ## API
 
+### Flowchart steps 8–10 and the Rundown handoff
+
+The supplied diagram uses different numbering from the saved pipeline: chart step 8 ranks all moments (saved step 5), chart step 9 selects the best combination (saved step 6), and chart step 10 outputs key moments (saved step 7 plus a downstream adapter). These are automated decisions. Human editing, rights review and rendering follow the diagram's output.
+
+Once every saved step is ready, the studio shows all ranked candidates, the selected clips and a reason for every skipped candidate. **Download key moments** returns `matchwatch.key-moments.v1` from `GET /app/api/stream/pipeline?jobId=UUID&step=7&format=key-moments`. This export reads saved candidate and story artifacts under the job lock, checks their revisions, and refuses stale, cross-source, unsafe or inconsistent selections. It preserves five-factor scores, proportional missing-data weights, evidence coverage, whole reviewed clips and the existing target budget. No provider request or media download is needed to open or export the handoff.
+
+For ScorePlay sources, `rundown.moments` matches the required `Moment` / `Segment` fields in [SamGu-NRX/spurs-hackathon](https://github.com/SamGu-NRX/spurs-hackathon/blob/5866cb96fce6c66d547d77ddecaa5f01b3b73036/src/lib/rundown/types.ts). The downstream engine can consume these moments. `primary.assetId` is the real **ScorePlay media ID**, while `primary.videoId` is the **TwelveLabs indexed asset ID**. Raw TwelveLabs asset IDs remain in `source.twelvelabs_asset_id`. Unknown sponsor visibility, replay classification, player identities, quality and brand safety are omitted; the adapter never manufactures a `MomentAnalysis`. Upload/HLS sources retain the MatchWatch output and explicitly report that they lack the ScorePlay media ID required by Rundown.
+
+This is a typed JSON handoff, not a remote import into a deployed Rundown service: that repository exposes no handoff import endpoint. Its pitch-ranking formula is separate; this integration retains MatchWatch's configured five-factor viral scores. No remote service is called, and rights and final-render statuses remain pending. The original draft story export stays available until the team agrees its final editor contract.
+
 All routes are below `${NEXT_PUBLIC_APP_BASE_PATH}/api/stream/pipeline` (production `/app/api/stream/pipeline`) and use the existing MatchWatch bearer authentication and origin checks. Job directories are separated by a hash of the authenticated account ID. Provider keys are runtime environment variables and never returned.
 
 - `POST` multipart: `input` is a JSON-encoded `PipelineInput`; `video` is the original upload when `source.kind=upload`. Creates a saved job and runs stage 1. Returns `{ job }` even when source processing fails, so the error can be inspected and retried.

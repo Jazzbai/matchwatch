@@ -8,6 +8,7 @@ import type { FusionInputs } from '../../lib/event-fusion';
 import type { HighlightPriority } from '../../lib/highlight-preferences';
 import type { ScorePlayVideo } from './ScorePlaySource';
 import styles from './HighlightStudio.module.css';
+import KeyMomentsHandoff from './KeyMomentsHandoff';
 
 const endpoint = `${process.env.NEXT_PUBLIC_APP_BASE_PATH || ''}/api/stream/pipeline`;
 type Props = { file: File | null; scorePlay: ScorePlayVideo | null; duration: number; sport: 'Soccer' | 'Basketball'; target: number; queries: string; before: number; after: number; scoringPriority: HighlightPriority; getEvidence: () => FusionInputs; disabled: boolean };
@@ -87,6 +88,7 @@ export default function PipelineStudio(props: Props) {
       return <li key={name} data-state={state}><span className={styles.pipelineNumber}>{index + 1}</span><div><strong>{name}</strong><small>{step?.message || (index ? 'Waiting for the previous step.' : 'Choose a source, then build your story.')}</small></div><span className={styles.pipelineState}>{labels[state]}</span>{job && <div className={styles.pipelineActions}><button className={styles.textButton} disabled={busy || !eligible} onClick={() => void perform(() => advance(job, index + 1 as StepNumber, state === 'ready'))}><RotateCcw size={13} />{state === 'ready' ? 'Rerun' : 'Run'}</button>{state === 'ready' && <button className={styles.textButton} disabled={busy} onClick={() => void download(index + 1 as StepNumber)}><Download size={13} />{index === 6 ? 'Draft JSON' : 'JSON'}</button>}</div>}</li>;
     })}</ol>
     {job && !busy && job.steps.some(step => step.state !== 'ready') && <button className={styles.secondary} onClick={() => void perform(() => advance(job))}>Resume saved pipeline</button>}
-    <p className={styles.hint}>Steps 8–10 belong to your editing and compliance team. The story JSON is marked as a draft until their exact handoff contract is supplied. Rights have not been checked and no final video is rendered by this pipeline.</p>
+    {job && !busy && job.steps.every(step => step.state === 'ready') && <KeyMomentsHandoff key={`${job.id}-${job.steps[6].revision}`} job={job} />}
+    <p className={styles.hint}>The chart’s steps 8–10 show ranking, automatic selection and the final key moments handoff below. The saved story draft remains available separately. Editing, rights review and rendering follow the handoff.</p>
   </section>;
 }
