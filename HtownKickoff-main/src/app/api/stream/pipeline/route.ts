@@ -3,6 +3,9 @@ import { highlightOwner, HighlightAccessError, reserveOperation } from '../../..
 import { HighlightPipeline, parsePipelineInput } from '../../../../lib/highlight-pipeline';
 import { PipelineError } from '../../../../lib/pipeline-store';
 import { type StepNumber } from '../../../../lib/pipeline-types';
+import type { StoryDraft, UnderstoodOutput } from '../../../../lib/pipeline-types';
+import type { HighlightClip } from '../../../../lib/highlight-plan';
+import { buildKeyMomentsHandoff } from '../../../../lib/rundown-handoff';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -25,6 +28,16 @@ export async function GET(request: NextRequest) {
     const job = await pipeline.store.job(owner, id), requestedStep = request.nextUrl.searchParams.get('step');
     if (!requestedStep) return reply({ job });
     const step = stepNumber(requestedStep);
+    if (request.nextUrl.searchParams.get('format') === 'key-moments') {
+      if (step !== 7) throw new PipelineError('The key moments handoff requires the saved story output.');
+      return await pipeline.store.locked(owner, id, async () => {
+        const current = await pipeline.store.job(owner, id);
+        if (current.steps.some(item => item.state !== 'ready')) throw new PipelineError('Run the saved pipeline before opening the key moments handoff.', 409);
+        const [story, candidates] = await Promise.all([pipeline.store.artifact<StoryDraft>(owner, id, 7), pipeline.store.artifact<UnderstoodOutput & { clips: HighlightClip[] }>(owner, id, 6)]);
+        if (story.input_revision !== candidates.revision || story.revision !== current.steps[6].revision || candidates.revision !== current.steps[5].revision) throw new PipelineError('The handoff is outdated. Rerun the story builder.', 409);
+        return new Response(JSON.stringify(buildKeyMomentsHandoff(story.data, candidates.data), null, 2), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Content-Disposition': `attachment; filename="matchwatch-${id}-key-moments.json"` } });
+      });
+    }
     if (job.steps[step - 1].state !== 'ready') throw new PipelineError('This step has no current output. Run it again after its input is ready.', 409);
     const artifact = await pipeline.store.artifact(owner, id, step);
     // Step 7's payload is the contract itself; no storage wrapper is added to the download.
