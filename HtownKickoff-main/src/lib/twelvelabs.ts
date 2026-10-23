@@ -4,14 +4,15 @@ export class TwelveLabsError extends Error {
   constructor(message: string, public status: number, public code?: string, public retryAfter?: string) { super(message); }
 }
 export function validVideoId(id: string) { return /^[a-f0-9]{24}$/.test(id); }
-type Resource = { _id?: string; status?: string; error?: { message?: string }; system_metadata?: { duration?: number } };
+export type IndexedVideo = { _id: string; asset_id?: string; status?: string; user_metadata?: Record<string, unknown>; system_metadata?: { filename?: string; duration?: number }; hls?: { video_url?: string } };
+type Resource = Partial<IndexedVideo> & { error?: { message?: string } };
 type SearchMatch = { video_id?: string; start?: number; end?: number; confidence?: string; rank?: number };
 export class TwelveLabsClient {
   constructor(private key: string, private index: string, private transport: typeof fetch = fetch) {}
   private async request<T>(path: string, init?: RequestInit, timeoutMs = 120000): Promise<T> {
     const headers = new Headers(init?.headers); headers.set('x-api-key', this.key);
     let response: Response;
-    try { response = await this.transport(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(timeoutMs), cache: 'no-store' }); }
+    try { response = await this.transport(`${base}${path}`, { ...init, headers, signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs), cache: 'no-store' }); }
     catch { throw new TwelveLabsError('TwelveLabs could not be reached. Check your connection and try again.', 502); }
     const data = await response.json().catch(() => null);
     if (!response.ok) {
@@ -21,9 +22,9 @@ export class TwelveLabsClient {
     if (!data || typeof data !== 'object') throw new TwelveLabsError('TwelveLabs returned an unreadable response.', 502);
     return data as T;
   }
-  async upload(file: File) {
+  async upload(file: File, signal?: AbortSignal) {
     const body = new FormData(); body.set('method', 'direct'); body.set('file', file); body.set('enable_hls', 'false');
-    const asset = await this.request<Resource>('/assets', { method: 'POST', body }, 240000);
+    const asset = await this.request<Resource>('/assets', { method: 'POST', body, signal }, 240000);
     if (!asset._id || !validVideoId(asset._id)) throw new TwelveLabsError('TwelveLabs did not return a valid asset ID.', 502);
     return asset._id;
   }
@@ -42,9 +43,20 @@ export class TwelveLabsClient {
     return indexed._id;
   }
   indexedAsset(id: string) { return this.request<Resource>(`/indexes/${this.index}/indexed-assets/${id}`); }
-  async review(id: string, candidates: JevCandidate[], duration: number) {
+  indexInfo() { return this.request<{ _id: string; index_name: string; video_count?: number }>(`/indexes/${this.index}`, undefined, 20000); }
+  async listIndexedAssets() {
+    const result: IndexedVideo[] = [];
+    for (let page = 1; page <= 1000; page++) {
+      const data = await this.request<{ data: IndexedVideo[]; page_info?: { total_page?: number; total_results?: number } }>(`/indexes/${this.index}/indexed-assets?page=${page}&page_limit=50`, undefined, 20000);
+      if (!Array.isArray(data.data) || data.data.some(item => !validVideoId(item?._id))) throw new TwelveLabsError('TwelveLabs returned an invalid index listing.', 502);
+      result.push(...data.data);
+      if (data.page_info?.total_page ? page >= data.page_info.total_page : data.data.length < 50) return result;
+    }
+    throw new TwelveLabsError('The index is too large to map in one request. No partial mapping was saved.', 503);
+  }
+  async review(id: string, candidates: JevCandidate[], duration: number, idempotencyKey?: string) {
     const window = reviewWindow(candidates, duration);
-    const data = await this.request<{ task_id?: string }>('/analyze/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    const data = await this.request<{ task_id?: string }>('/analyze/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) }, body: JSON.stringify({
       model_name: 'pegasus1.6', video: { type: 'asset_id', asset_id: id },
       prompt: jevPrompt(candidates), temperature: 0.1, max_tokens: 16384,
       start_time: window.start, end_time: window.end,

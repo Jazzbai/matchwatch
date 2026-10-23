@@ -6,5 +6,5 @@ require.extensions['.ts'] = (module, filename) => {
   const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } });
   module._compile(output.outputText, filename);
 };
-const names = ['highlight-preferences', 'x-social', 'event-fusion', 'viral-ranking', 'jev', 'twelvelabs', 'highlight-plan', 'highlight-optimizer', 'rolling-highlights', 'highlight-access', 'scoreplay', 'scoreplay-filters'];
+const names = ['scoreplay-mapping', 'highlight-pipeline', 'highlight-preferences', 'x-social', 'event-fusion', 'viral-ranking', 'jev', 'twelvelabs', 'highlight-plan', 'highlight-optimizer', 'rolling-highlights', 'highlight-access', 'scoreplay', 'scoreplay-filters'];
 for (const name of names) require(path.resolve(__dirname, '../src/lib', `${name}.test.ts`));

@@ -2,11 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ScorePlayClient, scorePlayAllowed, scorePlayDownloadUrl, selectScorePlayFormat, requireScorePlayExternalProcessing } from './scoreplay';
 
-test('hackathon content cannot be reimported or exported externally by default', () => {
+test('ScorePlay imports remain blocked even when an old override is present', () => {
   const previous = process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING;
   try {
     delete process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING;
-    assert.throws(requireScorePlayExternalProcessing, /must stay on ScorePlay/);
+    assert.throws(requireScorePlayExternalProcessing, /re-uploading/);
+    process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING = 'true';
+    assert.throws(requireScorePlayExternalProcessing, /re-uploading/);
   } finally { if (previous === undefined) delete process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING; else process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING = previous; }
 });
 

@@ -9,12 +9,13 @@ const endpoint = `${process.env.NEXT_PUBLIC_APP_BASE_PATH || ''}/api/stream/scor
 type Media = { id: string; name: string; duration?: number; date?: number; match?: string };
 type Option = { id: string; name: string };
 type Catalog = { leagues: Option[]; seasons: Option[]; matches: Option[]; warning?: string };
-export type ScorePlayVideo = { ticket: string; name: string; url: string; duration: number; bytes: number };
+export type ScorePlayVideo = { ticket: string; mediaId: string; name: string; url: string; duration: number; bytes: number; assetTicket: string; indexedTicket: string; matchedBy: 'metadata' | 'filename'; canExport: false };
 export default function ScorePlaySource({ disabled, onChoose }: { disabled: boolean; onChoose: (source: ScorePlayVideo) => void }) {
   const [query, setQuery] = useState(''), [media, setMedia] = useState<Media[]>([]), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [filters, setFilters] = useState<ScorePlayFilters>({}), [catalog, setCatalog] = useState<Catalog>({ leagues: [], seasons: [], matches: [] });
   const [opened, setOpened] = useState(false), [page, setPage] = useState(1), [pages, setPages] = useState(1), [count, setCount] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const [mappingStatus, setMappingStatus] = useState('');
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   function change(key: keyof ScorePlayFilters, value: string) { setFilters(current => ({ ...current, [key]: value })); setDirty(true); }
@@ -48,6 +49,12 @@ export default function ScorePlaySource({ disabled, onChoose }: { disabled: bool
     } catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { setBusy(false); }
   }
+  async function refreshMapping() {
+    const abort = new AbortController(); controller.current = abort; setBusy(true); setError(''); setMappingStatus('Refreshing the shared AI index mapping…');
+    try { const response = await highlightResponse(await highlightFetch(`${endpoint}?action=mapping&refresh=true`, { signal: abort.signal })); const data = await response.json(); setMappingStatus(`${data.mappedCount} of ${data.scoreplayCount} videos ready for AI · Index: ${data.indexName} (${data.indexCount} videos).`); }
+    catch (error) { if (!abort.signal.aborted) { setError((error as Error).message); setMappingStatus('Mapping refresh failed. Retry when the shared index is accessible.'); } }
+    finally { setBusy(false); }
+  }
   return <section aria-label="ScorePlay library">
     {!opened && <div className={styles.libraryIntro}><Library size={31} /><h3>Your games, already in ScorePlay</h3><p>Find a recording in your team’s library. Filter by league, season or match.</p><button type="button" className={styles.secondary} disabled={disabled || busy} onClick={() => void run()}>{busy ? <LoaderCircle size={16} className={styles.spinner} /> : <Search size={16} />} Open ScorePlay library</button></div>}
     {opened && <><div className={styles.libraryToolbar}><strong>Find your game</strong><button type="button" className={styles.secondary} disabled={disabled || busy} onClick={() => void run()}>Refresh</button></div><form onSubmit={e => { e.preventDefault(); void run(); }}>
@@ -57,7 +64,9 @@ export default function ScorePlaySource({ disabled, onChoose }: { disabled: bool
       <details className={styles.advanced}><summary>More filters <ChevronDown size={14} /></summary><div className={styles.detailsBody}><div className={styles.row}><label>Year<input type="number" min="1970" max="2100" placeholder="Any year" value={filters.year || ''} disabled={disabled || busy} onChange={e => change('year', e.target.value)} /></label><label>Sort by<select value={filters.order || 'newest'} disabled={disabled || busy} onChange={e => change('order', e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label></div><div className={styles.row}><label>From<input type="date" value={filters.from || ''} disabled={disabled || busy} onChange={e => change('from', e.target.value)} /></label><label>Until<input type="date" value={filters.to || ''} disabled={disabled || busy} onChange={e => change('to', e.target.value)} /></label></div><p className={styles.hint}>Dates refer to when the media was recorded in ScorePlay. {catalog.warning}</p></div></details>
       <div className={styles.searchButtonRow}><button className={styles.primary} disabled={disabled || busy}><Search size={15} /> Find videos</button><button type="button" className={styles.secondary} disabled={disabled || busy} onClick={() => void run(undefined, 1, true)}>Reset</button></div>
     </form></>}
-    {busy && <p role="status" className={styles.libraryStatus}>Loading your library… <button type="button" className={styles.textButton} onClick={() => controller.current?.abort()}>Cancel</button></p>}
+    {opened && <button type="button" className={styles.textButton} disabled={busy || disabled} onClick={() => void refreshMapping()}>Refresh AI mapping</button>}
+    {mappingStatus && <p role="status" className={styles.libraryStatus}>{mappingStatus}</p>}
+    {busy && <p role="status" className={styles.libraryStatus}>Connecting to your library and AI index… <button type="button" className={styles.textButton} onClick={() => controller.current?.abort()}>Cancel</button></p>}
     {error && <div className={styles.error} role="alert"><strong>We couldn’t open that video</strong><p>{error}</p><p>You can also choose “Upload a video” to use a file from your device.</p></div>}
     {opened && <p role="status" className={styles.libraryStatus}>{dirty ? 'Choose “Find videos” to apply your changes.' : `${count} videos found${count ? ` · Page ${page} of ${pages}` : ''}`}</p>}
     {opened && !media.length && !busy && <div className={styles.empty}><Search size={24} /><h3>No videos found</h3><p>Try a different team, season or date range.</p></div>}

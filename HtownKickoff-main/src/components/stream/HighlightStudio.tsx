@@ -8,6 +8,7 @@ import styles from './HighlightStudio.module.css';
 import ScorePlaySource, { type ScorePlayVideo } from './ScorePlaySource';
 import RollingScoreboard from './RollingScoreboard';
 import EventFusionStudio from './EventFusionStudio';
+import PipelineStudio from './PipelineStudio';
 import { highlightPriorities, priorityWeights, type HighlightPriority } from '../../lib/highlight-preferences';
 import { fuseEvents, type FusionInputs } from '../../lib/event-fusion';
 import { applyReviewedChunk, candidateChunks, emptyRollingState } from '../../lib/rolling-highlights';
@@ -80,8 +81,14 @@ export default function HighlightStudio() {
   const sourceResource = useRef({ asset: '', indexed: '', indexedReady: false, analysisDuration: 0 });
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState(''), [output, setOutput] = useState('');
   const [config, setConfig] = useState<{ detectionReady: boolean; exportReady: boolean; requiresLogin?: boolean } | null>(null);
+  const [configError, setConfigError] = useState('');
   const player = useRef<HTMLVideoElement>(null), controller = useRef<AbortController | null>(null);
-  useEffect(() => { fetch(endpoint).then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error); setConfig(data); }).catch(e => setError(e.message)); return () => controller.current?.abort(); }, []);
+  const checkAvailability = useCallback(async () => {
+    setConfigError('');
+    try { const response = await fetch(endpoint, { signal: AbortSignal.timeout(12000), cache: 'no-store' }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Video analysis is unavailable.'); setConfig(data); }
+    catch { setConfigError('Could not check video analysis. Retry the connection.'); }
+  }, []);
+  useEffect(() => { void checkAvailability(); return () => controller.current?.abort(); }, [checkAvailability]);
   useEffect(() => { if (!file) return; const source = URL.createObjectURL(file); setUrl(source); return () => URL.revokeObjectURL(source); }, [file]);
   useEffect(() => () => { if (output) URL.revokeObjectURL(output); }, [output]);
   const plan = optimizeHighlights(events.filter(e => !excluded.includes(e.id)), duration, target, before, after);
@@ -101,7 +108,7 @@ export default function HighlightStudio() {
     setSourceMode('library');
     setSourceRevision(current => current + 1);
     setRolling(emptyRollingState());
-    controller.current?.abort(); sourceResource.current = { asset: '', indexed: '', indexedReady: false, analysisDuration: 0 };
+    controller.current?.abort(); sourceResource.current = { asset: source.assetTicket, indexed: source.indexedTicket, indexedReady: true, analysisDuration: source.duration };
     pendingUpload.current = true; setBusy(''); setFile(null); setScorePlay(source); setUrl(source.url); setDuration(source.duration);
     setEvents([]); setExcluded([]); setAssetTicket(''); setError(''); resetOutput();
     setMessage('Your ScorePlay video is selected. Choose your preferences, then create your highlight.');
@@ -116,10 +123,7 @@ export default function HighlightStudio() {
       let assetId = sourceResource.current.asset;
       if (!assetId) {
         if (scorePlay) {
-          setBusy('TwelveLabs is importing your recording directly from ScorePlay…');
-          const form = new FormData(); form.set('action', 'scoreplay-upload'); form.set('scoreplayTicket', scorePlay.ticket);
-          ({ assetId } = await (await request(form, abort.signal)).json());
-          sourceResource.current.asset = assetId;
+          throw new Error(`"${scorePlay.name}" has no valid connection to its existing TwelveLabs copy. Refresh the AI mapping and choose it again.`);
         } else if (file) {
         const upload = new FormData(); upload.set('action', 'upload'); upload.set('video', file); upload.set('compress', String(compress));
         const uploaded = await uploadHighlight(endpoint, upload, await highlightAuthorization(), abort.signal, (sent, size) => {
@@ -190,14 +194,15 @@ export default function HighlightStudio() {
       setEvents(fuseEvents(data.events.map((event: Event) => compared.find(item => item.id === event.id) || event), fusionContext.current, scoringWeights));
       const selected = optimizeHighlights(compared, duration, target, before, after);
       setMessage(autoCompare ? `Jev compared ${compared.length} distinct moments. The selector keeps the highest combined editorial score within ${target} seconds; weaker choices can be replaced.` : `${data.events.length} candidates found. Selection uses editable scores; AI comparison was not run.`);
-      if (autoExport && config?.exportReady && selected.length) {
+      if (autoExport && !scorePlay && config?.exportReady && selected.length) {
         setBusy('Creating your highlight MP4…');
-        const form = new FormData(); form.set('action', 'export'); if (scorePlay) form.set('scoreplayTicket', scorePlay.ticket); else if (file) form.set('video', file);
+        const form = new FormData(); form.set('action', 'export'); if (file) form.set('video', file);
         form.set('clips', JSON.stringify(selected.map(c => ({ start: c.clipStart, end: c.clipEnd }))));
         const response = await request(form, abort.signal);
         setOutput(URL.createObjectURL(await response.blob()));
         setMessage(`Your highlight MP4 is ready from ${selected.length} selected clips. ${autoCompare ? 'Jev compared the evidence before selection.' : 'AI comparison was not run.'} Preview and download it below.`);
       } else if (!selected.length) setMessage('No verified complete clip fits the target. Inspect uncertain AI reviews, adjust the time budget, or override a reviewed event manually.');
+      else if (scorePlay) setMessage(`${selected.length} moments are ready. Analysis reused the organizer’s indexed video. Build an editor story below for the team’s editing, compliance and final-render stages.`);
     } catch (e) { if (!abort.signal.aborted) setError((e as Error).message); }
     finally { if (!abort.signal.aborted) setBusy(''); }
   }, [file, scorePlay, queries, duration, target, before, after, autoExport, autoCompare, compress, config?.exportReady, scoringWeights, validMoments]);
@@ -282,14 +287,15 @@ export default function HighlightStudio() {
             </div></details>
 
             <button className={styles.primary} disabled={!hasSource || !duration || !validMoments || !!busy || socialBusy || !config?.detectionReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={() => void detect()}>{busy ? <LoaderCircle size={18} className={styles.spinner} /> : <Sparkles size={18} />}{busy ? 'Creating your highlight…' : output ? 'Create another cut' : 'Create my highlight'}{!busy && <ArrowRight size={18} />}</button>
-            <p className={styles.actionHint}>{!validMoments ? 'Choose between one and eight moment descriptions in customization.' : socialBusy ? 'Loading optional fan reactions. You can create your highlight when this finishes.' : !config ? 'Checking availability…' : config.requiresLogin && !isAuthenticated ? 'Sign in above to start creating.' : !config.detectionReady ? 'Video analysis is temporarily unavailable.' : !hasSource ? 'Choose a video above to get started.' : !duration ? 'Reading your video details…' : 'We’ll find the best moments and create your video.'}</p>
+            <p className={styles.actionHint}>{!validMoments ? 'Choose between one and eight moment descriptions in customization.' : socialBusy ? 'Loading optional fan reactions. You can create your highlight when this finishes.' : configError || (!config ? 'Connecting to video analysis…' : config.requiresLogin && !isAuthenticated ? 'Sign in above to start creating.' : !config.detectionReady ? 'Video analysis is temporarily unavailable.' : !hasSource ? 'Choose a video above to get started.' : !duration ? 'Reading your video details…' : 'We’ll find the best moments and create your video.')}</p>
+            {configError && <button type="button" className={styles.secondary} onClick={() => void checkAvailability()}>Retry connection</button>}
           </section>
         </div>
         <aside className={styles.resultColumn} hidden={!events.length && !busy && !output}>
           <section className={styles.card} id="result" ref={resultRef}><div className={styles.heading}><span>03</span><div><h2>Your highlight</h2><p>{output ? 'Ready for its next audience.' : 'The best of your match, all in one place.'}</p></div>{output && <span className={styles.readyBadge}>Ready</span>}</div>
             {output ? <div className={styles.output}><video controls src={output} /><a href={output} download="matchwatch-highlights.mp4" className={styles.primary}><Download size={18} /> Download highlight</a><p className={styles.actionHint}>720p MP4 · Original audio</p></div> : <div className={plan.length && !busy ? styles.selectionReady : styles.resultEmpty}>{busy ? <LoaderCircle size={38} className={styles.spinner} /> : plan.length ? <CircleCheck size={30} /> : <Play size={34} />}<h3>{busy ? 'Your highlight is on its way' : plan.length ? 'Your moments are ready' : 'No clips selected yet'}</h3><p>{busy ? 'We’re finding the plays, comparing the moments and building your reel.' : plan.length ? 'Create the video below to preview and download this selection.' : 'Try a different search or review the moments below.'}</p>{busy && <div className={styles.reelPreview}><span /><span /><span /><span /><span /></div>}</div>}
             {!!events.length && <><div className={styles.stats}><div><strong>{events.length}</strong><span>Moments found</span></div><div><strong>{plan.length}</strong><span>Clips selected</span></div><div><strong>{clock(total)}</strong><span>Highlight length</span></div></div><ol className={styles.sequence}>{plan.map(c => <li key={c.id}><button type="button" className={styles.momentButton} onClick={() => { if (player.current) { player.current.currentTime = c.clipStart; void player.current.play().catch(() => {}); player.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }}><span className={styles.momentPlay}><Play size={12} /></span><span><strong>{c.label}</strong><small>{clock(c.clipStart)}–{clock(c.clipEnd)}</small></span><Check size={15} /></button></li>)}</ol></>}
-            {!output && !!plan.length && !busy && <><button className={styles.primary} disabled={!config?.exportReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={exportVideo}><Film size={18} /> Create highlight video</button><p className={styles.actionHint}>720p MP4 · Original audio</p></>}
+            {!output && !!plan.length && !busy && !scorePlay && <><button className={styles.primary} disabled={!config?.exportReady || (!!config?.requiresLogin && !isAuthenticated)} onClick={exportVideo}><Film size={18} /> Create highlight video</button><p className={styles.actionHint}>720p MP4 · Original audio</p></>}
             {!output && !events.length && <div className={styles.reelSpecs}><span><Check size={14} /> Up to {target} seconds</span><span><Check size={14} /> Best moments selected</span><span><Check size={14} /> Ready to download</span></div>}
             <details className={styles.advanced}><summary><Scissors size={15} /> Adjust clip timing <ChevronDown size={15} /></summary><div className={styles.detailsBody}><p className={styles.hint}>These settings apply to manually marked moments. AI-reviewed moments use their recommended cuts.</p><div className={styles.row}><label>Build-up (seconds)<input type="number" min="0" max="30" value={before} disabled={!!busy} onChange={e => { setBefore(Math.max(0, Math.min(30, Number(e.target.value)))); resetOutput(); }} /></label><label>Reaction (seconds)<input type="number" min="0" max="30" value={after} disabled={!!busy} onChange={e => { setAfter(Math.max(0, Math.min(30, Number(e.target.value)))); resetOutput(); }} /></label></div></div></details>
           </section>
@@ -297,6 +303,7 @@ export default function HighlightStudio() {
         </aside>
       </div>
       <EventFusionStudio key={sourceRevision} sourceReady={hasSource && duration > 0} weights={scoringWeights} priorityName={highlightPriorities.find(item => item.id === scoringPriority)!.name} onSocialBusy={setSocialBusy} events={events} excluded={excluded} duration={duration} target={target} before={before} after={after} disabled={!!busy} onContext={input => { fusionContext.current = input; }} onApply={updated => { setEvents(updated); resetOutput(); setMessage('Your selection has been updated with the latest match insights.'); }} />
+      <PipelineStudio file={file} scorePlay={scorePlay} duration={duration} sport={sport} target={target} queries={queries} before={before} after={after} scoringPriority={scoringPriority} getEvidence={() => fusionContext.current} disabled={!!busy || socialBusy || !validMoments || !!config?.requiresLogin && !isAuthenticated} />
       <details className={styles.optionalPanel} hidden={!hasSource && !events.length}><summary><span className={styles.optionalIcon}><Settings2 size={20} /></span><span><strong>Review & fine-tune</strong><small>Optional: see why moments were picked or adjust the selection.</small></span><ChevronDown size={18} /></summary><div className={styles.optionalBody}>
       <RollingScoreboard state={rolling} />
       <section className={styles.card}><div className={styles.heading}><span>03</span><h2>All detected moments</h2><span className={styles.count}>{events.length}</span></div><p className={styles.hint}>Your AI selection is ready to use. Adjust these moments only if you want a more personal cut.</p>

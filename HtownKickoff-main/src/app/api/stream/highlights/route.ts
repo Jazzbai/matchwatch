@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { spawn } from 'node:child_process';
-import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { writeFile, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import ffmpegPath from 'ffmpeg-static';
+import { runMedia as run } from '../../../../lib/pipeline-media';
+import { createProcessingTemp } from '../../../../lib/processing-temp';
 import { TwelveLabsClient, TwelveLabsError, validVideoId } from '../../../../lib/twelvelabs';
 import { HighlightAccessError, highlightOwner, studioEnabled, resourceTicket, resourceId, reserveOperation } from '../../../../lib/highlight-access';
 import { reviewInput } from '../../../../lib/jev';
@@ -12,7 +11,6 @@ import { ScorePlayClient, ScorePlayError, scorePlayAllowed, requireScorePlayExte
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
-const ffmpeg = process.env.FFMPEG_PATH || ffmpegPath || 'ffmpeg';
 function client() {
   const key = process.env.TWELVELABS_API_KEY, index = process.env.TWELVELABS_INDEX_ID;
   if (!key || !index) throw new TwelveLabsError('Set TWELVELABS_API_KEY and TWELVELABS_INDEX_ID in .env.local, then restart the server.', 503);
@@ -24,14 +22,6 @@ function failure(error: unknown) {
   if (error instanceof HighlightAccessError) return NextResponse.json({ error: error.message }, { status: error.status });
   if (error instanceof TwelveLabsError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status, headers: error.retryAfter ? { 'Retry-After': error.retryAfter } : undefined });
   return NextResponse.json({ error: error instanceof Error ? error.message : 'Highlight request failed.' }, { status: 400 });
-}
-function run(args: string[], timeout = 240000) {
-  return new Promise<void>((resolve, reject) => {
-    const child = spawn(ffmpeg, args, { windowsHide: true, stdio: 'ignore' });
-    const timer = setTimeout(() => { child.kill(); reject(new Error('Video processing timed out. Try shorter footage or disable analysis compression.')); }, timeout);
-    child.on('error', () => { clearTimeout(timer); reject(new Error('FFmpeg is unavailable. Install FFmpeg or set FFMPEG_PATH, then restart the server.')); });
-    child.on('close', code => { clearTimeout(timer); if (code === 0) resolve(); else reject(new Error('FFmpeg could not process this video. Use a valid MP4 with a video track.')); });
-  });
 }
 export async function GET(request: NextRequest) {
   const assetId = request.nextUrl.searchParams.get('assetId');
@@ -77,8 +67,7 @@ export async function POST(request: NextRequest) {
       return new ScorePlayClient(process.env.SCOREPLAY_API_KEY).source(id);
     }
     if (action === 'scoreplay-upload') {
-      const source = await scorePlaySource();
-      return NextResponse.json({ assetId: resourceTicket(await client().importUrl(source.url), owner, 'asset') });
+      throw new ScorePlayError('Re-uploading ScorePlay videos is disabled. Refresh the AI mapping and choose the existing indexed recording.', 403);
     }
     if (action === 'review') {
       const id = resourceId(String(form.get('assetId') || ''), owner, 'asset');
@@ -95,7 +84,7 @@ export async function POST(request: NextRequest) {
         if (form.get('compress') === 'true' && file.size >= 8 * 1024 * 1024) {
           const releaseProcessor = reserveOperation(owner, 'compress');
           try {
-            directory = await mkdtemp(join(tmpdir(), 'matchwatch-analysis-'));
+            directory = await createProcessingTemp();
             const source = join(directory, 'source.mp4'), proxy = join(directory, 'analysis.mp4');
             await writeFile(source, Buffer.from(await file.arrayBuffer()));
             await run(analysisProxyArgs(source, proxy), 90000);
@@ -131,7 +120,7 @@ export async function POST(request: NextRequest) {
     if (!remote && (!(video instanceof File) || video.size === 0 || video.size > 200 * 1024 * 1024)) throw new Error('Choose a video smaller than 200 MB.');
     const clips: { start: number; end: number }[] = JSON.parse(String(form.get('clips') || '[]'));
     if (!Array.isArray(clips) || !clips.length || clips.length > 20 || clips.some(c => !Number.isFinite(c.start) || !Number.isFinite(c.end) || c.start < 0 || c.end <= c.start || c.end > 86400) || clips.reduce((sum, c) => sum + c.end - c.start, 0) > 300.01) throw new Error('Select 1–20 valid clips totaling at most five minutes.');
-    directory = await mkdtemp(join(tmpdir(), 'matchwatch-highlights-'));
+    directory = await createProcessingTemp();
     const source = remote?.url || join(directory, 'source.mp4');
     if (!remote && video instanceof File) await writeFile(source, Buffer.from(await video.arrayBuffer()));
     const list = [];

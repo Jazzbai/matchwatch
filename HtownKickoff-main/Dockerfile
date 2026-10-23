@@ -35,7 +35,7 @@ COPY --from=builder --chown=appuser:appgroup /app/.next/static ./.next/static
 COPY --from=builder --chown=appuser:appgroup /app/public ./public
 
 # Next.js writes optimized image artifacts under .next/cache at runtime.
-RUN mkdir -p /app/.next/cache && chown -R appuser:appgroup /app/.next
+RUN mkdir -p /app/.next/cache /app/.data/highlight-pipeline && chown -R appuser:appgroup /app/.next /app/.data
 
 USER appuser
 

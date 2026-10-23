@@ -4,13 +4,14 @@ export class ScorePlayError extends Error {
 }
 export const scorePlayLimit = 200 * 1024 * 1024;
 export function requireScorePlayExternalProcessing() {
-  if (process.env.SCOREPLAY_ALLOW_EXTERNAL_PROCESSING !== 'true') throw new ScorePlayError('Hackathon content must stay on ScorePlay. Connect the organizer-provided TwelveLabs mapping before processing; external import and export are disabled.', 403);
+  throw new ScorePlayError('ScorePlay media must use its existing TwelveLabs copy. Downloading and re-uploading hackathon media is disabled.', 403);
 }
 export function scorePlayAllowed(owner: string) {
   return process.env.NODE_ENV === 'development' && owner === 'local' ||
     (process.env.SCOREPLAY_ALLOWED_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean).includes(owner);
 }
-type Media = { ID: number; name: string; type: string; duration?: number; date?: number; event?: { name?: string } };
+export type ScorePlayMedia = { ID: number; name: string; type: string; duration?: number; date?: number; proxy_medium?: string; streaming_url?: string; video?: { duration?: number; proxy_medium?: string; stream?: string }; event?: { name?: string } };
+type Media = ScorePlayMedia;
 type Collection = { ID: number; name: string; date?: number; parent_id?: number };
 type Format = { id: string; file_name: string; size: number; mime_type: string; file_url?: string; is_scoreplay: boolean; status?: string };
 export function scorePlayDownloadUrl(value: string) {
@@ -35,7 +36,9 @@ export class ScorePlayClient {
   constructor(private key: string, private transport: typeof fetch = fetch) {}
   private async request(path: string, init: RequestInit = {}) {
     let response: Response;
-    try { response = await this.transport(`https://media.scoreplay.io/v1${path}`, { ...init, headers: { 'X-ScorePlay-Api-Key': this.key, 'Content-Type': 'application/json' }, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(20000) }); }
+    const base = (process.env.SCOREPLAY_API_URL || 'https://media.scoreplay.io/v1').replace(/\/$/, '');
+    if (base !== 'https://media.scoreplay.io/v1') throw new ScorePlayError('SCOREPLAY_API_URL must use the official ScorePlay API base URL.', 503);
+    try { response = await this.transport(`${base}${path}`, { ...init, headers: { 'X-ScorePlay-Api-Key': this.key, 'Content-Type': 'application/json' }, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(20000) }); }
     catch { throw new ScorePlayError('ScorePlay is temporarily unreachable. Try again shortly.'); }
     if (!response.ok) throw new ScorePlayError(response.status === 401 || response.status === 403 ? 'ScorePlay rejected access. Check the server key and its media download permissions.' : response.status === 404 ? 'This ScorePlay video is unavailable to the configured account.' : 'ScorePlay could not complete the request.', response.status === 429 ? 429 : 502);
     return response.json();
@@ -122,6 +125,26 @@ export class ScorePlayClient {
     if (Number(media.duration) > 14400) throw new ScorePlayError('Choose a recording up to four hours long.', 400);
     const format = selectScorePlayFormat(await this.request(`/media/${id}/formats/download?hide_non_favorites=true`), 4 * 1024 ** 3);
     return { url: format.file_url, name: media.name as string, duration: Number(media.duration) || 0, bytes: format.size };
+  }
+  async media(id: string): Promise<ScorePlayMedia> {
+    if (!/^[1-9][0-9]{0,15}$/.test(id)) throw new ScorePlayError('Choose a valid ScorePlay media ID.', 400);
+    const item = await this.request(`/media/${id}`);
+    if (item.type !== 'video' || typeof item.name !== 'string') throw new ScorePlayError('Choose an available ScorePlay video.', 400);
+    return { ...item, duration: item.duration || item.video?.duration || 0, proxy_medium: item.proxy_medium || item.video?.proxy_medium, streaming_url: item.streaming_url || item.video?.stream };
+  }
+  async allVideos(): Promise<ScorePlayMedia[]> {
+    const result: ScorePlayMedia[] = [], seen = new Set<number>(); let cursor: string | undefined;
+    for (let page = 1; page <= 1000; page++) {
+      const query = new URLSearchParams({ per_page: '100', ...(cursor ? { cursor } : { page: String(page) }) });
+      const data = await this.request(`/media/search?${query}`, { method: 'POST', body: JSON.stringify({ media_type: 'video' }) });
+      if (!Array.isArray(data.media)) throw new ScorePlayError('ScorePlay returned an invalid catalog.');
+      let added = 0;
+      for (const item of data.media) if (Number.isSafeInteger(item.ID) && item.ID > 0 && item.type === 'video' && typeof item.name === 'string' && !seen.has(item.ID)) { seen.add(item.ID); result.push(item); added++; }
+      if (data.next_cursor) { if (data.next_cursor === cursor || !added) throw new ScorePlayError('ScorePlay pagination repeated a page. No partial mapping was saved.'); cursor = data.next_cursor; continue; }
+      if (data.total_pages ? page >= data.total_pages : data.media.length < 100) return result;
+      if (!added) throw new ScorePlayError('ScorePlay pagination repeated a page. No partial mapping was saved.');
+    }
+    throw new ScorePlayError('The library is too large to map in one request. No partial mapping was saved.', 503);
   }
   async download(id: string, signal: AbortSignal) {
     if (!/^[1-9][0-9]{0,15}$/.test(id)) throw new ScorePlayError('Choose a valid ScorePlay media ID.', 400);
