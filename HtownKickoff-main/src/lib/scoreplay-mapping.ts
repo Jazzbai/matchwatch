@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ScorePlayClient, ScorePlayError, type ScorePlayMedia } from './scoreplay';
-import { TwelveLabsClient, validVideoId, type IndexedVideo } from './twelvelabs';
+import { TwelveLabsClient, isProviderId as validVideoId, type IndexedAsset as IndexedVideo } from './highlights/twelvelabs';
 
 export type MediaMapping = { twelvelabsVideoId: string; assetId: string; matchedBy: 'metadata' | 'filename'; metadataKey?: string; duration: number; previewUrl?: string };
 export type MappingReport = { indexId: string; indexName: string; indexCount: number; checkedAt: string; scoreplayCount: number; mappedCount: number; unmappedCount: number; mappings: Record<string, MediaMapping>; unmapped: { mediaId: string; filename: string; reason: string }[] };

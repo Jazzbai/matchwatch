@@ -4,7 +4,7 @@ import { mkdtemp, rm, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mapScorePlayVideos, ScorePlayMappingService } from './scoreplay-mapping';
-import { TwelveLabsClient, type IndexedVideo } from './twelvelabs';
+import { TwelveLabsClient, type IndexedAsset as IndexedVideo } from './highlights/twelvelabs';
 import { ScorePlayClient } from './scoreplay';
 
 const index = '111111111111111111111111', asset = '222222222222222222222222';

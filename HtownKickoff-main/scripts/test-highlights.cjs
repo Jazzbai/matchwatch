@@ -1,10 +1,14 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- CommonJS hook runs TypeScript tests without an extra dependency. */
+// Runs the highlight engine tests: node scripts/test-highlights.cjs
 const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
+
 require.extensions['.ts'] = (module, filename) => {
   const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } });
   module._compile(output.outputText, filename);
 };
-const names = ['rundown-handoff', 'scoreplay-mapping', 'highlight-pipeline', 'highlight-preferences', 'x-social', 'event-fusion', 'viral-ranking', 'jev', 'twelvelabs', 'highlight-plan', 'highlight-optimizer', 'rolling-highlights', 'highlight-access', 'scoreplay', 'scoreplay-filters'];
-for (const name of names) require(path.resolve(__dirname, '../src/lib', `${name}.test.ts`));
+
+const lib = path.resolve(__dirname, '../src/lib');
+const engine = fs.readdirSync(path.join(lib, 'highlights')).filter(name => name.endsWith('.test.ts')).map(name => path.join(lib, 'highlights', name));
+for (const file of [...engine, ...['scoreplay-mapping', 'scoreplay-filters', 'scoreplay', 'highlight-request', 'highlight-session'].map(name => path.join(lib, `${name}.test.ts`))]) require(file);

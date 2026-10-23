@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { highlightOwner, HighlightAccessError, reserveOperation, resourceTicket } from '../../../../lib/highlight-access';
+import { requestOwner as highlightOwner, AccessError as HighlightAccessError, reserve, videoTicket } from '../../../../lib/highlights/access';
 import { ScorePlayClient, ScorePlayError, scorePlayAllowed, requireScorePlayExternalProcessing } from '../../../../lib/scoreplay';
 import { ScorePlayFilterError, type ScorePlayFilters } from '../../../../lib/scoreplay-filters';
 import { scorePlayMapping } from '../../../../lib/scoreplay-mapping';
-import { TwelveLabsError } from '../../../../lib/twelvelabs';
+import { TwelveLabsError } from '../../../../lib/highlights/twelvelabs';
 
 export const runtime = 'nodejs';
 export const maxDuration = 240;
+const reserveOperation = (owner: string) => reserve(owner, 'request');
 function failure(error: unknown) {
   if (error instanceof TwelveLabsError) return NextResponse.json({ error: error.message }, { status: error.status, headers: { 'Cache-Control': 'no-store' } });
   if (error instanceof ScorePlayFilterError) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -21,7 +22,7 @@ async function access(request: NextRequest) {
 }
 export async function GET(request: NextRequest) {
   try {
-    const { owner, client } = await access(request); reserveOperation(owner, 'search');
+    const { owner, client } = await access(request); reserveOperation(owner);
     const params = request.nextUrl.searchParams;
     if (params.get('action') === 'mapping') {
       const report = await scorePlayMapping().diagnostics(params.get('refresh') === 'true');
@@ -36,14 +37,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let release: (() => void) | undefined;
   try {
-    const { owner, client } = await access(request); release = reserveOperation(owner, 'search');
+    const { owner, client } = await access(request); release = reserveOperation(owner);
     const id = request.nextUrl.searchParams.get('mediaId') || '';
     if (request.nextUrl.searchParams.get('mode') === 'source') {
       const media = await client.media(id), mapping = await scorePlayMapping().resolve(media);
       const preview = [media.proxy_medium, media.streaming_url, mapping.previewUrl].find(value => typeof value === 'string' && value.startsWith('https://')) || '';
       return NextResponse.json({ name: media.name, duration: mapping.duration, url: preview, bytes: 0, mediaId: id, matchedBy: mapping.matchedBy, canExport: false,
-        assetTicket: resourceTicket(mapping.assetId, owner, 'asset'), indexedTicket: resourceTicket(mapping.twelvelabsVideoId, owner, 'indexed'),
-        ticket: resourceTicket(BigInt(id).toString(16).padStart(24, '0'), owner, 'scoreplay') }, { headers: { 'Cache-Control': 'no-store' } });
+        assetTicket: videoTicket(mapping.assetId, owner), indexedTicket: videoTicket(mapping.twelvelabsVideoId, owner),
+        ticket: videoTicket(mapping.twelvelabsVideoId, owner) }, { headers: { 'Cache-Control': 'no-store' } });
     }
     requireScorePlayExternalProcessing();
     const file = await client.download(id, request.signal);
