@@ -6,7 +6,7 @@ import { TwelveLabsClient, validVideoId, type IndexedVideo } from './twelvelabs'
 
 export type MediaMapping = { twelvelabsVideoId: string; assetId: string; matchedBy: 'metadata' | 'filename'; metadataKey?: string; duration: number; previewUrl?: string };
 export type MappingReport = { indexId: string; indexName: string; indexCount: number; checkedAt: string; scoreplayCount: number; mappedCount: number; unmappedCount: number; mappings: Record<string, MediaMapping>; unmapped: { mediaId: string; filename: string; reason: string }[] };
-type CachedIndex = { version: 1; indexId: string; indexName: string; count: number; metadataKey: string; checkedAt: number; entries: IndexedVideo[] };
+type CachedIndex = { version: 2; indexId: string; indexName: string; count: number; metadataKey: string; checkedAt: number; entries: IndexedVideo[] };
 const normalize = (name: string) => name.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').replace(/\.[a-z0-9]{2,5}$/, '').replace(/[^a-z0-9]+/g, '');
 function metadataValues(value: unknown): string[] {
   if (Array.isArray(value)) return value.flatMap(metadataValues);
@@ -23,7 +23,12 @@ export function mapScorePlayVideos(videos: ScorePlayMedia[], entries: IndexedVid
   const metadata = new Map<string, { entry: IndexedVideo; key: string }[]>();
   const claimed = new Map<string, string>();
   for (const entry of entries) {
-    const pairs = metadataKey ? [[metadataKey, entry.user_metadata?.[metadataKey]]] as const : Object.entries(entry.user_metadata || {});
+    // Organizer custom IDs may be stored on the asset or its index entry.
+    // Keep both sources so conflicting IDs cannot be silently overwritten.
+    const pairs: [string, unknown][] = [
+      ...(metadataKey ? [[metadataKey, entry.user_metadata?.[metadataKey]] as [string, unknown]] : Object.entries(entry.user_metadata || {})),
+      ...(metadataKey ? [[`asset.user_metadata.${metadataKey}`, entry.asset_user_metadata?.[metadataKey]] as [string, unknown]] : Object.entries(entry.asset_user_metadata || {}).map(([key, value]): [string, unknown] => [`asset.user_metadata.${key}`, value])),
+    ];
     const matching = pairs.flatMap(([key, value]) => metadataValues(value).filter(id => ids.has(id)).map(id => ({ key, id })));
     if (new Set(matching.map(m => m.id)).size > 1) { claimed.set(entry._id, 'ambiguous'); continue; }
     for (const { key, id } of matching.slice(0, 1)) { claimed.set(entry._id, id); metadata.set(id, [...metadata.get(id) || [], { entry, key }]); }
@@ -53,13 +58,20 @@ export class ScorePlayMappingService {
     this.pending = (async () => {
       const info = await this.labs.indexInfo();
       let old = this.memory;
-      if (!old && !force) { try { const saved = JSON.parse(await readFile(this.cachePath(), 'utf8')); if (saved.version === 1 && saved.indexId === this.indexId && Array.isArray(saved.entries)) old = saved; } catch { /* Rebuild missing/corrupt cache from the providers. */ } }
+      if (!old && !force) { try { const saved = JSON.parse(await readFile(this.cachePath(), 'utf8')); if (saved.version === 2 && saved.indexId === this.indexId && Array.isArray(saved.entries)) old = saved; } catch { /* Rebuild missing/corrupt cache from the providers. */ } }
       if (!force && old && Number.isFinite(info.video_count) && old.count === info.video_count && old.metadataKey === metadataKey) { old.checkedAt = Date.now(); return this.memory = old; }
       const list = await this.labs.listIndexedAssets(), entries: IndexedVideo[] = new Array(list.length); let next = 0;
+      const assets = new Map<string, ReturnType<TwelveLabsClient['asset']>>();
       await Promise.all(Array.from({ length: Math.min(6, list.length) }, async () => {
-        while (next < list.length) { const position = next++, summary = list[position], detail = await this.labs.indexedAsset(summary._id); entries[position] = { ...summary, ...detail, _id: summary._id }; }
+        while (next < list.length) {
+          const position = next++, summary = list[position], detail = await this.labs.indexedAsset(summary._id);
+          const assetId = detail.asset_id || summary.asset_id;
+          if (assetId && validVideoId(assetId) && !assets.has(assetId)) assets.set(assetId, this.labs.asset(assetId));
+          const asset = assetId ? await assets.get(assetId) : undefined;
+          entries[position] = { ...summary, ...detail, _id: summary._id, asset_user_metadata: asset?.user_metadata };
+        }
       }));
-      const cache: CachedIndex = { version: 1, indexId: this.indexId, indexName: info.index_name, count: info.video_count ?? entries.length, metadataKey, checkedAt: Date.now(), entries };
+      const cache: CachedIndex = { version: 2, indexId: this.indexId, indexName: info.index_name, count: info.video_count ?? entries.length, metadataKey, checkedAt: Date.now(), entries };
       await mkdir(this.cacheRoot, { recursive: true, mode: 0o700 }); const path = this.cachePath(), temp = `${path}.${randomUUID()}.tmp`;
       await writeFile(temp, JSON.stringify(cache), { mode: 0o600 }); await rename(temp, path);
       this.report = undefined;

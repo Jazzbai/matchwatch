@@ -4,7 +4,7 @@ export class TwelveLabsError extends Error {
   constructor(message: string, public status: number, public code?: string, public retryAfter?: string) { super(message); }
 }
 export function validVideoId(id: string) { return /^[a-f0-9]{24}$/.test(id); }
-export type IndexedVideo = { _id: string; asset_id?: string; status?: string; user_metadata?: Record<string, unknown>; system_metadata?: { filename?: string; duration?: number }; hls?: { video_url?: string } };
+export type IndexedVideo = { _id: string; asset_id?: string; status?: string; user_metadata?: Record<string, unknown>; asset_user_metadata?: Record<string, unknown>; system_metadata?: { filename?: string; duration?: number }; hls?: { video_url?: string } };
 type Resource = Partial<IndexedVideo> & { error?: { message?: string } };
 type SearchMatch = { video_id?: string; start?: number; end?: number; confidence?: string; rank?: number };
 export class TwelveLabsClient {
