@@ -36,8 +36,10 @@ const nextConfig: NextConfig = {
       },
     ], afterFiles: [
       {
-        source: "/api/v1/:path*",
-        destination: `${apiProxyTarget}/api/v1/:path*`,
+        // /api/v1/jobs/:id is served here by the highlights integration API; afterFiles
+        // rewrites run before dynamic routes, so it must be excluded from the proxy.
+        source: "/api/v1/:path((?!jobs/).*)",
+        destination: `${apiProxyTarget}/api/v1/:path`,
       },
     ], fallback: [] };
   },
